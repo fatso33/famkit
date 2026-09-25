@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "Family Kitchen - Family Recipe Vault",
+  "short_name": "Family Kitchen",
+  "description": "Heirloom family recipes featuring Wanda's Cheese Bread with verbatim instructions, dynamic portion scaling, cook mode wake lock, and offline PWA capability.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "theme_color": "#c85a32",
+  "background_color": "#fbf9f5",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
