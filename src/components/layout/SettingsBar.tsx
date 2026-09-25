@@ -4,6 +4,8 @@ import { ThemeToggle } from '../common/ThemeToggle';
 import { Language, Theme } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
 import { getStoredApiKey, setStoredApiKey } from '../../services/storage';
+import { useAuth } from '../../hooks/useAuth';
+import { LogOut, User as UserIcon } from 'lucide-react';
 
 interface SettingsBarProps {
   isOpen: boolean;
@@ -34,6 +36,7 @@ export const SettingsBar: React.FC<SettingsBarProps> = ({
 }) => {
   const [apiKey, setApiKey] = useState(getStoredApiKey);
   const [showKeyInput, setShowKeyInput] = useState(false);
+  const { user, isConfigured, signOut } = useAuth();
 
   if (!isOpen) return null;
 
@@ -53,47 +56,78 @@ export const SettingsBar: React.FC<SettingsBarProps> = ({
         borderColor: 'var(--border-subtle)',
       }}
     >
-      <div className="flex items-center justify-end gap-3 flex-wrap">
-        <FontScaler
-          percent={fontPercent}
-          onIncrease={onIncreaseFont}
-          onDecrease={onDecreaseFont}
-        />
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        {/* User Account / Auth badge */}
+        {isConfigured && user ? (
+          <div className="flex items-center gap-2 text-xs py-1 px-2.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300">
+            {user.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt={user.displayName || user.email || 'User'}
+                className="w-5 h-5 rounded-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <UserIcon className="w-3.5 h-3.5" />
+            )}
+            <span className="font-medium truncate max-w-[140px] sm:max-w-[200px]">
+              {user.displayName || user.email}
+            </span>
+            <button
+              onClick={() => void signOut()}
+              className="ml-1 text-stone-500 hover:text-red-600 dark:hover:text-red-400 p-0.5 rounded cursor-pointer transition-colors"
+              title="Sign Out"
+              aria-label="Sign Out"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : (
+          <div />
+        )}
 
-        <button
-          onClick={onToggleLanguage}
-          className="btn px-2.5 py-1 text-xs font-bold cursor-pointer min-w-[44px]"
-          title="Switch language (EN / PL)"
-          aria-label="Toggle language: English / Polish"
-        >
-          <span>{language === 'pl' ? 'PL' : 'EN'}</span>
-        </button>
+        <div className="flex items-center justify-end gap-3 flex-wrap">
+          <FontScaler
+            percent={fontPercent}
+            onIncrease={onIncreaseFont}
+            onDecrease={onDecreaseFont}
+          />
 
-        <ThemeToggle
-          theme={theme}
-          onToggle={onToggleTheme}
-          title={t.themeToggle}
-        />
+          <button
+            onClick={onToggleLanguage}
+            className="btn px-2.5 py-1 text-xs font-bold cursor-pointer min-w-[44px]"
+            title="Switch language (EN / PL)"
+            aria-label="Toggle language: English / Polish"
+          >
+            <span>{language === 'pl' ? 'PL' : 'EN'}</span>
+          </button>
 
-        <button
-          onClick={onShare}
-          className="btn btn-icon cursor-pointer"
-          title="Share recipe"
-          aria-label="Share recipe"
-        >
-          <span>↗️</span>
-        </button>
+          <ThemeToggle
+            theme={theme}
+            onToggle={onToggleTheme}
+            title={t.themeToggle}
+          />
 
-        <button
-          onClick={() => setShowKeyInput((prev) => !prev)}
-          className={`btn text-xs font-semibold cursor-pointer ${
-            showKeyInput ? 'btn-primary' : ''
-          }`}
-          title="Configure Gemini API Key"
-        >
-          <span>🔑</span>
-          <span>API Key</span>
-        </button>
+          <button
+            onClick={onShare}
+            className="btn btn-icon cursor-pointer"
+            title="Share recipe"
+            aria-label="Share recipe"
+          >
+            <span>↗️</span>
+          </button>
+
+          <button
+            onClick={() => setShowKeyInput((prev) => !prev)}
+            className={`btn text-xs font-semibold cursor-pointer ${
+              showKeyInput ? 'btn-primary' : ''
+            }`}
+            title="Configure Gemini API Key"
+          >
+            <span>🔑</span>
+            <span>API Key</span>
+          </button>
+        </div>
       </div>
 
       {showKeyInput && (

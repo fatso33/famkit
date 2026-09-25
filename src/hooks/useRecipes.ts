@@ -1,6 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Recipe, Language } from '../types/recipe';
 import { getStoredRecipes, saveRecipes } from '../services/storage';
+import {
+  subscribeToRecipes,
+  saveRecipeToCloud,
+  deleteRecipeFromCloud,
+} from '../services/firestore';
 import { translateRecipeToPolish } from '../services/gemini';
 
 export function getLocalizedRecipe(
@@ -37,25 +42,65 @@ export function useRecipes() {
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
 
+  // Subscribe to real-time Cloud Firestore updates
+  useEffect(() => {
+    const unsubscribe = subscribeToRecipes((updatedRecipes) => {
+      setRecipes(updatedRecipes);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const selectedRecipe =
     recipes.find((r) => r.id === selectedRecipeId) || null;
 
-  const addRecipe = useCallback((newRecipe: Omit<Recipe, 'id' | 'createdAt'>) => {
-    const recipeWithId: Recipe = {
-      ...newRecipe,
-      id: 'recipe-' + Date.now(),
-      createdAt: Date.now(),
-    };
+  const addRecipe = useCallback(
+    (newRecipe: Omit<Recipe, 'id' | 'createdAt'>): Recipe => {
+      const recipeWithId: Recipe = {
+        ...newRecipe,
+        id: 'recipe-' + Date.now(),
+        createdAt: Date.now(),
+      };
 
-    setRecipes((prev) => {
-      const updated = [recipeWithId, ...prev];
-      saveRecipes(updated);
-      return updated;
-    });
+      // Optimistic local update
+      setRecipes((prev) => {
+        const updated = [recipeWithId, ...prev];
+        saveRecipes(updated);
+        return updated;
+      });
 
-    setSelectedRecipeId(recipeWithId.id);
-    return recipeWithId;
-  }, []);
+      setSelectedRecipeId(recipeWithId.id);
+
+      // Async sync to Cloud Firestore in background
+      saveRecipeToCloud(recipeWithId).catch((err) => {
+        console.warn('Failed to sync new recipe to cloud (retained locally):', err);
+      });
+
+      return recipeWithId;
+    },
+    []
+  );
+
+  const deleteRecipe = useCallback(
+    async (id: string) => {
+      setRecipes((prev) => {
+        const updated = prev.filter((r) => r.id !== id);
+        saveRecipes(updated);
+        return updated;
+      });
+
+      if (selectedRecipeId === id) {
+        setSelectedRecipeId(null);
+      }
+
+      try {
+        await deleteRecipeFromCloud(id);
+      } catch (err) {
+        console.warn('Failed to delete recipe from cloud:', err);
+      }
+    },
+    [selectedRecipeId]
+  );
 
   const translateSelectedRecipe = useCallback(
     async (recipe: Recipe) => {
@@ -63,22 +108,22 @@ export function useRecipes() {
       setIsTranslating(true);
       try {
         const translatedContent = await translateRecipeToPolish(recipe);
+        const updatedRecipe: Recipe = {
+          ...recipe,
+          translations: {
+            ...recipe.translations,
+            pl: translatedContent,
+          },
+        };
+
         setRecipes((prev) => {
-          const updated = prev.map((r) => {
-            if (r.id === recipe.id) {
-              return {
-                ...r,
-                translations: {
-                  ...r.translations,
-                  pl: translatedContent,
-                },
-              };
-            }
-            return r;
-          });
+          const updated = prev.map((r) => (r.id === recipe.id ? updatedRecipe : r));
           saveRecipes(updated);
           return updated;
         });
+
+        // Persist translated version to Firestore
+        await saveRecipeToCloud(updatedRecipe);
       } finally {
         setIsTranslating(false);
       }
@@ -92,6 +137,7 @@ export function useRecipes() {
     selectedRecipeId,
     setSelectedRecipeId,
     addRecipe,
+    deleteRecipe,
     translateSelectedRecipe,
     isTranslating,
   };

@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Checks if the user is authenticated with Google and their email is in the allowed family list
+    function isFamily() {
+      return request.auth != null &&
+        request.auth.token.email.lower() in [
+          // Replace these placeholder emails with your actual family Gmail addresses
+          "your_email@gmail.com",
+          "mom_email@gmail.com",
+          "dad_email@gmail.com",
+          "sister_email@gmail.com"
+        ];
+    }
+
+    // Secure all recipes
+    match /recipes/{recipeId} {
+      // Only approved family members can view, add, modify, or delete recipes
+      allow read, write: if isFamily();
+    }
+  }
+}
