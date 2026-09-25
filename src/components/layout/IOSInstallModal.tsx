@@ -29,7 +29,9 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({
       >
         <div className="ios-modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <div className="ios-modal-icon">🌾</div>
+            <div className="ios-modal-icon">
+              <img src="./apple-touch-icon.png" alt="Family Kitchen logo" className="brand-icon-img" />
+            </div>
             <div>
               <h3 className="ios-modal-title" id="iosModalTitle">
                 {t.iosModalTitle}

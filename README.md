@@ -28,7 +28,12 @@ The project has been refactored away from monolithic godfiles into clean, modula
 │       └── deploy.yml              # Automated GitHub Pages CI/CD on push to main
 ├── public/
 │   ├── assets/                     # Recipe photos & visual step guides
-│   ├── favicon.svg                 # Scalable bread icon
+│   ├── apple-touch-icon.png        # iOS Home Screen icon (180x180)
+│   ├── favicon.ico                 # Multi-res browser favicon (16/32/48)
+│   ├── favicon.svg                 # Scalable vector logo icon
+│   ├── icon-192x192.png            # Android PWA standard icon
+│   ├── icon-512x512.png            # Android PWA splash & standard icon
+│   ├── icon-maskable-512x512.png   # Android adaptive launcher maskable icon
 │   ├── manifest.webmanifest        # Static PWA web app manifest
 │   └── sw.js                       # Offline caching service worker
 ├── src/

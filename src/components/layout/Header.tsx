@@ -68,7 +68,9 @@ export const Header: React.FC<HeaderProps> = ({
             if (e.key === 'Enter' || e.key === ' ') onNavigateHome();
           }}
         >
-          <div className="brand-icon">🌾</div>
+          <div className="brand-icon">
+            <img src="./apple-touch-icon.png" alt="Family Kitchen logo" className="brand-icon-img" />
+          </div>
           <span className="brand-title">Family Kitchen</span>
         </div>
 

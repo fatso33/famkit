@@ -1,4 +1,4 @@
-const CACHE_NAME = 'family-kitchen-v4';
+const CACHE_NAME = 'family-kitchen-v5';
 
 self.addEventListener('install', () => {
   self.skipWaiting();
@@ -48,7 +48,7 @@ self.addEventListener('fetch', (event) => {
 
   // Cache-first for images & fonts (static media)
   if (
-    url.pathname.match(/\.(png|jpg|jpeg|svg|webp|woff2)$/) ||
+    url.pathname.match(/\.(png|jpg|jpeg|svg|webp|woff2|ico)$/) ||
     url.hostname.includes('unsplash.com') ||
     url.hostname.includes('fonts.gstatic.com')
   ) {

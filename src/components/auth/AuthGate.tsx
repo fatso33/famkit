@@ -98,7 +98,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
           <div className="header-main-row">
             <div className="brand-group">
               <div className="brand-icon">
-                <span>🍞</span>
+                <img src="./apple-touch-icon.png" alt="Family Kitchen logo" className="brand-icon-img" />
               </div>
               <div>
                 <span className="brand-title">
@@ -318,7 +318,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
           <div className="header-main-row">
             <div className="brand-group">
               <div className="brand-icon">
-                <span>🍞</span>
+                <img src="./apple-touch-icon.png" alt="Family Kitchen logo" className="brand-icon-img" />
               </div>
               <span className="brand-title">
                 {language === 'pl' ? 'Rodzinna Kuchnia' : 'Family Kitchen'}
