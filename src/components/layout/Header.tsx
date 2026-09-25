@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import { Language, Theme } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
-import { getStoredApiKey, setStoredApiKey } from '../../services/storage';
+import {
+  getStoredApiKey,
+  setStoredApiKey,
+  hasCustomApiKey,
+  hasBundledApiKey,
+} from '../../services/storage';
 
 interface HeaderProps {
   selectedRecipeName?: string;
@@ -210,7 +215,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="form-control"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder={t.apiKeyPlaceholder}
+              placeholder={hasBundledApiKey() ? '●●●●●● (Configured via GitHub Secret)' : t.apiKeyPlaceholder}
               style={{ fontSize: '0.85rem', padding: '0.4rem 0.65rem' }}
             />
             <button
@@ -220,6 +225,21 @@ export const Header: React.FC<HeaderProps> = ({
             >
               Save
             </button>
+          </div>
+          <div style={{ fontSize: '0.8rem', marginTop: '0.15rem' }}>
+            {hasCustomApiKey() ? (
+              <span style={{ color: 'var(--color-moss, #2e7d32)', fontWeight: 600 }}>
+                ✓ Custom API key active on this device
+              </span>
+            ) : hasBundledApiKey() ? (
+              <span style={{ color: 'var(--color-moss, #2e7d32)', fontWeight: 600 }}>
+                ✓ Default Gemini API key active (bundled from GitHub Secrets)
+              </span>
+            ) : (
+              <span style={{ color: 'var(--color-crimson, #c62828)', fontWeight: 500 }}>
+                ⚠️ No API key detected. Paste your Gemini API key above to enable translation for new recipes.
+              </span>
+            )}
           </div>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             Wanda's Cheese Bread works 100% offline without a key. This key is only used to translate custom recipes you add.

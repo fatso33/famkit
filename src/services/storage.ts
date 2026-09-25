@@ -112,6 +112,15 @@ export function getStoredApiKey(): string {
   );
 }
 
+export function hasCustomApiKey(): boolean {
+  if (typeof window === 'undefined') return false;
+  return Boolean(localStorage.getItem(API_KEY_STORAGE));
+}
+
+export function hasBundledApiKey(): boolean {
+  return Boolean(import.meta.env.VITE_GEMINI_API_KEY);
+}
+
 export function setStoredApiKey(key: string): void {
   if (typeof window === 'undefined') return;
   if (!key.trim()) {

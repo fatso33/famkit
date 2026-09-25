@@ -54,64 +54,79 @@ ${JSON.stringify(
 )}
 `;
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: prompt,
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: {
+  const schema = {
+    type: Type.OBJECT,
+    properties: {
+      name: { type: Type.STRING },
+      cardDescription: { type: Type.STRING },
+      yieldHeader: { type: Type.STRING },
+      tips: { type: Type.STRING },
+      notes: { type: Type.STRING },
+      laminationDirective: { type: Type.STRING },
+      ingredients: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            text: { type: Type.STRING },
+            qty: { type: Type.NUMBER },
+            unit: { type: Type.STRING },
+            renderUnit: { type: Type.STRING },
+            renderUnitPlural: { type: Type.STRING },
+            altQty: { type: Type.NUMBER },
+            altUnit: { type: Type.STRING },
+            prefix: { type: Type.STRING },
+            suffix: { type: Type.STRING },
+          },
+          required: ['text'],
+        },
+      },
+      steps: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            num: { type: Type.NUMBER },
+            text: { type: Type.STRING },
+          },
+          required: ['num', 'text'],
+        },
+      },
+      bakingOptions: {
         type: Type.OBJECT,
         properties: {
-          name: { type: Type.STRING },
-          cardDescription: { type: Type.STRING },
-          yieldHeader: { type: Type.STRING },
-          tips: { type: Type.STRING },
-          notes: { type: Type.STRING },
-          laminationDirective: { type: Type.STRING },
-          ingredients: {
+          option1: { type: Type.STRING },
+          option2: {
             type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                text: { type: Type.STRING },
-                qty: { type: Type.NUMBER },
-                unit: { type: Type.STRING },
-                renderUnit: { type: Type.STRING },
-                renderUnitPlural: { type: Type.STRING },
-                altQty: { type: Type.NUMBER },
-                altUnit: { type: Type.STRING },
-                prefix: { type: Type.STRING },
-                suffix: { type: Type.STRING },
-              },
-              required: ['text'],
-            },
-          },
-          steps: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                num: { type: Type.NUMBER },
-                text: { type: Type.STRING },
-              },
-              required: ['num', 'text'],
-            },
-          },
-          bakingOptions: {
-            type: Type.OBJECT,
-            properties: {
-              option1: { type: Type.STRING },
-              option2: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-              },
-            },
+            items: { type: Type.STRING },
           },
         },
-        required: ['name', 'ingredients', 'steps'],
       },
     },
-  });
+    required: ['name', 'ingredients', 'steps'],
+  };
+
+  let response;
+  try {
+    response = await ai.models.generateContent({
+      model: 'gemini-3.5-flash-lite',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: schema,
+      },
+    });
+  } catch (err) {
+    console.warn('gemini-3.5-flash-lite failed, attempting gemini-3.8-flash fallback:', err);
+    response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: schema,
+      },
+    });
+  }
 
   const parsed = JSON.parse(response.text || '{}') as LocalizedRecipeContent;
   return parsed;
