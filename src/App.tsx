@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useTheme } from './hooks/useTheme';
 import { useFontScale } from './hooks/useFontScale';
 import { useLanguage } from './hooks/useLanguage';
@@ -31,6 +31,7 @@ export default function App() {
     setSelectedRecipeId,
     addRecipe,
     translateSelectedRecipe,
+    isTranslating,
   } = useRecipes();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -44,6 +45,26 @@ export default function App() {
       setToastMessage(null);
     }, 3200);
   }, []);
+
+  // Automatically translate custom recipes if viewed while in Polish mode
+  useEffect(() => {
+    if (
+      language === 'pl' &&
+      selectedRecipe &&
+      !selectedRecipe.translations?.pl &&
+      !isTranslating
+    ) {
+      showToast(t.translatingToast, '🌐');
+      translateSelectedRecipe(selectedRecipe)
+        .then(() => {
+          showToast(t.translatedToast, '🇵🇱');
+        })
+        .catch((err: unknown) => {
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          showToast(`${t.translationError}${errorMsg}`, '⚠️');
+        });
+    }
+  }, [language, selectedRecipe, isTranslating, t, translateSelectedRecipe, showToast]);
 
   const handleSelectRecipe = (id: string) => {
     const changeView = () => {
