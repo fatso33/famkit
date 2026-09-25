@@ -60,6 +60,28 @@ export interface UiTranslations {
   stepsHelp: string;
   tipsOptional: string;
   notesOptional: string;
+  editRecipe: string;
+  editRecipeTitle: (version: number) => string;
+  clearDraft: string;
+  draftRestored: string;
+  confirmClearDraft: string;
+  addStep: string;
+  removeStep: string;
+  stepNotesPlaceholder: string;
+  stepNotesLabel: string;
+  stepPhoto: string;
+  takePhoto: string;
+  uploadPhoto: string;
+  removePhoto: string;
+  addIngredient: string;
+  removeIngredient: string;
+  ingredientPlaceholder: string;
+  amountPlaceholder: string;
+  quickPaste: string;
+  quickPasteTitle: string;
+  quickPasteApply: string;
+  versionBadge: (version: number) => string;
+  saveChanges: string;
 }
 
 export const UI_TEXT: Record<Language, UiTranslations> = {
@@ -122,7 +144,29 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     ingredientsHelp: 'Ingredients (One per line) *',
     stepsHelp: 'Steps (One per line) *',
     tipsOptional: 'Tips (Optional)',
-    notesOptional: 'Notes / Warnings (Optional)',
+    notesOptional: 'Crucial Notes / Warnings (Optional)',
+    editRecipe: 'Edit Recipe',
+    editRecipeTitle: (version: number) => `Edit Recipe (v${version})`,
+    clearDraft: 'Clear Draft',
+    draftRestored: 'Draft restored',
+    confirmClearDraft: 'Are you sure you want to clear your saved draft?',
+    addStep: '+ Add Step',
+    removeStep: 'Remove step',
+    stepNotesPlaceholder: 'e.g., Dough should feel tacky and wet, not dry.',
+    stepNotesLabel: 'Step Note / Consistency Cue (Optional)',
+    stepPhoto: 'Step Photo (Optional)',
+    takePhoto: 'Take Photo',
+    uploadPhoto: 'Upload Photo',
+    removePhoto: 'Remove photo',
+    addIngredient: '+ Add Ingredient',
+    removeIngredient: 'Remove ingredient',
+    ingredientPlaceholder: 'e.g., All-Purpose Flour',
+    amountPlaceholder: 'e.g., 450g or 1.5 cups',
+    quickPaste: 'Bulk Paste',
+    quickPasteTitle: 'Paste Ingredients List',
+    quickPasteApply: 'Insert Ingredients',
+    versionBadge: (version: number) => `v${version}`,
+    saveChanges: 'Save Changes',
   },
   pl: {
     vaultTitle: 'Skarbiec Przepisów Rodzinnych',
@@ -184,6 +228,28 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     ingredientsHelp: 'Składniki (jeden w każdym wierszu) *',
     stepsHelp: 'Kroki przygotowania (jeden w każdym wierszu) *',
     tipsOptional: 'Wskazówki (opcjonalnie)',
-    notesOptional: 'Uwagi i ostrzeżenia (opcjonalnie)',
+    notesOptional: 'Ważne uwagi i ostrzeżenia (opcjonalnie)',
+    editRecipe: 'Edytuj przepis',
+    editRecipeTitle: (version: number) => `Edytuj przepis (v${version})`,
+    clearDraft: 'Wyczyść wersję roboczą',
+    draftRestored: 'Przywrócono wersję roboczą',
+    confirmClearDraft: 'Czy na pewno chcesz usunąć zapisaną wersję roboczą?',
+    addStep: '+ Dodaj krok',
+    removeStep: 'Usuń krok',
+    stepNotesPlaceholder: 'np. Ciasto powinno być lepkie i wilgotne, nie suche.',
+    stepNotesLabel: 'Wskazówka / Konsystencja dla kroku (opcjonalnie)',
+    stepPhoto: 'Zdjęcie dla tego kroku (opcjonalnie)',
+    takePhoto: 'Zrób zdjęcie',
+    uploadPhoto: 'Wgraj zdjęcie',
+    removePhoto: 'Usuń zdjęcie',
+    addIngredient: '+ Dodaj składnik',
+    removeIngredient: 'Usuń składnik',
+    ingredientPlaceholder: 'np. Mąka pszenna',
+    amountPlaceholder: 'np. 450g lub 1.5 szklanki',
+    quickPaste: 'Wklej listę',
+    quickPasteTitle: 'Wklej listę składników',
+    quickPasteApply: 'Wstaw składniki',
+    versionBadge: (version: number) => `v${version}`,
+    saveChanges: 'Zapisz zmiany',
   },
 };

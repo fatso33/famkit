@@ -38,6 +38,15 @@ export const StepsList: React.FC<StepsListProps> = ({
               <div className="step-content">
                 <p className="step-text">{capitalizeFirstLetter(step.text)}</p>
 
+                {step.notes && (
+                  <div className="step-note-pill">
+                    <span className="step-note-icon" aria-hidden="true">
+                      💡
+                    </span>
+                    <span>{capitalizeFirstLetter(step.notes)}</span>
+                  </div>
+                )}
+
                 {step.hasImage && step.imageSrc && (
                   <div
                     className="step-visual-frame clickable-zoom"

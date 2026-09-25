@@ -59,7 +59,10 @@ export function useRecipes() {
       const recipeWithId: Recipe = {
         ...newRecipe,
         id: 'recipe-' + Date.now(),
+        version: 1,
+        history: [],
         createdAt: Date.now(),
+        updatedAt: Date.now(),
       };
 
       // Optimistic local update
@@ -77,6 +80,66 @@ export function useRecipes() {
       });
 
       return recipeWithId;
+    },
+    []
+  );
+
+  const updateRecipe = useCallback(
+    (recipeUpdates: Recipe): Recipe => {
+      let finalRecipe: Recipe = recipeUpdates;
+
+      setRecipes((prev) => {
+        const existing = prev.find((r) => r.id === recipeUpdates.id);
+        const currentVersion = existing?.version || 1;
+        const newVersion = currentVersion + 1;
+
+        const historyEntry = existing
+          ? [
+              {
+                version: currentVersion,
+                savedAt: existing.updatedAt || existing.createdAt || Date.now(),
+                recipe: {
+                  id: existing.id,
+                  name: existing.name,
+                  author: existing.author,
+                  category: existing.category,
+                  heroImage: existing.heroImage,
+                  yieldHeader: existing.yieldHeader,
+                  baseYield: existing.baseYield,
+                  ingredients: existing.ingredients,
+                  cardDescription: existing.cardDescription,
+                  tips: existing.tips,
+                  steps: existing.steps,
+                  laminationDirective: existing.laminationDirective,
+                  bakingOptions: existing.bakingOptions,
+                  notes: existing.notes,
+                  translations: existing.translations,
+                  createdAt: existing.createdAt,
+                  version: existing.version,
+                },
+              },
+              ...(existing.history || []),
+            ]
+          : [];
+
+        finalRecipe = {
+          ...recipeUpdates,
+          version: newVersion,
+          history: historyEntry,
+          updatedAt: Date.now(),
+        };
+
+        const updated = prev.map((r) => (r.id === finalRecipe.id ? finalRecipe : r));
+        saveRecipes(updated);
+        return updated;
+      });
+
+      // Async sync to Cloud Firestore in background
+      saveRecipeToCloud(finalRecipe).catch((err) => {
+        console.warn('Failed to sync updated recipe to cloud (retained locally):', err);
+      });
+
+      return finalRecipe;
     },
     []
   );
@@ -137,6 +200,7 @@ export function useRecipes() {
     selectedRecipeId,
     setSelectedRecipeId,
     addRecipe,
+    updateRecipe,
     deleteRecipe,
     translateSelectedRecipe,
     isTranslating,

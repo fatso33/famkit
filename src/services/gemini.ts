@@ -37,7 +37,10 @@ Crucial Culinary Guidelines:
    - "altQty": maintain exact altQty number or null
    - "altUnit": translated altUnit (e.g. "ml")
    - "suffix": translated suffix (e.g. " posiekanych", " (zważ to)")
-6. Preserve the exact schema provided below. Return ONLY valid JSON matching this structure.
+6. For each step:
+   - "notes": Polish translation of any step consistency note/cue (if provided)
+   - "imageCaption": Polish translation of step image caption (if provided)
+7. Preserve the exact schema provided below. Return ONLY valid JSON matching this structure.
 
 Recipe to translate:
 ${JSON.stringify(
@@ -96,6 +99,8 @@ ${JSON.stringify(
           properties: {
             num: { type: Type.NUMBER },
             text: { type: Type.STRING },
+            notes: { type: Type.STRING },
+            imageCaption: { type: Type.STRING },
           },
           required: ['num', 'text'],
         },

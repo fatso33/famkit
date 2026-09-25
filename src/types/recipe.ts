@@ -17,6 +17,14 @@ export interface Step {
   hasImage?: boolean;
   imageSrc?: string;
   imageCaption?: string;
+  notes?: string;
+}
+
+export interface RecipeHistoryEntry {
+  version: number;
+  savedAt: number;
+  recipe: Omit<Recipe, 'history'>;
+  changeNote?: string;
 }
 
 export interface BakingOptions {
@@ -46,6 +54,8 @@ export interface Recipe {
   name: string;
   author: string;
   category: 'breads' | 'heirloom' | 'family' | string;
+  version?: number;
+  history?: RecipeHistoryEntry[];
   isDefault?: boolean;
   heroImage: string;
   yieldHeader: string;
@@ -59,6 +69,7 @@ export interface Recipe {
   notes?: string;
   translations?: RecipeTranslations;
   createdAt?: number;
+  updatedAt?: number;
 }
 
 export type Language = 'en' | 'pl';

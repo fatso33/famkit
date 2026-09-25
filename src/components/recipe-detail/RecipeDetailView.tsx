@@ -14,6 +14,7 @@ interface RecipeDetailViewProps {
   isWakeLocked: boolean;
   onToggleWakeLock: () => void;
   isWakeLockSupported: boolean;
+  onEditRecipe?: (recipe: Recipe) => void;
   t: UiTranslations;
 }
 
@@ -23,6 +24,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   isWakeLocked,
   onToggleWakeLock,
   isWakeLockSupported,
+  onEditRecipe,
   t,
 }) => {
   const [scale, setScale] = useState(1);
@@ -63,6 +65,11 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
           >
             By {recipe.author}
           </span>
+          {recipe.version && recipe.version > 1 && (
+            <span className="version-tag" title={`Version ${recipe.version}`}>
+              {t.versionBadge(recipe.version)}
+            </span>
+          )}
           <span aria-hidden="true">·</span>
           <span
             id="detailEstimatedTime"
@@ -76,6 +83,28 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
           >
             ⏱️ {estimatedTime}
           </span>
+
+          {onEditRecipe && (
+            <>
+              <span aria-hidden="true">·</span>
+              <button
+                className="btn"
+                style={{
+                  padding: '0.2rem 0.65rem',
+                  minHeight: '28px',
+                  fontSize: '0.75rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  borderRadius: 'var(--radius-full)',
+                }}
+                onClick={() => onEditRecipe(rawRecipe)}
+                title={t.editRecipe}
+              >
+                ✏️ {t.editRecipe}
+              </button>
+            </>
+          )}
 
           {isWakeLockSupported && (
             <>

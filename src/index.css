@@ -1079,13 +1079,19 @@
       .modal-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(19, 18, 17, 0.6);
-        backdrop-filter: blur(4px);
+        background: rgba(19, 18, 17, 0.65);
+        backdrop-filter: blur(6px);
         display: none;
         place-items: center;
         z-index: 100;
-        padding: 1.25rem;
+        padding: 0;
         overflow-y: auto;
+      }
+
+      @media (min-width: 640px) {
+        .modal-overlay {
+          padding: 1.5rem;
+        }
       }
 
       .modal-overlay.active {
@@ -1095,14 +1101,59 @@
       .modal-sheet {
         background: var(--bg-surface);
         border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-lg);
         width: 100%;
-        max-width: 580px;
+        max-width: 100%;
+        height: 100dvh;
+        max-height: 100dvh;
+        border-radius: 0;
         box-shadow: var(--shadow-lg);
-        padding: 1.75rem;
+        display: flex;
+        flex-direction: column;
         position: relative;
-        max-height: 90vh;
+        overflow: hidden;
+      }
+
+      @media (min-width: 640px) {
+        .modal-sheet {
+          max-width: 720px;
+          height: auto;
+          max-height: 90vh;
+          border-radius: var(--radius-lg);
+        }
+      }
+
+      .modal-header-sticky {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: var(--bg-surface);
+        border-bottom: 1px solid var(--border-subtle);
+        padding: 1rem 1.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .modal-body-scroll {
+        flex: 1;
         overflow-y: auto;
+        padding: 1.25rem;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .modal-footer-sticky {
+        position: sticky;
+        bottom: 0;
+        z-index: 20;
+        background: var(--bg-surface);
+        border-top: 1px solid var(--border-subtle);
+        padding: 0.85rem 1.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.75rem;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
       }
 
       .modal-header {
@@ -1114,12 +1165,15 @@
 
       .modal-title {
         font-family: var(--font-serif);
-        font-size: 1.5rem;
+        font-size: 1.4rem;
         font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
       }
 
       .form-group {
-        margin-bottom: 1rem;
+        margin-bottom: 1.2rem;
       }
 
       .form-label {
@@ -1139,6 +1193,7 @@
         color: var(--text-primary);
         font-family: inherit;
         font-size: 0.9rem;
+        transition: border-color 0.15s, background-color 0.15s;
       }
 
       .form-control:focus {
@@ -1150,6 +1205,262 @@
       textarea.form-control {
         resize: vertical;
         min-height: 80px;
+      }
+
+      /* Image Picker & Thumbnail with Delete 'X' */
+      .image-picker-zone {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .image-preview-wrapper {
+        position: relative;
+        display: inline-block;
+        width: fit-content;
+      }
+
+      .image-preview-thumb {
+        width: 110px;
+        height: 110px;
+        border-radius: var(--radius-md);
+        object-fit: cover;
+        border: 2px solid var(--border-strong);
+        background: var(--bg-card);
+        box-shadow: var(--shadow-sm);
+        display: block;
+      }
+
+      .image-delete-badge {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        width: 26px;
+        height: 26px;
+        border-radius: var(--radius-full);
+        background: #dc2626;
+        color: #ffffff;
+        border: 2px solid var(--bg-surface);
+        display: grid;
+        place-items: center;
+        font-size: 0.75rem;
+        font-weight: 700;
+        line-height: 1;
+        cursor: pointer;
+        transition: transform 0.15s ease, background-color 0.15s ease;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      }
+
+      .image-delete-badge:hover {
+        background: #b91c1c;
+        transform: scale(1.15);
+      }
+
+      .image-picker-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .btn-camera-capture {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.82rem;
+        font-weight: 600;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-card);
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: background-color 0.15s, border-color 0.15s;
+      }
+
+      .btn-camera-capture:hover {
+        background: var(--bg-card-hover);
+        border-color: var(--accent);
+      }
+
+      /* Step Builder */
+      .step-builder-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        padding: 1rem;
+        margin-bottom: 0.85rem;
+        position: relative;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .step-builder-card:focus-within {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent-subtle);
+      }
+
+      .step-builder-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+      }
+
+      .step-builder-badge {
+        background: var(--accent);
+        color: #ffffff;
+        font-size: 0.8rem;
+        font-weight: 700;
+        padding: 0.2rem 0.65rem;
+        border-radius: var(--radius-full);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+      }
+
+      .step-builder-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+      }
+
+      .btn-step-action {
+        width: 30px;
+        height: 30px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-surface);
+        color: var(--text-secondary);
+        display: grid;
+        place-items: center;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+
+      .btn-step-action:hover:not(:disabled) {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: var(--accent-subtle);
+      }
+
+      .btn-step-action:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+
+      .btn-step-action.danger:hover:not(:disabled) {
+        border-color: #dc2626;
+        color: #dc2626;
+        background: #fee2e2;
+      }
+
+      .btn-add-step {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px dashed var(--border-strong);
+        border-radius: var(--radius-md);
+        background: transparent;
+        color: var(--accent);
+        font-size: 0.9rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        margin-top: 0.5rem;
+      }
+
+      .btn-add-step:hover {
+        background: var(--accent-subtle);
+        border-color: var(--accent);
+      }
+
+      /* Row-by-Row Ingredient Builder */
+      .ingredient-row {
+        display: grid;
+        grid-template-columns: 1fr 140px 32px 32px;
+        gap: 0.45rem;
+        align-items: center;
+        margin-bottom: 0.45rem;
+      }
+
+      @media (max-width: 480px) {
+        .ingredient-row {
+          grid-template-columns: 1fr 100px 28px 28px;
+          gap: 0.35rem;
+        }
+      }
+
+      .btn-row-action {
+        width: 32px;
+        height: 34px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-surface);
+        color: var(--text-secondary);
+        display: grid;
+        place-items: center;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+
+      .btn-row-action:hover:not(:disabled) {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .btn-row-action.danger:hover {
+        border-color: #dc2626;
+        color: #dc2626;
+        background: #fee2e2;
+      }
+
+      /* Step Note Callout Pill in Recipe View */
+      .step-note-pill {
+        margin-top: 0.65rem;
+        padding: 0.45rem 0.75rem;
+        border-radius: var(--radius-sm);
+        background: var(--accent-gold-subtle);
+        border-left: 3px solid var(--accent-gold);
+        font-size: 0.85rem;
+        color: var(--text-primary);
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        line-height: 1.45;
+      }
+
+      .step-note-icon {
+        flex-shrink: 0;
+        font-size: 0.95rem;
+      }
+
+      /* Version & Draft badges */
+      .draft-badge {
+        font-size: 0.75rem;
+        color: var(--accent-gold);
+        background: var(--accent-gold-subtle);
+        padding: 0.2rem 0.55rem;
+        border-radius: var(--radius-full);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-weight: 600;
+      }
+
+      .version-tag {
+        font-size: 0.72rem;
+        font-weight: 700;
+        background: var(--accent-subtle);
+        color: var(--accent);
+        padding: 0.15rem 0.5rem;
+        border-radius: var(--radius-full);
+        display: inline-flex;
+        align-items: center;
       }
 
       /* In-app Toast Notification */

@@ -11,6 +11,7 @@ import { RecipeDetailView } from './components/recipe-detail/RecipeDetailView';
 import { AddRecipeModal } from './components/recipe-form/AddRecipeModal';
 import { IOSInstallModal } from './components/layout/IOSInstallModal';
 import { Toast } from './components/common/Toast';
+import { Recipe } from './types/recipe';
 
 export default function App() {
   const { theme, toggleTheme } = useTheme();
@@ -30,11 +31,13 @@ export default function App() {
     selectedRecipe,
     setSelectedRecipeId,
     addRecipe,
+    updateRecipe,
     translateSelectedRecipe,
     isTranslating,
   } = useRecipes();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastIcon, setToastIcon] = useState('✓');
 
@@ -157,6 +160,10 @@ export default function App() {
             isWakeLocked={isWakeLocked}
             onToggleWakeLock={toggleCookMode}
             isWakeLockSupported={isWakeLockSupported}
+            onEditRecipe={(rec) => {
+              setEditingRecipe(rec);
+              setIsAddModalOpen(true);
+            }}
             t={t}
           />
         ) : (
@@ -164,19 +171,36 @@ export default function App() {
             recipes={recipes}
             language={language}
             onSelectRecipe={handleSelectRecipe}
-            onOpenAddModal={() => setIsAddModalOpen(true)}
+            onOpenAddModal={() => {
+              setEditingRecipe(null);
+              setIsAddModalOpen(true);
+            }}
             t={t}
           />
         )}
       </main>
 
-      {/* Add Recipe Modal */}
+      {/* Add / Edit Recipe Modal */}
       <AddRecipeModal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onSave={(newRecipe) => {
-          const created = addRecipe(newRecipe);
-          showToast(`Saved ${created.name} to vault!`, '🍞');
+        initialRecipe={editingRecipe}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setEditingRecipe(null);
+        }}
+        onSave={(recipeData, existingId) => {
+          if (existingId) {
+            const fullRecipe: Recipe = {
+              ...recipeData,
+              id: existingId,
+            };
+            const updated = updateRecipe(fullRecipe);
+            showToast(`Updated ${updated.name} (v${updated.version})!`, '✨');
+          } else {
+            const created = addRecipe(recipeData);
+            showToast(`Saved ${created.name} to vault!`, '🍞');
+          }
+          setEditingRecipe(null);
         }}
         t={t}
       />
