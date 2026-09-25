@@ -17,6 +17,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 }) => {
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
+  const [cardDescription, setCardDescription] = useState('');
   const [yieldHeader, setYieldHeader] = useState('For 1 loaf:');
   const [rawIngredients, setRawIngredients] = useState('');
   const [rawSteps, setRawSteps] = useState('');
@@ -65,6 +66,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
       heroImage: heroImage || fallbackImage,
       yieldHeader: yieldHeader.trim() || 'For 1 loaf:',
       baseYield: 1,
+      cardDescription: cardDescription.trim() || undefined,
       ingredients: parsedIngredients,
       steps: parsedSteps,
       tips: tips.trim() || undefined,
@@ -74,6 +76,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
     // Reset & close
     setTitle('');
     setAuthor('');
+    setCardDescription('');
     setRawIngredients('');
     setRawSteps('');
     setTips('');
@@ -137,6 +140,20 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
               value={author}
               onChange={(e) => setAuthor(e.target.value)}
               placeholder="e.g., Wanda G."
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="recipeDescInput">
+              Description (Optional)
+            </label>
+            <input
+              className="form-control"
+              type="text"
+              id="recipeDescInput"
+              value={cardDescription}
+              onChange={(e) => setCardDescription(e.target.value)}
+              placeholder="e.g., A delicious heirloom family favorite passed down for generations."
             />
           </div>
 

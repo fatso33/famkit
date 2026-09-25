@@ -98,4 +98,31 @@ describe('parseIngredientRow', () => {
     expect(parsed.name).toBe('Sugar');
     expect(parsed.amount).toBe('2 tbsp');
   });
+
+  it('correctly extracts name from text when qty is present but prefix is missing (AI translation fix)', () => {
+    const translatedIng: Ingredient = {
+      text: 'Jabłka - 6 sztuk',
+      qty: 6,
+      unit: 'sztuk',
+    };
+
+    const parsed = parseIngredientRow(translatedIng, 1, 'pl');
+    expect(parsed.name).toBe('Jabłka');
+    expect(parsed.amount).toBe('6 sztuk');
+    expect(parsed.name).not.toBe('Ingredient');
+    expect(parsed.name).not.toBe('Składnik');
+  });
+
+  it('correctly uses explicit name property when provided by AI translation', () => {
+    const translatedIng: Ingredient = {
+      name: 'Mąka pszenna',
+      text: 'Mąka pszenna - 450g',
+      qty: 450,
+      unit: 'g',
+    };
+
+    const parsed = parseIngredientRow(translatedIng, 1, 'pl');
+    expect(parsed.name).toBe('Mąka pszenna');
+    expect(parsed.amount).toBe('450g');
+  });
 });

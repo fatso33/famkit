@@ -19,28 +19,35 @@ export async function translateRecipeToPolish(
 Translate the following recipe from English to authentic, idiomatic Polish.
 
 Crucial Culinary Guidelines:
-1. Translate culinary techniques naturally into Polish:
+1. "name": Recipe title translated to Polish.
+2. "cardDescription": A warm, appetizing 1-2 sentence Polish summary of the recipe for the recipe card preview on the main vault page. Always provide this in Polish!
+3. Translate culinary techniques naturally into Polish:
    - "sloppy dough" -> "luźne / rzadkie, klejące ciasto" (NOT "niechlujne ciasto")
    - "Dutch oven" -> "garnek żeliwny" (NOT "holenderski piec")
    - "lamination directive" -> "instrukcja składania ciasta"
-2. Retain exact numerical values, measurements (e.g. 450g, 2 teaspoons / łyżeczki, 1.5 cups / szklanki or 375ml), and temperatures (450°F / 230°C).
-3. For each ingredient:
+4. Retain exact numerical values, measurements (e.g. 450g, 2 teaspoons / łyżeczki, 1.5 cups / szklanki or 375ml), and temperatures (450°F / 230°C).
+5. For each ingredient:
+   - "name": Polish name of the ingredient (e.g. "Mąka pszenna", "Jabłka", "Cukier", "Cynamon", "Drożdże suszone")
+   - "prefix": leading name before quantity if formatted like "Mąka pszenna - " or "Jabłka - "
    - "text": the complete translated line in Polish
-   - "prefix": any leading text before the quantity, translated
    - "qty": maintain exact original number or null if none
-   - "unit": translated unit in Polish (e.g. "g", "łyżeczki", "szklanki", "szklanka")
+   - "unit": translated unit in Polish (e.g. "g", "łyżeczki", "szklanki", "sztuk")
    - "renderUnit": singular/few form (e.g. "łyżeczki", "szklanki")
    - "renderUnitPlural": genitive plural form (e.g. "łyżeczek", "szklanek")
    - "altQty": maintain exact altQty number or null
    - "altUnit": translated altUnit (e.g. "ml")
    - "suffix": translated suffix (e.g. " posiekanych", " (zważ to)")
-4. Preserve the exact schema provided below. Return ONLY valid JSON matching this structure.
+6. Preserve the exact schema provided below. Return ONLY valid JSON matching this structure.
 
 Recipe to translate:
 ${JSON.stringify(
   {
     name: recipe.name,
-    cardDescription: recipe.cardDescription,
+    cardDescription:
+      recipe.cardDescription ||
+      recipe.tips ||
+      recipe.notes ||
+      `A delicious homemade family recipe for ${recipe.name}.`,
     yieldHeader: recipe.yieldHeader,
     tips: recipe.tips,
     notes: recipe.notes,
@@ -68,6 +75,8 @@ ${JSON.stringify(
         items: {
           type: Type.OBJECT,
           properties: {
+            name: { type: Type.STRING },
+            prefix: { type: Type.STRING },
             text: { type: Type.STRING },
             qty: { type: Type.NUMBER },
             unit: { type: Type.STRING },
@@ -75,7 +84,6 @@ ${JSON.stringify(
             renderUnitPlural: { type: Type.STRING },
             altQty: { type: Type.NUMBER },
             altUnit: { type: Type.STRING },
-            prefix: { type: Type.STRING },
             suffix: { type: Type.STRING },
           },
           required: ['text'],
@@ -103,7 +111,7 @@ ${JSON.stringify(
         },
       },
     },
-    required: ['name', 'ingredients', 'steps'],
+    required: ['name', 'cardDescription', 'ingredients', 'steps'],
   };
 
   let response;

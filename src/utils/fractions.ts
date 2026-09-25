@@ -74,7 +74,33 @@ export function parseIngredientRow(
 
     const cleanSuffix = extractBrackets(ing.suffix || '');
 
-    name = cleanPrefix || ing.name || 'Ingredient';
+    // 1. Check explicit name or prefix first
+    name = ing.name?.trim() || cleanPrefix;
+
+    // 2. If name is not yet resolved, extract it from rawText
+    if (!name && rawText) {
+      const cleanText = extractBrackets(rawText);
+      if (cleanText.includes(' - ')) {
+        name = cleanText.split(' - ')[0].trim();
+      } else if (cleanText.includes('-') && !cleanText.match(/^[0-9]/)) {
+        name = cleanText.split('-')[0].trim();
+      } else if (cleanText.includes(':')) {
+        name = cleanText.split(':')[0].trim();
+      } else {
+        const match = cleanText.match(
+          /^([\d\s\/\.\u00BC-\u00BE\u2150-\u215E]+(?:\s*(?:cups?|tsp|teaspoons?|tbsp|tablespoons?|g|ml|kg|oz|lbs?|cloves?|slices?|pinch|handful|szklanki?|łyżeczki?|łyżek|sztuk[a-z]*|[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+))?)\s+(.*)$/i
+        );
+        if (match && match[2]) {
+          name = match[2].trim();
+        } else {
+          name = cleanText.trim();
+        }
+      }
+    }
+
+    if (!name) {
+      name = lang === 'pl' ? 'Składnik' : 'Ingredient';
+    }
 
     const currentQty = Number(ing.qty) * scaleRatio;
     const formattedQty = formatFraction(currentQty);

@@ -25,6 +25,7 @@ vi.mock('@google/genai', () => {
             yieldHeader: 'Dla 8 porcji:',
             ingredients: [
               {
+                name: 'Jabłka',
                 text: 'Jabłka - 6 dużych',
                 prefix: 'Jabłka - ',
                 qty: 6,
@@ -77,6 +78,7 @@ describe('translateRecipeToPolish', () => {
     expect(result.name).toBe('Szarlotka Babci');
     expect(result.cardDescription).toBe('Klasyczna domowa szarlotka z jabłkami.');
     expect(result.ingredients).toHaveLength(1);
+    expect(result.ingredients?.[0].name).toBe('Jabłka');
     expect(result.ingredients?.[0].text).toBe('Jabłka - 6 dużych');
   });
 });

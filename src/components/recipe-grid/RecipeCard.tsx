@@ -29,9 +29,21 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
     recipe.ingredients ? recipe.ingredients.length : 0
   );
 
-  const cardDesc = isWandas
-    ? (recipe.cardDescription || "A delicious crusty Dutch-oven cheese bread with melted cheddar and spicy crushed jalapenos.")
-    : (recipe.tips || (recipe.notes || 'A time-tested family favorite.'));
+  const defaultDesc =
+    language === 'pl'
+      ? 'Tradycyjny, sprawdzony przepis rodzinny.'
+      : 'A time-tested family favorite.';
+
+  const wandasDefaultDesc =
+    language === 'pl'
+      ? 'Pyszny chleb serowy z chrupiącą skórką pieczony w garnku żeliwnym z serem cheddar i papryczkami jalapeno.'
+      : 'A delicious crusty Dutch-oven cheese bread with melted cheddar and spicy crushed jalapenos.';
+
+  const cardDesc =
+    recipe.cardDescription ||
+    recipe.tips ||
+    recipe.notes ||
+    (isWandas ? wandasDefaultDesc : defaultDesc);
 
   return (
     <div
