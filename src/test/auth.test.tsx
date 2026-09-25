@@ -29,7 +29,7 @@ describe('Auth allowlist matching logic', () => {
 });
 
 describe('AuthGate splash screen', () => {
-  it('renders splash screen with logo, titles, Google connect button, and top toggles', () => {
+  it('renders splash screen with logo emblem, Google connect button, and top toggles', () => {
     vi.spyOn(authHook, 'useAuth').mockReturnValue({
       user: null,
       isFamilyMember: false,
@@ -46,8 +46,7 @@ describe('AuthGate splash screen', () => {
       </AuthGate>
     );
 
-    expect(screen.getByText('Family Kitchen')).toBeInTheDocument();
-    expect(screen.getByText('Recipe Vault')).toBeInTheDocument();
+    expect(screen.getByAltText(/family kitchen - recipe vault/i)).toBeInTheDocument();
     expect(screen.getByText('Connect with Google')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /toggle language/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /toggle theme/i })).toBeInTheDocument();
@@ -74,9 +73,8 @@ describe('AuthGate splash screen', () => {
     expect(screen.getByText('Connect with Google')).toBeInTheDocument();
 
     fireEvent.click(langBtn);
-    expect(screen.getByText('Rodzinna Kuchnia')).toBeInTheDocument();
-    expect(screen.getByText('Skarbiec Przepisów')).toBeInTheDocument();
     expect(screen.getByText('Połącz przez Google')).toBeInTheDocument();
   });
 });
+
 
