@@ -40,53 +40,59 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   };
 
   return (
-    <article className="animate-[fadeIn_0.2s_ease-out]">
+    <article id="viewDetail" className="recipe-detail active">
       {/* Hero Photo */}
-      <div
-        className="w-full aspect-[21/9] max-h-[440px] min-h-[220px] rounded-2xl overflow-hidden mb-6 border shadow-md"
-        style={{
-          borderColor: 'var(--border-subtle)',
-          backgroundColor: 'var(--bg-card)',
-        }}
-      >
+      <div className="detail-hero-frame">
         <img
+          id="detailHeroImg"
+          className="detail-hero-img"
           src={recipe.heroImage || 'https://images.unsplash.com/photo-1589367920969-ab8e050bbb04?auto=format&fit=crop&w=1200&q=80'}
           alt={recipe.name}
-          className="w-full h-full object-cover object-center"
         />
       </div>
 
       {/* Header Info */}
-      <header className="mb-6">
-        <h1
-          className="font-serif font-bold text-3xl sm:text-5xl leading-tight mb-2"
-          style={{ color: 'var(--text-primary)' }}
-        >
+      <header className="detail-header-block">
+        <h1 id="detailTitle" className="detail-title">
           {recipe.name}
         </h1>
-
-        <div className="flex items-center gap-2 text-sm flex-wrap">
-          <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+        <div className="detail-meta">
+          <span
+            id="detailAuthor"
+            style={{ fontWeight: 600, color: 'var(--text-primary)' }}
+          >
             By {recipe.author}
           </span>
-          <span aria-hidden="true" style={{ color: 'var(--text-muted)' }}>·</span>
-          <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
+          <span aria-hidden="true">·</span>
+          <span
+            id="detailEstimatedTime"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              color: 'var(--accent)',
+              fontWeight: 600,
+            }}
+          >
             ⏱️ {estimatedTime}
           </span>
 
           {isWakeLockSupported && (
             <>
-              <span aria-hidden="true" style={{ color: 'var(--text-muted)' }}>·</span>
+              <span aria-hidden="true">·</span>
               <button
-                onClick={onToggleWakeLock}
-                className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
-                  isWakeLocked ? 'btn-primary' : ''
-                }`}
+                className={`btn ${isWakeLocked ? 'btn-primary' : ''}`}
                 style={{
-                  borderColor: isWakeLocked ? 'var(--accent)' : 'var(--border-subtle)',
-                  backgroundColor: isWakeLocked ? 'var(--accent)' : 'var(--bg-surface)',
-                  color: isWakeLocked ? '#ffffff' : 'var(--text-primary)',
+                  padding: '0.2rem 0.65rem',
+                  minHeight: '28px',
+                  fontSize: '0.75rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  borderRadius: 'var(--radius-full)',
                 }}
+                onClick={onToggleWakeLock}
+                title="Toggle Cook Mode (Screen Wake Lock)"
               >
                 {isWakeLocked && <span className="pulse-dot" />}
                 <span>{isWakeLocked ? t.cookModeOn : t.cookModeOff}</span>
@@ -97,8 +103,8 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
       </header>
 
       {/* Two Column Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-[340px_1fr] gap-8 items-start">
-        {/* Left Column: Ingredients Table */}
+      <div className="recipe-layout">
+        {/* Left Column: Ingredients */}
         <IngredientsTable
           ingredients={recipe.ingredients || []}
           scale={scale}
@@ -109,27 +115,29 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
           t={t}
         />
 
-        {/* Right Column: Tips, Notes, Steps, Baking Options */}
-        <div className="flex flex-col">
-          {/* Kitchen Tip */}
+        {/* Right Column: Method & Notes */}
+        <div className="method-panel">
+          {/* Tips Section (verbatim) */}
           {recipe.tips && (
-            <div className="callout-box gold">
+            <div id="tipsCard" className="callout-box gold">
               <div className="callout-label">{t.kitchenTip}</div>
-              <div style={{ color: 'var(--text-primary)' }}>
+              <div id="tipsText">
                 {capitalizeFirstLetter(recipe.tips)}
               </div>
             </div>
           )}
 
-          {/* Crucial Note */}
+          {/* Crucial Note: Moved directly under Kitchen Tip */}
           {recipe.notes && (
-            <div className="callout-box warn">
+            <div id="notesCard" className="callout-box warn">
               <div className="callout-label">{t.crucialNote}</div>
-              <div>{capitalizeFirstLetter(recipe.notes)}</div>
+              <div id="notesText">
+                {capitalizeFirstLetter(recipe.notes)}
+              </div>
             </div>
           )}
 
-          {/* Steps */}
+          {/* Steps Section */}
           <StepsList
             steps={recipe.steps || []}
             laminationDirective={recipe.laminationDirective}
@@ -145,7 +153,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
         </div>
       </div>
 
-      {/* Image Zoom Lightbox */}
+      {/* Image Zoom Lightbox Modal */}
       <ImageZoomModal
         imageSrc={zoomImageSrc}
         onClose={() => setZoomImageSrc(null)}

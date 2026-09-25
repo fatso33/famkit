@@ -128,7 +128,7 @@ export default function App() {
       />
 
       {/* Main Container */}
-      <main className="max-w-5xl mx-auto w-full px-5 py-6 sm:py-8 flex-1">
+      <main className="app-container">
         {selectedRecipe ? (
           <RecipeDetailView
             recipe={selectedRecipe}

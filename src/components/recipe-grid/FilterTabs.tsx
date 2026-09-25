@@ -21,25 +21,15 @@ export const FilterTabs: React.FC<FilterTabsProps> = ({
   ];
 
   return (
-    <div className="flex gap-2 mb-6 overflow-x-auto pb-1" role="tablist">
+    <div className="filter-nav" role="tablist">
       {tabs.map((tab) => {
         const isActive = currentFilter === tab.key;
         return (
           <button
             key={tab.key}
             onClick={() => onSelectFilter(tab.key)}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all whitespace-nowrap cursor-pointer ${
-              isActive ? 'text-white' : ''
-            }`}
-            style={{
-              backgroundColor: isActive
-                ? 'var(--text-primary)'
-                : 'var(--bg-surface)',
-              color: isActive ? 'var(--bg-surface)' : 'var(--text-secondary)',
-              borderColor: isActive
-                ? 'var(--text-primary)'
-                : 'var(--border-subtle)',
-            }}
+            className={`filter-tab ${isActive ? 'active' : ''}`}
+            data-filter={tab.key}
           >
             {tab.label}
           </button>

@@ -37,21 +37,13 @@ export const BakingOptionsView: React.FC<BakingOptionsViewProps> = ({
   if (opt1Items.length === 0 && opt2Items.length === 0) return null;
 
   return (
-    <section className="mt-8">
-      <h2 className="font-serif font-bold text-2xl mb-4">{t.bakingOptions}</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <section id="bakingOptionsSection">
+      <h2 className="section-heading">{t.bakingOptions}</h2>
+      <div className="baking-options-grid">
         {opt1Items.length > 0 && (
-          <div
-            className="p-5 rounded-xl border"
-            style={{
-              backgroundColor: 'var(--bg-surface)',
-              borderColor: 'var(--border-subtle)',
-            }}
-          >
-            <div className="text-xs uppercase font-bold tracking-wider mb-2" style={{ color: 'var(--accent)' }}>
-              {t.option1Tag}
-            </div>
-            <ul className="list-disc pl-5 flex flex-col gap-2 text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+          <div className="bake-option-card">
+            <div className="bake-option-tag">{t.option1Tag}</div>
+            <ul className="bake-option-list" id="bakeOptionList1">
               {opt1Items.map((item, idx) => (
                 <li key={idx}>{item}</li>
               ))}
@@ -60,17 +52,9 @@ export const BakingOptionsView: React.FC<BakingOptionsViewProps> = ({
         )}
 
         {opt2Items.length > 0 && (
-          <div
-            className="p-5 rounded-xl border"
-            style={{
-              backgroundColor: 'var(--bg-surface)',
-              borderColor: 'var(--border-subtle)',
-            }}
-          >
-            <div className="text-xs uppercase font-bold tracking-wider mb-2" style={{ color: 'var(--accent)' }}>
-              {t.option2Tag}
-            </div>
-            <ul className="list-disc pl-5 flex flex-col gap-2 text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+          <div className="bake-option-card">
+            <div className="bake-option-tag">{t.option2Tag}</div>
+            <ul className="bake-option-list" id="bakeOptionList2">
               {opt2Items.map((item, idx) => (
                 <li key={idx}>{item}</li>
               ))}

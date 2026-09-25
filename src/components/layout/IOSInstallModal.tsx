@@ -16,101 +16,80 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({
 
   return (
     <div
+      className="ios-install-modal-overlay open"
+      id="iosInstallModal"
       role="dialog"
       aria-modal="true"
       aria-labelledby="iosModalTitle"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl border shadow-2xl overflow-hidden animate-[scaleUp_0.2s_cubic-bezier(0.16,1,0.3,1)]"
-        style={{
-          backgroundColor: 'var(--bg-surface)',
-          borderColor: 'var(--border-subtle)',
-          color: 'var(--text-primary)',
-        }}
+        className="ios-install-modal-card"
         onClick={(e) => e.stopPropagation()}
       >
-        <div
-          className="flex items-center justify-between p-4 border-b"
-          style={{ borderColor: 'var(--border-subtle)' }}
-        >
-          <div className="flex items-center gap-2.5">
-            <div
-              className="w-9 h-9 rounded-lg grid place-items-center text-lg font-bold"
-              style={{
-                backgroundColor: 'var(--accent-subtle)',
-                color: 'var(--accent)',
-              }}
-            >
-              🌾
-            </div>
+        <div className="ios-modal-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <div className="ios-modal-icon">🌾</div>
             <div>
-              <h3 id="iosModalTitle" className="font-serif font-bold text-base">
+              <h3 className="ios-modal-title" id="iosModalTitle">
                 {t.iosModalTitle}
               </h3>
-              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+              <p className="ios-modal-subtitle" id="iosModalSubtitle">
                 {t.iosModalSubtitle}
               </p>
             </div>
           </div>
           <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full grid place-items-center text-sm font-semibold hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+            className="ios-modal-close"
+            id="iosModalCloseBtn"
             aria-label="Close modal"
+            onClick={onClose}
           >
             ✕
           </button>
         </div>
 
-        <div className="p-4 flex flex-col gap-3.5 text-sm">
-          <div className="flex items-start gap-3">
+        <div className="ios-modal-body">
+          <div className="ios-step-item">
+            <div className="ios-step-num">1</div>
             <div
-              className="w-6 h-6 rounded-full text-xs font-bold text-white grid place-items-center shrink-0 mt-0.5"
-              style={{ backgroundColor: 'var(--accent)' }}
-            >
-              1
-            </div>
-            <p className="leading-snug">
-              Tap the <strong>Share</strong> button in Safari (bottom or top bar).
-            </p>
+              className="ios-step-text"
+              id="iosStep1"
+              dangerouslySetInnerHTML={{
+                __html: `Tap the <strong>Share</strong> button <span class="ios-share-badge"><svg width="13" height="17" viewBox="0 0 14 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-3px;"><path d="M7 11V1m0 0L3 5m4-4l4 4"/><rect x="1" y="7" width="12" height="10" rx="2"/></svg></span> in Safari (bottom or top bar).`,
+              }}
+            />
           </div>
 
-          <div className="flex items-start gap-3">
+          <div className="ios-step-item">
+            <div className="ios-step-num">2</div>
             <div
-              className="w-6 h-6 rounded-full text-xs font-bold text-white grid place-items-center shrink-0 mt-0.5"
-              style={{ backgroundColor: 'var(--accent)' }}
-            >
-              2
-            </div>
-            <p className="leading-snug">
-              Scroll down and tap <strong>Add to Home Screen</strong>.
-            </p>
+              className="ios-step-text"
+              id="iosStep2"
+              dangerouslySetInnerHTML={{
+                __html: `Scroll down and tap <strong>Add to Home Screen</strong> <span class="ios-add-badge">⊞</span>.`,
+              }}
+            />
           </div>
 
-          <div className="flex items-start gap-3">
+          <div className="ios-step-item">
+            <div className="ios-step-num">3</div>
             <div
-              className="w-6 h-6 rounded-full text-xs font-bold text-white grid place-items-center shrink-0 mt-0.5"
-              style={{ backgroundColor: 'var(--accent)' }}
-            >
-              3
-            </div>
-            <p className="leading-snug">
-              Tap <strong>Add</strong> in the top-right corner to finish.
-            </p>
+              className="ios-step-text"
+              id="iosStep3"
+              dangerouslySetInnerHTML={{
+                __html: `Tap <strong>Add</strong> in the top-right corner to finish.`,
+              }}
+            />
           </div>
         </div>
 
-        <div
-          className="p-3 border-t"
-          style={{
-            borderColor: 'var(--border-subtle)',
-            backgroundColor: 'var(--bg-card)',
-          }}
-        >
+        <div className="ios-modal-footer">
           <button
+            className="btn btn-primary"
+            id="iosModalDoneBtn"
+            style={{ width: '100%', justifyContent: 'center' }}
             onClick={onClose}
-            className="btn btn-primary w-full justify-center text-sm cursor-pointer"
           >
             {t.iosModalDone}
           </button>

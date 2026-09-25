@@ -29,34 +29,20 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
   });
 
   return (
-    <section className="animate-[fadeIn_0.2s_ease-out]">
-      {/* Vault Hero */}
-      <div
-        className="mb-8 pb-6 border-b flex justify-between items-end flex-wrap gap-4"
-        style={{ borderColor: 'var(--border-subtle)' }}
-      >
-        <div>
-          <h1
-            className="font-serif font-bold text-3xl sm:text-4xl leading-tight mb-2"
-            style={{ color: 'var(--text-primary)' }}
-          >
-            {t.vaultTitle}
-          </h1>
-          <p className="text-sm max-w-xl" style={{ color: 'var(--text-secondary)' }}>
-            {t.vaultSubtitle}
-          </p>
-        </div>
+    <section id="viewGrid" className="recipe-grid-view">
+      <div className="vault-hero">
+        <h1 className="font-serif">{t.vaultTitle}</h1>
       </div>
 
-      {/* Filter Tabs */}
+      {/* Filter tabs */}
       <FilterTabs
         currentFilter={currentFilter}
         onSelectFilter={setCurrentFilter}
         t={t}
       />
 
-      {/* Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Recipe Cards Grid */}
+      <div className="recipe-grid" id="recipesGrid">
         {filteredRecipes.map((recipe) => (
           <RecipeCard
             key={recipe.id}
@@ -70,13 +56,13 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
 
       {/* Floating Action Button */}
       <button
-        onClick={onOpenAddModal}
-        className="fixed bottom-8 right-8 w-14 h-14 rounded-full text-white grid place-items-center shadow-2xl cursor-pointer hover:scale-105 active:scale-95 transition-transform z-30 border-none"
-        style={{ backgroundColor: 'var(--accent)' }}
+        className="fab-add"
+        id="fabAddBtn"
         title={t.addRecipe}
         aria-label={t.addRecipe}
+        onClick={onOpenAddModal}
       >
-        <span className="text-2xl leading-none">+</span>
+        <span style={{ fontSize: '1.5rem', lineHeight: 1 }}>+</span>
       </button>
     </section>
   );

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Language, Theme } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
-import { SettingsBar } from './SettingsBar';
-import { PwaInstallBanner } from './PwaInstallBanner';
+import { getStoredApiKey, setStoredApiKey } from '../../services/storage';
 
 interface HeaderProps {
   selectedRecipeName?: string;
@@ -40,113 +39,215 @@ export const Header: React.FC<HeaderProps> = ({
   onToast,
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [apiKey, setApiKey] = useState(getStoredApiKey);
+
+  const handleSaveApiKey = () => {
+    setStoredApiKey(apiKey);
+    onToast(t.apiKeySavedToast, '🔑');
+    setShowApiKeyInput(false);
+  };
 
   return (
-    <header
-      className="sticky top-0 z-40 border-b backdrop-blur-md transition-colors"
-      style={{
-        backgroundColor: 'var(--bg-surface)',
-        borderColor: 'var(--border-subtle)',
-      }}
-    >
-      {/* Main Bar */}
-      <div className="flex items-center justify-between px-5 py-2.5 min-h-[52px]">
-        <button
-          onClick={onNavigateHome}
-          className="flex items-center gap-2.5 cursor-pointer select-none bg-transparent border-none text-left"
+    <header className="app-header" id="appHeader">
+      {/* Main Row */}
+      <div className="header-main-row">
+        <div
+          className="brand-group"
+          id="navHomeBtn"
+          role="button"
+          tabIndex={0}
           title="Family Kitchen Home"
+          onClick={onNavigateHome}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') onNavigateHome();
+          }}
         >
-          <div
-            className="w-8 h-8 rounded-lg grid place-items-center text-lg shrink-0"
-            style={{
-              backgroundColor: 'var(--accent-subtle)',
-              color: 'var(--accent)',
-            }}
-          >
-            🌾
-          </div>
-          <span className="font-serif font-bold text-xl tracking-tight leading-none" style={{ color: 'var(--text-primary)' }}>
-            Family Kitchen
-          </span>
-        </button>
+          <div className="brand-icon">🌾</div>
+          <span className="brand-title">Family Kitchen</span>
+        </div>
 
         <button
-          onClick={() => setIsSettingsOpen((prev) => !prev)}
-          className={`btn text-xs font-semibold cursor-pointer ${
-            isSettingsOpen ? 'btn-primary' : ''
-          }`}
-          aria-expanded={isSettingsOpen}
+          className={`btn ${isSettingsOpen ? 'btn-primary' : ''}`}
+          id="settingsToggleBtn"
           aria-label={t.settings}
+          aria-expanded={isSettingsOpen}
+          title={t.settings}
+          onClick={() => setIsSettingsOpen((prev) => !prev)}
         >
           <span>⚙️</span>
           <span>{t.settings}</span>
         </button>
       </div>
 
-      {/* PWA Install Banner */}
-      <PwaInstallBanner
-        isVisible={isInstallBannerVisible}
-        onInstall={onInstall}
-        onDismiss={onDismissInstall}
-        t={t}
-      />
+      {/* Minimal Install Banner Row */}
+      <div
+        className={`install-banner-row ${isInstallBannerVisible ? 'show' : ''}`}
+        id="installBannerRow"
+        role="region"
+        aria-label="Install app banner"
+      >
+        <div className="install-banner-left">
+          <span className="install-banner-icon">📱</span>
+          <span
+            className="install-banner-text"
+            id="installBannerText"
+            dangerouslySetInnerHTML={{ __html: t.installBannerText }}
+          />
+        </div>
+        <div className="install-banner-actions">
+          <button
+            className="btn-install-cta"
+            id="installBannerBtn"
+            onClick={onInstall}
+          >
+            {t.installBtn}
+          </button>
+          <button
+            className="btn-install-close"
+            id="installBannerCloseBtn"
+            aria-label="Dismiss banner"
+            title="Dismiss"
+            onClick={onDismissInstall}
+          >
+            ✕
+          </button>
+        </div>
+      </div>
 
-      {/* Settings Row */}
-      <SettingsBar
-        isOpen={isSettingsOpen}
-        fontPercent={fontPercent}
-        onIncreaseFont={onIncreaseFont}
-        onDecreaseFont={onDecreaseFont}
-        language={language}
-        onToggleLanguage={onToggleLanguage}
-        theme={theme}
-        onToggleTheme={onToggleTheme}
-        onShare={onShare}
-        t={t}
-        onToast={onToast}
-      />
+      {/* Extra Settings Row */}
+      <div
+        className={`header-settings-row ${isSettingsOpen ? 'open' : ''}`}
+        id="settingsRow"
+        role="region"
+        aria-label="Settings bar"
+      >
+        <div className="font-scale-group" title={t.textScaling}>
+          <button
+            className="font-scale-btn"
+            id="fontDecBtn"
+            aria-label="Decrease text size"
+            onClick={onDecreaseFont}
+          >
+            A−
+          </button>
+          <span className="font-scale-val" id="fontScaleLabel">
+            {fontPercent}%
+          </span>
+          <button
+            className="font-scale-btn"
+            id="fontIncBtn"
+            aria-label="Increase text size"
+            onClick={onIncreaseFont}
+          >
+            A+
+          </button>
+        </div>
 
-      {/* Recipe Breadcrumb Row */}
-      {selectedRecipeName && (
+        {/* Language Toggle: EN / PL text only */}
+        <button
+          className="btn btn-lang-toggle"
+          id="langToggleBtn"
+          aria-label="Toggle language: English / Polish"
+          title="Switch language (EN / PL)"
+          onClick={onToggleLanguage}
+        >
+          <span className="lang-toggle-code" id="langCodeLabel">
+            {language === 'pl' ? 'PL' : 'EN'}
+          </span>
+        </button>
+
+        <button
+          className="btn btn-icon"
+          id="themeToggleBtn"
+          aria-label={t.themeToggle}
+          title={t.themeToggle}
+          onClick={onToggleTheme}
+        >
+          <span id="themeIcon">{theme === 'dark' ? '☀️' : '🌙'}</span>
+        </button>
+
+        <button
+          className="btn btn-icon"
+          id="shareRecipeBtn"
+          title="Share recipe"
+          aria-label="Share recipe"
+          onClick={onShare}
+        >
+          <span>↗️</span>
+        </button>
+
+        <button
+          className={`btn ${showApiKeyInput ? 'btn-primary' : ''}`}
+          style={{ fontSize: '0.8rem', padding: '0.35rem 0.65rem', minHeight: '38px' }}
+          title="Configure Gemini API Key for custom recipes"
+          onClick={() => setShowApiKeyInput((prev) => !prev)}
+        >
+          <span>🔑</span>
+          <span>API Key</span>
+        </button>
+      </div>
+
+      {/* Optional API Key Drawer */}
+      {isSettingsOpen && showApiKeyInput && (
         <div
-          className="flex items-center justify-between px-5 py-2 border-t animate-[slideDownRow_0.18s_ease-out]"
           style={{
-            backgroundColor: 'var(--bg-card)',
-            borderColor: 'var(--border-subtle)',
+            padding: '0.75rem 1.25rem',
+            background: 'var(--bg-card)',
+            borderTop: '1px solid var(--border-subtle)',
+            fontSize: '0.85rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.5rem',
           }}
         >
-          <div className="flex items-center gap-2.5 min-w-0">
+          <label style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+            {t.apiKeyLabel}
+          </label>
+          <div style={{ display: 'flex', gap: '0.5rem', maxWidth: '500px' }}>
+            <input
+              type="password"
+              className="form-control"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder={t.apiKeyPlaceholder}
+              style={{ fontSize: '0.85rem', padding: '0.4rem 0.65rem' }}
+            />
             <button
-              onClick={onNavigateHome}
-              className="w-8 h-8 rounded border grid place-items-center text-base hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer shrink-0 transition-transform active:scale-95"
-              style={{
-                backgroundColor: 'var(--bg-surface)',
-                borderColor: 'var(--border-subtle)',
-                color: 'var(--text-primary)',
-              }}
-              title={t.backToRecipes}
-              aria-label={t.backToRecipes}
+              className="btn btn-primary"
+              style={{ fontSize: '0.82rem', padding: '0.4rem 0.85rem' }}
+              onClick={handleSaveApiKey}
             >
-              ←
+              Save
             </button>
-            <span
-              className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full shrink-0"
-              style={{
-                backgroundColor: 'var(--accent-subtle)',
-                color: 'var(--accent)',
-              }}
-            >
-              {t.recipeBadge}
-            </span>
-            <span
-              className="font-serif font-bold text-sm truncate"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              {selectedRecipeName}
-            </span>
           </div>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            Wanda's Cheese Bread works 100% offline without a key. This key is only used to translate custom recipes you add.
+          </span>
         </div>
       )}
+
+      {/* Recipe row: appears when viewing a recipe */}
+      <div
+        className={`header-recipe-row ${selectedRecipeName ? 'active' : ''}`}
+        id="headerRecipeRow"
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0 }}>
+          <button
+            className="btn btn-icon btn-back-header"
+            id="backToGridBtn"
+            aria-label={t.backToRecipes}
+            title={t.backToRecipes}
+            onClick={onNavigateHome}
+          >
+            <span style={{ fontSize: '1.15rem', lineHeight: 1 }}>←</span>
+          </button>
+          <span className="header-recipe-badge">{t.recipeBadge}</span>
+          <span className="header-recipe-name" id="headerRecipeName">
+            {selectedRecipeName || ''}
+          </span>
+        </div>
+      </div>
     </header>
   );
 };

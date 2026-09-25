@@ -84,176 +84,177 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
   return (
     <div
+      className="modal-overlay active"
+      id="addRecipeModal"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="addModalTitle"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out] overflow-y-auto"
+      aria-labelledby="modalTitle"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-2xl border shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto my-auto animate-[scaleUp_0.2s_cubic-bezier(0.16,1,0.3,1)]"
-        style={{
-          backgroundColor: 'var(--bg-surface)',
-          borderColor: 'var(--border-subtle)',
-          color: 'var(--text-primary)',
-        }}
+        className="modal-sheet"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-5 pb-3 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
-          <h2 id="addModalTitle" className="font-serif font-bold text-2xl">
+        <div className="modal-header">
+          <h2 className="modal-title" id="modalTitle">
             {t.addRecipe}
           </h2>
           <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full grid place-items-center hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer text-sm font-semibold"
+            className="btn btn-icon"
+            id="closeModalBtn"
             aria-label="Close modal"
+            onClick={onClose}
           >
             ✕
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-sm">
-          <div>
-            <label className="font-semibold block mb-1">{t.recipeTitle}</label>
+        <form id="addRecipeForm" onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label className="form-label" htmlFor="recipeTitleInput">
+              {t.recipeTitle}
+            </label>
             <input
+              className="form-control"
               type="text"
+              id="recipeTitleInput"
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Grandma's Sourdough"
-              className="w-full px-3 py-2 rounded-lg border text-sm"
-              style={{
-                backgroundColor: 'var(--bg-card)',
-                borderColor: 'var(--border-strong)',
-                color: 'var(--text-primary)',
-              }}
+              placeholder="e.g., Grandma's Sourdough"
             />
           </div>
 
-          <div>
-            <label className="font-semibold block mb-1">{t.authorContributor}</label>
+          <div className="form-group">
+            <label className="form-label" htmlFor="recipeAuthorInput">
+              {t.authorContributor}
+            </label>
             <input
+              className="form-control"
               type="text"
+              id="recipeAuthorInput"
               required
               value={author}
               onChange={(e) => setAuthor(e.target.value)}
-              placeholder="e.g. Wanda G."
-              className="w-full px-3 py-2 rounded-lg border text-sm"
-              style={{
-                backgroundColor: 'var(--bg-card)',
-                borderColor: 'var(--border-strong)',
-                color: 'var(--text-primary)',
-              }}
+              placeholder="e.g., Wanda G."
             />
           </div>
 
-          <div>
-            <label className="font-semibold block mb-1">{t.yieldHeader}</label>
+          <div className="form-group">
+            <label className="form-label" htmlFor="recipeYieldInput">
+              {t.yieldHeader}
+            </label>
             <input
+              className="form-control"
               type="text"
+              id="recipeYieldInput"
               required
               value={yieldHeader}
               onChange={(e) => setYieldHeader(e.target.value)}
-              placeholder="For 1 loaf: or Serves 4:"
-              className="w-full px-3 py-2 rounded-lg border text-sm"
-              style={{
-                backgroundColor: 'var(--bg-card)',
-                borderColor: 'var(--border-strong)',
-                color: 'var(--text-primary)',
-              }}
+              placeholder="e.g., For 1 loaf: or Serves 4:"
             />
           </div>
 
-          <div>
-            <label className="font-semibold block mb-1">{t.heroPhoto}</label>
+          <div className="form-group">
+            <label className="form-label" htmlFor="recipeImageFile">
+              {t.heroPhoto}
+            </label>
             <input
+              className="form-control"
               type="file"
+              id="recipeImageFile"
               accept="image/*"
               onChange={handleImageChange}
-              className="w-full text-xs"
             />
-            <span className="text-xs block mt-1" style={{ color: 'var(--text-muted)' }}>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                color: 'var(--text-muted)',
+                display: 'block',
+                marginTop: '0.25rem',
+              }}
+            >
               {t.photoOptionalHelp}
             </span>
           </div>
 
-          <div>
-            <label className="font-semibold block mb-1">{t.ingredientsHelp}</label>
+          <div className="form-group">
+            <label className="form-label" htmlFor="recipeIngredientsInput">
+              {t.ingredientsHelp}
+            </label>
             <textarea
+              className="form-control"
+              id="recipeIngredientsInput"
+              rows={5}
               required
-              rows={4}
               value={rawIngredients}
               onChange={(e) => setRawIngredients(e.target.value)}
-              placeholder="Flour - 450g&#10;Yeast - 2 teaspoons&#10;Salt - 1.5 teaspoons"
-              className="w-full px-3 py-2 rounded-lg border text-sm resize-y"
-              style={{
-                backgroundColor: 'var(--bg-card)',
-                borderColor: 'var(--border-strong)',
-                color: 'var(--text-primary)',
-              }}
+              placeholder="Flour - 450g&#10;Yeast - 2 teaspoons&#10;Salt - 1.5 teaspoon"
             />
           </div>
 
-          <div>
-            <label className="font-semibold block mb-1">{t.stepsHelp}</label>
-            <textarea
-              required
-              rows={4}
-              value={rawSteps}
-              onChange={(e) => setRawSteps(e.target.value)}
-              placeholder="Add flour, yeast, and salt in a bowl and mix well.&#10;Add water and mix until a sloppy dough forms."
-              className="w-full px-3 py-2 rounded-lg border text-sm resize-y"
-              style={{
-                backgroundColor: 'var(--bg-card)',
-                borderColor: 'var(--border-strong)',
-                color: 'var(--text-primary)',
-              }}
-            />
-          </div>
-
-          <div>
-            <label className="font-semibold block mb-1">{t.tipsOptional}</label>
+          <div className="form-group">
+            <label className="form-label" htmlFor="recipeTipsInput">
+              {t.tipsOptional}
+            </label>
             <input
+              className="form-control"
               type="text"
+              id="recipeTipsInput"
               value={tips}
               onChange={(e) => setTips(e.target.value)}
-              placeholder="e.g. Use a non-stick spatula for handling the dough."
-              className="w-full px-3 py-2 rounded-lg border text-sm"
-              style={{
-                backgroundColor: 'var(--bg-card)',
-                borderColor: 'var(--border-strong)',
-                color: 'var(--text-primary)',
-              }}
+              placeholder="e.g., use non-stick spatula or similar for handling dough."
             />
           </div>
 
-          <div>
-            <label className="font-semibold block mb-1">{t.notesOptional}</label>
+          <div className="form-group">
+            <label className="form-label" htmlFor="recipeStepsInput">
+              {t.stepsHelp}
+            </label>
+            <textarea
+              className="form-control"
+              id="recipeStepsInput"
+              rows={6}
+              required
+              value={rawSteps}
+              onChange={(e) => setRawSteps(e.target.value)}
+              placeholder="Add flour, yeast, and salt in a bowl and mix well.&#10;Add water and mix until a sloppy dough"
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="recipeNotesInput">
+              {t.notesOptional}
+            </label>
             <input
+              className="form-control"
               type="text"
+              id="recipeNotesInput"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Will not work in an air fryer."
-              className="w-full px-3 py-2 rounded-lg border text-sm"
-              style={{
-                backgroundColor: 'var(--bg-card)',
-                borderColor: 'var(--border-strong)',
-                color: 'var(--text-primary)',
-              }}
+              placeholder="e.g., will not work on an air fryer."
             />
           </div>
 
-          <div className="flex justify-end gap-3 mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '0.75rem',
+              marginTop: '1.5rem',
+            }}
+          >
             <button
               type="button"
+              className="btn"
+              id="cancelModalBtn"
               onClick={onClose}
-              className="btn cursor-pointer"
             >
               {t.cancel}
             </button>
             <button
               type="submit"
-              className="btn btn-primary cursor-pointer"
+              className="btn btn-primary"
             >
               {t.saveToVault}
             </button>

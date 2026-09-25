@@ -15,7 +15,6 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({
   const dragStart = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
-    // Reset zoom when image changes
     setZoomScale(1);
     setPosition({ x: 0, y: 0 });
 
@@ -94,69 +93,84 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({
 
   return (
     <div
+      className="image-modal-overlay active"
+      id="imageZoomModal"
       role="dialog"
       aria-modal="true"
-      aria-label="Photo Lightbox"
-      className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-md select-none animate-[fadeIn_0.15s_ease-out]"
+      aria-label="Step Photo Zoom"
       onClick={onClose}
     >
-      {/* Top Toolbar */}
       <div
-        className="flex justify-between items-center px-5 py-3 bg-black/50 border-b border-white/10 text-white z-10 shrink-0"
+        className="image-modal-toolbar"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2">
+        <div className="image-modal-controls">
           <button
-            onClick={handleZoomOut}
-            className="px-3 py-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded font-bold text-sm cursor-pointer"
+            className="image-modal-btn"
+            id="zoomOutBtn"
             aria-label="Zoom out"
+            title="Zoom out (−)"
+            onClick={handleZoomOut}
           >
             −
           </button>
-          <span className="text-xs font-semibold min-w-[48px] text-center">
+          <span
+            id="zoomLevelText"
+            style={{
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              minWidth: '48px',
+              textAlign: 'center',
+            }}
+          >
             {Math.round(zoomScale * 100)}%
           </span>
           <button
-            onClick={handleZoomIn}
-            className="px-3 py-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded font-bold text-sm cursor-pointer"
+            className="image-modal-btn"
+            id="zoomInBtn"
             aria-label="Zoom in"
+            title="Zoom in (+)"
+            onClick={handleZoomIn}
           >
             +
           </button>
           <button
+            className="image-modal-btn"
+            id="zoomResetBtn"
+            title="Reset Zoom"
             onClick={handleReset}
-            className="px-3 py-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded font-semibold text-xs cursor-pointer ml-1"
           >
             Reset
           </button>
         </div>
-
         <button
+          className="image-modal-btn"
+          id="closeImageModalBtn"
+          aria-label="Close image preview"
+          style={{ fontSize: '1.15rem', padding: '0.35rem 0.75rem' }}
           onClick={onClose}
-          className="px-3 py-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded font-bold text-sm cursor-pointer"
-          aria-label="Close image modal"
         >
           ✕
         </button>
       </div>
 
-      {/* Content Frame */}
       <div
-        className="flex-1 overflow-hidden flex items-center justify-center p-6 relative cursor-grab active:cursor-grabbing"
+        className="image-modal-content"
+        id="imageModalContent"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onWheel={handleWheel}
       >
         <img
+          id="modalZoomImg"
+          className={`zoomable-image ${zoomScale > 1 ? 'is-zoomed' : ''}`}
           src={imageSrc}
-          alt="Enlarged photo"
+          alt="Enlarged dough step visual"
           onClick={toggleImageClick}
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${zoomScale})`,
-            cursor: zoomScale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in',
           }}
-          className="max-w-[90vw] max-h-[82vh] object-contain rounded-lg shadow-2xl transition-transform duration-150"
         />
       </div>
     </div>
