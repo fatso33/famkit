@@ -1,4 +1,4 @@
-const CACHE_NAME = 'family-kitchen-v3';
+const CACHE_NAME = 'family-kitchen-v4';
 
 self.addEventListener('install', () => {
   self.skipWaiting();

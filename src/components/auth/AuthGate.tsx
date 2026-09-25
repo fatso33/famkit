@@ -26,7 +26,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
 
   const heroImageSrc = imageError
     ? 'https://images.unsplash.com/photo-1589367920969-ab8e050bbb04?auto=format&fit=crop&w=1200&q=80'
-    : './assets/cheese-bread-cutting-board-e1754529029689.jpg';
+    : './assets/wandas-cheese-bread.jpg';
 
   // 1. Loading Screen (Styled with App Design Tokens)
   if (isLoading) {

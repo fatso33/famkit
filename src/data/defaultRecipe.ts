@@ -6,7 +6,7 @@ export const DEFAULT_RECIPE: Recipe = {
   author: 'Wanda G.',
   category: 'breads',
   isDefault: true,
-  heroImage: './assets/cheese-bread-cutting-board-e1754529029689.jpg',
+  heroImage: './assets/wandas-cheese-bread.jpg',
   yieldHeader: 'For 1 loaf:',
   baseYield: 1,
   ingredients: [

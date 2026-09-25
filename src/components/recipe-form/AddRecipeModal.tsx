@@ -32,9 +32,39 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
       const file = e.target.files[0];
       const reader = new FileReader();
       reader.onload = (ev) => {
-        if (ev.target?.result) {
-          setHeroImage(ev.target.result as string);
-        }
+        const dataUrl = ev.target?.result as string;
+        if (!dataUrl) return;
+
+        // Automatically downscale and compress images to ~80-150KB for fast Firestore syncing
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 1200;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressed = canvas.toDataURL('image/jpeg', 0.82);
+            setHeroImage(compressed);
+          } else {
+            setHeroImage(dataUrl);
+          }
+        };
+        img.src = dataUrl;
       };
       reader.readAsDataURL(file);
     }
