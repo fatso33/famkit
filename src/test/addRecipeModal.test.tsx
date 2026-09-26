@@ -30,6 +30,22 @@ describe('AddRecipeModal initial form', () => {
     expect(screen.getByDisplayValue('Knead gently.')).toBeInTheDocument();
   });
 
+  it('keeps the amount of a translated ingredient, which has a name but no quantity', () => {
+    const translated: Recipe = {
+      ...recipe,
+      ingredients: [
+        { name: 'Mąka', text: 'Mąka - 2 szklanki' },
+        { name: 'Sól', text: 'Szczypta soli' },
+      ],
+    };
+    render(<AddRecipeModal initialRecipe={translated} onClose={noop} onSave={noop} t={t} />);
+
+    expect(screen.getByDisplayValue('Mąka')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('2 szklanki')).toBeInTheDocument();
+    // No separator: keep the whole line rather than dropping the amount.
+    expect(screen.getByDisplayValue('Szczypta soli')).toBeInTheDocument();
+  });
+
   it('restores a saved draft in create mode', () => {
     localStorage.setItem(
       'family_kitchen_recipe_draft',

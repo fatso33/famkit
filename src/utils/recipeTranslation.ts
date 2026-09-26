@@ -155,6 +155,20 @@ export function applyTranslation(
 }
 
 /**
+ * Language the edit form shows: the viewer's own when a usable translation exists. Wanda's
+ * heirloom recipe is always edited in its original, since its translation is hand-written and
+ * never regenerated.
+ */
+export function editingLanguage(recipe: Recipe, viewerLanguage: Language): Language {
+  return recipe.isDefault ? sourceLanguageOf(recipe) : displayedLanguage(recipe, viewerLanguage);
+}
+
+/** The recipe as the edit form should show it. */
+export function recipeForEditing(recipe: Recipe, viewerLanguage: Language): Recipe {
+  return localizeRecipe(recipe, editingLanguage(recipe, viewerLanguage));
+}
+
+/**
  * Merges an edit-form save into the stored recipe.
  * - Text unchanged: keep the original wording and structure; take only photos and author.
  * - Text changed: the form's text becomes the original, in the language the form showed.
@@ -177,7 +191,7 @@ export function resolveEdit(
       })),
     };
   }
-  const shownLanguage = displayedLanguage(original, viewerLanguage);
+  const shownLanguage = editingLanguage(original, viewerLanguage);
   const translations = { ...original.translations };
   delete translations[shownLanguage];
   return {

@@ -5,7 +5,7 @@ import { useLanguage } from './hooks/useLanguage';
 import { useCookMode } from './hooks/useCookMode';
 import { usePWAInstall } from './hooks/usePWAInstall';
 import { useRecipes, getLocalizedRecipe, TranslationResult } from './hooks/useRecipes';
-import { resolveEdit } from './utils/recipeTranslation';
+import { recipeForEditing, resolveEdit } from './utils/recipeTranslation';
 import { Plus, Share2 } from 'lucide-react';
 import { FloatingMenu, MenuAction } from './components/layout/FloatingMenu';
 import { InstallCard } from './components/layout/InstallCard';
@@ -204,8 +204,8 @@ export default function App() {
       {isAddModalOpen && (
         <AddRecipeModal
           key={editingRecipe?.id ?? 'new'}
-          // Edit in the viewer's language; see resolveEdit for how the save is merged.
-          initialRecipe={getLocalizedRecipe(editingRecipe, language)}
+          // Edit in the viewer's language where possible; see resolveEdit for how saves merge.
+          initialRecipe={editingRecipe && recipeForEditing(editingRecipe, language)}
           onClose={() => {
             setIsAddModalOpen(false);
             setEditingRecipe(null);

@@ -9,6 +9,7 @@ import {
   needsTranslation,
   overlayTranslation,
   parseTranslationResponse,
+  recipeForEditing,
   resolveEdit,
   shouldTranslateNow,
   sourceHash,
@@ -163,6 +164,14 @@ describe('resolveEdit', () => {
     expect(saved.heroImage).toBe('new.jpg');
     expect(saved.steps[0]).toMatchObject({ text: 'Slice apples.', imageSrc: undefined });
     expect(needsTranslation(saved)).toBe(false);
+  });
+
+  it("always edits Wanda's heirloom recipe in its English original", () => {
+    expect(recipeForEditing(DEFAULT_RECIPE, 'pl').name).toBe("Wanda's Cheese Bread");
+    const edited = { ...DEFAULT_RECIPE, tips: 'Nowa wskazówka' };
+    const saved = resolveEdit(DEFAULT_RECIPE, edited, 'pl', true);
+    expect(saved.sourceLanguage).toBe('en');
+    expect(saved.translations?.pl).toBeDefined();
   });
 
   it('edits the original when no usable translation was shown', () => {

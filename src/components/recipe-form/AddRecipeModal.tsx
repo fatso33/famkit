@@ -57,16 +57,18 @@ function loadInitialForm(initialRecipe?: Recipe | null): FormState {
         initialRecipe.ingredients && initialRecipe.ingredients.length > 0
           ? initialRecipe.ingredients.map((ing, idx) => {
               const raw = ing.text || '';
-              let name = ing.name || '';
+              let name: string;
               let amount = '';
-              if (!name && raw.includes(' - ')) {
+              if (ing.name && ing.qty !== undefined && ing.qty !== null) {
+                name = ing.name;
+                amount = `${ing.qty} ${ing.unit || ''}`.trim();
+              } else if (raw.includes(' - ')) {
+                // Also covers translated rows, which carry a name but no quantity field.
                 const parts = raw.split(' - ');
                 name = parts[0].trim();
                 amount = parts.slice(1).join(' - ').trim();
-              } else if (!name) {
-                name = raw;
-              } else if (ing.qty !== undefined && ing.qty !== null) {
-                amount = `${ing.qty} ${ing.unit || ''}`.trim();
+              } else {
+                name = raw || ing.name || '';
               }
               return { id: 'ing-' + idx, name, amount };
             })

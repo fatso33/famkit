@@ -38,7 +38,9 @@ export function useRecipes(onTranslationResult?: (result: TranslationResult) => 
 
   // Background translation bookkeeping (see the effect below).
   const triedKeys = useRef(new Set<string>());
-  const savedOnThisDevice = useRef(new Set<string>());
+  // Recipe id → text fingerprint this device saved. A later edit from another phone changes the
+  // fingerprint, so it no longer counts as "saved here" (no grace-period skip, no toast).
+  const savedOnThisDevice = useRef(new Map<string, string>());
   const translationInFlight = useRef(false);
   const [translationScan, setTranslationScan] = useState(0);
 
@@ -63,7 +65,7 @@ export function useRecipes(onTranslationResult?: (result: TranslationResult) => 
       if (!needsTranslation(recipe)) continue;
       const hash = sourceHash(recipe);
       if (triedKeys.current.has(`${recipe.id}@${hash}`)) continue;
-      if (!shouldTranslateNow(recipe, now, savedOnThisDevice.current.has(recipe.id))) {
+      if (!shouldTranslateNow(recipe, now, savedOnThisDevice.current.get(recipe.id) === hash)) {
         const changedAt = recipe.updatedAt ?? recipe.createdAt ?? 0;
         nextCheckIn = Math.min(nextCheckIn, changedAt + TRANSLATION_GRACE_MS - now);
         continue;
@@ -83,7 +85,7 @@ export function useRecipes(onTranslationResult?: (result: TranslationResult) => 
     }
 
     const { recipe, hash } = job;
-    const savedHere = savedOnThisDevice.current.has(recipe.id);
+    const savedHere = savedOnThisDevice.current.get(recipe.id) === hash;
     triedKeys.current.add(`${recipe.id}@${hash}`);
     translationInFlight.current = true;
 
@@ -143,7 +145,7 @@ export function useRecipes(onTranslationResult?: (result: TranslationResult) => 
       updatedAt: Date.now(),
     };
 
-    savedOnThisDevice.current.add(recipeWithId.id);
+    savedOnThisDevice.current.set(recipeWithId.id, sourceHash(recipeWithId));
 
     // Optimistic local update
     setRecipes((prev) => {
@@ -164,7 +166,7 @@ export function useRecipes(onTranslationResult?: (result: TranslationResult) => 
 
   const updateRecipe = useCallback((recipeUpdates: Recipe): Recipe => {
     let finalRecipe: Recipe = recipeUpdates;
-    savedOnThisDevice.current.add(recipeUpdates.id);
+    savedOnThisDevice.current.set(recipeUpdates.id, sourceHash(recipeUpdates));
 
     setRecipes((prev) => {
       const existing = prev.find((r) => r.id === recipeUpdates.id);
