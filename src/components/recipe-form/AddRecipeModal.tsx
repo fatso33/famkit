@@ -7,16 +7,108 @@ import { StepBuilder, StepBuilderItem } from './StepBuilder';
 
 const DRAFT_STORAGE_KEY = 'family_kitchen_recipe_draft';
 
+interface FormState {
+  title: string;
+  author: string;
+  cardDescription: string;
+  yieldHeader: string;
+  heroImage: string;
+  tips: string;
+  notes: string;
+  ingredientRows: IngredientRowState[];
+  steps: StepBuilderItem[];
+  hasRestoredDraft: boolean;
+}
+
+const EMPTY_FORM: FormState = {
+  title: '',
+  author: '',
+  cardDescription: '',
+  yieldHeader: 'For 1 loaf:',
+  heroImage: '',
+  tips: '',
+  notes: '',
+  ingredientRows: [{ id: 'ing-1', name: '', amount: '' }],
+  steps: [{ id: 'step-1', text: '', notes: '', imageSrc: '', imageCaption: '' }],
+  hasRestoredDraft: false,
+};
+
+// Initial form contents: the recipe being edited, else a saved create-mode draft, else empty.
+function loadInitialForm(initialRecipe?: Recipe | null): FormState {
+  if (initialRecipe) {
+    return {
+      title: initialRecipe.name || '',
+      author: initialRecipe.author || '',
+      cardDescription: initialRecipe.cardDescription || '',
+      yieldHeader: initialRecipe.yieldHeader || EMPTY_FORM.yieldHeader,
+      heroImage: initialRecipe.heroImage || '',
+      tips: initialRecipe.tips || '',
+      notes: initialRecipe.notes || '',
+      ingredientRows:
+        initialRecipe.ingredients && initialRecipe.ingredients.length > 0
+          ? initialRecipe.ingredients.map((ing, idx) => {
+              const raw = ing.text || '';
+              let name = ing.name || '';
+              let amount = '';
+              if (!name && raw.includes(' - ')) {
+                const parts = raw.split(' - ');
+                name = parts[0].trim();
+                amount = parts.slice(1).join(' - ').trim();
+              } else if (!name) {
+                name = raw;
+              } else if (ing.qty !== undefined && ing.qty !== null) {
+                amount = `${ing.qty} ${ing.unit || ''}`.trim();
+              }
+              return { id: 'ing-' + idx, name, amount };
+            })
+          : EMPTY_FORM.ingredientRows,
+      steps:
+        initialRecipe.steps && initialRecipe.steps.length > 0
+          ? initialRecipe.steps.map((st, idx) => ({
+              id: 'step-' + idx,
+              text: st.text || '',
+              notes: st.notes || '',
+              imageSrc: st.imageSrc || '',
+              imageCaption: st.imageCaption || '',
+            }))
+          : EMPTY_FORM.steps,
+      hasRestoredDraft: false,
+    };
+  }
+
+  try {
+    const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (savedDraft) {
+      const parsed = JSON.parse(savedDraft);
+      return {
+        title: parsed.title || '',
+        author: parsed.author || '',
+        cardDescription: parsed.cardDescription || '',
+        yieldHeader: parsed.yieldHeader || EMPTY_FORM.yieldHeader,
+        heroImage: parsed.heroImage || '',
+        tips: parsed.tips || '',
+        notes: parsed.notes || '',
+        ingredientRows: parsed.ingredientRows?.length > 0 ? parsed.ingredientRows : EMPTY_FORM.ingredientRows,
+        steps: parsed.steps?.length > 0 ? parsed.steps : EMPTY_FORM.steps,
+        hasRestoredDraft: true,
+      };
+    }
+  } catch {
+    // Ignore draft parse failure
+  }
+
+  return EMPTY_FORM;
+}
+
 interface AddRecipeModalProps {
-  isOpen: boolean;
   onClose: () => void;
   onSave: (recipeData: Omit<Recipe, 'id' | 'createdAt'>, existingId?: string) => void;
   initialRecipe?: Recipe | null;
   t: UiTranslations;
 }
 
+// Mount only while open, keyed by recipe, so each opening starts from loadInitialForm().
 export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
-  isOpen,
   onClose,
   onSave,
   initialRecipe,
@@ -24,137 +116,35 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 }) => {
   const isEditMode = Boolean(initialRecipe);
 
-  const [title, setTitle] = useState('');
-  const [author, setAuthor] = useState('');
-  const [cardDescription, setCardDescription] = useState('');
-  const [yieldHeader, setYieldHeader] = useState('For 1 loaf:');
-  const [heroImage, setHeroImage] = useState<string>('');
-  const [ingredientRows, setIngredientRows] = useState<IngredientRowState[]>([
-    { id: 'ing-1', name: '', amount: '' },
-  ]);
-  const [tips, setTips] = useState('');
-  const [notes, setNotes] = useState('');
-  const [steps, setSteps] = useState<StepBuilderItem[]>([
-    { id: 'step-1', text: '', notes: '', imageSrc: '', imageCaption: '' },
-  ]);
-  const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
+  const [initial] = useState(() => loadInitialForm(initialRecipe));
+  const [title, setTitle] = useState(initial.title);
+  const [author, setAuthor] = useState(initial.author);
+  const [cardDescription, setCardDescription] = useState(initial.cardDescription);
+  const [yieldHeader, setYieldHeader] = useState(initial.yieldHeader);
+  const [heroImage, setHeroImage] = useState<string>(initial.heroImage);
+  const [ingredientRows, setIngredientRows] = useState<IngredientRowState[]>(initial.ingredientRows);
+  const [tips, setTips] = useState(initial.tips);
+  const [notes, setNotes] = useState(initial.notes);
+  const [steps, setSteps] = useState<StepBuilderItem[]>(initial.steps);
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(initial.hasRestoredDraft);
 
   const resetForm = () => {
-    setTitle('');
-    setAuthor('');
-    setCardDescription('');
-    setYieldHeader('For 1 loaf:');
-    setHeroImage('');
-    setTips('');
-    setNotes('');
-    setIngredientRows([{ id: 'ing-1', name: '', amount: '' }]);
-    setSteps([
-      { id: 'step-1', text: '', notes: '', imageSrc: '', imageCaption: '' },
-    ]);
+    setTitle(EMPTY_FORM.title);
+    setAuthor(EMPTY_FORM.author);
+    setCardDescription(EMPTY_FORM.cardDescription);
+    setYieldHeader(EMPTY_FORM.yieldHeader);
+    setHeroImage(EMPTY_FORM.heroImage);
+    setTips(EMPTY_FORM.tips);
+    setNotes(EMPTY_FORM.notes);
+    setIngredientRows(EMPTY_FORM.ingredientRows);
+    setSteps(EMPTY_FORM.steps);
     setHasRestoredDraft(false);
   };
-
-  // Initialize or reset form when modal opens or initialRecipe changes
-  useEffect(() => {
-    if (!isOpen) return;
-
-    if (initialRecipe) {
-      // Edit Mode: populate with initialRecipe values
-      setTitle(initialRecipe.name || '');
-      setAuthor(initialRecipe.author || '');
-      setCardDescription(initialRecipe.cardDescription || '');
-      setYieldHeader(initialRecipe.yieldHeader || 'For 1 loaf:');
-      setHeroImage(initialRecipe.heroImage || '');
-      setTips(initialRecipe.tips || '');
-      setNotes(initialRecipe.notes || '');
-
-      // Parse ingredients into rows
-      if (initialRecipe.ingredients && initialRecipe.ingredients.length > 0) {
-        const rows: IngredientRowState[] = initialRecipe.ingredients.map(
-          (ing, idx) => {
-            const raw = ing.text || '';
-            let name = ing.name || '';
-            let amount = '';
-            if (!name && raw.includes(' - ')) {
-              const parts = raw.split(' - ');
-              name = parts[0].trim();
-              amount = parts.slice(1).join(' - ').trim();
-            } else if (!name) {
-              name = raw;
-            } else if (ing.qty !== undefined && ing.qty !== null) {
-              amount = `${ing.qty} ${ing.unit || ''}`.trim();
-            }
-            return {
-              id: 'ing-' + idx,
-              name,
-              amount,
-            };
-          }
-        );
-        setIngredientRows(rows);
-      } else {
-        setIngredientRows([{ id: 'ing-1', name: '', amount: '' }]);
-      }
-
-      // Parse steps into StepBuilderItem
-      if (initialRecipe.steps && initialRecipe.steps.length > 0) {
-        const stepItems: StepBuilderItem[] = initialRecipe.steps.map(
-          (st, idx) => ({
-            id: 'step-' + idx,
-            text: st.text || '',
-            notes: st.notes || '',
-            imageSrc: st.imageSrc || '',
-            imageCaption: st.imageCaption || '',
-          })
-        );
-        setSteps(stepItems);
-      } else {
-        setSteps([
-          { id: 'step-1', text: '', notes: '', imageSrc: '', imageCaption: '' },
-        ]);
-      }
-      setHasRestoredDraft(false);
-    } else {
-      // Create Mode: check localStorage for draft
-      try {
-        const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
-        if (savedDraft) {
-          const parsed = JSON.parse(savedDraft);
-          setTitle(parsed.title || '');
-          setAuthor(parsed.author || '');
-          setCardDescription(parsed.cardDescription || '');
-          setYieldHeader(parsed.yieldHeader || 'For 1 loaf:');
-          setHeroImage(parsed.heroImage || '');
-          setTips(parsed.tips || '');
-          setNotes(parsed.notes || '');
-          if (parsed.ingredientRows && parsed.ingredientRows.length > 0) {
-            setIngredientRows(parsed.ingredientRows);
-          } else {
-            setIngredientRows([{ id: 'ing-1', name: '', amount: '' }]);
-          }
-          if (parsed.steps && parsed.steps.length > 0) {
-            setSteps(parsed.steps);
-          } else {
-            setSteps([
-              { id: 'step-1', text: '', notes: '', imageSrc: '', imageCaption: '' },
-            ]);
-          }
-          setHasRestoredDraft(true);
-          return;
-        }
-      } catch {
-        // Ignore draft parse failure
-      }
-
-      // Fresh default state
-      resetForm();
-    }
-  }, [isOpen, initialRecipe]);
 
   // Debounced auto-save draft to localStorage (only in create mode)
   const draftSaveTimeout = useRef<number | null>(null);
   useEffect(() => {
-    if (!isOpen || isEditMode) return;
+    if (isEditMode) return;
 
     if (draftSaveTimeout.current) {
       window.clearTimeout(draftSaveTimeout.current);
@@ -194,7 +184,6 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
       }
     };
   }, [
-    isOpen,
     isEditMode,
     title,
     author,
@@ -217,8 +206,6 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
       resetForm();
     }
   };
-
-  if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

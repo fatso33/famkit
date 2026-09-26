@@ -6,27 +6,24 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
+// Detect standalone PWA mode
+const detectStandalone = () =>
+  window.matchMedia('(display-mode: standalone)').matches ||
+  ('standalone' in window.navigator && (window.navigator as unknown as { standalone: boolean }).standalone === true);
+
+// Detect iOS
+const detectIOS = () =>
+  /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
 export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isDismissed, setIsDismissed] = useState(isInstallBannerDismissed);
-  const [isIOS, setIsIOS] = useState(false);
+  const [isIOS] = useState(detectIOS);
   const [showIOSModal, setShowIOSModal] = useState(false);
-  const [isStandalone, setIsStandalone] = useState(false);
+  const [isStandalone] = useState(detectStandalone);
 
   useEffect(() => {
-    // Detect standalone PWA mode
-    const standaloneCheck =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      ('standalone' in window.navigator && (window.navigator as unknown as { standalone: boolean }).standalone === true);
-    setIsStandalone(standaloneCheck);
-
-    // Detect iOS
-    const ua = window.navigator.userAgent.toLowerCase();
-    const isIOSDevice =
-      /iphone|ipad|ipod/.test(ua) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    setIsIOS(isIOSDevice);
-
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);

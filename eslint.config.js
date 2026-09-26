@@ -19,8 +19,6 @@ export default tseslint.config(
       globals: globals.browser,
     },
     rules: {
-      // Existing effects predate this React Compiler rule; warn so new code avoids it without a risky refactor.
-      'react-hooks/set-state-in-effect': 'warn',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },

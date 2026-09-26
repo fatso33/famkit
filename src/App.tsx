@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTheme } from './hooks/useTheme';
 import { useFontScale } from './hooks/useFontScale';
 import { useLanguage } from './hooks/useLanguage';
@@ -49,27 +49,37 @@ export default function App() {
     }, 3200);
   }, []);
 
+  // Recipe revision we last auto-translated, so a failure isn't retried when isTranslating flips back.
+  // Cleared on language switch / recipe selection, which act as explicit retries.
+  const lastTranslateAttempt = useRef<string | null>(null);
+
   // Automatically translate custom recipes if viewed while in Polish mode
   useEffect(() => {
     if (
-      language === 'pl' &&
-      selectedRecipe &&
-      !selectedRecipe.translations?.pl &&
-      !isTranslating
+      language !== 'pl' ||
+      !selectedRecipe ||
+      selectedRecipe.translations?.pl ||
+      isTranslating
     ) {
-      showToast(t.translatingToast, '🌐');
-      translateSelectedRecipe(selectedRecipe)
-        .then(() => {
-          showToast(t.translatedToast, '🇵🇱');
-        })
-        .catch((err: unknown) => {
-          const errorMsg = err instanceof Error ? err.message : String(err);
-          showToast(`${t.translationError}${errorMsg}`, '⚠️');
-        });
+      return;
     }
+    const attemptKey = `${selectedRecipe.id}@${selectedRecipe.updatedAt ?? selectedRecipe.version ?? 0}`;
+    if (lastTranslateAttempt.current === attemptKey) return;
+    lastTranslateAttempt.current = attemptKey;
+
+    showToast(t.translatingToast, '🌐');
+    translateSelectedRecipe(selectedRecipe)
+      .then(() => {
+        showToast(t.translatedToast, '🇵🇱');
+      })
+      .catch((err: unknown) => {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        showToast(`${t.translationError}${errorMsg}`, '⚠️');
+      });
   }, [language, selectedRecipe, isTranslating, t, translateSelectedRecipe, showToast]);
 
   const handleSelectRecipe = (id: string) => {
+    lastTranslateAttempt.current = null;
     const changeView = () => {
       setSelectedRecipeId(id);
       window.scrollTo(0, 0);
@@ -95,22 +105,12 @@ export default function App() {
     }
   };
 
-  const handleLanguageToggle = async () => {
+  const handleLanguageToggle = () => {
     toggleLanguage();
     const nextLang = language === 'en' ? 'pl' : 'en';
     showToast(nextLang === 'pl' ? t.switchPlToast : t.switchEnToast, nextLang === 'pl' ? '🇵🇱' : '🌾');
-
-    // If currently viewing a custom recipe that lacks Polish translation, translate on demand
-    if (nextLang === 'pl' && selectedRecipe && !selectedRecipe.translations?.pl) {
-      showToast(t.translatingToast, '🌐');
-      try {
-        await translateSelectedRecipe(selectedRecipe);
-        showToast(t.translatedToast, '🇵🇱');
-      } catch (err: unknown) {
-        const errorMsg = err instanceof Error ? err.message : String(err);
-        showToast(`${t.translationError}${errorMsg}`, '⚠️');
-      }
-    }
+    // Switching to Polish (re)triggers auto-translation of the open recipe via the effect above.
+    lastTranslateAttempt.current = null;
   };
 
   const handleShare = async () => {
@@ -181,29 +181,31 @@ export default function App() {
       </main>
 
       {/* Add / Edit Recipe Modal */}
-      <AddRecipeModal
-        isOpen={isAddModalOpen}
-        initialRecipe={editingRecipe}
-        onClose={() => {
-          setIsAddModalOpen(false);
-          setEditingRecipe(null);
-        }}
-        onSave={(recipeData, existingId) => {
-          if (existingId) {
-            const fullRecipe: Recipe = {
-              ...recipeData,
-              id: existingId,
-            };
-            const updated = updateRecipe(fullRecipe);
-            showToast(`Updated ${updated.name} (v${updated.version})!`, '✨');
-          } else {
-            const created = addRecipe(recipeData);
-            showToast(`Saved ${created.name} to vault!`, '🍞');
-          }
-          setEditingRecipe(null);
-        }}
-        t={t}
-      />
+      {isAddModalOpen && (
+        <AddRecipeModal
+          key={editingRecipe?.id ?? 'new'}
+          initialRecipe={editingRecipe}
+          onClose={() => {
+            setIsAddModalOpen(false);
+            setEditingRecipe(null);
+          }}
+          onSave={(recipeData, existingId) => {
+            if (existingId) {
+              const fullRecipe: Recipe = {
+                ...recipeData,
+                id: existingId,
+              };
+              const updated = updateRecipe(fullRecipe);
+              showToast(`Updated ${updated.name} (v${updated.version})!`, '✨');
+            } else {
+              const created = addRecipe(recipeData);
+              showToast(`Saved ${created.name} to vault!`, '🍞');
+            }
+            setEditingRecipe(null);
+          }}
+          t={t}
+        />
+      )}
 
       {/* iOS Install Guide Modal */}
       <IOSInstallModal

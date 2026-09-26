@@ -25,7 +25,7 @@ Private family recipe vault PWA. React 19 + TypeScript (strict) + Vite 6 + Tailw
 - Styling uses the heirloom design tokens in `src/index.css` (`--bg-*`, `--text-*`, `--border-*`, Fraunces/Plus Jakarta Sans). Dark mode is `[data-theme="dark"]`. Reuse existing classes before adding new ones.
 - Changes to the recipe shape go through `src/types/recipe.ts`. Keep `version`/`history` intact (see `useRecipes.ts`), and handle old records with optional fields.
 - Pure logic goes in `utils/` and gets a test in `src/test/`. Bug fixes get a regression test when the logic is testable.
-- ESLint `react-hooks/set-state-in-effect` is set to warn because of 5 legacy effects. Don't add new ones. Derive state or use event handlers instead.
+- Don't sync state in effects (`react-hooks/set-state-in-effect`). Use lazy `useState` initializers, derive values during render, or remount with a `key` (see `AddRecipeModal`, `ImageZoomModal`). Keep effects for external systems only.
 - Keep changes small and focused. Don't refactor unrelated code in passing.
 
 ## Gotchas

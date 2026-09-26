@@ -19,7 +19,7 @@ export interface AuthState {
 
 export function useAuth(): AuthState {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(isFirebaseConfigured);
+  const [isLoading, setIsLoading] = useState<boolean>(isFirebaseConfigured && auth !== null);
   const [error, setError] = useState<string | null>(null);
 
   const rawFamilyEmails = import.meta.env.VITE_FAMILY_EMAILS || '';
@@ -40,10 +40,7 @@ export function useAuth(): AuthState {
   }, [user, familyEmails]);
 
   useEffect(() => {
-    if (!isFirebaseConfigured || !auth) {
-      setIsLoading(false);
-      return;
-    }
+    if (!isFirebaseConfigured || !auth) return;
 
     const unsubscribe = onAuthStateChanged(
       auth,

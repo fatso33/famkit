@@ -14,10 +14,8 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
 
+  // Zoom/pan state resets per image because the parent keys this component by imageSrc.
   useEffect(() => {
-    setZoomScale(1);
-    setPosition({ x: 0, y: 0 });
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
