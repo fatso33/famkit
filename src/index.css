@@ -174,18 +174,6 @@
         display: flex;
       }
 
-      .header-recipe-badge {
-        font-size: 0.68rem;
-        text-transform: uppercase;
-        font-weight: 700;
-        letter-spacing: 0.05em;
-        background: var(--accent-subtle);
-        color: var(--accent);
-        padding: 0.2rem 0.5rem;
-        border-radius: var(--radius-full);
-        flex-shrink: 0;
-      }
-
       .header-recipe-name {
         font-family: var(--font-serif);
         font-size: 1.05rem;

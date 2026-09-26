@@ -266,7 +266,6 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <span style={{ fontSize: '1.15rem', lineHeight: 1 }}>←</span>
           </button>
-          <span className="header-recipe-badge">{t.recipeBadge}</span>
           <span className="header-recipe-name" id="headerRecipeName">
             {selectedRecipeName || ''}
           </span>

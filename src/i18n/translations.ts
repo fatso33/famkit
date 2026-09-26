@@ -19,7 +19,6 @@ export interface UiTranslations {
   familyBadge: string;
   viewRecipe: string;
   ingredientsCount: (n: number) => string;
-  recipeBadge: string;
   thIngredient: string;
   thAmount: string;
   ingredients: string;
@@ -112,7 +111,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     familyBadge: 'Family Recipe',
     viewRecipe: 'View Recipe →',
     ingredientsCount: (n: number) => `${n} ingredient${n === 1 ? '' : 's'}`,
-    recipeBadge: 'Recipe',
     thIngredient: 'Ingredient',
     thAmount: 'Amount',
     ingredients: 'Ingredients',
@@ -207,7 +205,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     familyBadge: 'Przepis Rodzinny',
     viewRecipe: 'Zobacz przepis →',
     ingredientsCount: (n: number) => `${n} ${plPlural(n, 'składnik', 'składniki', 'składników')}`,
-    recipeBadge: 'Przepis',
     thIngredient: 'Składnik',
     thAmount: 'Ilość',
     ingredients: 'Składniki',
