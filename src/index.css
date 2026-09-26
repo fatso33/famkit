@@ -1544,14 +1544,26 @@
         background: var(--bg-card);
       }
 
-      /* Back pill at the top of a recipe page */
+      /* Back pill on a recipe page: sticks to the top so the way back is always in reach. */
       .detail-back-pill {
+        position: sticky;
+        top: calc(0.75rem + env(safe-area-inset-top));
+        z-index: 20;
         margin-bottom: 1rem;
-        color: var(--text-secondary);
+        color: var(--text-primary);
+        background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        box-shadow: var(--shadow-md);
       }
 
       .detail-back-pill:hover {
-        color: var(--text-primary);
+        background: var(--bg-card);
+      }
+
+      .detail-back-pill:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
       }
 
       /* Install prompt card at the top of the recipe list */
