@@ -112,7 +112,6 @@ export const IngredientBuilder: React.FC<IngredientBuilderProps> = ({ rows, onCh
           style={{
             padding: '0.2rem 0.6rem',
             fontSize: '0.78rem',
-            minHeight: '26px',
             borderRadius: 'var(--radius-sm)',
           }}
           onClick={() => setShowBulkPaste((prev) => !prev)}
@@ -162,7 +161,7 @@ export const IngredientBuilder: React.FC<IngredientBuilderProps> = ({ rows, onCh
 
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {rows.map((row, index) => (
-          <div key={row.id} className="ingredient-row">
+          <div key={row.id} className="ingredient-builder-row">
             <input
               type="text"
               className="form-control"

@@ -186,7 +186,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         <button
           className={`btn ${showApiKeyInput ? 'btn-primary' : ''}`}
-          style={{ fontSize: '0.8rem', padding: '0.35rem 0.65rem', minHeight: '38px' }}
+          style={{ fontSize: '0.8rem', padding: '0.35rem 0.65rem' }}
           title="Configure Gemini API Key for custom recipes"
           onClick={() => setShowApiKeyInput((prev) => !prev)}
         >
