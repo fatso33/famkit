@@ -118,7 +118,11 @@ export default function App() {
         // User dismissed share dialog
       }
     } else {
-      navigator.clipboard.writeText(window.location.href).then(
+      // navigator.clipboard is undefined outside secure contexts (e.g. http on the LAN).
+      const copied =
+        navigator.clipboard?.writeText(window.location.href) ??
+        Promise.reject(new Error('Clipboard unavailable'));
+      copied.then(
         () => showToast(t.shareSuccess, '🔗'),
         () => showToast(t.shareFailed, '⚠️'),
       );

@@ -18,7 +18,7 @@ try {
 const changed = execSync('git status --porcelain', { cwd: ROOT, encoding: 'utf8' })
   .split('\n')
   .map((line) => line.slice(3).trim().replace(/^"|"$/g, ''))
-  .filter((file) => CODE_PATHS.test(file));
+  .filter((file) => file && CODE_PATHS.test(file));
 
 if (changed.length === 0) process.exit(0);
 
