@@ -1,19 +1,23 @@
 ---
 name: ship
-description: Verify, commit, and (after explicit confirmation) push Family Kitchen changes to main, which deploys live to GitHub Pages. Use when the user says ship, release, deploy, commit and push, or "send it".
+description: Verify, review, commit, and (after explicit confirmation) push Family Kitchen changes to main, which deploys live to GitHub Pages. Use when the user says ship, release, deploy, commit and push, or "send it".
 ---
 
 # /ship — release Family Kitchen
 
 A push to `main` is a **live deploy to the family**. Never push without an explicit "yes" in this turn.
 
-1. **Gate.** Run `npm run check` then `npm run build`. If either fails, stop, fix, and restart from step 1.
-2. **Review the diff.** `git status` + `git diff --stat`, then read the full diff. Look for:
-   - Stray debug code (`console.log`, commented-out blocks), secrets, or `.env` values.
-   - New UI strings missing from `src/i18n/translations.ts` (both `en` and `pl`).
-   - Replaced images under `public/` at an existing path: bump `CACHE_NAME` in `public/sw.js` (images are cache-first, so the old file would stick).
-   - Recipe shape changes without matching updates to versioning/history in `useRecipes.ts`.
-3. **UI changes only:** confirm the change was checked in the preview browser this session; if not, do it now (`preview_start` name `dev`).
-4. **Commit.** Stage files by name (never `git add -A`). One focused commit per logical change, message in the repo's style: `feat: …`, `fix: …`, `style: …`, `refactor: …`, `test: …`, `chore: …` — imperative, lower case, what + why.
-5. **Confirm.** Show the user `git log --oneline -3` and a one-paragraph summary of what will go live. Ask: "Push to main and deploy?"
-6. **Push** only on a clear yes: `git push origin main`. Then tell the user the deploy runs at https://github.com/fatso33/famkit/actions and takes ~2 minutes.
+1. **Gate.** Run `npm run check` then `npm run build`. If either fails, fix the root cause and restart from step 1.
+2. **Independent review.** Invoke the `code-review` skill at `medium` effort on everything not yet pushed: uncommitted changes plus commits ahead of `origin/main`. It reviews in a fresh context, so it isn't biased by having written the code.
+   - Fix every correctness finding, add a regression test where the logic is testable, then return to step 1.
+   - Cleanup and style findings are optional. Apply one only if it's cheap and clearly better. Don't chase them into over-engineering.
+   - Report each finding's outcome with ReportFindings (`fixed` / `skipped` / `no_change_needed`).
+3. **Project checklist.** Read the diff for things the tools can't catch:
+   - Secrets or `.env` values, stray debug code, commented-out blocks.
+   - New UI text present in `src/i18n/translations.ts` for both `en` and `pl`, in natural Polish.
+   - Images replaced at an existing path under `public/` need a bump to `CACHE_NAME` in `public/sw.js`.
+   - Recipe shape changes keep `version`/`history` intact (`useRecipes.ts`) and still load old records.
+4. **UI changes:** confirm they were checked in the preview browser this session (light + dark, EN + PL, phone width). If not, do it now (`preview_start` name `dev`, see CLAUDE.md "Local UI testing").
+5. **Commit.** Stage files by name (never `git add -A`). Make one focused commit per logical change, in the repo's style (`feat:`, `fix:`, `style:`, `refactor:`, `test:`, `docs:`, `chore:`): imperative, lower case, what and why.
+6. **Confirm.** Show `git log --oneline origin/main..HEAD` and a short plain-language summary of what the family will notice. Ask: "Push to main and deploy?"
+7. **Push** only on a clear yes: `git push origin main`. Tell the user the deploy runs at https://github.com/fatso33/famkit/actions and takes about 2 minutes. If CI fails, the site keeps the previous version.

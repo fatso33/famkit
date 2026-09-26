@@ -5,8 +5,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
-const CODE_PATHS =
-  /^(src\/|public\/|index\.html$|package\.json$|tsconfig\.json$|[\w.-]*\.config\.[jt]s$)/;
+// Any change except prose-only Markdown can break the gate (code, lint/format config, CI).
+const CODE_PATHS = /^(?!.*\.md$)/;
 
 let input = {};
 try {

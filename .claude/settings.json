@@ -6,6 +6,7 @@
       "Bash(npm test*)",
       "Bash(npx eslint *)",
       "Bash(npx vitest *)",
+      "Bash(npx prettier *)",
       "Bash(git status*)",
       "Bash(git diff*)",
       "Bash(git log*)",
@@ -16,6 +17,7 @@
       "PowerShell(npm test*)",
       "PowerShell(npx eslint *)",
       "PowerShell(npx vitest *)",
+      "PowerShell(npx prettier *)",
       "PowerShell(git status*)",
       "PowerShell(git diff*)",
       "PowerShell(git log*)",
@@ -35,6 +37,18 @@
     ]
   },
   "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/format.mjs\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
