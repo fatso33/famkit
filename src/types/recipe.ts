@@ -42,9 +42,12 @@ export interface LocalizedRecipeContent {
   ingredients?: Ingredient[];
   steps?: Step[];
   bakingOptions?: BakingOptions;
+  /** Fingerprint of the source text this was translated from (see utils/recipeTranslation). */
+  sourceHash?: string;
 }
 
 export interface RecipeTranslations {
+  en?: LocalizedRecipeContent;
   pl?: LocalizedRecipeContent;
   [lang: string]: LocalizedRecipeContent | undefined;
 }
@@ -67,6 +70,8 @@ export interface Recipe {
   laminationDirective?: string;
   bakingOptions?: BakingOptions;
   notes?: string;
+  /** Language of the top-level text fields. Missing on older records, which are English. */
+  sourceLanguage?: Language;
   translations?: RecipeTranslations;
   createdAt?: number;
   updatedAt?: number;

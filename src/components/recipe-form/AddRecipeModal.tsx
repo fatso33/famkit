@@ -110,9 +110,32 @@ function loadInitialForm(initialRecipe?: Recipe | null): FormState {
   return EMPTY_FORM;
 }
 
+// The form's readable text, for telling a real text edit apart from a photo/author-only change.
+function formText(form: Pick<FormState, TextField>): string {
+  return JSON.stringify([
+    form.title.trim(),
+    form.cardDescription.trim(),
+    form.yieldHeader.trim(),
+    form.tips.trim(),
+    form.notes.trim(),
+    form.ingredientRows.map((r) => [r.name.trim(), r.amount.trim()]).filter(([n, a]) => n || a),
+    form.steps
+      .filter((s) => s.text.trim())
+      .map((s) => [s.text.trim(), s.notes?.trim() || '', s.imageCaption?.trim() || '']),
+  ]);
+}
+
+type TextField =
+  'title' | 'cardDescription' | 'yieldHeader' | 'tips' | 'notes' | 'ingredientRows' | 'steps';
+
 interface AddRecipeModalProps {
   onClose: () => void;
-  onSave: (recipeData: Omit<Recipe, 'id' | 'createdAt'>, existingId?: string) => void;
+  /** `textChanged` is false when an edit touched only photos or the author. */
+  onSave: (
+    recipeData: Omit<Recipe, 'id' | 'createdAt'>,
+    existingId: string | undefined,
+    textChanged: boolean,
+  ) => void;
   initialRecipe?: Recipe | null;
   t: UiTranslations;
 }
@@ -271,7 +294,10 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
       bakingOptions: initialRecipe?.bakingOptions,
     };
 
-    onSave(recipeData, initialRecipe?.id);
+    const textChanged =
+      formText(initial) !==
+      formText({ title, cardDescription, yieldHeader, tips, notes, ingredientRows, steps });
+    onSave(recipeData, initialRecipe?.id, textChanged);
 
     // Clear draft upon successful save
     if (!isEditMode) {

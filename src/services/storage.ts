@@ -5,7 +5,7 @@ const RECIPES_KEY = 'wandas_recipes';
 const THEME_KEY = 'wandas_theme';
 const LANG_KEY = 'wandas_language';
 const FONT_SCALE_KEY = 'wandas_font_scale';
-const API_KEY_STORAGE = 'wandas_gemini_api_key';
+const LEGACY_API_KEY_STORAGE = 'wandas_gemini_api_key';
 const INSTALL_DISMISSED_KEY = 'family_kitchen_install_dismissed';
 
 export function getStoredRecipes(): Recipe[] {
@@ -100,28 +100,12 @@ export function setStoredFontScale(scale: number): void {
   localStorage.setItem(FONT_SCALE_KEY, scale.toFixed(2));
 }
 
-export function getStoredApiKey(): string {
-  if (typeof window === 'undefined') return '';
-  return (
-    localStorage.getItem(API_KEY_STORAGE) || (import.meta.env.VITE_GEMINI_API_KEY as string) || ''
-  );
-}
-
-export function hasCustomApiKey(): boolean {
-  if (typeof window === 'undefined') return false;
-  return Boolean(localStorage.getItem(API_KEY_STORAGE));
-}
-
-export function hasBundledApiKey(): boolean {
-  return Boolean(import.meta.env.VITE_GEMINI_API_KEY);
-}
-
-export function setStoredApiKey(key: string): void {
-  if (typeof window === 'undefined') return;
-  if (!key.trim()) {
-    localStorage.removeItem(API_KEY_STORAGE);
-  } else {
-    localStorage.setItem(API_KEY_STORAGE, key.trim());
+/** Removes a Gemini key pasted into the old Settings field; translation no longer needs one. */
+export function clearLegacyApiKey(): void {
+  try {
+    localStorage.removeItem(LEGACY_API_KEY_STORAGE);
+  } catch {
+    // Storage unavailable (private mode): nothing to clear.
   }
 }
 

@@ -2,7 +2,10 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import { AuthGate } from './components/auth/AuthGate';
+import { clearLegacyApiKey } from './services/storage';
 import './index.css';
+
+clearLegacyApiKey();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

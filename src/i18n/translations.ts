@@ -40,9 +40,8 @@ export interface UiTranslations {
   iosStep2: string;
   iosStep3: string;
   iosModalDone: string;
-  translatingToast: string;
-  translatedToast: string;
-  translationError: string;
+  translatedToast: (recipeName: string, language: Language) => string;
+  translationFailedToast: (recipeName: string) => string;
   switchEnToast: string;
   switchPlToast: string;
   cookModeOn: string;
@@ -55,9 +54,6 @@ export interface UiTranslations {
   settings: string;
   themeToggle: string;
   textScaling: string;
-  apiKeyLabel: string;
-  apiKeyPlaceholder: string;
-  apiKeySavedToast: string;
   addRecipe: string;
   saveToVault: string;
   cancel: string;
@@ -144,12 +140,14 @@ export interface UiTranslations {
   makesEmptyTitle: string;
   makesEmptyBody: string;
   translationSection: string;
-  apiKeySave: string;
-  apiKeyCustomActive: string;
-  apiKeyBundledActive: string;
-  apiKeyMissing: string;
-  apiKeyBundledPlaceholder: string;
-  apiKeyOfflineNote: string;
+  translationInfo: string;
+  translationOfflineNote: string;
+  // Required reCAPTCHA attribution, shown because the badge would cover the menu button.
+  recaptchaNoticeStart: string;
+  privacyPolicy: string;
+  recaptchaNoticeAnd: string;
+  termsOfService: string;
+  recaptchaNoticeEnd: string;
 }
 
 export const UI_TEXT: Record<Language, UiTranslations> = {
@@ -185,9 +183,10 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     iosStep2: 'Scroll down and tap <strong>Add to Home Screen</strong> {icon}.',
     iosStep3: 'Tap <strong>Add</strong> in the top-right corner to finish.',
     iosModalDone: 'Got it',
-    translatingToast: 'Translating recipe to authentic Polish...',
-    translatedToast: 'Recipe translated to Polish!',
-    translationError: 'Could not translate recipe: ',
+    translatedToast: (recipeName, language) =>
+      `${recipeName} is now available in ${language === 'pl' ? 'Polish' : 'English'}`,
+    translationFailedToast: (recipeName) =>
+      `Couldn't translate ${recipeName} right now. We'll try again later.`,
     switchEnToast: 'Language set to English',
     switchPlToast: 'Język zmieniony na polski',
     cookModeOn: 'Cook Mode: On (Screen Awake)',
@@ -200,9 +199,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     settings: 'Settings',
     themeToggle: 'Toggle Theme',
     textScaling: 'Text size',
-    apiKeyLabel: 'Gemini API Key (Optional for Custom Recipes)',
-    apiKeyPlaceholder: 'AIzaSy...',
-    apiKeySavedToast: 'Gemini API Key saved locally',
     addRecipe: 'Add Family Recipe',
     saveToVault: 'Save to Vault',
     cancel: 'Cancel',
@@ -292,14 +288,15 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     makesEmptyTitle: 'No makes yet',
     makesEmptyBody: 'This is where your makes will live. Coming soon.',
     translationSection: 'Recipe translation',
-    apiKeySave: 'Save',
-    apiKeyCustomActive: 'Custom API key active on this device',
-    apiKeyBundledActive: 'Default Gemini API key active (bundled from GitHub Secrets)',
-    apiKeyMissing:
-      'No API key detected. Paste your Gemini API key above to enable translation for new recipes.',
-    apiKeyBundledPlaceholder: '●●●●●● (Configured via GitHub Secret)',
-    apiKeyOfflineNote:
-      "Wanda's Cheese Bread works 100% offline without a key. This key is only used to translate custom recipes you add.",
+    translationInfo:
+      'New and edited recipes are translated automatically between English and Polish, so everyone can read them in their own language.',
+    translationOfflineNote:
+      'Without an internet connection, a recipe shows in the language it was written in until its translation is ready.',
+    recaptchaNoticeStart: 'This app is protected by reCAPTCHA, and the Google ',
+    privacyPolicy: 'Privacy Policy',
+    recaptchaNoticeAnd: ' and ',
+    termsOfService: 'Terms of Service',
+    recaptchaNoticeEnd: ' apply.',
   },
   pl: {
     vaultTitle: 'Skarbiec Przepisów Rodzinnych',
@@ -333,9 +330,10 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     iosStep2: 'Przewiń w dół i wybierz <strong>Do ekranu początkowego</strong> {icon}.',
     iosStep3: 'Dotknij <strong>Dodaj</strong> w prawym górnym rogu ekranu.',
     iosModalDone: 'Rozumiem',
-    translatingToast: 'Tłumaczenie przepisu na język polski...',
-    translatedToast: 'Przepis przetłumaczony na język polski!',
-    translationError: 'Błąd podczas tłumaczenia przepisu: ',
+    translatedToast: (recipeName, language) =>
+      `Przepis „${recipeName}” jest już dostępny w języku ${language === 'pl' ? 'polskim' : 'angielskim'}`,
+    translationFailedToast: (recipeName) =>
+      `Nie udało się teraz przetłumaczyć przepisu „${recipeName}”. Spróbujemy ponownie później.`,
     switchEnToast: 'Language set to English',
     switchPlToast: 'Język zmieniony na polski',
     cookModeOn: 'Tryb gotowania: Włączony (ekran wybudzony)',
@@ -348,9 +346,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     settings: 'Ustawienia',
     themeToggle: 'Zmień motyw',
     textScaling: 'Rozmiar tekstu',
-    apiKeyLabel: 'Klucz Gemini API (opcjonalny dla nowych przepisów)',
-    apiKeyPlaceholder: 'AIzaSy...',
-    apiKeySavedToast: 'Klucz Gemini API zapisany lokalnie',
     addRecipe: 'Dodaj przepis rodzinny',
     saveToVault: 'Zapisz w skarbcu',
     cancel: 'Anuluj',
@@ -440,13 +435,14 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     makesEmptyTitle: 'Nie ma jeszcze wypieków',
     makesEmptyBody: 'Tu wkrótce pojawią się Twoje wypieki.',
     translationSection: 'Tłumaczenie przepisów',
-    apiKeySave: 'Zapisz',
-    apiKeyCustomActive: 'Na tym urządzeniu używany jest własny klucz API',
-    apiKeyBundledActive: 'Aktywny domyślny klucz Gemini API (z GitHub Secrets)',
-    apiKeyMissing:
-      'Nie wykryto klucza API. Wklej powyżej klucz Gemini API, aby włączyć tłumaczenie nowych przepisów.',
-    apiKeyBundledPlaceholder: '●●●●●● (ustawiony w GitHub Secrets)',
-    apiKeyOfflineNote:
-      'Chleb serowy Wandy działa w pełni offline, bez klucza. Klucz służy wyłącznie do tłumaczenia przepisów, które dodasz.',
+    translationInfo:
+      'Nowe i edytowane przepisy są automatycznie tłumaczone między polskim a angielskim, aby każdy mógł je przeczytać w swoim języku.',
+    translationOfflineNote:
+      'Bez połączenia z internetem przepis wyświetla się w języku, w którym został napisany, dopóki tłumaczenie nie będzie gotowe.',
+    recaptchaNoticeStart: 'Ta aplikacja jest chroniona przez reCAPTCHA. Obowiązują ',
+    privacyPolicy: 'Polityka prywatności',
+    recaptchaNoticeAnd: ' oraz ',
+    termsOfService: 'Warunki korzystania z usług',
+    recaptchaNoticeEnd: ' Google.',
   },
 };

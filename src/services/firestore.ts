@@ -2,6 +2,8 @@ import {
   collection,
   doc,
   setDoc,
+  updateDoc,
+  deleteField,
   deleteDoc,
   onSnapshot,
   getDocs,
@@ -10,7 +12,7 @@ import {
   Unsubscribe,
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase';
-import { Recipe } from '../types/recipe';
+import { Language, LocalizedRecipeContent, Recipe } from '../types/recipe';
 import { DEFAULT_RECIPE } from '../data/defaultRecipe';
 import { getStoredRecipes, saveRecipes as saveToLocalStorage } from './storage';
 
@@ -104,6 +106,26 @@ export async function saveRecipeToCloud(recipe: Recipe): Promise<void> {
 
   const docRef = doc(db, RECIPES_COLLECTION, recipe.id);
   await setDoc(docRef, recipe, { merge: true });
+}
+
+/**
+ * Stores a finished translation. Writes only the translation fields, so it can't overwrite an
+ * edit made meanwhile and doesn't count as a new version. Also removes any leftover entry for
+ * the source language (a merge save keeps it after a recipe is re-written in the other language).
+ */
+export async function saveTranslationToCloud(
+  recipeId: string,
+  sourceLanguage: Language,
+  translation: LocalizedRecipeContent,
+): Promise<void> {
+  if (!isFirebaseConfigured || !db) return;
+
+  const target: Language = sourceLanguage === 'en' ? 'pl' : 'en';
+  await updateDoc(doc(db, RECIPES_COLLECTION, recipeId), {
+    sourceLanguage,
+    [`translations.${target}`]: translation,
+    [`translations.${sourceLanguage}`]: deleteField(),
+  });
 }
 
 /**

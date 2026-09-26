@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import {
   getAuth,
   GoogleAuthProvider,
@@ -27,6 +28,9 @@ export const isFirebaseConfigured = Boolean(
   firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId,
 );
 
+const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
+export const isAppCheckEnabled = isFirebaseConfigured && Boolean(recaptchaSiteKey);
+
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
@@ -36,6 +40,14 @@ googleProvider.setCustomParameters({ prompt: 'select_account' });
 if (isFirebaseConfigured) {
   try {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+    // App Check proves requests come from this site, which guards the AI Logic (Gemini) quota.
+    if (isAppCheckEnabled && recaptchaSiteKey) {
+      initializeAppCheck(app, {
+        provider: new ReCaptchaV3Provider(recaptchaSiteKey),
+        isTokenAutoRefreshEnabled: true,
+      });
+    }
+
     auth = getAuth(app);
     // Ensure auth state persists in browser across reloads and tab closures
     setPersistence(auth, browserLocalPersistence).catch((err) => {
@@ -45,6 +57,9 @@ if (isFirebaseConfigured) {
     try {
       // Initialize Firestore with IndexedDB multi-tab offline caching
       db = initializeFirestore(app, {
+        // Optional recipe fields are often undefined (e.g. empty tips); without this, Firestore
+        // rejects the whole write and the recipe never leaves the device.
+        ignoreUndefinedProperties: true,
         localCache: persistentLocalCache({
           tabManager: persistentMultipleTabManager(),
         }),

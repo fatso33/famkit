@@ -17,7 +17,7 @@ Deployable directly as a zero-server static Single Page Application (SPA) to **G
 - **☁️ Cloud Sync & Multi-Device Sharing**: Powered by Cloud Firestore with IndexedDB multi-tab offline persistence. Recipes saved on one phone or tablet instantly appear across all family devices.
 - **🔒 Family Google Authentication & Guest List**: Private heirloom vault protected by Google Sign-In with an allowlist restricted to approved family Gmail addresses.
 - **📝 Step Builder, Photos & Version Archiving**: Add step-by-step consistency notes, photo thumbnails, and automatic version incrementing (`v1`, `v2`, `v3`) with historical archive snapshots.
-- **🤖 Private Family Translation via Gemini 3.5 / 3.8 Flash**: Bundled with verified offline translations for heirloom recipes. Optional client-side Gemini 3.5 Flash Lite translation (with Gemini 3.8 Flash fallback) for custom recipes via build-time secret or in-app Settings key.
+- **🤖 Two-way Family Translation via Gemini 3.5 / 3.8 Flash**: Bundled with verified offline translations for heirloom recipes. New and edited recipes are translated automatically between English and Polish through Firebase AI Logic (Gemini 3.5 Flash Lite, with Gemini 3.8 Flash fallback), protected by App Check. No Gemini key ships in the app.
 
 ---
 
@@ -80,12 +80,12 @@ The codebase is organized into clean, modular, testable components:
 │   ├── services/
 │   │   ├── firebase.ts             # Firebase App, Auth, & IndexedDB Firestore cache
 │   │   ├── firestore.ts            # Real-time listener & cloud CRUD operations
-│   │   ├── gemini.ts               # Client-side translation via @google/genai
+│   │   ├── gemini.ts               # Two-way translation via Firebase AI Logic
 │   │   └── storage.ts              # LocalStorage fallback & preference persistence
 │   ├── test/                       # Vitest unit test suite (31 tests across 6 files)
 │   │   ├── auth.test.tsx           # Email allowlist & splash screen tests
 │   │   ├── fractions.test.ts       # Fraction formatting & ingredient parsing tests
-│   │   ├── gemini.test.ts          # Translation service & API key tests
+│   │   ├── gemini.test.ts          # Translation service tests
 │   │   ├── recipeVersioning.test.ts # Version increments & historical archive tests
 │   │   ├── setup.ts                # Test environment initialization
 │   │   ├── storage.test.ts         # LocalStorage persistence & preference tests
@@ -155,16 +155,16 @@ cp .env.example .env.local
 
 Configure the following variables:
 
-| Variable                            | Required? | Description                                                                                        |
-| :---------------------------------- | :-------: | :------------------------------------------------------------------------------------------------- |
-| `VITE_FIREBASE_API_KEY`             | Optional* | Firebase project Web API Key                                                                       |
-| `VITE_FIREBASE_AUTH_DOMAIN`         | Optional* | Firebase Auth Domain (e.g. `your-app.firebaseapp.com`)                                             |
-| `VITE_FIREBASE_PROJECT_ID`          | Optional* | Firebase Project ID                                                                                |
-| `VITE_FIREBASE_STORAGE_BUCKET`      | Optional  | Firebase Storage Bucket name                                                                       |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Optional  | Firebase Cloud Messaging sender ID                                                                 |
-| `VITE_FIREBASE_APP_ID`              | Optional* | Firebase Web Application ID                                                                        |
-| `VITE_FAMILY_EMAILS`                | Optional  | Comma-separated list of approved Google emails (e.g. `"mom@gmail.com,dad@gmail.com"`)              |
-| `VITE_GEMINI_API_KEY`               | Optional  | Restricted Google AI API key for translating custom recipes with Gemini 3.5 Flash Lite / 3.8 Flash |
+| Variable                            | Required? | Description                                                                           |
+| :---------------------------------- | :-------: | :------------------------------------------------------------------------------------ |
+| `VITE_FIREBASE_API_KEY`             | Optional* | Firebase project Web API Key                                                          |
+| `VITE_FIREBASE_AUTH_DOMAIN`         | Optional* | Firebase Auth Domain (e.g. `your-app.firebaseapp.com`)                                |
+| `VITE_FIREBASE_PROJECT_ID`          | Optional* | Firebase Project ID                                                                   |
+| `VITE_FIREBASE_STORAGE_BUCKET`      | Optional  | Firebase Storage Bucket name                                                          |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Optional  | Firebase Cloud Messaging sender ID                                                    |
+| `VITE_FIREBASE_APP_ID`              | Optional* | Firebase Web Application ID                                                           |
+| `VITE_FAMILY_EMAILS`                | Optional  | Comma-separated list of approved Google emails (e.g. `"mom@gmail.com,dad@gmail.com"`) |
+| `VITE_RECAPTCHA_SITE_KEY`           | Optional  | reCAPTCHA v3 site key for Firebase App Check (protects recipe translation)            |
 
 _\*Required only if enabling multi-device cloud synchronization and Google family authentication._
 
@@ -244,7 +244,7 @@ The repository includes an automated GitHub Actions deployment workflow at [`.gi
 
 ### 2. Configure Repository Secrets
 
-To enable Cloud Sync and Gemini Translation on GitHub Pages, navigate to **Settings** → **Secrets and variables** → **Actions** and add:
+To enable Cloud Sync and recipe translation on GitHub Pages, navigate to **Settings** → **Secrets and variables** → **Actions** and add:
 
 - `VITE_FIREBASE_API_KEY`
 - `VITE_FIREBASE_AUTH_DOMAIN`
@@ -253,14 +253,16 @@ To enable Cloud Sync and Gemini Translation on GitHub Pages, navigate to **Setti
 - `VITE_FIREBASE_MESSAGING_SENDER_ID`
 - `VITE_FIREBASE_APP_ID`
 - `VITE_FAMILY_EMAILS`: e.g. `mom@gmail.com,dad@gmail.com,sister@gmail.com`
-- `VITE_GEMINI_API_KEY`: Restricted Google AI key (see below)
+- `VITE_RECAPTCHA_SITE_KEY`: reCAPTCHA v3 site key (see below)
 
-### 3. Restrict the Gemini API Key
+### 3. Enable Recipe Translation (Firebase AI Logic + App Check)
 
-All `VITE_*` values are embedded in the public JavaScript bundle, so the Gemini key is visible to anyone who inspects the site. Restrict it in [Google Cloud Console Credentials](https://console.cloud.google.com/apis/credentials):
+Translation calls Gemini through Firebase AI Logic, which holds the Gemini key on Google's side, so no Gemini key is ever in the public bundle. It runs on the free Spark plan.
 
-- **Application restrictions**: `HTTP referrers` → `https://fatso33.github.io/*` (and `http://localhost:*` for local testing).
-- **API restrictions**: Select **Generative Language API** only.
+- **Firebase console → AI Logic**: get started with the **Gemini Developer API**.
+- **reCAPTCHA v3** ([admin console](https://www.google.com/recaptcha/admin/create)): create a site key for `fatso33.github.io` and `localhost`.
+- **Firebase console → App Check**: register the web app with the reCAPTCHA v3 provider (site key + secret key), then **enforce** App Check for AI Logic.
+- Add the site key as the `VITE_RECAPTCHA_SITE_KEY` repository secret.
 
 Every push to `main` will automatically run type checks, execute the 31-test suite, build the production bundle, and deploy to GitHub Pages!
 
@@ -284,4 +286,4 @@ npm run test:watch
 - **NLP Time Estimator**: Tests natural language duration extraction (`"bake for 25-30 mins"`, `"rest overnight"`).
 - **Authentication & Allowlist**: Tests case-insensitive email matching and unauthorized access gates.
 - **Recipe Versioning**: Tests version increments and historical snapshot archiving.
-- **Gemini Translation Guard**: Tests error handling and translation response schema validation.
+- **Recipe Translation**: Tests language detection, stale-translation fingerprinting, edits in either language, offline retries, and validation of the untrusted model response.

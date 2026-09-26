@@ -1,6 +1,6 @@
 # Family Kitchen (FamKit)
 
-Private family recipe vault PWA. React 19 + TypeScript (strict) + Vite 6 + Tailwind 4 + Firebase 12 (Google auth + Firestore), with Gemini for EN→PL recipe translation. Static SPA on GitHub Pages. Real family members use it on phones, so **every push to `main` is a live deploy**.
+Private family recipe vault PWA. React 19 + TypeScript (strict) + Vite 6 + Tailwind 4 + Firebase 12 (Google auth + Firestore), with Gemini (via Firebase AI Logic) for two-way EN↔PL recipe translation. Static SPA on GitHub Pages. Real family members use it on phones, so **every push to `main` is a live deploy**.
 
 ## Commands
 
@@ -74,6 +74,7 @@ Tools enforce most of these: TS strict, ESLint (react-hooks, jsx-a11y, promise s
 - **Access control** has two layers that must agree: the `VITE_FAMILY_EMAILS` secret (client UX) and the email list in `firestore.rules` (real enforcement, deployed separately via the Firebase CLI/console).
 - **Local UI testing:** there's no local `.env`, so Firebase is off in dev. "Connect with Google" logs in as a fake dev user, and data stays in localStorage, so it's safe to click through anything. In the preview browser, the hidden pane stalls `document.startViewTransition`. If navigation clicks do nothing, run `document.startViewTransition = undefined` in the page first.
 - **Offline-first:** Firestore uses IndexedDB persistence, and recipes also live in localStorage. Test changes signed out (local-only) as well as signed in.
+- **Translation:** a recipe's top-level text is the original in `sourceLanguage`, and `translations[other]` carries a `sourceHash`. A mismatched hash means the translation is stale, and `useRecipes` re-translates it in the background. The logic lives in `utils/recipeTranslation`. Firebase is off locally, so translation only runs in tests (mocked) or with a real `.env` plus an App Check debug token.
 - **Images:** photos are compressed client-side and embedded. Keep history snapshots free of embedded photos (see `useRecipes`).
 
 ## Definition of done
@@ -86,4 +87,3 @@ Tools enforce most of these: TS strict, ESLint (react-hooks, jsx-a11y, promise s
 ## Known risks (not yet addressed)
 
 - `firestore.rules` in the repo still holds placeholder emails. Confirm the deployed rules contain the real family list.
-- The Gemini API key ships in the client bundle. It should be restricted by HTTP referrer (GitHub Pages domain) in Google Cloud.

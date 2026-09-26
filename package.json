@@ -16,7 +16,6 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
-    "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.0.6",
     "firebase": "^12.19.0",
     "lucide-react": "^0.475.0",

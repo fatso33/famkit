@@ -8,8 +8,7 @@ import {
   setStoredTheme,
   getStoredFontScale,
   setStoredFontScale,
-  getStoredApiKey,
-  setStoredApiKey,
+  clearLegacyApiKey,
 } from '../services/storage';
 import { DEFAULT_RECIPE } from '../data/defaultRecipe';
 import { Recipe } from '../types/recipe';
@@ -67,11 +66,9 @@ describe('storage service', () => {
     expect(getStoredFontScale()).toBe(0.85);
   });
 
-  it('persists and clears Gemini API key', () => {
-    expect(getStoredApiKey()).toBe('');
-    setStoredApiKey('AIzaSyTestKey123');
-    expect(getStoredApiKey()).toBe('AIzaSyTestKey123');
-    setStoredApiKey('');
-    expect(getStoredApiKey()).toBe('');
+  it('clears a Gemini API key left over from the old Settings field', () => {
+    localStorage.setItem('wandas_gemini_api_key', 'AIzaSyTestKey123');
+    clearLegacyApiKey();
+    expect(localStorage.getItem('wandas_gemini_api_key')).toBeNull();
   });
 });

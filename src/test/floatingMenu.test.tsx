@@ -5,7 +5,8 @@ import { DEFAULT_RECIPE } from '../data/defaultRecipe';
 import { UI_TEXT } from '../i18n/translations';
 
 vi.mock('../services/gemini', () => ({
-  translateRecipeToPolish: vi.fn(() => Promise.reject(new Error('offline'))),
+  isTranslationAvailable: false,
+  translateRecipe: vi.fn(() => Promise.reject(new Error('offline'))),
 }));
 
 const t = UI_TEXT.en;
@@ -75,13 +76,14 @@ describe('floating menu', () => {
     expect(screen.getByText(t.comingSoonToast)).toBeInTheDocument();
   });
 
-  it('opens the Settings page with the API key field', () => {
+  it('opens the Settings page, which explains translation and asks for no API key', () => {
     render(<App />);
     fireEvent.click(within(openMenu()).getByRole('button', { name: t.settings }));
     finishClosing();
 
     expect(screen.getByRole('heading', { name: t.settings, level: 1 })).toBeInTheDocument();
-    expect(screen.getByLabelText(t.apiKeyLabel)).toBeInTheDocument();
+    expect(screen.getByText(t.translationInfo)).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).toBeNull();
   });
 
   it('closes on Escape and returns focus to the menu button', () => {

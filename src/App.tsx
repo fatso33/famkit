@@ -1,10 +1,11 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { useTheme } from './hooks/useTheme';
 import { useFontScale } from './hooks/useFontScale';
 import { useLanguage } from './hooks/useLanguage';
 import { useCookMode } from './hooks/useCookMode';
 import { usePWAInstall } from './hooks/usePWAInstall';
-import { useRecipes, getLocalizedRecipe } from './hooks/useRecipes';
+import { useRecipes, getLocalizedRecipe, TranslationResult } from './hooks/useRecipes';
+import { resolveEdit } from './utils/recipeTranslation';
 import { Plus, Share2 } from 'lucide-react';
 import { FloatingMenu, MenuAction } from './components/layout/FloatingMenu';
 import { InstallCard } from './components/layout/InstallCard';
@@ -35,20 +36,6 @@ export default function App() {
   const { isBannerVisible, triggerInstall, dismissBanner, showIOSModal, setShowIOSModal } =
     usePWAInstall();
 
-  const {
-    recipes,
-    selectedRecipe,
-    setSelectedRecipeId,
-    addRecipe,
-    updateRecipe,
-    translateSelectedRecipe,
-    isTranslating,
-  } = useRecipes();
-  const localizedRecipe = getLocalizedRecipe(selectedRecipe, language);
-
-  const [page, setPage] = useState<AppPage>('recipes');
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastIcon, setToastIcon] = useState('✓');
 
@@ -60,32 +47,24 @@ export default function App() {
     }, 3200);
   }, []);
 
-  // Recipe revision we last auto-translated, so a failure isn't retried when isTranslating flips back.
-  // Cleared on language switch / recipe selection, which act as explicit retries.
-  const lastTranslateAttempt = useRef<string | null>(null);
+  // Recipes saved on this device are translated in the background; report how that went.
+  const handleTranslationResult = useCallback(
+    ({ ok, recipeName, targetLanguage }: TranslationResult) => {
+      if (ok) showToast(t.translatedToast(recipeName, targetLanguage), '🌐');
+      else showToast(t.translationFailedToast(recipeName), '⚠️');
+    },
+    [t, showToast],
+  );
 
-  // Automatically translate custom recipes if viewed while in Polish mode
-  useEffect(() => {
-    if (language !== 'pl' || !selectedRecipe || selectedRecipe.translations?.pl || isTranslating) {
-      return;
-    }
-    const attemptKey = `${selectedRecipe.id}@${selectedRecipe.updatedAt ?? selectedRecipe.version ?? 0}`;
-    if (lastTranslateAttempt.current === attemptKey) return;
-    lastTranslateAttempt.current = attemptKey;
+  const { recipes, selectedRecipe, setSelectedRecipeId, addRecipe, updateRecipe } =
+    useRecipes(handleTranslationResult);
+  const localizedRecipe = getLocalizedRecipe(selectedRecipe, language);
 
-    showToast(t.translatingToast, '🌐');
-    translateSelectedRecipe(selectedRecipe)
-      .then(() => {
-        showToast(t.translatedToast, '🇵🇱');
-      })
-      .catch((err: unknown) => {
-        const errorMsg = err instanceof Error ? err.message : String(err);
-        showToast(`${t.translationError}${errorMsg}`, '⚠️');
-      });
-  }, [language, selectedRecipe, isTranslating, t, translateSelectedRecipe, showToast]);
+  const [page, setPage] = useState<AppPage>('recipes');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
 
   const handleSelectRecipe = (id: string) => {
-    lastTranslateAttempt.current = null;
     withViewTransition(() => {
       setSelectedRecipeId(id);
       window.scrollTo(0, 0);
@@ -112,8 +91,6 @@ export default function App() {
       nextLang === 'pl' ? t.switchPlToast : t.switchEnToast,
       nextLang === 'pl' ? '🇵🇱' : '🌾',
     );
-    // Switching to Polish (re)triggers auto-translation of the open recipe via the effect above.
-    lastTranslateAttempt.current = null;
   };
 
   const handleShare = async () => {
@@ -175,7 +152,7 @@ export default function App() {
         {page === 'makes' ? (
           <MakesView t={t} />
         ) : page === 'settings' ? (
-          <SettingsView t={t} onToast={showToast} />
+          <SettingsView t={t} />
         ) : selectedRecipe ? (
           <RecipeDetailView
             recipe={selectedRecipe}
@@ -227,21 +204,22 @@ export default function App() {
       {isAddModalOpen && (
         <AddRecipeModal
           key={editingRecipe?.id ?? 'new'}
-          initialRecipe={editingRecipe}
+          // Edit in the viewer's language; see resolveEdit for how the save is merged.
+          initialRecipe={getLocalizedRecipe(editingRecipe, language)}
           onClose={() => {
             setIsAddModalOpen(false);
             setEditingRecipe(null);
           }}
-          onSave={(recipeData, existingId) => {
-            if (existingId) {
-              const fullRecipe: Recipe = {
-                ...recipeData,
-                id: existingId,
-              };
-              const updated = updateRecipe(fullRecipe);
+          onSave={(recipeData, existingId, textChanged) => {
+            if (existingId && editingRecipe) {
+              const edited: Recipe = { ...recipeData, id: existingId };
+              const updated = updateRecipe(
+                resolveEdit(editingRecipe, edited, language, textChanged),
+              );
               showToast(`Updated ${updated.name} (v${updated.version})!`, '✨');
             } else {
-              const created = addRecipe(recipeData);
+              // Provisional: translation detects the real language and corrects this.
+              const created = addRecipe({ ...recipeData, sourceLanguage: language });
               showToast(`Saved ${created.name} to vault!`, '🍞');
             }
             setEditingRecipe(null);

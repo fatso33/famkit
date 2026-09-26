@@ -1,82 +1,101 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { translateRecipeToPolish } from '../services/gemini';
 import { Recipe } from '../types/recipe';
 
-// Mock storage
-vi.mock('../services/storage', () => ({
-  getStoredApiKey: vi.fn(),
+const { generateContent, firebaseState } = vi.hoisted(() => ({
+  generateContent: vi.fn(),
+  firebaseState: { configured: true },
 }));
 
-// Mock @google/genai
-vi.mock('@google/genai', () => {
+vi.mock('../services/firebase', () => ({
+  get app() {
+    return firebaseState.configured ? { name: 'test-app' } : null;
+  },
+  get isFirebaseConfigured() {
+    return firebaseState.configured;
+  },
+}));
+
+// Minimal stand-in for Firebase AI Logic: records the prompt, returns a canned response.
+vi.mock('firebase/ai', () => {
+  const schema = (kind: string) => (params?: object) => ({ kind, ...params });
   return {
-    Type: {
-      OBJECT: 'OBJECT',
-      STRING: 'STRING',
-      NUMBER: 'NUMBER',
-      ARRAY: 'ARRAY',
+    getAI: vi.fn(() => ({})),
+    GoogleAIBackend: vi.fn(),
+    getGenerativeModel: vi.fn(() => ({ generateContent })),
+    Schema: {
+      object: schema('object'),
+      array: schema('array'),
+      string: schema('string'),
+      number: schema('number'),
+      enumString: schema('enum'),
     },
-    GoogleGenAI: vi.fn().mockImplementation(() => ({
-      models: {
-        generateContent: vi.fn().mockResolvedValue({
-          text: JSON.stringify({
-            name: 'Szarlotka Babci',
-            cardDescription: 'Klasyczna domowa szarlotka z jabłkami.',
-            yieldHeader: 'Dla 8 porcji:',
-            ingredients: [
-              {
-                name: 'Jabłka',
-                text: 'Jabłka - 6 dużych',
-                prefix: 'Jabłka - ',
-                qty: 6,
-                unit: 'dużych',
-              },
-            ],
-            steps: [
-              {
-                num: 1,
-                text: 'Pokrój jabłka i piecz.',
-              },
-            ],
-          }),
-        }),
-      },
-    })),
   };
 });
 
-describe('translateRecipeToPolish', () => {
+const reply = (json: unknown) => ({ response: { text: () => JSON.stringify(json) } });
+
+const testRecipe: Recipe = {
+  id: 'test-recipe-1',
+  name: 'Szarlotka Babci',
+  author: 'Babcia',
+  category: 'family',
+  heroImage: 'data:image/jpeg;base64,HERO',
+  yieldHeader: 'Dla 8 osób:',
+  ingredients: [{ text: 'Jabłka - 6 dużych', qty: 6, unit: 'dużych' }],
+  steps: [{ num: 1, text: 'Pokrój jabłka.', hasImage: true, imageSrc: 'data:image/jpeg;base64,S' }],
+};
+
+describe('translateRecipe', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    firebaseState.configured = true;
   });
 
-  const testRecipe: Recipe = {
-    id: 'test-recipe-1',
-    name: "Grandma's Apple Pie",
-    author: 'Grandma',
-    category: 'family',
-    heroImage: '',
-    yieldHeader: 'Serves 8:',
-    ingredients: [{ text: 'Apples - 6 large', qty: 6, unit: 'large' }],
-    steps: [{ num: 1, text: 'Slice apples and bake.' }],
-  };
-
-  it('throws a helpful error if no API key is configured', async () => {
-    const { getStoredApiKey } = await import('../services/storage');
-    vi.mocked(getStoredApiKey).mockReturnValue('');
-
-    await expect(translateRecipeToPolish(testRecipe)).rejects.toThrow(/No Gemini API Key found/);
+  it('fails clearly when Firebase is not configured', async () => {
+    firebaseState.configured = false;
+    vi.resetModules();
+    const { translateRecipe } = await import('../services/gemini');
+    await expect(translateRecipe(testRecipe)).rejects.toThrow(/Firebase is not configured/);
   });
 
-  it('calls Gemini API and parses Polish translation when API key is present', async () => {
-    const { getStoredApiKey } = await import('../services/storage');
-    vi.mocked(getStoredApiKey).mockReturnValue('AIzaSyDummyKeyForTesting');
+  it('detects the language, translates, and never sends photos', async () => {
+    vi.resetModules();
+    const { translateRecipe } = await import('../services/gemini');
+    generateContent.mockResolvedValue(
+      reply({
+        detectedLanguage: 'pl',
+        name: "Grandma's Apple Pie",
+        ingredients: [{ text: 'Apples - 6 large' }],
+        steps: [{ num: 1, text: 'Slice the apples.' }],
+      }),
+    );
 
-    const result = await translateRecipeToPolish(testRecipe);
-    expect(result.name).toBe('Szarlotka Babci');
-    expect(result.cardDescription).toBe('Klasyczna domowa szarlotka z jabłkami.');
-    expect(result.ingredients).toHaveLength(1);
-    expect(result.ingredients?.[0].name).toBe('Jabłka');
-    expect(result.ingredients?.[0].text).toBe('Jabłka - 6 dużych');
+    const result = await translateRecipe(testRecipe);
+
+    expect(result.detectedLanguage).toBe('pl');
+    expect(result.content.name).toBe("Grandma's Apple Pie");
+    const prompt = generateContent.mock.calls[0][0] as string;
+    expect(prompt).toContain('Szarlotka Babci');
+    expect(prompt).not.toContain('data:image');
+  });
+
+  it('falls back to the second model when the first fails', async () => {
+    vi.resetModules();
+    const { translateRecipe } = await import('../services/gemini');
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    generateContent
+      .mockRejectedValueOnce(new Error('overloaded'))
+      .mockResolvedValueOnce(reply({ detectedLanguage: 'en', name: 'Szarlotka' }));
+
+    await expect(translateRecipe(testRecipe)).resolves.toMatchObject({ detectedLanguage: 'en' });
+    expect(generateContent).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects a malformed response instead of storing it', async () => {
+    vi.resetModules();
+    const { translateRecipe } = await import('../services/gemini');
+    generateContent.mockResolvedValue(reply({ detectedLanguage: 'de', name: 'Apfelkuchen' }));
+
+    await expect(translateRecipe(testRecipe)).rejects.toThrow(/detectedLanguage/);
   });
 });
