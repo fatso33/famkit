@@ -83,7 +83,12 @@ export const ImagePickerWithPreview: React.FC<ImagePickerWithPreviewProps> = ({
 
       {imageUrl ? (
         <div className="image-preview-wrapper">
-          <img src={imageUrl} alt="Preview" className="image-preview-thumb" loading="lazy" />
+          <img
+            src={imageUrl}
+            alt={t.photoPreviewAlt}
+            className="image-preview-thumb"
+            loading="lazy"
+          />
           <button
             type="button"
             className="image-delete-badge"

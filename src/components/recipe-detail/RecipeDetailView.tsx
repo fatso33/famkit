@@ -163,6 +163,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
           key={zoomImageSrc}
           imageSrc={zoomImageSrc}
           onClose={() => setZoomImageSrc(null)}
+          t={t}
         />
       )}
     </article>

@@ -4,6 +4,7 @@ import App from '../App';
 import { translateRecipeToPolish } from '../services/gemini';
 import { DEFAULT_RECIPE } from '../data/defaultRecipe';
 import { Recipe } from '../types/recipe';
+import { UI_TEXT } from '../i18n/translations';
 
 // Gemini fails after a network-like delay (offline, quota, bad key).
 vi.mock('../services/gemini', () => ({
@@ -58,7 +59,7 @@ describe('auto-translation of custom recipes', () => {
 
     fireEvent.click(screen.getByText('Aunt Ola Pierogi'));
     await act(() => new Promise((r) => setTimeout(r, 100)));
-    const toggle = screen.getByRole('button', { name: /toggle language/i });
+    const toggle = screen.getByRole('button', { name: UI_TEXT.pl.languageToggle });
     fireEvent.click(toggle); // → EN
     fireEvent.click(toggle); // → PL: explicit retry
     await act(() => new Promise((r) => setTimeout(r, 200)));

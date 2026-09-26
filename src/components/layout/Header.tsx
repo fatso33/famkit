@@ -62,18 +62,14 @@ export const Header: React.FC<HeaderProps> = ({
           id="navHomeBtn"
           role="button"
           tabIndex={0}
-          title="Family Kitchen Home"
+          title={t.backToRecipes}
           onClick={onNavigateHome}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') onNavigateHome();
           }}
         >
           <div className="brand-icon">
-            <img
-              src="./apple-touch-icon.png"
-              alt="Family Kitchen logo"
-              className="brand-icon-img"
-            />
+            <img src="./apple-touch-icon.png" alt={t.logoAlt} className="brand-icon-img" />
           </div>
           <span className="brand-title">Family Kitchen</span>
         </div>
@@ -96,7 +92,7 @@ export const Header: React.FC<HeaderProps> = ({
         className={`install-banner-row ${isInstallBannerVisible ? 'show' : ''}`}
         id="installBannerRow"
         role="region"
-        aria-label="Install app banner"
+        aria-label={t.installBannerLabel}
       >
         <div className="install-banner-left">
           <span className="install-banner-icon">📱</span>
@@ -113,8 +109,8 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             className="btn-install-close"
             id="installBannerCloseBtn"
-            aria-label="Dismiss banner"
-            title="Dismiss"
+            aria-label={t.dismissBanner}
+            title={t.dismissBanner}
             onClick={onDismissInstall}
           >
             ✕
@@ -127,13 +123,13 @@ export const Header: React.FC<HeaderProps> = ({
         className={`header-settings-row ${isSettingsOpen ? 'open' : ''}`}
         id="settingsRow"
         role="region"
-        aria-label="Settings bar"
+        aria-label={t.settingsBar}
       >
         <div className="font-scale-group" title={t.textScaling}>
           <button
             className="font-scale-btn"
             id="fontDecBtn"
-            aria-label="Decrease text size"
+            aria-label={t.decreaseTextSize}
             onClick={onDecreaseFont}
           >
             A−
@@ -144,7 +140,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             className="font-scale-btn"
             id="fontIncBtn"
-            aria-label="Increase text size"
+            aria-label={t.increaseTextSize}
             onClick={onIncreaseFont}
           >
             A+
@@ -155,8 +151,8 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           className="btn btn-lang-toggle"
           id="langToggleBtn"
-          aria-label="Toggle language: English / Polish"
-          title="Switch language (EN / PL)"
+          aria-label={t.languageToggle}
+          title={t.languageToggle}
           onClick={onToggleLanguage}
         >
           <span className="lang-toggle-code" id="langCodeLabel">
@@ -177,8 +173,8 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           className="btn btn-icon"
           id="shareRecipeBtn"
-          title="Share recipe"
-          aria-label="Share recipe"
+          title={t.shareRecipe}
+          aria-label={t.shareRecipe}
           onClick={onShare}
         >
           <span>↗️</span>
@@ -187,11 +183,11 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           className={`btn ${showApiKeyInput ? 'btn-primary' : ''}`}
           style={{ fontSize: '0.8rem', padding: '0.35rem 0.65rem' }}
-          title="Configure Gemini API Key for custom recipes"
+          title={t.apiKeyButtonTitle}
           onClick={() => setShowApiKeyInput((prev) => !prev)}
         >
           <span>🔑</span>
-          <span>API Key</span>
+          <span>{t.apiKeyButton}</span>
         </button>
       </div>
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { UiTranslations } from '../../i18n/translations';
 
 export interface IngredientRowState {
@@ -16,6 +16,7 @@ interface IngredientBuilderProps {
 export const IngredientBuilder: React.FC<IngredientBuilderProps> = ({ rows, onChange, t }) => {
   const [showBulkPaste, setShowBulkPaste] = useState(false);
   const [bulkText, setBulkText] = useState('');
+  const bulkPasteId = useId();
 
   const handleUpdate = (id: string, field: 'name' | 'amount', value: string) => {
     onChange(rows.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
@@ -130,8 +131,10 @@ export const IngredientBuilder: React.FC<IngredientBuilderProps> = ({ rows, onCh
             marginBottom: '0.85rem',
           }}
         >
-          <div
+          <label
+            htmlFor={bulkPasteId}
             style={{
+              display: 'block',
               fontSize: '0.82rem',
               fontWeight: 600,
               color: 'var(--text-secondary)',
@@ -139,13 +142,13 @@ export const IngredientBuilder: React.FC<IngredientBuilderProps> = ({ rows, onCh
             }}
           >
             {t.quickPasteTitle}
-          </div>
+          </label>
           <textarea
+            id={bulkPasteId}
             className="form-control"
             rows={4}
             value={bulkText}
             onChange={(e) => setBulkText(e.target.value)}
-            placeholder="Flour - 450g&#10;Yeast - 2 teaspoons&#10;Salt - 1.5 teaspoons&#10;Water - 1.5 cups"
             style={{ marginBottom: '0.5rem' }}
           />
           <button
@@ -165,7 +168,7 @@ export const IngredientBuilder: React.FC<IngredientBuilderProps> = ({ rows, onCh
             <input
               type="text"
               className="form-control"
-              placeholder={t.ingredientPlaceholder}
+              aria-label={t.ingredientNameLabel(index + 1)}
               value={row.name}
               onChange={(e) => handleUpdate(row.id, 'name', e.target.value)}
               required={index === 0 && !row.amount}
@@ -173,27 +176,27 @@ export const IngredientBuilder: React.FC<IngredientBuilderProps> = ({ rows, onCh
             <input
               type="text"
               className="form-control"
-              placeholder={t.amountPlaceholder}
+              aria-label={t.ingredientAmountLabel(index + 1)}
               value={row.amount}
               onChange={(e) => handleUpdate(row.id, 'amount', e.target.value)}
             />
             <button
               type="button"
               className="btn-row-action"
-              title="Move up"
+              title={t.moveIngredientUp}
               disabled={index === 0}
               onClick={() => handleMoveUp(index)}
-              aria-label="Move ingredient up"
+              aria-label={t.moveIngredientUp}
             >
               ▲
             </button>
             <button
               type="button"
               className="btn-row-action"
-              title="Move down"
+              title={t.moveIngredientDown}
               disabled={index === rows.length - 1}
               onClick={() => handleMoveDown(index)}
-              aria-label="Move ingredient down"
+              aria-label={t.moveIngredientDown}
             >
               ▼
             </button>

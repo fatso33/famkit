@@ -44,7 +44,7 @@ describe('AddRecipeModal initial form', () => {
   it('keeps text typed just before closing in the draft (debounce is flushed on close)', () => {
     const { unmount } = render(<AddRecipeModal onClose={noop} onSave={noop} t={t} />);
 
-    fireEvent.change(screen.getByPlaceholderText("e.g., Grandma's Sourdough"), {
+    fireEvent.change(screen.getByLabelText(t.recipeTitle), {
       target: { value: 'Quick Babka' },
     });
     unmount(); // closed well within the 400ms debounce

@@ -25,11 +25,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ onClose, t }) 
         <div className="ios-modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <div className="ios-modal-icon">
-              <img
-                src="./apple-touch-icon.png"
-                alt="Family Kitchen logo"
-                className="brand-icon-img"
-              />
+              <img src="./apple-touch-icon.png" alt={t.logoAlt} className="brand-icon-img" />
             </div>
             <div>
               <h3 className="ios-modal-title" id="iosModalTitle">
@@ -43,7 +39,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ onClose, t }) 
           <button
             className="ios-modal-close"
             id="iosModalCloseBtn"
-            aria-label="Close modal"
+            aria-label={t.closeDialog}
             onClick={onClose}
           >
             ✕

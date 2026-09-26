@@ -76,7 +76,6 @@ export interface UiTranslations {
   confirmClearDraft: string;
   addStep: string;
   removeStep: string;
-  stepNotesPlaceholder: string;
   stepNotesLabel: string;
   stepPhoto: string;
   takePhoto: string;
@@ -84,8 +83,6 @@ export interface UiTranslations {
   removePhoto: string;
   addIngredient: string;
   removeIngredient: string;
-  ingredientPlaceholder: string;
-  amountPlaceholder: string;
   quickPaste: string;
   quickPasteTitle: string;
   quickPasteApply: string;
@@ -96,6 +93,44 @@ export interface UiTranslations {
   estimatedTime: (minutes: number) => string;
   shareText: (name: string, author: string) => string;
   saveChanges: string;
+  // Screen-reader labels, tooltips and image descriptions
+  logoAlt: string;
+  vaultEmblemAlt: string;
+  languageToggle: string;
+  settingsBar: string;
+  decreaseTextSize: string;
+  increaseTextSize: string;
+  shareRecipe: string;
+  apiKeyButton: string;
+  apiKeyButtonTitle: string;
+  installBannerLabel: string;
+  dismissBanner: string;
+  closeDialog: string;
+  scaleIngredients: string;
+  decreasePortion: string;
+  increasePortion: string;
+  ingredientsTableLabel: string;
+  viewStepPhoto: string;
+  stepPhotoAlt: string;
+  photoZoomDialog: string;
+  zoomIn: string;
+  zoomOut: string;
+  zoomReset: string;
+  zoomResetTitle: string;
+  closePhotoPreview: string;
+  enlargedPhotoAlt: string;
+  photoPreviewAlt: string;
+  ingredientNameLabel: (n: number) => string;
+  ingredientAmountLabel: (n: number) => string;
+  moveIngredientUp: string;
+  moveIngredientDown: string;
+  stepLabel: (n: number) => string;
+  stepInstructionLabel: (n: number) => string;
+  moveStepUp: (n: number) => string;
+  moveStepDown: (n: number) => string;
+  photoCaptionLabel: string;
+  draftRestoredTooltip: string;
+  descriptionOptional: string;
 }
 
 export const UI_TEXT: Record<Language, UiTranslations> = {
@@ -168,7 +203,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     confirmClearDraft: 'Are you sure you want to clear your saved draft?',
     addStep: '+ Add Step',
     removeStep: 'Remove step',
-    stepNotesPlaceholder: 'e.g., Dough should feel tacky and wet, not dry.',
     stepNotesLabel: 'Step Note / Consistency Cue (Optional)',
     stepPhoto: 'Step Photo (Optional)',
     takePhoto: 'Take Photo',
@@ -176,8 +210,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     removePhoto: 'Remove photo',
     addIngredient: '+ Add Ingredient',
     removeIngredient: 'Remove ingredient',
-    ingredientPlaceholder: 'e.g., All-Purpose Flour',
-    amountPlaceholder: 'e.g., 450g or 1.5 cups',
     quickPaste: 'Bulk Paste',
     quickPasteTitle: 'Paste Ingredients List',
     quickPasteApply: 'Insert Ingredients',
@@ -193,6 +225,43 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     },
     shareText: (name: string, author: string) => `${name} by ${author} - Heirloom Family Recipe`,
     saveChanges: 'Save Changes',
+    logoAlt: 'Family Kitchen logo',
+    vaultEmblemAlt: 'Family Kitchen - Recipe Vault',
+    languageToggle: 'Toggle language: English / Polish',
+    settingsBar: 'Settings bar',
+    decreaseTextSize: 'Decrease text size',
+    increaseTextSize: 'Increase text size',
+    shareRecipe: 'Share recipe',
+    apiKeyButton: 'API Key',
+    apiKeyButtonTitle: 'Configure Gemini API Key for custom recipes',
+    installBannerLabel: 'Install app banner',
+    dismissBanner: 'Dismiss banner',
+    closeDialog: 'Close',
+    scaleIngredients: 'Scale ingredient quantities',
+    decreasePortion: 'Decrease portion',
+    increasePortion: 'Increase portion',
+    ingredientsTableLabel: 'Recipe ingredients',
+    viewStepPhoto: 'Click to view and zoom photo',
+    stepPhotoAlt: 'Step consistency visual',
+    photoZoomDialog: 'Step photo zoom',
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
+    zoomReset: 'Reset',
+    zoomResetTitle: 'Reset zoom',
+    closePhotoPreview: 'Close image preview',
+    enlargedPhotoAlt: 'Enlarged step photo',
+    photoPreviewAlt: 'Photo preview',
+    ingredientNameLabel: (n: number) => `Ingredient ${n}`,
+    ingredientAmountLabel: (n: number) => `Amount for ingredient ${n}`,
+    moveIngredientUp: 'Move ingredient up',
+    moveIngredientDown: 'Move ingredient down',
+    stepLabel: (n: number) => `Step ${n}`,
+    stepInstructionLabel: (n: number) => `Instruction for step ${n}`,
+    moveStepUp: (n: number) => `Move step ${n} up`,
+    moveStepDown: (n: number) => `Move step ${n} down`,
+    photoCaptionLabel: 'Photo caption (optional)',
+    draftRestoredTooltip: 'Restored from previous session',
+    descriptionOptional: 'Description (Optional)',
   },
   pl: {
     vaultTitle: 'Skarbiec Przepisów Rodzinnych',
@@ -263,7 +332,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     confirmClearDraft: 'Czy na pewno chcesz usunąć zapisaną wersję roboczą?',
     addStep: '+ Dodaj krok',
     removeStep: 'Usuń krok',
-    stepNotesPlaceholder: 'np. Ciasto powinno być lepkie i wilgotne, nie suche.',
     stepNotesLabel: 'Wskazówka / Konsystencja dla kroku (opcjonalnie)',
     stepPhoto: 'Zdjęcie dla tego kroku (opcjonalnie)',
     takePhoto: 'Zrób zdjęcie',
@@ -271,8 +339,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     removePhoto: 'Usuń zdjęcie',
     addIngredient: '+ Dodaj składnik',
     removeIngredient: 'Usuń składnik',
-    ingredientPlaceholder: 'np. Mąka pszenna',
-    amountPlaceholder: 'np. 450g lub 1.5 szklanki',
     quickPaste: 'Wklej listę',
     quickPasteTitle: 'Wklej listę składników',
     quickPasteApply: 'Wstaw składniki',
@@ -288,5 +354,42 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     shareText: (name: string, author: string) =>
       `${name} (${author}) – rodzinny przepis z tradycją`,
     saveChanges: 'Zapisz zmiany',
+    logoAlt: 'Logo Family Kitchen',
+    vaultEmblemAlt: 'Rodzinna Kuchnia - Skarbiec Przepisów',
+    languageToggle: 'Zmień język: angielski / polski',
+    settingsBar: 'Pasek ustawień',
+    decreaseTextSize: 'Zmniejsz tekst',
+    increaseTextSize: 'Powiększ tekst',
+    shareRecipe: 'Udostępnij przepis',
+    apiKeyButton: 'Klucz API',
+    apiKeyButtonTitle: 'Ustaw klucz Gemini API dla własnych przepisów',
+    installBannerLabel: 'Baner instalacji aplikacji',
+    dismissBanner: 'Zamknij baner',
+    closeDialog: 'Zamknij',
+    scaleIngredients: 'Przelicz ilości składników',
+    decreasePortion: 'Zmniejsz porcję',
+    increasePortion: 'Zwiększ porcję',
+    ingredientsTableLabel: 'Składniki przepisu',
+    viewStepPhoto: 'Kliknij, aby obejrzeć i powiększyć zdjęcie',
+    stepPhotoAlt: 'Zdjęcie konsystencji ciasta w tym kroku',
+    photoZoomDialog: 'Powiększenie zdjęcia kroku',
+    zoomIn: 'Powiększ',
+    zoomOut: 'Pomniejsz',
+    zoomReset: 'Resetuj',
+    zoomResetTitle: 'Przywróć oryginalny rozmiar',
+    closePhotoPreview: 'Zamknij podgląd zdjęcia',
+    enlargedPhotoAlt: 'Powiększone zdjęcie kroku',
+    photoPreviewAlt: 'Podgląd zdjęcia',
+    ingredientNameLabel: (n: number) => `Składnik ${n}`,
+    ingredientAmountLabel: (n: number) => `Ilość składnika ${n}`,
+    moveIngredientUp: 'Przesuń składnik w górę',
+    moveIngredientDown: 'Przesuń składnik w dół',
+    stepLabel: (n: number) => `Krok ${n}`,
+    stepInstructionLabel: (n: number) => `Opis kroku ${n}`,
+    moveStepUp: (n: number) => `Przesuń krok ${n} w górę`,
+    moveStepDown: (n: number) => `Przesuń krok ${n} w dół`,
+    photoCaptionLabel: 'Podpis zdjęcia (opcjonalnie)',
+    draftRestoredTooltip: 'Przywrócono z poprzedniej sesji',
+    descriptionOptional: 'Opis (opcjonalnie)',
   },
 };

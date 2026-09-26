@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
+import { UiTranslations } from '../../i18n/translations';
 
 interface ImageZoomModalProps {
   imageSrc: string;
   onClose: () => void;
+  t: UiTranslations;
 }
 
 // Mount only while open, keyed by imageSrc so zoom/pan state resets per image.
-export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClose }) => {
+export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClose, t }) => {
   const [zoomScale, setZoomScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -89,7 +91,7 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClos
       id="imageZoomModal"
       role="dialog"
       aria-modal="true"
-      aria-label="Step Photo Zoom"
+      aria-label={t.photoZoomDialog}
       {...backdropProps}
     >
       <div className="image-modal-toolbar">
@@ -97,8 +99,8 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClos
           <button
             className="image-modal-btn"
             id="zoomOutBtn"
-            aria-label="Zoom out"
-            title="Zoom out (−)"
+            aria-label={t.zoomOut}
+            title={t.zoomOut}
             onClick={handleZoomOut}
           >
             −
@@ -117,8 +119,8 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClos
           <button
             className="image-modal-btn"
             id="zoomInBtn"
-            aria-label="Zoom in"
-            title="Zoom in (+)"
+            aria-label={t.zoomIn}
+            title={t.zoomIn}
             onClick={handleZoomIn}
           >
             +
@@ -126,16 +128,16 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClos
           <button
             className="image-modal-btn"
             id="zoomResetBtn"
-            title="Reset Zoom"
+            title={t.zoomResetTitle}
             onClick={handleReset}
           >
-            Reset
+            {t.zoomReset}
           </button>
         </div>
         <button
           className="image-modal-btn"
           id="closeImageModalBtn"
-          aria-label="Close image preview"
+          aria-label={t.closePhotoPreview}
           style={{ fontSize: '1.15rem', padding: '0.35rem 0.75rem' }}
           onClick={onClose}
         >
@@ -161,7 +163,7 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClos
           id="modalZoomImg"
           className={`zoomable-image ${zoomScale > 1 ? 'is-zoomed' : ''}`}
           src={imageSrc}
-          alt="Enlarged dough step visual"
+          alt={t.enlargedPhotoAlt}
           onClick={toggleImageClick}
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${zoomScale})`,

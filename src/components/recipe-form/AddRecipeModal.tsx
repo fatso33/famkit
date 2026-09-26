@@ -305,7 +305,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
               {isEditMode ? t.editRecipeTitle(initialRecipe?.version || 1) : t.addRecipe}
             </h2>
             {hasRestoredDraft && !isEditMode && (
-              <span className="draft-badge" title="Restored from previous session">
+              <span className="draft-badge" title={t.draftRestoredTooltip}>
                 ✓ {t.draftRestored}
               </span>
             )}
@@ -329,7 +329,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             <button
               className="btn btn-icon"
               id="closeModalBtn"
-              aria-label="Close modal"
+              aria-label={t.closeDialog}
               onClick={onClose}
             >
               ✕
@@ -352,7 +352,6 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Grandma's Sourdough"
               />
             </div>
 
@@ -368,14 +367,13 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
                 required
                 value={author}
                 onChange={(e) => setAuthor(e.target.value)}
-                placeholder="e.g., Wanda G."
               />
             </div>
 
             {/* Description */}
             <div className="form-group">
               <label className="form-label" htmlFor="recipeDescInput">
-                Description (Optional)
+                {t.descriptionOptional}
               </label>
               <input
                 className="form-control"
@@ -383,7 +381,6 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
                 id="recipeDescInput"
                 value={cardDescription}
                 onChange={(e) => setCardDescription(e.target.value)}
-                placeholder="e.g., A delicious heirloom family favorite passed down for generations."
               />
             </div>
 
@@ -399,7 +396,6 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
                 required
                 value={yieldHeader}
                 onChange={(e) => setYieldHeader(e.target.value)}
-                placeholder="e.g., For 1 loaf: or Serves 4:"
               />
             </div>
 
@@ -429,7 +425,6 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
                 id="recipeTipsInput"
                 value={tips}
                 onChange={(e) => setTips(e.target.value)}
-                placeholder="e.g., Use non-stick spatula or similar for handling dough."
               />
             </div>
 
@@ -444,7 +439,6 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
                 id="recipeNotesInput"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="e.g., Will not work in an air fryer."
               />
             </div>
 

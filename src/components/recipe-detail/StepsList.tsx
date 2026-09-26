@@ -48,7 +48,7 @@ export const StepsList: React.FC<StepsListProps> = ({
                 {step.hasImage && step.imageSrc && (
                   <div
                     className="step-visual-frame clickable-zoom"
-                    title="Click to view and zoom photo"
+                    title={t.viewStepPhoto}
                     role="button"
                     tabIndex={0}
                     onClick={() => onZoomImage(step.imageSrc!)}
@@ -59,10 +59,10 @@ export const StepsList: React.FC<StepsListProps> = ({
                     <img
                       className="step-visual-img"
                       src={step.imageSrc}
-                      alt={step.imageCaption || 'Step consistency visual'}
+                      alt={step.imageCaption || t.stepPhotoAlt}
                       loading="lazy"
                     />
-                    <div className="zoom-badge-hint" aria-hidden="true" title="Zoom">
+                    <div className="zoom-badge-hint" aria-hidden="true" title={t.zoomIn}>
                       🔍
                     </div>
                   </div>

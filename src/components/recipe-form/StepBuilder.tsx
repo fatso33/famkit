@@ -80,27 +80,27 @@ export const StepBuilder: React.FC<StepBuilderProps> = ({ steps, onChange, t }) 
           <div key={step.id} className="step-builder-card">
             <div className="step-builder-header">
               <span className="step-builder-badge">
-                <span>Step {index + 1}</span>
+                <span>{t.stepLabel(index + 1)}</span>
               </span>
 
               <div className="step-builder-actions">
                 <button
                   type="button"
                   className="btn-step-action"
-                  title="Move step up"
+                  title={t.moveStepUp(index + 1)}
                   disabled={index === 0}
                   onClick={() => handleMoveUp(index)}
-                  aria-label={`Move Step ${index + 1} up`}
+                  aria-label={t.moveStepUp(index + 1)}
                 >
                   ▲
                 </button>
                 <button
                   type="button"
                   className="btn-step-action"
-                  title="Move step down"
+                  title={t.moveStepDown(index + 1)}
                   disabled={index === steps.length - 1}
                   onClick={() => handleMoveDown(index)}
-                  aria-label={`Move Step ${index + 1} down`}
+                  aria-label={t.moveStepDown(index + 1)}
                 >
                   ▼
                 </button>
@@ -124,13 +124,14 @@ export const StepBuilder: React.FC<StepBuilderProps> = ({ steps, onChange, t }) 
                 required
                 value={step.text}
                 onChange={(e) => handleUpdate(step.id, 'text', e.target.value)}
-                placeholder={`Instruction for Step ${index + 1}...`}
+                aria-label={t.stepInstructionLabel(index + 1)}
               />
             </div>
 
             {/* Step Consistency Note / Cue */}
             <div style={{ marginBottom: '0.65rem' }}>
               <label
+                htmlFor={`${step.id}-notes`}
                 style={{
                   display: 'block',
                   fontSize: '0.78rem',
@@ -139,15 +140,15 @@ export const StepBuilder: React.FC<StepBuilderProps> = ({ steps, onChange, t }) 
                   marginBottom: '0.2rem',
                 }}
               >
-                💡 {t.stepNotesLabel}
+                <span aria-hidden="true">💡</span> {t.stepNotesLabel}
               </label>
               <input
+                id={`${step.id}-notes`}
                 type="text"
                 className="form-control"
                 style={{ fontSize: '0.85rem', padding: '0.45rem 0.65rem' }}
                 value={step.notes || ''}
                 onChange={(e) => handleUpdate(step.id, 'notes', e.target.value)}
-                placeholder={t.stepNotesPlaceholder}
               />
             </div>
 
@@ -177,7 +178,7 @@ export const StepBuilder: React.FC<StepBuilderProps> = ({ steps, onChange, t }) 
                     type="text"
                     className="form-control"
                     style={{ fontSize: '0.8rem', padding: '0.35rem 0.6rem' }}
-                    placeholder="Photo caption (e.g., Consistency after kneading)"
+                    aria-label={t.photoCaptionLabel}
                     value={step.imageCaption || ''}
                     onChange={(e) => handleUpdate(step.id, 'imageCaption', e.target.value)}
                   />

@@ -29,7 +29,12 @@ export const IngredientsTable: React.FC<IngredientsTableProps> = ({
     <aside className="ingredients-panel">
       <div className="panel-header">
         <h2 className="panel-title">{t.ingredients}</h2>
-        <PortionScaler scale={scale} onIncrease={onIncreaseScale} onDecrease={onDecreaseScale} />
+        <PortionScaler
+          scale={scale}
+          onIncrease={onIncreaseScale}
+          onDecrease={onDecreaseScale}
+          t={t}
+        />
       </div>
 
       {/* Verbatim Yield Header */}
@@ -43,7 +48,7 @@ export const IngredientsTable: React.FC<IngredientsTableProps> = ({
           className="ingredient-table"
           id="ingredientTable"
           role="table"
-          aria-label="Recipe Ingredients"
+          aria-label={t.ingredientsTableLabel}
         >
           <thead>
             <tr>

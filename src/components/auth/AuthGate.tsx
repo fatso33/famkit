@@ -14,7 +14,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     useAuth();
 
   const { theme, toggleTheme } = useTheme();
-  const { language, toggleLanguage } = useLanguage();
+  const { language, toggleLanguage, t } = useLanguage();
 
   // 1. Loading Screen (Warm Heirloom Style)
   if (isLoading) {
@@ -54,7 +54,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
               color: 'var(--text-primary)',
             }}
             title={language === 'pl' ? 'Switch to English' : 'Przełącz na język polski'}
-            aria-label="Toggle language: English / Polish"
+            aria-label={t.languageToggle}
           >
             <span>{language === 'pl' ? 'PL' : 'EN'}</span>
           </button>
@@ -78,7 +78,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
             </h1>
             <img
               src="./Emblem.png"
-              alt="Family Kitchen - Recipe Vault"
+              alt={t.vaultEmblemAlt}
               className={`w-[320px] sm:w-[380px] max-w-[85vw] h-auto object-contain select-none pointer-events-none drop-shadow-sm transition-transform duration-300 hover:scale-[1.01] ${
                 theme === 'dark' ? 'rounded-3xl p-4 bg-[#F7F2E9] shadow-2xl' : ''
               }`}
@@ -160,11 +160,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
           <div className="header-main-row">
             <div className="brand-group">
               <div className="brand-icon">
-                <img
-                  src="./apple-touch-icon.png"
-                  alt="Family Kitchen logo"
-                  className="brand-icon-img"
-                />
+                <img src="./apple-touch-icon.png" alt={t.logoAlt} className="brand-icon-img" />
               </div>
               <span className="brand-title">
                 {language === 'pl' ? 'Rodzinna Kuchnia' : 'Family Kitchen'}
