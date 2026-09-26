@@ -87,4 +87,15 @@ describe('Cook Mode (screen wake lock)', () => {
     expect(request).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', { name: /cook mode: off/i })).toBeInTheDocument();
   });
+
+  it("explains Cook Mode in the reader's language", () => {
+    localStorage.setItem('wandas_language', 'pl');
+    render(<App />);
+    fireEvent.click(screen.getByText('Chleb Serowy Wandy'));
+
+    expect(screen.getByRole('button', { name: /tryb gotowania: wyłączony/i })).toHaveAttribute(
+      'title',
+      'Ekran nie wygaśnie podczas gotowania',
+    );
+  });
 });

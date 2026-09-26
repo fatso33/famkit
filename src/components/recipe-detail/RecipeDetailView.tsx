@@ -88,16 +88,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
             <>
               <span aria-hidden="true">·</span>
               <button
-                className="btn"
-                style={{
-                  padding: '0.2rem 0.65rem',
-                  minHeight: '28px',
-                  fontSize: '0.75rem',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  borderRadius: 'var(--radius-full)',
-                }}
+                className="btn btn-meta-pill"
                 onClick={() => onEditRecipe(rawRecipe)}
                 title={t.editRecipe}
               >
@@ -110,18 +101,9 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
             <>
               <span aria-hidden="true">·</span>
               <button
-                className={`btn ${isWakeLocked ? 'btn-primary' : ''}`}
-                style={{
-                  padding: '0.2rem 0.65rem',
-                  minHeight: '28px',
-                  fontSize: '0.75rem',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  borderRadius: 'var(--radius-full)',
-                }}
+                className={`btn btn-meta-pill ${isWakeLocked ? 'btn-primary' : ''}`}
                 onClick={onToggleWakeLock}
-                title="Toggle Cook Mode (Screen Wake Lock)"
+                title={t.cookModeTooltip}
               >
                 {isWakeLocked && <span className="pulse-dot" />}
                 <span>{isWakeLocked ? t.cookModeOn : t.cookModeOff}</span>
