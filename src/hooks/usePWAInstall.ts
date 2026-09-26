@@ -9,7 +9,8 @@ interface BeforeInstallPromptEvent extends Event {
 // Detect standalone PWA mode
 const detectStandalone = () =>
   window.matchMedia('(display-mode: standalone)').matches ||
-  ('standalone' in window.navigator && (window.navigator as unknown as { standalone: boolean }).standalone === true);
+  ('standalone' in window.navigator &&
+    (window.navigator as unknown as { standalone: boolean }).standalone === true);
 
 // Detect iOS
 const detectIOS = () =>

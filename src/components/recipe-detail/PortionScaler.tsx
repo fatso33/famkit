@@ -6,11 +6,7 @@ interface PortionScalerProps {
   onDecrease: () => void;
 }
 
-export const PortionScaler: React.FC<PortionScalerProps> = ({
-  scale,
-  onIncrease,
-  onDecrease,
-}) => {
+export const PortionScaler: React.FC<PortionScalerProps> = ({ scale, onIncrease, onDecrease }) => {
   return (
     <div className="scaler-control" title="Scale ingredient quantities">
       <button

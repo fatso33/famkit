@@ -35,11 +35,7 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
       </div>
 
       {/* Filter tabs */}
-      <FilterTabs
-        currentFilter={currentFilter}
-        onSelectFilter={setCurrentFilter}
-        t={t}
-      />
+      <FilterTabs currentFilter={currentFilter} onSelectFilter={setCurrentFilter} t={t} />
 
       {/* Recipe Cards Grid */}
       <div className="recipe-grid" id="recipesGrid">

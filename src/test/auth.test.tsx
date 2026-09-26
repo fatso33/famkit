@@ -43,7 +43,7 @@ describe('AuthGate splash screen', () => {
     render(
       <AuthGate>
         <div>App Content</div>
-      </AuthGate>
+      </AuthGate>,
     );
 
     expect(screen.getByAltText(/family kitchen - recipe vault/i)).toBeInTheDocument();
@@ -66,7 +66,7 @@ describe('AuthGate splash screen', () => {
     render(
       <AuthGate>
         <div>App Content</div>
-      </AuthGate>
+      </AuthGate>,
     );
 
     const langBtn = screen.getByRole('button', { name: /toggle language/i });
@@ -76,5 +76,3 @@ describe('AuthGate splash screen', () => {
     expect(screen.getByText('Połącz przez Google')).toBeInTheDocument();
   });
 });
-
-

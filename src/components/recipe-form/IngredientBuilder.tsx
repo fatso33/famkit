@@ -13,18 +13,12 @@ interface IngredientBuilderProps {
   t: UiTranslations;
 }
 
-export const IngredientBuilder: React.FC<IngredientBuilderProps> = ({
-  rows,
-  onChange,
-  t,
-}) => {
+export const IngredientBuilder: React.FC<IngredientBuilderProps> = ({ rows, onChange, t }) => {
   const [showBulkPaste, setShowBulkPaste] = useState(false);
   const [bulkText, setBulkText] = useState('');
 
   const handleUpdate = (id: string, field: 'name' | 'amount', value: string) => {
-    onChange(
-      rows.map((row) => (row.id === id ? { ...row, [field]: value } : row))
-    );
+    onChange(rows.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
   };
 
   const handleAddRow = () => {

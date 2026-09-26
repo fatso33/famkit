@@ -23,7 +23,7 @@ const RECIPES_COLLECTION = 'recipes';
  */
 export function subscribeToRecipes(
   onUpdate: (recipes: Recipe[]) => void,
-  onError?: (err: Error) => void
+  onError?: (err: Error) => void,
 ): Unsubscribe {
   if (!isFirebaseConfigured || !db) {
     // Fallback to local storage if Firebase is not configured
@@ -32,10 +32,7 @@ export function subscribeToRecipes(
     return () => {};
   }
 
-  const q = query(
-    collection(db, RECIPES_COLLECTION),
-    orderBy('createdAt', 'desc')
-  );
+  const q = query(collection(db, RECIPES_COLLECTION), orderBy('createdAt', 'desc'));
 
   return onSnapshot(
     q,
@@ -47,7 +44,7 @@ export function subscribeToRecipes(
 
       // Synchronize canonical default recipe properties if present
       const defaultIdx = cloudRecipes.findIndex(
-        (r) => r.id === 'wandas-cheese-bread' || r.isDefault
+        (r) => r.id === 'wandas-cheese-bread' || r.isDefault,
       );
 
       if (defaultIdx !== -1) {
@@ -82,7 +79,7 @@ export function subscribeToRecipes(
       if (onError) onError(error);
       const cached = getStoredRecipes();
       onUpdate(cached);
-    }
+    },
   );
 }
 
@@ -93,9 +90,8 @@ export async function saveRecipeToCloud(recipe: Recipe): Promise<void> {
   // Always update local cache immediately
   const local = getStoredRecipes();
   const existingIdx = local.findIndex((r) => r.id === recipe.id);
-  const updatedLocal = existingIdx !== -1
-    ? local.map((r) => (r.id === recipe.id ? recipe : r))
-    : [recipe, ...local];
+  const updatedLocal =
+    existingIdx !== -1 ? local.map((r) => (r.id === recipe.id ? recipe : r)) : [recipe, ...local];
   saveToLocalStorage(updatedLocal);
 
   if (!isFirebaseConfigured || !db) return;

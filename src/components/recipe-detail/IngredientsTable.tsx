@@ -23,18 +23,13 @@ export const IngredientsTable: React.FC<IngredientsTableProps> = ({
   language,
   t,
 }) => {
-  const yieldDisplay =
-    scale === 1 ? yieldHeader || t.for1Loaf : t.forNLoaves(scale);
+  const yieldDisplay = scale === 1 ? yieldHeader || t.for1Loaf : t.forNLoaves(scale);
 
   return (
     <aside className="ingredients-panel">
       <div className="panel-header">
         <h2 className="panel-title">{t.ingredients}</h2>
-        <PortionScaler
-          scale={scale}
-          onIncrease={onIncreaseScale}
-          onDecrease={onDecreaseScale}
-        />
+        <PortionScaler scale={scale} onIncrease={onIncreaseScale} onDecrease={onDecreaseScale} />
       </div>
 
       {/* Verbatim Yield Header */}
@@ -52,11 +47,7 @@ export const IngredientsTable: React.FC<IngredientsTableProps> = ({
         >
           <thead>
             <tr>
-              <th
-                scope="col"
-                className="th-ingredient"
-                id="thIngredientHeader"
-              >
+              <th scope="col" className="th-ingredient" id="thIngredientHeader">
                 {t.thIngredient}
               </th>
               <th scope="col" className="th-amount" id="thAmountHeader">
@@ -73,9 +64,7 @@ export const IngredientsTable: React.FC<IngredientsTableProps> = ({
                     <div className="ingredient-name-col">
                       <span className="ingredient-name">{row.name}</span>
                       {row.notes.length > 0 && (
-                        <span className="ingredient-bracket-note">
-                          ({row.notes.join(', ')})
-                        </span>
+                        <span className="ingredient-bracket-note">({row.notes.join(', ')})</span>
                       )}
                     </div>
                   </td>

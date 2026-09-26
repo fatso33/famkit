@@ -18,19 +18,9 @@ interface StepBuilderProps {
   t: UiTranslations;
 }
 
-export const StepBuilder: React.FC<StepBuilderProps> = ({
-  steps,
-  onChange,
-  t,
-}) => {
-  const handleUpdate = (
-    id: string,
-    field: keyof StepBuilderItem,
-    value: string | undefined
-  ) => {
-    onChange(
-      steps.map((st) => (st.id === id ? { ...st, [field]: value } : st))
-    );
+export const StepBuilder: React.FC<StepBuilderProps> = ({ steps, onChange, t }) => {
+  const handleUpdate = (id: string, field: keyof StepBuilderItem, value: string | undefined) => {
+    onChange(steps.map((st) => (st.id === id ? { ...st, [field]: value } : st)));
   };
 
   const handleAddStep = () => {
@@ -189,9 +179,7 @@ export const StepBuilder: React.FC<StepBuilderProps> = ({
                     style={{ fontSize: '0.8rem', padding: '0.35rem 0.6rem' }}
                     placeholder="Photo caption (e.g., Consistency after kneading)"
                     value={step.imageCaption || ''}
-                    onChange={(e) =>
-                      handleUpdate(step.id, 'imageCaption', e.target.value)
-                    }
+                    onChange={(e) => handleUpdate(step.id, 'imageCaption', e.target.value)}
                   />
                 </div>
               )}
@@ -200,11 +188,7 @@ export const StepBuilder: React.FC<StepBuilderProps> = ({
         ))}
       </div>
 
-      <button
-        type="button"
-        className="btn-add-step"
-        onClick={handleAddStep}
-      >
+      <button type="button" className="btn-add-step" onClick={handleAddStep}>
         {t.addStep}
       </button>
     </div>

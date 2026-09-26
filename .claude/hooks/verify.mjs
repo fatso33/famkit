@@ -5,7 +5,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
-const CODE_PATHS = /^(src\/|public\/|index\.html$|package\.json$|tsconfig\.json$|[\w.-]*\.config\.[jt]s$)/;
+const CODE_PATHS =
+  /^(src\/|public\/|index\.html$|package\.json$|tsconfig\.json$|[\w.-]*\.config\.[jt]s$)/;
 
 let input = {};
 try {

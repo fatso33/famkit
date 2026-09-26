@@ -23,10 +23,7 @@
       "PowerShell(git add *)",
       "PowerShell(git commit *)"
     ],
-    "ask": [
-      "Bash(git push*)",
-      "PowerShell(git push*)"
-    ],
+    "ask": ["Bash(git push*)", "PowerShell(git push*)"],
     "deny": [
       "Read(./.env)",
       "Read(./.env.local)",

@@ -32,9 +32,7 @@ export const StepsList: React.FC<StepsListProps> = ({
         <div id="stepsContainer" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {steps.map((step, idx) => (
             <div key={idx} className="step-card">
-              <div className="step-num">
-                {step.num !== undefined ? step.num : idx + 1}
-              </div>
+              <div className="step-num">{step.num !== undefined ? step.num : idx + 1}</div>
               <div className="step-content">
                 <p className="step-text">{capitalizeFirstLetter(step.text)}</p>
 

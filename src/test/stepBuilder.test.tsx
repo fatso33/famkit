@@ -4,7 +4,13 @@ import { StepBuilder, StepBuilderItem } from '../components/recipe-form/StepBuil
 import { UI_TEXT } from '../i18n/translations';
 
 const t = UI_TEXT.en;
-const step = (id: string, text: string): StepBuilderItem => ({ id, text, notes: '', imageSrc: '', imageCaption: '' });
+const step = (id: string, text: string): StepBuilderItem => ({
+  id,
+  text,
+  notes: '',
+  imageSrc: '',
+  imageCaption: '',
+});
 
 describe('StepBuilder', () => {
   it('removes the chosen step when several exist', () => {

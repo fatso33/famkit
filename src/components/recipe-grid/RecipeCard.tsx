@@ -25,9 +25,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
     'https://images.unsplash.com/photo-1589367920969-ab8e050bbb04?auto=format&fit=crop&w=1200&q=80';
 
   const badgeText = isWandas ? t.heirloomBadge : t.familyBadge;
-  const ingCountText = t.ingredientsCount(
-    recipe.ingredients ? recipe.ingredients.length : 0
-  );
+  const ingCountText = t.ingredientsCount(recipe.ingredients ? recipe.ingredients.length : 0);
 
   const defaultDesc =
     language === 'pl'
@@ -46,16 +44,9 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
     (isWandas ? wandasDefaultDesc : defaultDesc);
 
   return (
-    <div
-      className="recipe-card"
-      onClick={() => onSelect(rawRecipe.id)}
-    >
+    <div className="recipe-card" onClick={() => onSelect(rawRecipe.id)}>
       <div className="card-media">
-        <img
-          src={recipe.heroImage || fallbackImage}
-          alt={recipe.name}
-          loading="lazy"
-        />
+        <img src={recipe.heroImage || fallbackImage} alt={recipe.name} loading="lazy" />
         <div className="card-badge">{badgeText}</div>
       </div>
       <div className="card-body">
@@ -63,9 +54,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
         <div className="card-meta">
           <span>By {recipe.author}</span>
           <span aria-hidden="true">·</span>
-          <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
-            ⏱️ {estimatedTime}
-          </span>
+          <span style={{ color: 'var(--accent)', fontWeight: 600 }}>⏱️ {estimatedTime}</span>
         </div>
         <p className="card-desc">{cardDesc}</p>
         <div className="card-footer">

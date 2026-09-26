@@ -65,9 +65,7 @@ describe('translateRecipeToPolish', () => {
     const { getStoredApiKey } = await import('../services/storage');
     vi.mocked(getStoredApiKey).mockReturnValue('');
 
-    await expect(translateRecipeToPolish(testRecipe)).rejects.toThrow(
-      /No Gemini API Key found/
-    );
+    await expect(translateRecipeToPolish(testRecipe)).rejects.toThrow(/No Gemini API Key found/);
   });
 
   it('calls Gemini API and parses Polish translation when API key is present', async () => {

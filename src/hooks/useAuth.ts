@@ -53,7 +53,7 @@ export function useAuth(): AuthState {
         console.error('Auth state error:', err);
         setError(err.message);
         setIsLoading(false);
-      }
+      },
     );
 
     return () => unsubscribe();

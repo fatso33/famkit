@@ -8,11 +8,7 @@ interface FilterTabsProps {
   t: UiTranslations;
 }
 
-export const FilterTabs: React.FC<FilterTabsProps> = ({
-  currentFilter,
-  onSelectFilter,
-  t,
-}) => {
+export const FilterTabs: React.FC<FilterTabsProps> = ({ currentFilter, onSelectFilter, t }) => {
   const tabs: { key: FilterType; label: string }[] = [
     { key: 'all', label: t.allRecipes },
     { key: 'breads', label: t.breads },

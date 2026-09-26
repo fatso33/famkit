@@ -18,13 +18,8 @@ export default function App() {
   const { percent: fontPercent, increaseScale, decreaseScale } = useFontScale();
   const { language, toggleLanguage, t } = useLanguage();
   const { isWakeLocked, toggleCookMode, isSupported: isWakeLockSupported } = useCookMode();
-  const {
-    isBannerVisible,
-    triggerInstall,
-    dismissBanner,
-    showIOSModal,
-    setShowIOSModal,
-  } = usePWAInstall();
+  const { isBannerVisible, triggerInstall, dismissBanner, showIOSModal, setShowIOSModal } =
+    usePWAInstall();
 
   const {
     recipes,
@@ -55,12 +50,7 @@ export default function App() {
 
   // Automatically translate custom recipes if viewed while in Polish mode
   useEffect(() => {
-    if (
-      language !== 'pl' ||
-      !selectedRecipe ||
-      selectedRecipe.translations?.pl ||
-      isTranslating
-    ) {
+    if (language !== 'pl' || !selectedRecipe || selectedRecipe.translations?.pl || isTranslating) {
       return;
     }
     const attemptKey = `${selectedRecipe.id}@${selectedRecipe.updatedAt ?? selectedRecipe.version ?? 0}`;
@@ -108,7 +98,10 @@ export default function App() {
   const handleLanguageToggle = () => {
     toggleLanguage();
     const nextLang = language === 'en' ? 'pl' : 'en';
-    showToast(nextLang === 'pl' ? t.switchPlToast : t.switchEnToast, nextLang === 'pl' ? '🇵🇱' : '🌾');
+    showToast(
+      nextLang === 'pl' ? t.switchPlToast : t.switchEnToast,
+      nextLang === 'pl' ? '🇵🇱' : '🌾',
+    );
     // Switching to Polish (re)triggers auto-translation of the open recipe via the effect above.
     lastTranslateAttempt.current = null;
   };
@@ -208,11 +201,7 @@ export default function App() {
       )}
 
       {/* iOS Install Guide Modal */}
-      <IOSInstallModal
-        isOpen={showIOSModal}
-        onClose={() => setShowIOSModal(false)}
-        t={t}
-      />
+      <IOSInstallModal isOpen={showIOSModal} onClose={() => setShowIOSModal(false)} t={t} />
 
       {/* Toast Feedback */}
       <Toast message={toastMessage} icon={toastIcon} />

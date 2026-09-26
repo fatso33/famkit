@@ -1,13 +1,11 @@
 import { Recipe, LocalizedRecipeContent } from '../types/recipe';
 import { getStoredApiKey } from './storage';
 
-export async function translateRecipeToPolish(
-  recipe: Recipe
-): Promise<LocalizedRecipeContent> {
+export async function translateRecipeToPolish(recipe: Recipe): Promise<LocalizedRecipeContent> {
   const apiKey = getStoredApiKey();
   if (!apiKey) {
     throw new Error(
-      'No Gemini API Key found. Add your restricted key in Settings or .env.local to enable custom recipe translation.'
+      'No Gemini API Key found. Add your restricted key in Settings or .env.local to enable custom recipe translation.',
     );
   }
 
@@ -60,7 +58,7 @@ ${JSON.stringify(
     bakingOptions: recipe.bakingOptions,
   },
   null,
-  2
+  2,
 )}
 `;
 

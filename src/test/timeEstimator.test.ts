@@ -49,10 +49,10 @@ describe('calculateRecipeTime', () => {
 describe('capitalizeFirstLetter', () => {
   it('capitalizes sentences properly', () => {
     expect(capitalizeFirstLetter('will not work in an air fryer.')).toBe(
-      'Will not work in an air fryer.'
+      'Will not work in an air fryer.',
     );
-    expect(
-      capitalizeFirstLetter('mix well. then add water and mix again.')
-    ).toBe('Mix well. Then add water and mix again.');
+    expect(capitalizeFirstLetter('mix well. then add water and mix again.')).toBe(
+      'Mix well. Then add water and mix again.',
+    );
   });
 });

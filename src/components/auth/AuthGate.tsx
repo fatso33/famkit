@@ -10,15 +10,8 @@ interface AuthGateProps {
 }
 
 export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
-  const {
-    user,
-    isFamilyMember,
-    isLoading,
-    isConfigured,
-    error,
-    signInWithGoogle,
-    signOut,
-  } = useAuth();
+  const { user, isFamilyMember, isLoading, isConfigured, error, signInWithGoogle, signOut } =
+    useAuth();
 
   const { theme, toggleTheme } = useTheme();
   const { language, toggleLanguage } = useLanguage();
@@ -34,11 +27,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
         }}
       >
         <div className="w-24 h-24 flex items-center justify-center mb-4 animate-pulse">
-          <img
-            src="./Emblem.png"
-            alt="Family Kitchen"
-            className="w-full h-full object-contain"
-          />
+          <img src="./Emblem.png" alt="Family Kitchen" className="w-full h-full object-contain" />
         </div>
       </div>
     );
@@ -83,7 +72,9 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
           {/* Emblem: Pot, Grain, Heart & Title Artwork */}
           <div className="flex items-center justify-center">
             <h1 className="sr-only">
-              {language === 'pl' ? 'Rodzinna Kuchnia - Skarbiec Przepisów' : 'Family Kitchen - Recipe Vault'}
+              {language === 'pl'
+                ? 'Rodzinna Kuchnia - Skarbiec Przepisów'
+                : 'Family Kitchen - Recipe Vault'}
             </h1>
             <img
               src="./Emblem.png"
@@ -145,7 +136,10 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
         </main>
 
         {/* Bottom Spacer to balance top bar and maintain vertical centering */}
-        <footer className="w-full p-4 sm:p-6 opacity-0 pointer-events-none select-none" aria-hidden="true">
+        <footer
+          className="w-full p-4 sm:p-6 opacity-0 pointer-events-none select-none"
+          aria-hidden="true"
+        >
           <span className="text-xs">&nbsp;</span>
         </footer>
       </div>
@@ -166,7 +160,11 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
           <div className="header-main-row">
             <div className="brand-group">
               <div className="brand-icon">
-                <img src="./apple-touch-icon.png" alt="Family Kitchen logo" className="brand-icon-img" />
+                <img
+                  src="./apple-touch-icon.png"
+                  alt="Family Kitchen logo"
+                  className="brand-icon-img"
+                />
               </div>
               <span className="brand-title">
                 {language === 'pl' ? 'Rodzinna Kuchnia' : 'Family Kitchen'}
@@ -222,10 +220,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
               {language === 'pl' ? 'Dostęp Tylko dla Rodziny' : 'Family Access Only'}
             </h2>
 
-            <p
-              className="text-sm leading-relaxed mb-4"
-              style={{ color: 'var(--text-secondary)' }}
-            >
+            <p className="text-sm leading-relaxed mb-4" style={{ color: 'var(--text-secondary)' }}>
               {language === 'pl' ? 'Zalogowano jako' : 'You are signed in as'}{' '}
               <strong style={{ color: 'var(--text-primary)' }}>{user.email}</strong>.
             </p>
@@ -270,7 +265,10 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
             borderColor: 'var(--border-subtle)',
           }}
         >
-          <span>⚠️ <strong>Development Mode:</strong> Firebase is not configured. Running with local browser storage.</span>
+          <span>
+            ⚠️ <strong>Development Mode:</strong> Firebase is not configured. Running with local
+            browser storage.
+          </span>
         </div>
       )}
       {children}

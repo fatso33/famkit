@@ -31,9 +31,7 @@ export function getStoredRecipes(): Recipe[] {
   }
 
   // Synchronize default recipe properties (ensures latest verbatim instructions/translations)
-  const defaultIdx = recipes.findIndex(
-    (r) => r.id === 'wandas-cheese-bread' || r.isDefault
-  );
+  const defaultIdx = recipes.findIndex((r) => r.id === 'wandas-cheese-bread' || r.isDefault);
 
   if (defaultIdx !== -1) {
     recipes[defaultIdx] = {
@@ -81,8 +79,7 @@ export function getStoredTheme(): Theme {
   if (typeof window === 'undefined') return 'light';
   const theme = localStorage.getItem(THEME_KEY);
   if (theme === 'dark' || theme === 'light') return theme;
-  return window.matchMedia &&
-    window.matchMedia('(prefers-color-scheme: dark)').matches
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
     ? 'dark'
     : 'light';
 }
@@ -106,9 +103,7 @@ export function setStoredFontScale(scale: number): void {
 export function getStoredApiKey(): string {
   if (typeof window === 'undefined') return '';
   return (
-    localStorage.getItem(API_KEY_STORAGE) ||
-    (import.meta.env.VITE_GEMINI_API_KEY as string) ||
-    ''
+    localStorage.getItem(API_KEY_STORAGE) || (import.meta.env.VITE_GEMINI_API_KEY as string) || ''
   );
 }
 

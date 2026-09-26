@@ -69,7 +69,11 @@ export const Header: React.FC<HeaderProps> = ({
           }}
         >
           <div className="brand-icon">
-            <img src="./apple-touch-icon.png" alt="Family Kitchen logo" className="brand-icon-img" />
+            <img
+              src="./apple-touch-icon.png"
+              alt="Family Kitchen logo"
+              className="brand-icon-img"
+            />
           </div>
           <span className="brand-title">Family Kitchen</span>
         </div>
@@ -103,11 +107,7 @@ export const Header: React.FC<HeaderProps> = ({
           />
         </div>
         <div className="install-banner-actions">
-          <button
-            className="btn-install-cta"
-            id="installBannerBtn"
-            onClick={onInstall}
-          >
+          <button className="btn-install-cta" id="installBannerBtn" onClick={onInstall}>
             {t.installBtn}
           </button>
           <button
@@ -208,16 +208,16 @@ export const Header: React.FC<HeaderProps> = ({
             gap: '0.5rem',
           }}
         >
-          <label style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-            {t.apiKeyLabel}
-          </label>
+          <label style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t.apiKeyLabel}</label>
           <div style={{ display: 'flex', gap: '0.5rem', maxWidth: '500px' }}>
             <input
               type="password"
               className="form-control"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder={hasBundledApiKey() ? '●●●●●● (Configured via GitHub Secret)' : t.apiKeyPlaceholder}
+              placeholder={
+                hasBundledApiKey() ? '●●●●●● (Configured via GitHub Secret)' : t.apiKeyPlaceholder
+              }
               style={{ fontSize: '0.85rem', padding: '0.4rem 0.65rem' }}
             />
             <button
@@ -239,12 +239,14 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             ) : (
               <span style={{ color: 'var(--color-crimson, #c62828)', fontWeight: 500 }}>
-                ⚠️ No API key detected. Paste your Gemini API key above to enable translation for new recipes.
+                ⚠️ No API key detected. Paste your Gemini API key above to enable translation for
+                new recipes.
               </span>
             )}
           </div>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Wanda's Cheese Bread works 100% offline without a key. This key is only used to translate custom recipes you add.
+            Wanda's Cheese Bread works 100% offline without a key. This key is only used to
+            translate custom recipes you add.
           </span>
         </div>
       )}

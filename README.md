@@ -9,7 +9,7 @@ Deployable directly as a zero-server static Single Page Application (SPA) to **G
 ## ✨ Features
 
 - **🍞 Wanda's Cheese Bread**: Verbatim heirloom instructions, authentic temperatures, ingredient weights, and folding steps preserved with precision.
-- **🇵🇱 Bilingual Polish/English Localization**: Full culinary translation with natural terminology (e.g. *garnek żeliwny*, *luźne / rzadkie, klejące ciasto*, *instrukcja składania ciasta*) and grammatical unit pluralization (`łyżeczki` vs `łyżeczek`, `szklanki` vs `szklanek`).
+- **🇵🇱 Bilingual Polish/English Localization**: Full culinary translation with natural terminology (e.g. _garnek żeliwny_, _luźne / rzadkie, klejące ciasto_, _instrukcja składania ciasta_) and grammatical unit pluralization (`łyżeczki` vs `łyżeczek`, `szklanki` vs `szklanek`).
 - **⚖️ Dynamic Portion Scaling**: Intelligently scales ingredient amounts (0.5x, 1x, 2x, 4x, etc.) with culinary diagonal fraction formatting (½, ¼, 1 ½) and dual-unit conversions (cups / ml).
 - **☀️ Cook Mode (Screen Wake Lock API)**: Keeps your phone or tablet screen awake while preparing dough and baking with hands covered in flour.
 - **🔍 Click-to-Zoom Visual Lightbox**: Inspect step photos (e.g. sloppy dough consistency) with pan, drag, and 100%–350% zoom controls.
@@ -113,10 +113,12 @@ The codebase is organized into clean, modular, testable components:
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - **Node.js**: v20 or v22+
 - **npm**: v10+
 
 ### Installation & Local Development
+
 ```bash
 # Clone the repository
 git clone https://github.com/fatso33/famkit.git
@@ -146,24 +148,25 @@ npm run build
 ## 🔐 Environment Variables
 
 Copy `.env.example` to `.env.local`:
+
 ```bash
 cp .env.example .env.local
 ```
 
 Configure the following variables:
 
-| Variable | Required? | Description |
-| :--- | :---: | :--- |
-| `VITE_FIREBASE_API_KEY` | Optional* | Firebase project Web API Key |
-| `VITE_FIREBASE_AUTH_DOMAIN` | Optional* | Firebase Auth Domain (e.g. `your-app.firebaseapp.com`) |
-| `VITE_FIREBASE_PROJECT_ID` | Optional* | Firebase Project ID |
-| `VITE_FIREBASE_STORAGE_BUCKET` | Optional | Firebase Storage Bucket name |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Optional | Firebase Cloud Messaging sender ID |
-| `VITE_FIREBASE_APP_ID` | Optional* | Firebase Web Application ID |
-| `VITE_FAMILY_EMAILS` | Optional | Comma-separated list of approved Google emails (e.g. `"mom@gmail.com,dad@gmail.com"`) |
-| `VITE_GEMINI_API_KEY` | Optional | Restricted Google AI API key for translating custom recipes with Gemini 3.5 Flash Lite / 3.8 Flash |
+| Variable                            | Required? | Description                                                                                        |
+| :---------------------------------- | :-------: | :------------------------------------------------------------------------------------------------- |
+| `VITE_FIREBASE_API_KEY`             | Optional* | Firebase project Web API Key                                                                       |
+| `VITE_FIREBASE_AUTH_DOMAIN`         | Optional* | Firebase Auth Domain (e.g. `your-app.firebaseapp.com`)                                             |
+| `VITE_FIREBASE_PROJECT_ID`          | Optional* | Firebase Project ID                                                                                |
+| `VITE_FIREBASE_STORAGE_BUCKET`      | Optional  | Firebase Storage Bucket name                                                                       |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Optional  | Firebase Cloud Messaging sender ID                                                                 |
+| `VITE_FIREBASE_APP_ID`              | Optional* | Firebase Web Application ID                                                                        |
+| `VITE_FAMILY_EMAILS`                | Optional  | Comma-separated list of approved Google emails (e.g. `"mom@gmail.com,dad@gmail.com"`)              |
+| `VITE_GEMINI_API_KEY`               | Optional  | Restricted Google AI API key for translating custom recipes with Gemini 3.5 Flash Lite / 3.8 Flash |
 
-*\*Required only if enabling multi-device cloud synchronization and Google family authentication.*
+_\*Required only if enabling multi-device cloud synchronization and Google family authentication._
 
 ---
 
@@ -172,11 +175,13 @@ Configure the following variables:
 To enable multi-device sync and family authentication:
 
 ### 1. Create a Firebase Project
+
 1. Go to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
 2. In Project Settings under **Your apps**, click the Web icon (`</>`) to register a web app.
 3. Copy the configuration credentials (`apiKey`, `authDomain`, `projectId`, etc.) into your `.env.local` or GitHub repository secrets.
 
 ### 2. Enable Google Authentication & Authorized Domains
+
 1. In Firebase Console, go to **Build** → **Authentication** → **Sign-in method**.
 2. Enable **Google** as a sign-in provider and click Save.
 3. In Authentication → **Settings** → **Authorized domains**, ensure the following domains are added:
@@ -184,11 +189,13 @@ To enable multi-device sync and family authentication:
    - `fatso33.github.io` (for GitHub Pages deployment)
 
 ### 3. Create Cloud Firestore Database
+
 1. Go to **Build** → **Firestore Database** and click **Create database**.
 2. Choose a region close to your family (e.g. `nam5` or `eur3`).
 3. Start in **Production mode**.
 
 ### 4. Configure & Deploy Security Rules
+
 Edit [`firestore.rules`](firestore.rules) to replace the placeholder emails with your actual family Gmail addresses:
 
 ```javascript
@@ -212,6 +219,7 @@ service cloud.firestore {
 ```
 
 Deploy the rules to Firebase:
+
 ```bash
 # Install Firebase CLI if not already installed
 npm install -g firebase-tools
@@ -220,7 +228,8 @@ npm install -g firebase-tools
 firebase login
 firebase deploy --only firestore:rules
 ```
-*(Alternatively, copy and paste the rules directly into the Firebase Console under **Firestore Database** → **Rules**).*
+
+_(Alternatively, copy and paste the rules directly into the Firebase Console under **Firestore Database** → **Rules**)._
 
 ---
 
@@ -229,10 +238,12 @@ firebase deploy --only firestore:rules
 The repository includes an automated GitHub Actions deployment workflow at [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
 
 ### 1. Enable GitHub Pages via Actions
+
 1. In your GitHub repository, navigate to **Settings** → **Pages**.
 2. Under **Build and deployment** → **Source**, select **GitHub Actions**.
 
 ### 2. Configure Repository Secrets
+
 To enable Cloud Sync and Gemini Translation on GitHub Pages, navigate to **Settings** → **Secrets and variables** → **Actions** and add:
 
 - `VITE_FIREBASE_API_KEY`
@@ -245,7 +256,9 @@ To enable Cloud Sync and Gemini Translation on GitHub Pages, navigate to **Setti
 - `VITE_GEMINI_API_KEY`: Restricted Google AI key (see below)
 
 ### 3. Restrict the Gemini API Key
+
 All `VITE_*` values are embedded in the public JavaScript bundle, so the Gemini key is visible to anyone who inspects the site. Restrict it in [Google Cloud Console Credentials](https://console.cloud.google.com/apis/credentials):
+
 - **Application restrictions**: `HTTP referrers` → `https://fatso33.github.io/*` (and `http://localhost:*` for local testing).
 - **API restrictions**: Select **Generative Language API** only.
 
@@ -266,6 +279,7 @@ npm run test:watch
 ```
 
 **Coverage highlights:**
+
 - **Fraction & Unit Mathematics**: Verifies diagonal fractions (`1 ½`, `¾`), unit pluralization (`szklanki` vs `szklanek`), and bracketed culinary note extraction.
 - **NLP Time Estimator**: Tests natural language duration extraction (`"bake for 25-30 mins"`, `"rest overnight"`).
 - **Authentication & Allowlist**: Tests case-insensitive email matching and unauthorized access gates.

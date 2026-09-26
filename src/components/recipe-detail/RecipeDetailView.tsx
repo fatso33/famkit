@@ -48,7 +48,10 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
         <img
           id="detailHeroImg"
           className="detail-hero-img"
-          src={recipe.heroImage || 'https://images.unsplash.com/photo-1589367920969-ab8e050bbb04?auto=format&fit=crop&w=1200&q=80'}
+          src={
+            recipe.heroImage ||
+            'https://images.unsplash.com/photo-1589367920969-ab8e050bbb04?auto=format&fit=crop&w=1200&q=80'
+          }
           alt={recipe.name}
         />
       </div>
@@ -59,10 +62,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
           {recipe.name}
         </h1>
         <div className="detail-meta">
-          <span
-            id="detailAuthor"
-            style={{ fontWeight: 600, color: 'var(--text-primary)' }}
-          >
+          <span id="detailAuthor" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
             By {recipe.author}
           </span>
           {recipe.version && recipe.version > 1 && (
@@ -150,9 +150,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
           {recipe.tips && (
             <div id="tipsCard" className="callout-box gold">
               <div className="callout-label">{t.kitchenTip}</div>
-              <div id="tipsText">
-                {capitalizeFirstLetter(recipe.tips)}
-              </div>
+              <div id="tipsText">{capitalizeFirstLetter(recipe.tips)}</div>
             </div>
           )}
 
@@ -160,9 +158,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
           {recipe.notes && (
             <div id="notesCard" className="callout-box warn">
               <div className="callout-label">{t.crucialNote}</div>
-              <div id="notesText">
-                {capitalizeFirstLetter(recipe.notes)}
-              </div>
+              <div id="notesText">{capitalizeFirstLetter(recipe.notes)}</div>
             </div>
           )}
 
@@ -175,10 +171,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
           />
 
           {/* Baking Options */}
-          <BakingOptionsView
-            bakingOptions={recipe.bakingOptions}
-            t={t}
-          />
+          <BakingOptionsView bakingOptions={recipe.bakingOptions} t={t} />
         </div>
       </div>
 

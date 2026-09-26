@@ -8,7 +8,7 @@ import { Recipe } from '../types/recipe';
 // Gemini fails after a network-like delay (offline, quota, bad key).
 vi.mock('../services/gemini', () => ({
   translateRecipeToPolish: vi.fn(
-    () => new Promise((_, reject) => setTimeout(() => reject(new Error('offline')), 5))
+    () => new Promise((_, reject) => setTimeout(() => reject(new Error('offline')), 5)),
   ),
 }));
 

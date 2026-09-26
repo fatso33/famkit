@@ -8,10 +8,7 @@ interface BakingOptionsViewProps {
   t: UiTranslations;
 }
 
-export const BakingOptionsView: React.FC<BakingOptionsViewProps> = ({
-  bakingOptions,
-  t,
-}) => {
+export const BakingOptionsView: React.FC<BakingOptionsViewProps> = ({ bakingOptions, t }) => {
   if (!bakingOptions) return null;
 
   const opt1Items = bakingOptions.option1
@@ -25,10 +22,7 @@ export const BakingOptionsView: React.FC<BakingOptionsViewProps> = ({
     : [];
 
   const opt2Items = bakingOptions.option2
-    ? (Array.isArray(bakingOptions.option2)
-        ? bakingOptions.option2
-        : [bakingOptions.option2]
-      )
+    ? (Array.isArray(bakingOptions.option2) ? bakingOptions.option2 : [bakingOptions.option2])
         .map((s) => s.trim())
         .filter(Boolean)
         .map((s) => capitalizeFirstLetter(s))

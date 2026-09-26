@@ -7,11 +7,7 @@ interface IOSInstallModalProps {
   t: UiTranslations;
 }
 
-export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({
-  isOpen,
-  onClose,
-  t,
-}) => {
+export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ isOpen, onClose, t }) => {
   if (!isOpen) return null;
 
   return (
@@ -23,14 +19,15 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({
       aria-labelledby="iosModalTitle"
       onClick={onClose}
     >
-      <div
-        className="ios-install-modal-card"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="ios-install-modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="ios-modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <div className="ios-modal-icon">
-              <img src="./apple-touch-icon.png" alt="Family Kitchen logo" className="brand-icon-img" />
+              <img
+                src="./apple-touch-icon.png"
+                alt="Family Kitchen logo"
+                className="brand-icon-img"
+              />
             </div>
             <div>
               <h3 className="ios-modal-title" id="iosModalTitle">

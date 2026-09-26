@@ -10,7 +10,7 @@ import { translateRecipeToPolish } from '../services/gemini';
 
 export function getLocalizedRecipe(
   recipe: Recipe | null | undefined,
-  lang: Language = 'en'
+  lang: Language = 'en',
 ): Recipe | null {
   if (!recipe) return null;
   if (lang === 'pl' && recipe.translations && recipe.translations.pl) {
@@ -23,13 +23,9 @@ export function getLocalizedRecipe(
       tips: tr.tips !== undefined ? tr.tips : recipe.tips,
       notes: tr.notes !== undefined ? tr.notes : recipe.notes,
       laminationDirective:
-        tr.laminationDirective !== undefined
-          ? tr.laminationDirective
-          : recipe.laminationDirective,
+        tr.laminationDirective !== undefined ? tr.laminationDirective : recipe.laminationDirective,
       ingredients:
-        tr.ingredients && tr.ingredients.length > 0
-          ? tr.ingredients
-          : recipe.ingredients,
+        tr.ingredients && tr.ingredients.length > 0 ? tr.ingredients : recipe.ingredients,
       steps: tr.steps && tr.steps.length > 0 ? tr.steps : recipe.steps,
       bakingOptions: tr.bakingOptions || recipe.bakingOptions,
     };
@@ -51,101 +47,94 @@ export function useRecipes() {
     return () => unsubscribe();
   }, []);
 
-  const selectedRecipe =
-    recipes.find((r) => r.id === selectedRecipeId) || null;
+  const selectedRecipe = recipes.find((r) => r.id === selectedRecipeId) || null;
 
-  const addRecipe = useCallback(
-    (newRecipe: Omit<Recipe, 'id' | 'createdAt'>): Recipe => {
-      const recipeWithId: Recipe = {
-        ...newRecipe,
-        id: 'recipe-' + Date.now(),
-        version: 1,
-        history: [],
-        createdAt: Date.now(),
+  const addRecipe = useCallback((newRecipe: Omit<Recipe, 'id' | 'createdAt'>): Recipe => {
+    const recipeWithId: Recipe = {
+      ...newRecipe,
+      id: 'recipe-' + Date.now(),
+      version: 1,
+      history: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    // Optimistic local update
+    setRecipes((prev) => {
+      const updated = [recipeWithId, ...prev];
+      saveRecipes(updated);
+      return updated;
+    });
+
+    setSelectedRecipeId(recipeWithId.id);
+
+    // Async sync to Cloud Firestore in background
+    saveRecipeToCloud(recipeWithId).catch((err) => {
+      console.warn('Failed to sync new recipe to cloud (retained locally):', err);
+    });
+
+    return recipeWithId;
+  }, []);
+
+  const updateRecipe = useCallback((recipeUpdates: Recipe): Recipe => {
+    let finalRecipe: Recipe = recipeUpdates;
+
+    setRecipes((prev) => {
+      const existing = prev.find((r) => r.id === recipeUpdates.id);
+      const currentVersion = existing?.version || 1;
+      const newVersion = currentVersion + 1;
+
+      const historyEntry = existing
+        ? [
+            {
+              version: currentVersion,
+              savedAt: existing.updatedAt || existing.createdAt || Date.now(),
+              recipe: {
+                id: existing.id,
+                name: existing.name,
+                author: existing.author,
+                category: existing.category,
+                heroImage: existing.heroImage?.startsWith('data:') ? '' : existing.heroImage || '',
+                yieldHeader: existing.yieldHeader,
+                baseYield: existing.baseYield,
+                ingredients: existing.ingredients,
+                cardDescription: existing.cardDescription,
+                tips: existing.tips,
+                steps: (existing.steps || []).map((st) => ({
+                  ...st,
+                  imageSrc: st.imageSrc?.startsWith('data:') ? '' : st.imageSrc,
+                })),
+                laminationDirective: existing.laminationDirective,
+                bakingOptions: existing.bakingOptions,
+                notes: existing.notes,
+                translations: existing.translations,
+                createdAt: existing.createdAt,
+                version: existing.version,
+              },
+            },
+            ...(existing.history || []),
+          ]
+        : [];
+
+      finalRecipe = {
+        ...recipeUpdates,
+        version: newVersion,
+        history: historyEntry,
         updatedAt: Date.now(),
       };
 
-      // Optimistic local update
-      setRecipes((prev) => {
-        const updated = [recipeWithId, ...prev];
-        saveRecipes(updated);
-        return updated;
-      });
+      const updated = prev.map((r) => (r.id === finalRecipe.id ? finalRecipe : r));
+      saveRecipes(updated);
+      return updated;
+    });
 
-      setSelectedRecipeId(recipeWithId.id);
+    // Async sync to Cloud Firestore in background
+    saveRecipeToCloud(finalRecipe).catch((err) => {
+      console.warn('Failed to sync updated recipe to cloud (retained locally):', err);
+    });
 
-      // Async sync to Cloud Firestore in background
-      saveRecipeToCloud(recipeWithId).catch((err) => {
-        console.warn('Failed to sync new recipe to cloud (retained locally):', err);
-      });
-
-      return recipeWithId;
-    },
-    []
-  );
-
-  const updateRecipe = useCallback(
-    (recipeUpdates: Recipe): Recipe => {
-      let finalRecipe: Recipe = recipeUpdates;
-
-      setRecipes((prev) => {
-        const existing = prev.find((r) => r.id === recipeUpdates.id);
-        const currentVersion = existing?.version || 1;
-        const newVersion = currentVersion + 1;
-
-        const historyEntry = existing
-          ? [
-              {
-                version: currentVersion,
-                savedAt: existing.updatedAt || existing.createdAt || Date.now(),
-                recipe: {
-                  id: existing.id,
-                  name: existing.name,
-                  author: existing.author,
-                  category: existing.category,
-                  heroImage: existing.heroImage?.startsWith('data:') ? '' : existing.heroImage || '',
-                  yieldHeader: existing.yieldHeader,
-                  baseYield: existing.baseYield,
-                  ingredients: existing.ingredients,
-                  cardDescription: existing.cardDescription,
-                  tips: existing.tips,
-                  steps: (existing.steps || []).map((st) => ({
-                    ...st,
-                    imageSrc: st.imageSrc?.startsWith('data:') ? '' : st.imageSrc,
-                  })),
-                  laminationDirective: existing.laminationDirective,
-                  bakingOptions: existing.bakingOptions,
-                  notes: existing.notes,
-                  translations: existing.translations,
-                  createdAt: existing.createdAt,
-                  version: existing.version,
-                },
-              },
-              ...(existing.history || []),
-            ]
-          : [];
-
-        finalRecipe = {
-          ...recipeUpdates,
-          version: newVersion,
-          history: historyEntry,
-          updatedAt: Date.now(),
-        };
-
-        const updated = prev.map((r) => (r.id === finalRecipe.id ? finalRecipe : r));
-        saveRecipes(updated);
-        return updated;
-      });
-
-      // Async sync to Cloud Firestore in background
-      saveRecipeToCloud(finalRecipe).catch((err) => {
-        console.warn('Failed to sync updated recipe to cloud (retained locally):', err);
-      });
-
-      return finalRecipe;
-    },
-    []
-  );
+    return finalRecipe;
+  }, []);
 
   const deleteRecipe = useCallback(
     async (id: string) => {
@@ -165,7 +154,7 @@ export function useRecipes() {
         console.warn('Failed to delete recipe from cloud:', err);
       }
     },
-    [selectedRecipeId]
+    [selectedRecipeId],
   );
 
   const translateSelectedRecipe = useCallback(
@@ -194,7 +183,7 @@ export function useRecipes() {
         setIsTranslating(false);
       }
     },
-    [isTranslating]
+    [isTranslating],
   );
 
   return {

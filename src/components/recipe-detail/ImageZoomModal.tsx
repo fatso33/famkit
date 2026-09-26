@@ -5,10 +5,7 @@ interface ImageZoomModalProps {
   onClose: () => void;
 }
 
-export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({
-  imageSrc,
-  onClose,
-}) => {
+export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClose }) => {
   const [zoomScale, setZoomScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -98,10 +95,7 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({
       aria-label="Step Photo Zoom"
       onClick={onClose}
     >
-      <div
-        className="image-modal-toolbar"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="image-modal-toolbar" onClick={(e) => e.stopPropagation()}>
         <div className="image-modal-controls">
           <button
             className="image-modal-btn"

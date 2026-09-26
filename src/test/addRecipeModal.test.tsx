@@ -31,7 +31,10 @@ describe('AddRecipeModal initial form', () => {
   });
 
   it('restores a saved draft in create mode', () => {
-    localStorage.setItem('family_kitchen_recipe_draft', JSON.stringify({ title: 'Draft Babka', author: 'Wanda' }));
+    localStorage.setItem(
+      'family_kitchen_recipe_draft',
+      JSON.stringify({ title: 'Draft Babka', author: 'Wanda' }),
+    );
     render(<AddRecipeModal onClose={noop} onSave={noop} t={t} />);
 
     expect(screen.getByDisplayValue('Draft Babka')).toBeInTheDocument();
@@ -40,7 +43,9 @@ describe('AddRecipeModal initial form', () => {
 
   it('ignores drafts when editing and starts empty when creating without one', () => {
     localStorage.setItem('family_kitchen_recipe_draft', JSON.stringify({ title: 'Draft Babka' }));
-    const { unmount } = render(<AddRecipeModal initialRecipe={recipe} onClose={noop} onSave={noop} t={t} />);
+    const { unmount } = render(
+      <AddRecipeModal initialRecipe={recipe} onClose={noop} onSave={noop} t={t} />,
+    );
     expect(screen.queryByDisplayValue('Draft Babka')).not.toBeInTheDocument();
     unmount();
 

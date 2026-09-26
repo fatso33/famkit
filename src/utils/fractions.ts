@@ -49,7 +49,7 @@ export function formatFraction(num: number | null | undefined): string {
 export function parseIngredientRow(
   ing: Ingredient,
   scaleRatio: number = 1,
-  lang: Language = 'en'
+  lang: Language = 'en',
 ): ParsedIngredientRow {
   const rawText = ing.text || '';
   const bracketNotes: string[] = [];
@@ -88,7 +88,7 @@ export function parseIngredientRow(
         name = cleanText.split(':')[0].trim();
       } else {
         const match = cleanText.match(
-          /^([\d\s/.\u00BC-\u00BE\u2150-\u215E]+(?:\s*(?:cups?|tsp|teaspoons?|tbsp|tablespoons?|g|ml|kg|oz|lbs?|cloves?|slices?|pinch|handful|szklanki?|łyżeczki?|łyżek|sztuk[a-z]*|[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+))?)\s+(.*)$/i
+          /^([\d\s/.\u00BC-\u00BE\u2150-\u215E]+(?:\s*(?:cups?|tsp|teaspoons?|tbsp|tablespoons?|g|ml|kg|oz|lbs?|cloves?|slices?|pinch|handful|szklanki?|łyżeczki?|łyżek|sztuk[a-z]*|[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+))?)\s+(.*)$/i,
         );
         if (match && match[2]) {
           name = match[2].trim();
@@ -136,8 +136,7 @@ export function parseIngredientRow(
           : ` or ${currentAlt}${ing.altUnit || 'ml'}`;
     }
 
-    const separator =
-      unitText && !['g', 'ml', 'kg', 'oz', 'lb'].includes(unitText) ? ' ' : '';
+    const separator = unitText && !['g', 'ml', 'kg', 'oz', 'lb'].includes(unitText) ? ' ' : '';
     amount = `${formattedQty}${separator}${unitText}${altString}${cleanSuffix}`.trim();
   } else {
     const cleanText = extractBrackets(rawText);
@@ -151,7 +150,7 @@ export function parseIngredientRow(
       amount = parts.slice(1).join('-').trim();
     } else {
       const match = cleanText.match(
-        /^([\d\s/.\u00BC-\u00BE\u2150-\u215E]+(?:\s*(?:cups?|tsp|teaspoons?|tbsp|tablespoons?|g|ml|kg|oz|lbs?|cloves?|slices?|pinch|handful))?)\s+(.*)$/i
+        /^([\d\s/.\u00BC-\u00BE\u2150-\u215E]+(?:\s*(?:cups?|tsp|teaspoons?|tbsp|tablespoons?|g|ml|kg|oz|lbs?|cloves?|slices?|pinch|handful))?)\s+(.*)$/i,
       );
       if (match) {
         amount = match[1].trim();
@@ -163,7 +162,9 @@ export function parseIngredientRow(
     }
   }
 
-  name = extractBrackets(name).replace(/[-–—:]\s*$/, '').trim();
+  name = extractBrackets(name)
+    .replace(/[-–—:]\s*$/, '')
+    .trim();
   amount = extractBrackets(amount).trim();
 
   return {

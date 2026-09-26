@@ -88,7 +88,8 @@ function loadInitialForm(initialRecipe?: Recipe | null): FormState {
         heroImage: parsed.heroImage || '',
         tips: parsed.tips || '',
         notes: parsed.notes || '',
-        ingredientRows: parsed.ingredientRows?.length > 0 ? parsed.ingredientRows : EMPTY_FORM.ingredientRows,
+        ingredientRows:
+          parsed.ingredientRows?.length > 0 ? parsed.ingredientRows : EMPTY_FORM.ingredientRows,
         steps: parsed.steps?.length > 0 ? parsed.steps : EMPTY_FORM.steps,
         hasRestoredDraft: true,
       };
@@ -122,7 +123,9 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   const [cardDescription, setCardDescription] = useState(initial.cardDescription);
   const [yieldHeader, setYieldHeader] = useState(initial.yieldHeader);
   const [heroImage, setHeroImage] = useState<string>(initial.heroImage);
-  const [ingredientRows, setIngredientRows] = useState<IngredientRowState[]>(initial.ingredientRows);
+  const [ingredientRows, setIngredientRows] = useState<IngredientRowState[]>(
+    initial.ingredientRows,
+  );
   const [tips, setTips] = useState(initial.tips);
   const [notes, setNotes] = useState(initial.notes);
   const [steps, setSteps] = useState<StepBuilderItem[]>(initial.steps);
@@ -286,9 +289,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
         <div className="modal-header-sticky">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <h2 className="modal-title" id="modalTitle">
-              {isEditMode
-                ? t.editRecipeTitle(initialRecipe?.version || 1)
-                : t.addRecipe}
+              {isEditMode ? t.editRecipeTitle(initialRecipe?.version || 1) : t.addRecipe}
             </h2>
             {hasRestoredDraft && !isEditMode && (
               <span className="draft-badge" title="Restored from previous session">
@@ -324,11 +325,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
         </div>
 
         {/* Scrollable Body */}
-        <form
-          id="addRecipeForm"
-          onSubmit={handleSubmit}
-          style={{ display: 'contents' }}
-        >
+        <form id="addRecipeForm" onSubmit={handleSubmit} style={{ display: 'contents' }}>
           <div className="modal-body-scroll">
             {/* Title */}
             <div className="form-group">
@@ -406,11 +403,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             </div>
 
             {/* Interactive Row-by-Row Ingredients Builder */}
-            <IngredientBuilder
-              rows={ingredientRows}
-              onChange={setIngredientRows}
-              t={t}
-            />
+            <IngredientBuilder rows={ingredientRows} onChange={setIngredientRows} t={t} />
 
             {/* Kitchen Tip (Moved above steps) */}
             <div className="form-group">
@@ -448,12 +441,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
           {/* Sticky Footer */}
           <div className="modal-footer-sticky">
-            <button
-              type="button"
-              className="btn"
-              id="cancelModalBtn"
-              onClick={onClose}
-            >
+            <button type="button" className="btn" id="cancelModalBtn" onClick={onClose}>
               {t.cancel}
             </button>
             <button type="submit" className="btn btn-primary">

@@ -7,15 +7,10 @@ export function extractTimeFromText(text: string): number {
 
   // Natural language duration phrases
   if (lower.includes('overnight')) total += 480;
-  if (
-    lower.includes('half an hour') ||
-    lower.includes('half-hour') ||
-    lower.includes('half hour')
-  )
+  if (lower.includes('half an hour') || lower.includes('half-hour') || lower.includes('half hour'))
     total += 30;
   if (lower.includes('an hour') && !lower.includes('half an hour')) total += 60;
-  if (lower.includes('couple of hours') || lower.includes('couple hours'))
-    total += 120;
+  if (lower.includes('couple of hours') || lower.includes('couple hours')) total += 120;
 
   // Range match: e.g. "25-30 minutes", "1 to 2 hours", "10-15 mins"
   const rangeRegex =
@@ -34,8 +29,7 @@ export function extractTimeFromText(text: string): number {
   }
 
   // Single time matches: e.g. "25 minutes", "10 minutes", "2 hours"
-  const singleRegex =
-    /(\d+(?:\.\d+)?)\s*(hours?|hrs?|h\b|minutes?|mins?|m\b)/gi;
+  const singleRegex = /(\d+(?:\.\d+)?)\s*(hours?|hrs?|h\b|minutes?|mins?|m\b)/gi;
   let singleMatch;
   while ((singleMatch = singleRegex.exec(lower)) !== null) {
     const idx = singleMatch.index;
@@ -111,8 +105,7 @@ export function calculateRecipeTime(recipe: Partial<Recipe> | null | undefined):
       const explicitTime = extractTimeFromText(stepText);
       const actionTime = estimateActionDuration(stepText);
       const duration = explicitTime > 0 ? explicitTime : actionTime;
-      const stepNum =
-        typeof step === 'object' && step.num !== undefined ? step.num : index;
+      const stepNum = typeof step === 'object' && step.num !== undefined ? step.num : index;
       stepAnalysis.push({ num: stepNum, duration, text: stepText });
       totalMinutes += duration;
     });
@@ -123,7 +116,7 @@ export function calculateRecipeTime(recipe: Partial<Recipe> | null | undefined):
   if (directive) {
     const lowerDir = directive.toLowerCase();
     const repeatMatch = lowerDir.match(
-      /repeat\s+steps?\s+(\d+)\s*(?:to|-)\s*(\d+)\s*(one|two|three|\d+)?/i
+      /repeat\s+steps?\s+(\d+)\s*(?:to|-)\s*(\d+)\s*(one|two|three|\d+)?/i,
     );
     if (repeatMatch) {
       const startStep = parseInt(repeatMatch[1], 10);
@@ -134,15 +127,12 @@ export function calculateRecipeTime(recipe: Partial<Recipe> | null | undefined):
       else if (word === 'three' || word === '3') times = 3;
       else if (parseInt(word, 10)) times = parseInt(word, 10);
 
-      const repeatedSteps = stepAnalysis.filter(
-        (s) => s.num >= startStep && s.num <= endStep
-      );
+      const repeatedSteps = stepAnalysis.filter((s) => s.num >= startStep && s.num <= endStep);
       const cycleTime = repeatedSteps.reduce((sum, s) => sum + s.duration, 0);
       totalMinutes += cycleTime * times;
     } else {
       const dirExplicit = extractTimeFromText(directive);
-      totalMinutes +=
-        dirExplicit > 0 ? dirExplicit : estimateActionDuration(directive);
+      totalMinutes += dirExplicit > 0 ? dirExplicit : estimateActionDuration(directive);
     }
   }
 
@@ -166,10 +156,7 @@ export function calculateRecipeTime(recipe: Partial<Recipe> | null | undefined):
       const optLower = opt.toLowerCase();
       if (optLower.includes('bake for') || optLower.includes('bake')) {
         bakeTime += extractTimeFromText(opt);
-      } else if (
-        !optLower.includes('fridge') &&
-        !optLower.includes('preheat')
-      ) {
+      } else if (!optLower.includes('fridge') && !optLower.includes('preheat')) {
         bakeTime += extractTimeFromText(opt);
       }
     });
@@ -198,6 +185,6 @@ export function capitalizeFirstLetter(text: string): string {
   if (!text) return '';
   return text.replace(
     /(^|[.!?]\s+)([a-z])/g,
-    (_m, prefix, letter) => `${prefix}${letter.toUpperCase()}`
+    (_m, prefix, letter) => `${prefix}${letter.toUpperCase()}`,
   );
 }

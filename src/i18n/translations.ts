@@ -87,7 +87,8 @@ export interface UiTranslations {
 export const UI_TEXT: Record<Language, UiTranslations> = {
   en: {
     vaultTitle: 'Family Recipe Vault',
-    vaultSubtitle: 'Heirloom family recipes crafted with precision, love, and time-honored tradition.',
+    vaultSubtitle:
+      'Heirloom family recipes crafted with precision, love, and time-honored tradition.',
     allRecipes: 'All Recipes',
     breads: 'Artisan Breads',
     heirlooms: "Wanda's Heirlooms",
