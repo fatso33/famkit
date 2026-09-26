@@ -17,7 +17,7 @@ export default function App() {
   const { theme, toggleTheme } = useTheme();
   const { percent: fontPercent, increaseScale, decreaseScale } = useFontScale();
   const { language, toggleLanguage, t } = useLanguage();
-  const { isWakeLocked, toggleCookMode, isSupported: isWakeLockSupported } = useCookMode();
+  const { isCookModeOn, toggleCookMode, isSupported: isWakeLockSupported } = useCookMode();
   const { isBannerVisible, triggerInstall, dismissBanner, showIOSModal, setShowIOSModal } =
     usePWAInstall();
 
@@ -156,7 +156,7 @@ export default function App() {
           <RecipeDetailView
             recipe={selectedRecipe}
             language={language}
-            isWakeLocked={isWakeLocked}
+            isWakeLocked={isCookModeOn}
             onToggleWakeLock={() => void toggleCookMode()}
             isWakeLockSupported={isWakeLockSupported}
             onEditRecipe={(rec) => {

@@ -1,56 +1,76 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+
+function releaseQuietly(sentinel: WakeLockSentinel) {
+  sentinel.release().catch((err: unknown) => {
+    console.warn('Failed to release wake lock:', err);
+  });
+}
 
 export function useCookMode() {
-  const [isWakeLocked, setIsWakeLocked] = useState(false);
-  const [wakeLockSentinel, setWakeLockSentinel] = useState<WakeLockSentinel | null>(null);
+  // The user's choice. Only toggleCookMode changes it, so the browser releasing
+  // the lock (tab hidden, phone locked) doesn't switch Cook Mode off.
+  const [isCookModeOn, setIsCookModeOn] = useState(false);
+  // Mirrors the user's choice for async code and event listeners.
+  const wantsLockRef = useRef(false);
+  // The lock currently held, if any. The browser can release it at any time.
+  const sentinelRef = useRef<WakeLockSentinel | null>(null);
+  // An in-flight request, so rapid visibility changes don't stack up locks.
+  const pendingRef = useRef<Promise<boolean> | null>(null);
   const isSupported = typeof window !== 'undefined' && 'wakeLock' in navigator;
 
-  const releaseWakeLock = useCallback(async () => {
-    if (wakeLockSentinel) {
-      try {
-        await wakeLockSentinel.release();
-      } catch (err) {
-        console.warn('Failed to release wake lock:', err);
-      }
-      setWakeLockSentinel(null);
-      setIsWakeLocked(false);
-    }
-  }, [wakeLockSentinel]);
+  const releaseLock = useCallback(() => {
+    const sentinel = sentinelRef.current;
+    sentinelRef.current = null;
+    if (sentinel) releaseQuietly(sentinel);
+  }, []);
 
-  const requestWakeLock = useCallback(async () => {
-    if (!isSupported) return false;
-    try {
-      const sentinel = await navigator.wakeLock.request('screen');
-      setWakeLockSentinel(sentinel);
-      setIsWakeLocked(true);
-
-      sentinel.addEventListener('release', () => {
-        setIsWakeLocked(false);
-        setWakeLockSentinel(null);
+  const acquireLock = useCallback((): Promise<boolean> => {
+    if (sentinelRef.current) return Promise.resolve(true);
+    pendingRef.current ??= navigator.wakeLock
+      .request('screen')
+      .then((sentinel) => {
+        if (!wantsLockRef.current) {
+          // Cook Mode was switched off while the request was in flight.
+          releaseQuietly(sentinel);
+          return false;
+        }
+        sentinelRef.current = sentinel;
+        sentinel.addEventListener('release', () => {
+          if (sentinelRef.current === sentinel) sentinelRef.current = null;
+        });
+        return true;
+      })
+      .catch((err: unknown) => {
+        console.warn('Screen wake lock request failed:', err);
+        return false;
+      })
+      .finally(() => {
+        pendingRef.current = null;
       });
-      return true;
-    } catch (err) {
-      console.warn('Screen wake lock request failed:', err);
-      setIsWakeLocked(false);
-      setWakeLockSentinel(null);
-      return false;
-    }
-  }, [isSupported]);
+    return pendingRef.current;
+  }, []);
 
   const toggleCookMode = useCallback(async () => {
-    if (isWakeLocked) {
-      await releaseWakeLock();
+    if (wantsLockRef.current) {
+      wantsLockRef.current = false;
+      setIsCookModeOn(false);
+      releaseLock();
       return false;
-    } else {
-      return await requestWakeLock();
     }
-  }, [isWakeLocked, releaseWakeLock, requestWakeLock]);
+    if (!isSupported) return false;
+    wantsLockRef.current = true;
+    const acquired = await acquireLock();
+    // A failed first request (e.g. battery saver) leaves Cook Mode off.
+    wantsLockRef.current = acquired;
+    setIsCookModeOn(acquired);
+    return acquired;
+  }, [isSupported, acquireLock, releaseLock]);
 
-  // Re-request wake lock when document becomes visible again
+  // The browser drops the lock whenever the page is hidden; take it back on return.
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && isWakeLocked && !wakeLockSentinel) {
-        void requestWakeLock();
+      if (document.visibilityState === 'visible' && wantsLockRef.current) {
+        void acquireLock();
       }
     };
 
@@ -58,16 +78,15 @@ export function useCookMode() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isWakeLocked, wakeLockSentinel, requestWakeLock]);
+  }, [acquireLock]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (wakeLockSentinel) {
-        wakeLockSentinel.release().catch(() => {});
-      }
+      wantsLockRef.current = false;
+      releaseLock();
     };
-  }, [wakeLockSentinel]);
+  }, [releaseLock]);
 
-  return { isWakeLocked, toggleCookMode, isSupported };
+  return { isCookModeOn, toggleCookMode, isSupported };
 }
