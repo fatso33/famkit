@@ -59,7 +59,7 @@ export const IngredientsTable: React.FC<IngredientsTableProps> = ({
             {ingredients.map((ing, idx) => {
               const row = parseIngredientRow(ing, scale, language);
               return (
-                <tr key={idx} className="ingredient-row">
+                <tr key={idx}>
                   <td className="td-ingredient">
                     <div className="ingredient-name-col">
                       <span className="ingredient-name">{row.name}</span>

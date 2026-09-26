@@ -105,9 +105,15 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 1rem;
+        flex-wrap: wrap;
+        gap: 0.5rem 1rem;
         padding: 0.75rem 1.25rem;
         min-height: 52px;
+      }
+
+      /* Stays right-aligned when large text wraps it onto its own line. */
+      .header-main-row > .btn {
+        margin-left: auto;
       }
 
       .brand-group {
@@ -118,6 +124,9 @@
         color: inherit;
         cursor: pointer;
         user-select: none;
+        /* Wrap the title before the settings button wraps, and never grow wider than the content. */
+        flex: 1 1 0;
+        max-width: max-content;
       }
 
       .brand-icon {
@@ -768,6 +777,11 @@
         align-items: start;
       }
 
+      /* Grid items default to min-width: auto, so wide content would stretch the track past the screen. */
+      .recipe-layout > * {
+        min-width: 0;
+      }
+
       @media (max-width: 860px) {
         .recipe-layout {
           grid-template-columns: 1fr;
@@ -789,6 +803,8 @@
         display: flex;
         justify-content: space-between;
         align-items: baseline;
+        flex-wrap: wrap;
+        gap: 0.5rem 0.75rem;
         margin-bottom: 1rem;
         padding-bottom: 0.75rem;
         border-bottom: 1px solid var(--border-subtle);
@@ -900,6 +916,18 @@
 
       .ingredient-table tbody tr:hover {
         background-color: var(--bg-card);
+      }
+
+      /* Fixed px spacing on phones so large text keeps its room instead of growing the padding too. */
+      @media (max-width: 480px) {
+        .ingredients-panel {
+          padding: 16px;
+        }
+
+        .ingredient-table th,
+        .ingredient-table td {
+          padding-inline: 12px;
+        }
       }
 
       .ingredient-name-col {
@@ -1425,23 +1453,9 @@
         margin-bottom: 0.45rem;
       }
 
-      /* Also matches the recipe page's ingredient table rows (IngredientsTable). */
-      .ingredient-row {
-        display: grid;
-        grid-template-columns: 1fr 140px 32px 32px;
-        gap: 0.45rem;
-        align-items: center;
-        margin-bottom: 0.45rem;
-      }
-
       @media (max-width: 480px) {
         .ingredient-builder-row {
           grid-template-columns: 1fr 90px 44px 44px;
-          gap: 0.35rem;
-        }
-
-        .ingredient-row {
-          grid-template-columns: 1fr 100px 28px 28px;
           gap: 0.35rem;
         }
       }
