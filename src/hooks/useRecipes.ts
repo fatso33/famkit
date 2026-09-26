@@ -177,8 +177,10 @@ export function useRecipes() {
           return updated;
         });
 
-        // Persist translated version to Firestore
-        await saveRecipeToCloud(updatedRecipe);
+        // Async sync to Cloud Firestore in background; the translation already succeeded locally.
+        saveRecipeToCloud(updatedRecipe).catch((err) => {
+          console.warn('Failed to sync translated recipe to cloud (retained locally):', err);
+        });
       } finally {
         setIsTranslating(false);
       }

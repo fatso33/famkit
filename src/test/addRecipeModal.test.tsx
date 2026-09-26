@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { AddRecipeModal } from '../components/recipe-form/AddRecipeModal';
 import { UI_TEXT } from '../i18n/translations';
 import { Recipe } from '../types/recipe';
@@ -39,6 +39,19 @@ describe('AddRecipeModal initial form', () => {
 
     expect(screen.getByDisplayValue('Draft Babka')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Wanda')).toBeInTheDocument();
+  });
+
+  it('keeps text typed just before closing in the draft (debounce is flushed on close)', () => {
+    const { unmount } = render(<AddRecipeModal onClose={noop} onSave={noop} t={t} />);
+
+    fireEvent.change(screen.getByPlaceholderText("e.g., Grandma's Sourdough"), {
+      target: { value: 'Quick Babka' },
+    });
+    unmount(); // closed well within the 400ms debounce
+
+    expect(JSON.parse(localStorage.getItem('family_kitchen_recipe_draft')!).title).toBe(
+      'Quick Babka',
+    );
   });
 
   it('ignores drafts when editing and starts empty when creating without one', () => {

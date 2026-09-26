@@ -9,18 +9,17 @@ interface IOSInstallModalProps {
 
 // Mount only while open.
 export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ onClose, t }) => {
-  const handleBackdropClick = useDialogDismiss(onClose);
+  const backdropProps = useDialogDismiss(onClose);
 
   return (
     // Backdrop click is a mouse shortcut; keyboard users close with Escape (useDialogDismiss).
-    // eslint-disable-next-line jsx-a11y-x/click-events-have-key-events, jsx-a11y-x/no-noninteractive-element-interactions
     <div
       className="ios-install-modal-overlay open"
       id="iosInstallModal"
       role="dialog"
       aria-modal="true"
       aria-labelledby="iosModalTitle"
-      onClick={handleBackdropClick}
+      {...backdropProps}
     >
       <div className="ios-install-modal-card">
         <div className="ios-modal-header">

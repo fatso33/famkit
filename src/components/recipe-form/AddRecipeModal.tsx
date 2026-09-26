@@ -8,6 +8,14 @@ import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 
 const DRAFT_STORAGE_KEY = 'family_kitchen_recipe_draft';
 
+function writeDraft(json: string) {
+  try {
+    localStorage.setItem(DRAFT_STORAGE_KEY, json);
+  } catch {
+    // localStorage full or restricted
+  }
+}
+
 interface FormState {
   title: string;
   author: string;
@@ -117,7 +125,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   t,
 }) => {
   const isEditMode = Boolean(initialRecipe);
-  const handleBackdropClick = useDialogDismiss(onClose);
+  const backdropProps = useDialogDismiss(onClose);
 
   const [initial] = useState(() => loadInitialForm(initialRecipe));
   const [title, setTitle] = useState(initial.title);
@@ -147,47 +155,47 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   };
 
   // Debounced auto-save draft to localStorage (only in create mode)
-  const draftSaveTimeout = useRef<number | null>(null);
+  // Draft JSON waiting on the 400ms debounce. Flushed on close so the last keystrokes
+  // aren't lost; cleared when the form is emptied, submitted or the draft is discarded.
+  const pendingDraft = useRef<string | null>(null);
+  useEffect(
+    () => () => {
+      if (pendingDraft.current !== null) writeDraft(pendingDraft.current);
+    },
+    [],
+  );
+
   useEffect(() => {
     if (isEditMode) return;
 
-    if (draftSaveTimeout.current) {
-      window.clearTimeout(draftSaveTimeout.current);
+    // Only save if there's some content
+    const hasContent =
+      title.trim() ||
+      author.trim() ||
+      ingredientRows.some((r) => r.name.trim()) ||
+      steps.some((s) => s.text.trim());
+    if (!hasContent) {
+      pendingDraft.current = null;
+      return;
     }
 
-    draftSaveTimeout.current = window.setTimeout(() => {
-      // Only save if there's some content
-      const hasContent =
-        title.trim() ||
-        author.trim() ||
-        ingredientRows.some((r) => r.name.trim()) ||
-        steps.some((s) => s.text.trim());
-
-      if (hasContent) {
-        const draftData = {
-          title,
-          author,
-          cardDescription,
-          yieldHeader,
-          heroImage,
-          tips,
-          notes,
-          ingredientRows,
-          steps,
-        };
-        try {
-          localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftData));
-        } catch {
-          // localStorage full or restricted
-        }
-      }
+    const json = JSON.stringify({
+      title,
+      author,
+      cardDescription,
+      yieldHeader,
+      heroImage,
+      tips,
+      notes,
+      ingredientRows,
+      steps,
+    });
+    pendingDraft.current = json;
+    const timeout = window.setTimeout(() => {
+      writeDraft(json);
+      pendingDraft.current = null;
     }, 400);
-
-    return () => {
-      if (draftSaveTimeout.current) {
-        window.clearTimeout(draftSaveTimeout.current);
-      }
-    };
+    return () => window.clearTimeout(timeout);
   }, [
     isEditMode,
     title,
@@ -203,6 +211,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
   const handleClearDraft = () => {
     if (window.confirm(t.confirmClearDraft)) {
+      pendingDraft.current = null;
       try {
         localStorage.removeItem(DRAFT_STORAGE_KEY);
       } catch {
@@ -266,6 +275,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
     // Clear draft upon successful save
     if (!isEditMode) {
+      pendingDraft.current = null;
       try {
         localStorage.removeItem(DRAFT_STORAGE_KEY);
       } catch {
@@ -279,14 +289,13 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
   return (
     // Backdrop click is a mouse shortcut; keyboard users close with Escape (useDialogDismiss).
-    // eslint-disable-next-line jsx-a11y-x/click-events-have-key-events, jsx-a11y-x/no-noninteractive-element-interactions
     <div
       className="modal-overlay active"
       id="addRecipeModal"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modalTitle"
-      onClick={handleBackdropClick}
+      {...backdropProps}
     >
       <div className="modal-sheet">
         {/* Sticky Header */}

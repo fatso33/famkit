@@ -120,9 +120,7 @@ export default function App() {
     } else {
       navigator.clipboard.writeText(window.location.href).then(
         () => showToast(t.shareSuccess, '🔗'),
-        () => {
-          // Clipboard blocked (permissions / insecure context); don't claim success.
-        },
+        () => showToast(t.shareFailed, '⚠️'),
       );
     }
   };

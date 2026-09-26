@@ -20,12 +20,41 @@ describe('dialog dismissal (useDialogDismiss)', () => {
   it('closes on a backdrop click but not on clicks inside the dialog content', () => {
     const onClose = vi.fn();
     render(<IOSInstallModal onClose={onClose} t={t} />);
+    const title = screen.getByText(t.iosModalTitle);
+    const backdrop = screen.getByRole('dialog');
 
-    fireEvent.click(screen.getByText(t.iosModalTitle));
+    fireEvent.mouseDown(title);
+    fireEvent.click(title);
     expect(onClose).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('dialog'));
+    fireEvent.mouseDown(backdrop);
+    fireEvent.click(backdrop);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not close when a press starts inside and is released on the backdrop', () => {
+    const onClose = vi.fn();
+    render(<IOSInstallModal onClose={onClose} t={t} />);
+
+    // e.g. drag-selecting text: the click then fires on the common ancestor (the backdrop).
+    fireEvent.mouseDown(screen.getByText(t.iosModalTitle));
+    fireEvent.click(screen.getByRole('dialog'));
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('ignores Escape while typing in a field', () => {
+    const onClose = vi.fn();
+    render(
+      <>
+        <input aria-label="notes" />
+        <IOSInstallModal onClose={onClose} t={t} />
+      </>,
+    );
+
+    fireEvent.keyDown(screen.getByLabelText('notes'), { key: 'Escape' });
+
+    expect(onClose).not.toHaveBeenCalled();
   });
 });
 

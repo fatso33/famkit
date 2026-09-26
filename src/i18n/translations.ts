@@ -41,6 +41,7 @@ export interface UiTranslations {
   cookModeOff: string;
   cookModeUnsupported: string;
   shareSuccess: string;
+  shareFailed: string;
   backToRecipes: string;
   settings: string;
   themeToggle: string;
@@ -127,6 +128,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     cookModeOff: 'Cook Mode: Off',
     cookModeUnsupported: 'Screen Wake Lock is not supported on this browser.',
     shareSuccess: 'Recipe link copied to clipboard!',
+    shareFailed: "Couldn't copy the recipe link.",
     backToRecipes: 'Back to Recipes',
     settings: 'Settings',
     themeToggle: 'Toggle Theme',
@@ -211,6 +213,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     cookModeOff: 'Tryb gotowania: Wyłączony',
     cookModeUnsupported: 'Funkcja blokady wygaszania ekranu nie jest wspierana.',
     shareSuccess: 'Link do przepisu skopiowany do schowka!',
+    shareFailed: 'Nie udało się skopiować linku do przepisu.',
     backToRecipes: 'Powrót do przepisów',
     settings: 'Ustawienia',
     themeToggle: 'Zmień motyw',
