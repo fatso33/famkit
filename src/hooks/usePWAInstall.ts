@@ -34,7 +34,8 @@ export function usePWAInstall() {
 
     const handleAppInstalled = () => {
       setDeferredPrompt(null);
-      dismissBanner();
+      setIsDismissed(true);
+      dismissInstallBanner();
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);

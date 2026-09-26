@@ -39,6 +39,21 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   ]);
   const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
 
+  const resetForm = () => {
+    setTitle('');
+    setAuthor('');
+    setCardDescription('');
+    setYieldHeader('For 1 loaf:');
+    setHeroImage('');
+    setTips('');
+    setNotes('');
+    setIngredientRows([{ id: 'ing-1', name: '', amount: '' }]);
+    setSteps([
+      { id: 'step-1', text: '', notes: '', imageSrc: '', imageCaption: '' },
+    ]);
+    setHasRestoredDraft(false);
+  };
+
   // Initialize or reset form when modal opens or initialRecipe changes
   useEffect(() => {
     if (!isOpen) return;
@@ -191,21 +206,6 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
     ingredientRows,
     steps,
   ]);
-
-  const resetForm = () => {
-    setTitle('');
-    setAuthor('');
-    setCardDescription('');
-    setYieldHeader('For 1 loaf:');
-    setHeroImage('');
-    setTips('');
-    setNotes('');
-    setIngredientRows([{ id: 'ing-1', name: '', amount: '' }]);
-    setSteps([
-      { id: 'step-1', text: '', notes: '', imageSrc: '', imageCaption: '' },
-    ]);
-    setHasRestoredDraft(false);
-  };
 
   const handleClearDraft = () => {
     if (window.confirm(t.confirmClearDraft)) {

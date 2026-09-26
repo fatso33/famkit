@@ -12,7 +12,7 @@ export function getStoredRecipes(): Recipe[] {
   if (typeof window === 'undefined') return [DEFAULT_RECIPE];
 
   const raw = localStorage.getItem(RECIPES_KEY);
-  let recipes: Recipe[] = [];
+  let recipes: Recipe[];
 
   if (!raw) {
     recipes = [DEFAULT_RECIPE];

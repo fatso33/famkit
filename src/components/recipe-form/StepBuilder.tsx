@@ -2,6 +2,8 @@ import React from 'react';
 import { UiTranslations } from '../../i18n/translations';
 import { ImagePickerWithPreview } from './ImagePickerWithPreview';
 
+const newStepId = () => 'step-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+
 export interface StepBuilderItem {
   id: string;
   text: string;
@@ -33,7 +35,7 @@ export const StepBuilder: React.FC<StepBuilderProps> = ({
 
   const handleAddStep = () => {
     const nextStep: StepBuilderItem = {
-      id: 'step-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+      id: newStepId(),
       text: '',
       notes: '',
       imageSrc: '',
@@ -47,7 +49,7 @@ export const StepBuilder: React.FC<StepBuilderProps> = ({
       // Keep at least Step 1, reset contents
       onChange([
         {
-          id: 'step-' + Date.now(),
+          id: newStepId(),
           text: '',
           notes: '',
           imageSrc: '',

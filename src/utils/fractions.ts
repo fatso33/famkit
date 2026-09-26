@@ -65,8 +65,8 @@ export function parseIngredientRow(
     });
   };
 
-  let name = '';
-  let amount = '';
+  let name: string;
+  let amount: string;
 
   if (ing.qty !== undefined && ing.qty !== null && !isNaN(Number(ing.qty))) {
     let cleanPrefix = extractBrackets(ing.prefix || '');
@@ -88,7 +88,7 @@ export function parseIngredientRow(
         name = cleanText.split(':')[0].trim();
       } else {
         const match = cleanText.match(
-          /^([\d\s\/\.\u00BC-\u00BE\u2150-\u215E]+(?:\s*(?:cups?|tsp|teaspoons?|tbsp|tablespoons?|g|ml|kg|oz|lbs?|cloves?|slices?|pinch|handful|szklanki?|łyżeczki?|łyżek|sztuk[a-z]*|[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+))?)\s+(.*)$/i
+          /^([\d\s/.\u00BC-\u00BE\u2150-\u215E]+(?:\s*(?:cups?|tsp|teaspoons?|tbsp|tablespoons?|g|ml|kg|oz|lbs?|cloves?|slices?|pinch|handful|szklanki?|łyżeczki?|łyżek|sztuk[a-z]*|[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+))?)\s+(.*)$/i
         );
         if (match && match[2]) {
           name = match[2].trim();
@@ -151,7 +151,7 @@ export function parseIngredientRow(
       amount = parts.slice(1).join('-').trim();
     } else {
       const match = cleanText.match(
-        /^([\d\s\/\.\u00BC-\u00BE\u2150-\u215E]+(?:\s*(?:cups?|tsp|teaspoons?|tbsp|tablespoons?|g|ml|kg|oz|lbs?|cloves?|slices?|pinch|handful))?)\s+(.*)$/i
+        /^([\d\s/.\u00BC-\u00BE\u2150-\u215E]+(?:\s*(?:cups?|tsp|teaspoons?|tbsp|tablespoons?|g|ml|kg|oz|lbs?|cloves?|slices?|pinch|handful))?)\s+(.*)$/i
       );
       if (match) {
         amount = match[1].trim();
