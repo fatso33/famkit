@@ -32,6 +32,7 @@ Private family recipe vault PWA. React 19 + TypeScript (strict) + Vite 6 + Tailw
 - **Service worker:** JS/CSS/HTML are network-first, but images are **cache-first**. If you replace an image at an existing path, bump `CACHE_NAME` in `public/sw.js`, or users keep seeing the old one.
 - **Secrets:** `VITE_*` env vars are baked into the public bundle. Never commit `.env`. CI reads them from GitHub Secrets (`deploy.yml`).
 - **Access control** has two layers that must agree: the `VITE_FAMILY_EMAILS` secret (client UX) and the email list in `firestore.rules` (real enforcement, deployed separately via the Firebase CLI/console).
+- **Local UI testing:** there's no local `.env`, so Firebase is off in dev. "Connect with Google" logs in as a fake dev user, and data stays in localStorage, so it's safe to click through anything. In the preview browser, the hidden pane stalls `document.startViewTransition`. If navigation clicks do nothing, run `document.startViewTransition = undefined` in the page first.
 - **Offline-first:** Firestore uses IndexedDB persistence, and recipes also live in localStorage. Test changes signed out (local-only) as well as signed in.
 - **Images:** photos are compressed client-side and embedded. Keep history snapshots free of embedded photos (see `useRecipes`).
 
