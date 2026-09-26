@@ -47,6 +47,7 @@ describe('auto-translation of custom recipes', () => {
     render(<App />);
 
     fireEvent.click(screen.getByText('Aunt Ola Pierogi'));
+    fireEvent.click(screen.getByRole('button', { name: UI_TEXT.en.openMenu }));
     fireEvent.click(screen.getByRole('button', { name: /toggle language/i }));
     await act(() => new Promise((r) => setTimeout(r, 200)));
 
@@ -59,6 +60,7 @@ describe('auto-translation of custom recipes', () => {
 
     fireEvent.click(screen.getByText('Aunt Ola Pierogi'));
     await act(() => new Promise((r) => setTimeout(r, 100)));
+    fireEvent.click(screen.getByRole('button', { name: UI_TEXT.pl.openMenu }));
     const toggle = screen.getByRole('button', { name: UI_TEXT.pl.languageToggle });
     fireEvent.click(toggle); // → EN
     fireEvent.click(toggle); // → PL: explicit retry

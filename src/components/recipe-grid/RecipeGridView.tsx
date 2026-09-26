@@ -8,7 +8,8 @@ interface RecipeGridViewProps {
   recipes: Recipe[];
   language: Language;
   onSelectRecipe: (id: string) => void;
-  onOpenAddModal: () => void;
+  /** Shown above the vault title, e.g. the install prompt. */
+  banner?: React.ReactNode;
   t: UiTranslations;
 }
 
@@ -16,7 +17,7 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
   recipes,
   language,
   onSelectRecipe,
-  onOpenAddModal,
+  banner,
   t,
 }) => {
   const [currentFilter, setCurrentFilter] = useState<FilterType>('all');
@@ -30,6 +31,8 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
 
   return (
     <section id="viewGrid" className="recipe-grid-view">
+      {banner}
+
       <div className="vault-hero">
         <h1 className="font-serif">{t.vaultTitle}</h1>
       </div>
@@ -49,17 +52,6 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
           />
         ))}
       </div>
-
-      {/* Floating Action Button */}
-      <button
-        className="fab-add"
-        id="fabAddBtn"
-        title={t.addRecipe}
-        aria-label={t.addRecipe}
-        onClick={onOpenAddModal}
-      >
-        <span style={{ fontSize: '1.5rem', lineHeight: 1 }}>+</span>
-      </button>
     </section>
   );
 };

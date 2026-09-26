@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { Recipe, Language } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
 import { estimateRecipeMinutes, capitalizeFirstLetter } from '../../utils/timeEstimator';
@@ -15,6 +16,7 @@ interface RecipeDetailViewProps {
   onToggleWakeLock: () => void;
   isWakeLockSupported: boolean;
   onEditRecipe?: (recipe: Recipe) => void;
+  onBack: () => void;
   t: UiTranslations;
 }
 
@@ -25,6 +27,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   onToggleWakeLock,
   isWakeLockSupported,
   onEditRecipe,
+  onBack,
   t,
 }) => {
   const [scale, setScale] = useState(1);
@@ -43,6 +46,11 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
 
   return (
     <article id="viewDetail" className="recipe-detail active">
+      <button type="button" className="btn btn-meta-pill detail-back-pill" onClick={onBack}>
+        <ArrowLeft size="1.1em" aria-hidden="true" />
+        {t.backToRecipes}
+      </button>
+
       {/* Hero Photo */}
       <div className="detail-hero-frame">
         <img

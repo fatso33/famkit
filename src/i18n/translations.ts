@@ -98,12 +98,9 @@ export interface UiTranslations {
   logoAlt: string;
   vaultEmblemAlt: string;
   languageToggle: string;
-  settingsBar: string;
   decreaseTextSize: string;
   increaseTextSize: string;
   shareRecipe: string;
-  apiKeyButton: string;
-  apiKeyButtonTitle: string;
   installBannerLabel: string;
   dismissBanner: string;
   closeDialog: string;
@@ -132,6 +129,27 @@ export interface UiTranslations {
   photoCaptionLabel: string;
   draftRestoredTooltip: string;
   descriptionOptional: string;
+  // Floating menu, pages and settings
+  menu: string;
+  openMenu: string;
+  closeMenu: string;
+  pages: string;
+  preferences: string;
+  language: string;
+  darkMode: string;
+  recipeVault: string;
+  makes: string;
+  addMake: string;
+  comingSoonToast: string;
+  makesEmptyTitle: string;
+  makesEmptyBody: string;
+  translationSection: string;
+  apiKeySave: string;
+  apiKeyCustomActive: string;
+  apiKeyBundledActive: string;
+  apiKeyMissing: string;
+  apiKeyBundledPlaceholder: string;
+  apiKeyOfflineNote: string;
 }
 
 export const UI_TEXT: Record<Language, UiTranslations> = {
@@ -181,7 +199,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     backToRecipes: 'Back to Recipes',
     settings: 'Settings',
     themeToggle: 'Toggle Theme',
-    textScaling: 'Text Size',
+    textScaling: 'Text size',
     apiKeyLabel: 'Gemini API Key (Optional for Custom Recipes)',
     apiKeyPlaceholder: 'AIzaSy...',
     apiKeySavedToast: 'Gemini API Key saved locally',
@@ -229,12 +247,9 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     logoAlt: 'Family Kitchen logo',
     vaultEmblemAlt: 'Family Kitchen - Recipe Vault',
     languageToggle: 'Toggle language: English / Polish',
-    settingsBar: 'Settings bar',
     decreaseTextSize: 'Decrease text size',
     increaseTextSize: 'Increase text size',
     shareRecipe: 'Share recipe',
-    apiKeyButton: 'API Key',
-    apiKeyButtonTitle: 'Configure Gemini API Key for custom recipes',
     installBannerLabel: 'Install app banner',
     dismissBanner: 'Dismiss banner',
     closeDialog: 'Close',
@@ -263,6 +278,28 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     photoCaptionLabel: 'Photo caption (optional)',
     draftRestoredTooltip: 'Restored from previous session',
     descriptionOptional: 'Description (Optional)',
+    menu: 'Menu',
+    openMenu: 'Open menu',
+    closeMenu: 'Close menu',
+    pages: 'Pages',
+    preferences: 'Preferences',
+    language: 'Language',
+    darkMode: 'Dark mode',
+    recipeVault: 'Recipe Vault',
+    makes: 'Makes',
+    addMake: 'Add Make',
+    comingSoonToast: 'Makes are coming soon!',
+    makesEmptyTitle: 'No makes yet',
+    makesEmptyBody: 'This is where your makes will live. Coming soon.',
+    translationSection: 'Recipe translation',
+    apiKeySave: 'Save',
+    apiKeyCustomActive: 'Custom API key active on this device',
+    apiKeyBundledActive: 'Default Gemini API key active (bundled from GitHub Secrets)',
+    apiKeyMissing:
+      'No API key detected. Paste your Gemini API key above to enable translation for new recipes.',
+    apiKeyBundledPlaceholder: '●●●●●● (Configured via GitHub Secret)',
+    apiKeyOfflineNote:
+      "Wanda's Cheese Bread works 100% offline without a key. This key is only used to translate custom recipes you add.",
   },
   pl: {
     vaultTitle: 'Skarbiec Przepisów Rodzinnych',
@@ -358,12 +395,9 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     logoAlt: 'Logo Family Kitchen',
     vaultEmblemAlt: 'Rodzinna Kuchnia - Skarbiec Przepisów',
     languageToggle: 'Zmień język: angielski / polski',
-    settingsBar: 'Pasek ustawień',
     decreaseTextSize: 'Zmniejsz tekst',
     increaseTextSize: 'Powiększ tekst',
     shareRecipe: 'Udostępnij przepis',
-    apiKeyButton: 'Klucz API',
-    apiKeyButtonTitle: 'Ustaw klucz Gemini API dla własnych przepisów',
     installBannerLabel: 'Baner instalacji aplikacji',
     dismissBanner: 'Zamknij baner',
     closeDialog: 'Zamknij',
@@ -392,5 +426,27 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     photoCaptionLabel: 'Podpis zdjęcia (opcjonalnie)',
     draftRestoredTooltip: 'Przywrócono z poprzedniej sesji',
     descriptionOptional: 'Opis (opcjonalnie)',
+    menu: 'Menu',
+    openMenu: 'Otwórz menu',
+    closeMenu: 'Zamknij menu',
+    pages: 'Strony',
+    preferences: 'Preferencje',
+    language: 'Język',
+    darkMode: 'Tryb ciemny',
+    recipeVault: 'Skarbiec przepisów',
+    makes: 'Wypieki',
+    addMake: 'Dodaj wypiek',
+    comingSoonToast: 'Wypieki już wkrótce!',
+    makesEmptyTitle: 'Nie ma jeszcze wypieków',
+    makesEmptyBody: 'Tu wkrótce pojawią się Twoje wypieki.',
+    translationSection: 'Tłumaczenie przepisów',
+    apiKeySave: 'Zapisz',
+    apiKeyCustomActive: 'Na tym urządzeniu używany jest własny klucz API',
+    apiKeyBundledActive: 'Aktywny domyślny klucz Gemini API (z GitHub Secrets)',
+    apiKeyMissing:
+      'Nie wykryto klucza API. Wklej powyżej klucz Gemini API, aby włączyć tłumaczenie nowych przepisów.',
+    apiKeyBundledPlaceholder: '●●●●●● (ustawiony w GitHub Secrets)',
+    apiKeyOfflineNote:
+      'Chleb serowy Wandy działa w pełni offline, bez klucza. Klucz służy wyłącznie do tłumaczenia przepisów, które dodasz.',
   },
 };

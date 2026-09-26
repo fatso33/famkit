@@ -11,7 +11,7 @@ describe('recipe page in Polish', () => {
     window.scrollTo = vi.fn();
   });
 
-  it('shows the author, cooking time and header name in Polish', () => {
+  it('shows the author, cooking time, title and back button in Polish', () => {
     const { container } = render(<App />);
     fireEvent.click(screen.getByText('Chleb Serowy Wandy'));
 
@@ -21,7 +21,8 @@ describe('recipe page in Polish', () => {
     expect(meta!.textContent).toMatch(/~\d+ (godz\.|min)/);
     expect(meta!.textContent).not.toMatch(/\b(By|hrs?|mins)\b/);
 
-    expect(container.querySelector('#headerRecipeName')).toHaveTextContent('Chleb Serowy Wandy');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Chleb Serowy Wandy');
+    expect(screen.getByRole('button', { name: UI_TEXT.pl.backToRecipes })).toBeInTheDocument();
   });
 });
 

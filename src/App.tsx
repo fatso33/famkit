@@ -5,13 +5,27 @@ import { useLanguage } from './hooks/useLanguage';
 import { useCookMode } from './hooks/useCookMode';
 import { usePWAInstall } from './hooks/usePWAInstall';
 import { useRecipes, getLocalizedRecipe } from './hooks/useRecipes';
-import { Header } from './components/layout/Header';
+import { Plus, Share2 } from 'lucide-react';
+import { FloatingMenu, MenuAction } from './components/layout/FloatingMenu';
+import { InstallCard } from './components/layout/InstallCard';
 import { RecipeGridView } from './components/recipe-grid/RecipeGridView';
 import { RecipeDetailView } from './components/recipe-detail/RecipeDetailView';
 import { AddRecipeModal } from './components/recipe-form/AddRecipeModal';
 import { IOSInstallModal } from './components/layout/IOSInstallModal';
+import { MakesView } from './components/makes/MakesView';
+import { SettingsView } from './components/settings/SettingsView';
 import { Toast } from './components/common/Toast';
 import { Recipe } from './types/recipe';
+import { AppPage } from './types/navigation';
+
+// Animates a view change where supported (a hidden preview pane can stall it; see CLAUDE.md).
+function withViewTransition(changeView: () => void) {
+  if (document.startViewTransition) {
+    document.startViewTransition(changeView);
+  } else {
+    changeView();
+  }
+}
 
 export default function App() {
   const { theme, toggleTheme } = useTheme();
@@ -32,6 +46,7 @@ export default function App() {
   } = useRecipes();
   const localizedRecipe = getLocalizedRecipe(selectedRecipe, language);
 
+  const [page, setPage] = useState<AppPage>('recipes');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -71,29 +86,23 @@ export default function App() {
 
   const handleSelectRecipe = (id: string) => {
     lastTranslateAttempt.current = null;
-    const changeView = () => {
+    withViewTransition(() => {
       setSelectedRecipeId(id);
       window.scrollTo(0, 0);
-    };
-
-    if (document.startViewTransition) {
-      document.startViewTransition(changeView);
-    } else {
-      changeView();
-    }
+    });
   };
 
-  const handleNavigateHome = () => {
-    const changeView = () => {
+  const navigateTo = (target: AppPage) => {
+    withViewTransition(() => {
+      setPage(target);
       setSelectedRecipeId(null);
       window.scrollTo(0, 0);
-    };
+    });
+  };
 
-    if (document.startViewTransition) {
-      document.startViewTransition(changeView);
-    } else {
-      changeView();
-    }
+  const openAddRecipe = () => {
+    setEditingRecipe(null);
+    setIsAddModalOpen(true);
   };
 
   const handleLanguageToggle = () => {
@@ -130,30 +139,44 @@ export default function App() {
     }
   };
 
+  // Page-dependent entries at the bottom of the floating menu.
+  let pageActions: MenuAction[] = [];
+  switch (page) {
+    case 'recipes':
+      pageActions = selectedRecipe
+        ? [
+            {
+              id: 'share',
+              label: t.shareRecipe,
+              icon: Share2,
+              onSelect: () => void handleShare(),
+            },
+          ]
+        : [{ id: 'add-recipe', label: t.addRecipe, icon: Plus, onSelect: openAddRecipe }];
+      break;
+    case 'makes':
+      pageActions = [
+        {
+          id: 'add-make',
+          label: t.addMake,
+          icon: Plus,
+          onSelect: () => showToast(t.comingSoonToast, '🥐'),
+        },
+      ];
+      break;
+    case 'settings':
+      break;
+  }
+
   return (
     <div className="min-h-screen flex flex-col transition-colors duration-200">
-      {/* Header */}
-      <Header
-        selectedRecipeName={localizedRecipe?.name}
-        onNavigateHome={handleNavigateHome}
-        fontPercent={fontPercent}
-        onIncreaseFont={increaseScale}
-        onDecreaseFont={decreaseScale}
-        language={language}
-        onToggleLanguage={handleLanguageToggle}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-        onShare={() => void handleShare()}
-        isInstallBannerVisible={isBannerVisible}
-        onInstall={() => void triggerInstall()}
-        onDismissInstall={dismissBanner}
-        t={t}
-        onToast={showToast}
-      />
-
       {/* Main Container */}
       <main className="app-container">
-        {selectedRecipe ? (
+        {page === 'makes' ? (
+          <MakesView t={t} />
+        ) : page === 'settings' ? (
+          <SettingsView t={t} onToast={showToast} />
+        ) : selectedRecipe ? (
           <RecipeDetailView
             recipe={selectedRecipe}
             language={language}
@@ -164,6 +187,7 @@ export default function App() {
               setEditingRecipe(rec);
               setIsAddModalOpen(true);
             }}
+            onBack={() => navigateTo('recipes')}
             t={t}
           />
         ) : (
@@ -171,14 +195,33 @@ export default function App() {
             recipes={recipes}
             language={language}
             onSelectRecipe={handleSelectRecipe}
-            onOpenAddModal={() => {
-              setEditingRecipe(null);
-              setIsAddModalOpen(true);
-            }}
+            banner={
+              isBannerVisible && (
+                <InstallCard
+                  onInstall={() => void triggerInstall()}
+                  onDismiss={dismissBanner}
+                  t={t}
+                />
+              )
+            }
             t={t}
           />
         )}
       </main>
+
+      <FloatingMenu
+        page={page}
+        onNavigate={navigateTo}
+        actions={pageActions}
+        language={language}
+        onToggleLanguage={handleLanguageToggle}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        fontPercent={fontPercent}
+        onIncreaseFont={increaseScale}
+        onDecreaseFont={decreaseScale}
+        t={t}
+      />
 
       {/* Add / Edit Recipe Modal */}
       {isAddModalOpen && (
