@@ -164,7 +164,7 @@ Configure the following variables:
 | `VITE_FIREBASE_MESSAGING_SENDER_ID` | Optional  | Firebase Cloud Messaging sender ID                                                    |
 | `VITE_FIREBASE_APP_ID`              | Optional* | Firebase Web Application ID                                                           |
 | `VITE_FAMILY_EMAILS`                | Optional  | Comma-separated list of approved Google emails (e.g. `"mom@gmail.com,dad@gmail.com"`) |
-| `VITE_RECAPTCHA_SITE_KEY`           | Optional  | reCAPTCHA v3 site key for Firebase App Check (protects recipe translation)            |
+| `VITE_RECAPTCHA_SITE_KEY`           | Optional  | reCAPTCHA Enterprise site key for Firebase App Check (protects recipe translation)    |
 
 _\*Required only if enabling multi-device cloud synchronization and Google family authentication._
 
@@ -253,15 +253,15 @@ To enable Cloud Sync and recipe translation on GitHub Pages, navigate to **Setti
 - `VITE_FIREBASE_MESSAGING_SENDER_ID`
 - `VITE_FIREBASE_APP_ID`
 - `VITE_FAMILY_EMAILS`: e.g. `mom@gmail.com,dad@gmail.com,sister@gmail.com`
-- `VITE_RECAPTCHA_SITE_KEY`: reCAPTCHA v3 site key (see below)
+- `VITE_RECAPTCHA_SITE_KEY`: reCAPTCHA Enterprise site key (see below)
 
 ### 3. Enable Recipe Translation (Firebase AI Logic + App Check)
 
 Translation calls Gemini through Firebase AI Logic, which holds the Gemini key on Google's side, so no Gemini key is ever in the public bundle. It runs on the free Spark plan.
 
 - **Firebase console → AI Logic**: get started with the **Gemini Developer API**.
-- **reCAPTCHA v3** ([admin console](https://www.google.com/recaptcha/admin/create)): create a site key for `fatso33.github.io` and `localhost`.
-- **Firebase console → App Check**: register the web app with the reCAPTCHA v3 provider (site key + secret key), then **enforce** App Check for AI Logic.
+- **reCAPTCHA Enterprise** ([Google Cloud console → Security → reCAPTCHA](https://console.cloud.google.com/security/recaptcha), same project as Firebase): create a **Website** key for `fatso33.github.io` and `localhost`, with **Use checkbox challenge** off. Free up to 10,000 checks a month; no billing account needed.
+- **Firebase console → App Check**: register the web app with the **reCAPTCHA Enterprise** provider (paste the site key), then **enforce** App Check for AI Logic.
 - Add the site key as the `VITE_RECAPTCHA_SITE_KEY` repository secret.
 
 Every push to `main` will automatically run type checks, execute the 31-test suite, build the production bundle, and deploy to GitHub Pages!

@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import {
   getAuth,
   GoogleAuthProvider,
@@ -41,9 +41,10 @@ if (isFirebaseConfigured) {
   try {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     // App Check proves requests come from this site, which guards the AI Logic (Gemini) quota.
+    // reCAPTCHA Enterprise (v3 is deprecated for App Check); free up to 10,000 checks a month.
     if (isAppCheckEnabled && recaptchaSiteKey) {
       initializeAppCheck(app, {
-        provider: new ReCaptchaV3Provider(recaptchaSiteKey),
+        provider: new ReCaptchaEnterpriseProvider(recaptchaSiteKey),
         isTokenAutoRefreshEnabled: true,
       });
     }
