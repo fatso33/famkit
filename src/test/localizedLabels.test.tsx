@@ -1,10 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, renderHook, act } from '@testing-library/react';
 import { IngredientsTable } from '../components/recipe-detail/IngredientsTable';
 import { ImageZoomModal } from '../components/recipe-detail/ImageZoomModal';
 import { StepBuilder } from '../components/recipe-form/StepBuilder';
 import { IngredientBuilder } from '../components/recipe-form/IngredientBuilder';
 import { AddRecipeModal } from '../components/recipe-form/AddRecipeModal';
+import { IOSInstallModal } from '../components/layout/IOSInstallModal';
+import { useLanguage } from '../hooks/useLanguage';
 import { UI_TEXT } from '../i18n/translations';
 
 const pl = UI_TEXT.pl;
@@ -78,5 +80,28 @@ describe('recipe editor', () => {
       expect(field).toHaveAccessibleName();
     }
     expect(screen.getByLabelText('Opis (opcjonalnie)')).toBeInTheDocument();
+  });
+});
+
+describe('iOS install instructions', () => {
+  it('shows the steps in Polish, keeping the Safari icons', () => {
+    const { container } = render(<IOSInstallModal onClose={noop} t={pl} />);
+
+    expect(screen.getByText('Udostępnij')).toBeInTheDocument();
+    expect(screen.getByText('Do ekranu początkowego')).toBeInTheDocument();
+    expect(screen.queryByText(/Tap the/)).not.toBeInTheDocument();
+    expect(container.querySelector('.ios-share-badge svg')).toBeInTheDocument();
+    expect(container.querySelector('.ios-add-badge')).toBeInTheDocument();
+  });
+});
+
+describe('page language', () => {
+  it('sets <html lang> to the selected language so screen readers pronounce it correctly', () => {
+    localStorage.setItem('wandas_language', 'pl');
+    const { result } = renderHook(() => useLanguage());
+    expect(document.documentElement.lang).toBe('pl');
+
+    act(() => result.current.toggleLanguage());
+    expect(document.documentElement.lang).toBe('en');
   });
 });

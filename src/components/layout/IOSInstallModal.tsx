@@ -7,6 +7,12 @@ interface IOSInstallModalProps {
   t: UiTranslations;
 }
 
+// Decorative Safari icons, inserted at the `{icon}` marker of the (static, trusted) step text.
+const SHARE_ICON = `<span class="ios-share-badge" aria-hidden="true"><svg width="13" height="17" viewBox="0 0 14 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-3px;"><path d="M7 11V1m0 0L3 5m4-4l4 4"/><rect x="1" y="7" width="12" height="10" rx="2"/></svg></span>`;
+const ADD_ICON = `<span class="ios-add-badge" aria-hidden="true">⊞</span>`;
+
+const withIcon = (html: string, icon: string) => html.replace('{icon}', icon);
+
 // Mount only while open.
 export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ onClose, t }) => {
   const backdropProps = useDialogDismiss(onClose);
@@ -52,9 +58,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ onClose, t }) 
             <div
               className="ios-step-text"
               id="iosStep1"
-              dangerouslySetInnerHTML={{
-                __html: `Tap the <strong>Share</strong> button <span class="ios-share-badge"><svg width="13" height="17" viewBox="0 0 14 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-3px;"><path d="M7 11V1m0 0L3 5m4-4l4 4"/><rect x="1" y="7" width="12" height="10" rx="2"/></svg></span> in Safari (bottom or top bar).`,
-              }}
+              dangerouslySetInnerHTML={{ __html: withIcon(t.iosStep1, SHARE_ICON) }}
             />
           </div>
 
@@ -63,9 +67,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ onClose, t }) 
             <div
               className="ios-step-text"
               id="iosStep2"
-              dangerouslySetInnerHTML={{
-                __html: `Scroll down and tap <strong>Add to Home Screen</strong> <span class="ios-add-badge">⊞</span>.`,
-              }}
+              dangerouslySetInnerHTML={{ __html: withIcon(t.iosStep2, ADD_ICON) }}
             />
           </div>
 
@@ -74,9 +76,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ onClose, t }) 
             <div
               className="ios-step-text"
               id="iosStep3"
-              dangerouslySetInnerHTML={{
-                __html: `Tap <strong>Add</strong> in the top-right corner to finish.`,
-              }}
+              dangerouslySetInnerHTML={{ __html: t.iosStep3 }}
             />
           </div>
         </div>

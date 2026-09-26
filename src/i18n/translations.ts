@@ -35,6 +35,7 @@ export interface UiTranslations {
   installBtn: string;
   iosModalTitle: string;
   iosModalSubtitle: string;
+  /** Trusted static HTML; `{icon}` marks where the Safari icon is drawn. */
   iosStep1: string;
   iosStep2: string;
   iosStep3: string;
@@ -162,8 +163,8 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     installBtn: 'Install',
     iosModalTitle: 'Install Family Kitchen',
     iosModalSubtitle: 'Add to your Home Screen in Safari',
-    iosStep1: 'Tap the <strong>Share</strong> button in Safari (bottom or top bar).',
-    iosStep2: 'Scroll down and tap <strong>Add to Home Screen</strong>.',
+    iosStep1: 'Tap the <strong>Share</strong> button {icon} in Safari (bottom or top bar).',
+    iosStep2: 'Scroll down and tap <strong>Add to Home Screen</strong> {icon}.',
     iosStep3: 'Tap <strong>Add</strong> in the top-right corner to finish.',
     iosModalDone: 'Got it',
     translatingToast: 'Translating recipe to authentic Polish...',
@@ -291,8 +292,8 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     installBtn: 'Zainstaluj',
     iosModalTitle: 'Zainstaluj Family Kitchen',
     iosModalSubtitle: 'Dodaj do ekranu początkowego w Safari',
-    iosStep1: 'Dotknij przycisku <strong>Udostępnij</strong> na pasku Safari.',
-    iosStep2: 'Przewiń w dół i wybierz <strong>Do ekranu początkowego</strong>.',
+    iosStep1: 'Dotknij przycisku <strong>Udostępnij</strong> {icon} na pasku Safari.',
+    iosStep2: 'Przewiń w dół i wybierz <strong>Do ekranu początkowego</strong> {icon}.',
     iosStep3: 'Dotknij <strong>Dodaj</strong> w prawym górnym rogu ekranu.',
     iosModalDone: 'Rozumiem',
     translatingToast: 'Tłumaczenie przepisu na język polski...',

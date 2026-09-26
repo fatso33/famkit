@@ -7,6 +7,8 @@ export function useLanguage() {
   const [language, setLanguageState] = useState<Language>(getStoredLanguage);
 
   useEffect(() => {
+    // Screen readers pick pronunciation from <html lang>.
+    document.documentElement.lang = language;
     setStoredLanguage(language);
   }, [language]);
 
