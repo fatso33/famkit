@@ -176,11 +176,13 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
       </div>
 
       {/* Image Zoom Lightbox Modal */}
-      <ImageZoomModal
-        key={zoomImageSrc ?? 'closed'}
-        imageSrc={zoomImageSrc}
-        onClose={() => setZoomImageSrc(null)}
-      />
+      {zoomImageSrc && (
+        <ImageZoomModal
+          key={zoomImageSrc}
+          imageSrc={zoomImageSrc}
+          onClose={() => setZoomImageSrc(null)}
+        />
+      )}
     </article>
   );
 };

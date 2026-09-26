@@ -64,9 +64,15 @@ export function subscribeToRecipes(
 
       // If cloud is empty (e.g. brand new database), trigger seeding
       if (cloudRecipes.length === 0) {
-        seedInitialRecipesIfEmpty().then((seeded) => {
-          onUpdate(seeded);
-        });
+        seedInitialRecipesIfEmpty()
+          .then((seeded) => {
+            onUpdate(seeded);
+          })
+          .catch((error: Error) => {
+            console.warn('Seeding Firestore failed (falling back to local cache):', error);
+            if (onError) onError(error);
+            onUpdate(getStoredRecipes());
+          });
         return;
       }
 

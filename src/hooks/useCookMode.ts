@@ -48,9 +48,9 @@ export function useCookMode() {
 
   // Re-request wake lock when document becomes visible again
   useEffect(() => {
-    const handleVisibilityChange = async () => {
+    const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && isWakeLocked && !wakeLockSentinel) {
-        await requestWakeLock();
+        void requestWakeLock();
       }
     };
 

@@ -44,7 +44,19 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
     (isWandas ? wandasDefaultDesc : defaultDesc);
 
   return (
-    <div className="recipe-card" onClick={() => onSelect(rawRecipe.id)}>
+    <div
+      className="recipe-card"
+      role="button"
+      tabIndex={0}
+      aria-label={recipe.name}
+      onClick={() => onSelect(rawRecipe.id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect(rawRecipe.id);
+        }
+      }}
+    >
       <div className="card-media">
         <img src={recipe.heroImage || fallbackImage} alt={recipe.name} loading="lazy" />
         <div className="card-badge">{badgeText}</div>

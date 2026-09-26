@@ -1,25 +1,28 @@
 import React from 'react';
 import { UiTranslations } from '../../i18n/translations';
+import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 
 interface IOSInstallModalProps {
-  isOpen: boolean;
   onClose: () => void;
   t: UiTranslations;
 }
 
-export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ isOpen, onClose, t }) => {
-  if (!isOpen) return null;
+// Mount only while open.
+export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ onClose, t }) => {
+  const handleBackdropClick = useDialogDismiss(onClose);
 
   return (
+    // Backdrop click is a mouse shortcut; keyboard users close with Escape (useDialogDismiss).
+    // eslint-disable-next-line jsx-a11y-x/click-events-have-key-events, jsx-a11y-x/no-noninteractive-element-interactions
     <div
       className="ios-install-modal-overlay open"
       id="iosInstallModal"
       role="dialog"
       aria-modal="true"
       aria-labelledby="iosModalTitle"
-      onClick={onClose}
+      onClick={handleBackdropClick}
     >
-      <div className="ios-install-modal-card" onClick={(e) => e.stopPropagation()}>
+      <div className="ios-install-modal-card">
         <div className="ios-modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <div className="ios-modal-icon">

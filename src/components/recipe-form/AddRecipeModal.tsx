@@ -4,6 +4,7 @@ import { UiTranslations } from '../../i18n/translations';
 import { ImagePickerWithPreview } from './ImagePickerWithPreview';
 import { IngredientBuilder, IngredientRowState } from './IngredientBuilder';
 import { StepBuilder, StepBuilderItem } from './StepBuilder';
+import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 
 const DRAFT_STORAGE_KEY = 'family_kitchen_recipe_draft';
 
@@ -116,6 +117,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   t,
 }) => {
   const isEditMode = Boolean(initialRecipe);
+  const handleBackdropClick = useDialogDismiss(onClose);
 
   const [initial] = useState(() => loadInitialForm(initialRecipe));
   const [title, setTitle] = useState(initial.title);
@@ -276,15 +278,17 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   };
 
   return (
+    // Backdrop click is a mouse shortcut; keyboard users close with Escape (useDialogDismiss).
+    // eslint-disable-next-line jsx-a11y-x/click-events-have-key-events, jsx-a11y-x/no-noninteractive-element-interactions
     <div
       className="modal-overlay active"
       id="addRecipeModal"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modalTitle"
-      onClick={onClose}
+      onClick={handleBackdropClick}
     >
-      <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-sheet">
         {/* Sticky Header */}
         <div className="modal-header-sticky">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>

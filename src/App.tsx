@@ -118,8 +118,12 @@ export default function App() {
         // User dismissed share dialog
       }
     } else {
-      navigator.clipboard.writeText(window.location.href);
-      showToast(t.shareSuccess, '🔗');
+      navigator.clipboard.writeText(window.location.href).then(
+        () => showToast(t.shareSuccess, '🔗'),
+        () => {
+          // Clipboard blocked (permissions / insecure context); don't claim success.
+        },
+      );
     }
   };
 
@@ -136,9 +140,9 @@ export default function App() {
         onToggleLanguage={handleLanguageToggle}
         theme={theme}
         onToggleTheme={toggleTheme}
-        onShare={handleShare}
+        onShare={() => void handleShare()}
         isInstallBannerVisible={isBannerVisible}
-        onInstall={triggerInstall}
+        onInstall={() => void triggerInstall()}
         onDismissInstall={dismissBanner}
         t={t}
         onToast={showToast}
@@ -151,7 +155,7 @@ export default function App() {
             recipe={selectedRecipe}
             language={language}
             isWakeLocked={isWakeLocked}
-            onToggleWakeLock={toggleCookMode}
+            onToggleWakeLock={() => void toggleCookMode()}
             isWakeLockSupported={isWakeLockSupported}
             onEditRecipe={(rec) => {
               setEditingRecipe(rec);
@@ -201,7 +205,7 @@ export default function App() {
       )}
 
       {/* iOS Install Guide Modal */}
-      <IOSInstallModal isOpen={showIOSModal} onClose={() => setShowIOSModal(false)} t={t} />
+      {showIOSModal && <IOSInstallModal onClose={() => setShowIOSModal(false)} t={t} />}
 
       {/* Toast Feedback */}
       <Toast message={toastMessage} icon={toastIcon} />

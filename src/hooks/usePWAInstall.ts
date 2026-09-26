@@ -52,12 +52,18 @@ export function usePWAInstall() {
     }
 
     if (deferredPrompt) {
-      await deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
-      if (choice && choice.outcome === 'accepted') {
-        dismissBanner();
+      try {
+        await deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          dismissBanner();
+        }
+      } catch (err) {
+        console.warn('Install prompt failed:', err);
+      } finally {
+        // A deferred prompt can only be used once.
+        setDeferredPrompt(null);
       }
-      setDeferredPrompt(null);
     }
   };
 

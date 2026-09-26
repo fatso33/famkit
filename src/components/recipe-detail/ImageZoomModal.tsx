@@ -1,34 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 
 interface ImageZoomModalProps {
-  imageSrc: string | null;
+  imageSrc: string;
   onClose: () => void;
 }
 
+// Mount only while open, keyed by imageSrc so zoom/pan state resets per image.
 export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClose }) => {
   const [zoomScale, setZoomScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
+  const handleBackdropClick = useDialogDismiss(onClose);
 
-  // Zoom/pan state resets per image because the parent keys this component by imageSrc.
+  // Lock page scroll behind the lightbox.
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-
-    if (imageSrc) {
-      document.body.style.overflow = 'hidden';
-      window.addEventListener('keydown', handleKeyDown);
-    }
-
+    document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = '';
-      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [imageSrc, onClose]);
-
-  if (!imageSrc) return null;
+  }, []);
 
   const handleZoomIn = () =>
     setZoomScale((prev) => Math.min(3.5, Number((prev + 0.35).toFixed(2))));
@@ -87,15 +79,17 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClos
   };
 
   return (
+    // Backdrop click is a mouse shortcut; keyboard users close with Escape (useDialogDismiss).
+    // eslint-disable-next-line jsx-a11y-x/click-events-have-key-events, jsx-a11y-x/no-noninteractive-element-interactions
     <div
       className="image-modal-overlay active"
       id="imageZoomModal"
       role="dialog"
       aria-modal="true"
       aria-label="Step Photo Zoom"
-      onClick={onClose}
+      onClick={handleBackdropClick}
     >
-      <div className="image-modal-toolbar" onClick={(e) => e.stopPropagation()}>
+      <div className="image-modal-toolbar">
         <div className="image-modal-controls">
           <button
             className="image-modal-btn"
@@ -146,14 +140,19 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClos
         </button>
       </div>
 
+      {/* Drag-to-pan, wheel zoom, click-to-zoom and click-empty-space-to-close are mouse
+          conveniences; the toolbar buttons and Escape cover the same actions from the keyboard. */}
+      {/* eslint-disable-next-line jsx-a11y-x/no-static-element-interactions, jsx-a11y-x/click-events-have-key-events */}
       <div
         className="image-modal-content"
         id="imageModalContent"
+        onClick={handleBackdropClick}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onWheel={handleWheel}
       >
+        {/* eslint-disable-next-line jsx-a11y-x/click-events-have-key-events, jsx-a11y-x/no-noninteractive-element-interactions */}
         <img
           id="modalZoomImg"
           className={`zoomable-image ${zoomScale > 1 ? 'is-zoomed' : ''}`}
