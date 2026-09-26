@@ -3,54 +3,65 @@
 
       :root {
         --font-scale: 1;
-        --font-serif: 'Fraunces', Georgia, serif;
+        --font-serif: 'Playfair Display', Georgia, serif;
         --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-        
+
+        /* Family Kitchen Heirloom (light). Terracotta and honey are deepened slightly so text meets 4.5:1. */
         --bg-main: #fbf9f5;
         --bg-surface: #ffffff;
-        --bg-card: #f5f1e9;
-        --bg-card-hover: #ece6dc;
-        --border-subtle: #e6dfd3;
-        --border-strong: #d4cbbd;
-        --text-primary: #1f1d1a;
-        --text-secondary: #5e584f;
-        --text-muted: #8b8376;
-        --accent: #c85a32;
-        --accent-hover: #b14a24;
-        --accent-subtle: #faece6;
-        --accent-gold: #c68228;
-        --accent-gold-subtle: #fcf4e8;
-        --success: #2e7d4c;
-        --success-subtle: #eaf5ee;
-        --shadow-sm: 0 1px 3px rgba(35, 25, 15, 0.05);
-        --shadow-md: 0 8px 24px -6px rgba(35, 25, 15, 0.08);
-        --shadow-lg: 0 16px 36px -8px rgba(35, 25, 15, 0.12);
+        --bg-card: #f5f0e6;
+        --bg-card-hover: #ede6d8;
+        --border-subtle: #e7dec8;
+        --border-strong: #dcc1b9;
+        --text-primary: #1c1917;
+        --text-secondary: #56423d;
+        --text-muted: #6f6862;
+        --accent: #ad4f2d;
+        --accent-hover: #963f22;
+        --accent-subtle: #fbe9e2;
+        --on-accent: #ffffff;
+        --accent-gold: #8a5d06;
+        --accent-gold-subtle: #fcf1dc;
+        --success: #2d4a3e;
+        --success-subtle: #e6efe9;
+        --elev-menu: #ffffff;
+        --scrim: rgba(28, 25, 23, 0.28);
+        --shadow-sm: 0 1px 3px rgba(60, 35, 20, 0.06);
+        --shadow-md: 0 8px 24px -6px rgba(60, 35, 20, 0.1);
+        --shadow-lg: 0 16px 36px -8px rgba(60, 35, 20, 0.16);
+        --fab-shadow: 0 10px 24px -6px rgba(173, 79, 45, 0.45), inset 0 -1px 0 rgba(0, 0, 0, 0.15);
         --radius-sm: 8px;
         --radius-md: 14px;
         --radius-lg: 20px;
+        --radius-xl: 24px;
         --radius-full: 9999px;
       }
 
+      /* Nocturne Hearth Heirloom (dark) */
       [data-theme="dark"] {
-        --bg-main: #131211;
-        --bg-surface: #1b1917;
-        --bg-card: #24221f;
-        --bg-card-hover: #2e2b27;
-        --border-subtle: #332f2a;
-        --border-strong: #47423b;
-        --text-primary: #f5f2eb;
-        --text-secondary: #b5ada2;
-        --text-muted: #7d7569;
-        --accent: #e0744c;
-        --accent-hover: #f1835b;
-        --accent-subtle: #2d1d16;
-        --accent-gold: #e4993a;
-        --accent-gold-subtle: #2f2214;
-        --success: #48a76b;
-        --success-subtle: #16281d;
-        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
-        --shadow-md: 0 8px 24px -6px rgba(0, 0, 0, 0.4);
-        --shadow-lg: 0 16px 36px -8px rgba(0, 0, 0, 0.5);
+        --bg-main: #161311;
+        --bg-surface: #211b17;
+        --bg-card: #2b231e;
+        --bg-card-hover: #362d27;
+        --border-subtle: #3d312a;
+        --border-strong: #5a493e;
+        --text-primary: #f8f1e9;
+        --text-secondary: #d8cdc3;
+        --text-muted: #a8988c;
+        --accent: #e06d48;
+        --accent-hover: #e87a56;
+        --accent-subtle: #3a2219;
+        --on-accent: #181412;
+        --accent-gold: #f2ba49;
+        --accent-gold-subtle: #2e2415;
+        --success: #aecebd;
+        --success-subtle: #1c2a24;
+        --elev-menu: #2b231e;
+        --scrim: rgba(10, 7, 5, 0.55);
+        --shadow-sm: 0 1px 3px rgba(8, 5, 3, 0.35);
+        --shadow-md: 0 8px 24px -6px rgba(8, 5, 3, 0.5);
+        --shadow-lg: 0 16px 36px -8px rgba(8, 5, 3, 0.6);
+        --fab-shadow: 0 4px 20px rgba(224, 109, 72, 0.32);
       }
 
       * {
@@ -419,7 +430,7 @@
 
       .btn-primary {
         background: var(--accent);
-        color: #ffffff !important;
+        color: var(--on-accent) !important;
         border-color: var(--accent);
       }
 
@@ -1362,7 +1373,7 @@
 
       .step-builder-badge {
         background: var(--accent);
-        color: #ffffff;
+        color: var(--on-accent);
         font-size: 0.8rem;
         font-weight: 700;
         padding: 0.2rem 0.65rem;
@@ -1591,7 +1602,7 @@
 
       .btn-install-cta {
         background: var(--accent);
-        color: #ffffff;
+        color: var(--on-accent);
         border: none;
         border-radius: var(--radius-sm);
         padding: 0.28rem 0.75rem;
@@ -1736,7 +1747,7 @@
         height: 24px;
         border-radius: 50%;
         background: var(--accent);
-        color: #fff;
+        color: var(--on-accent);
         font-size: 0.78rem;
         font-weight: 700;
         display: grid;
@@ -1776,7 +1787,7 @@
         bottom: 2rem;
         right: 2rem;
         background: var(--accent);
-        color: white;
+        color: var(--on-accent);
         width: 52px;
         height: 52px;
         border-radius: 50%;
