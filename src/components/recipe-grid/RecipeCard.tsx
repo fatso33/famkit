@@ -1,7 +1,7 @@
 import React from 'react';
 import { Recipe, Language } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
-import { calculateRecipeTime } from '../../utils/timeEstimator';
+import { estimateRecipeMinutes } from '../../utils/timeEstimator';
 import { getLocalizedRecipe } from '../../hooks/useRecipes';
 
 interface RecipeCardProps {
@@ -19,7 +19,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
 }) => {
   const recipe = getLocalizedRecipe(rawRecipe, language) || rawRecipe;
   const isWandas = rawRecipe.id === 'wandas-cheese-bread' || rawRecipe.isDefault;
-  const estimatedTime = calculateRecipeTime(recipe);
+  const estimatedTime = t.estimatedTime(estimateRecipeMinutes(recipe));
 
   const fallbackImage =
     'https://images.unsplash.com/photo-1589367920969-ab8e050bbb04?auto=format&fit=crop&w=1200&q=80';
@@ -64,7 +64,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
       <div className="card-body">
         <h3 className="card-title">{recipe.name}</h3>
         <div className="card-meta">
-          <span>By {recipe.author}</span>
+          <span>{t.byAuthor(recipe.author)}</span>
           <span aria-hidden="true">·</span>
           <span style={{ color: 'var(--accent)', fontWeight: 600 }}>⏱️ {estimatedTime}</span>
         </div>

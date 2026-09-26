@@ -4,7 +4,7 @@ import { useFontScale } from './hooks/useFontScale';
 import { useLanguage } from './hooks/useLanguage';
 import { useCookMode } from './hooks/useCookMode';
 import { usePWAInstall } from './hooks/usePWAInstall';
-import { useRecipes } from './hooks/useRecipes';
+import { useRecipes, getLocalizedRecipe } from './hooks/useRecipes';
 import { Header } from './components/layout/Header';
 import { RecipeGridView } from './components/recipe-grid/RecipeGridView';
 import { RecipeDetailView } from './components/recipe-detail/RecipeDetailView';
@@ -30,6 +30,7 @@ export default function App() {
     translateSelectedRecipe,
     isTranslating,
   } = useRecipes();
+  const localizedRecipe = getLocalizedRecipe(selectedRecipe, language);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
@@ -107,11 +108,11 @@ export default function App() {
   };
 
   const handleShare = async () => {
-    if (selectedRecipe && navigator.share) {
+    if (localizedRecipe && navigator.share) {
       try {
         await navigator.share({
-          title: selectedRecipe.name,
-          text: `${selectedRecipe.name} by ${selectedRecipe.author} - Heirloom Family Recipe`,
+          title: localizedRecipe.name,
+          text: t.shareText(localizedRecipe.name, localizedRecipe.author),
           url: window.location.href,
         });
       } catch {
@@ -133,7 +134,7 @@ export default function App() {
     <div className="min-h-screen flex flex-col transition-colors duration-200">
       {/* Header */}
       <Header
-        selectedRecipeName={selectedRecipe?.name}
+        selectedRecipeName={localizedRecipe?.name}
         onNavigateHome={handleNavigateHome}
         fontPercent={fontPercent}
         onIncreaseFont={increaseScale}

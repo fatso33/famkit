@@ -93,8 +93,9 @@ export function estimateActionDuration(text: string): number {
   return 2;
 }
 
-export function calculateRecipeTime(recipe: Partial<Recipe> | null | undefined): string {
-  if (!recipe) return '~30 mins';
+/** Estimated total time in minutes, rounded to the nearest 5. Format it with `t.estimatedTime`. */
+export function estimateRecipeMinutes(recipe: Partial<Recipe> | null | undefined): number {
+  if (!recipe) return 30;
   let totalMinutes = 0;
 
   // 1. Analyze each step
@@ -164,21 +165,9 @@ export function calculateRecipeTime(recipe: Partial<Recipe> | null | undefined):
     totalMinutes += bakeTime;
   }
 
-  // 4. Format to human-readable string rounded to nearest 5 minutes
+  // 4. Round to the nearest 5 minutes
   if (totalMinutes <= 0) totalMinutes = 25;
-  const rounded = Math.round(totalMinutes / 5) * 5;
-
-  if (rounded < 60) {
-    return `~${rounded} mins`;
-  }
-
-  const hours = Math.floor(rounded / 60);
-  const remMinutes = rounded % 60;
-
-  if (remMinutes === 0) {
-    return `~${hours} ${hours === 1 ? 'hr' : 'hrs'}`;
-  }
-  return `~${hours} ${hours === 1 ? 'hr' : 'hrs'} ${remMinutes} mins`;
+  return Math.round(totalMinutes / 5) * 5;
 }
 
 export function capitalizeFirstLetter(text: string): string {

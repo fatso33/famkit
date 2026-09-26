@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   extractTimeFromText,
   estimateActionDuration,
-  calculateRecipeTime,
+  estimateRecipeMinutes,
   capitalizeFirstLetter,
 } from '../utils/timeEstimator';
 import { DEFAULT_RECIPE } from '../data/defaultRecipe';
@@ -34,15 +34,16 @@ describe('estimateActionDuration', () => {
   });
 });
 
-describe('calculateRecipeTime', () => {
-  it('computes and formats total recipe time for Wanda Cheese Bread', () => {
-    const time = calculateRecipeTime(DEFAULT_RECIPE);
-    expect(time).toMatch(/~\d+\s*(?:hrs?|mins?)/);
+describe('estimateRecipeMinutes', () => {
+  it('computes total recipe time for Wanda Cheese Bread, rounded to 5 minutes', () => {
+    const minutes = estimateRecipeMinutes(DEFAULT_RECIPE);
+    expect(minutes).toBeGreaterThan(60);
+    expect(minutes % 5).toBe(0);
   });
 
   it('returns default estimate when recipe has no steps', () => {
-    expect(calculateRecipeTime(null)).toBe('~30 mins');
-    expect(calculateRecipeTime({ steps: [] })).toBe('~25 mins');
+    expect(estimateRecipeMinutes(null)).toBe(30);
+    expect(estimateRecipeMinutes({ steps: [] })).toBe(25);
   });
 });
 

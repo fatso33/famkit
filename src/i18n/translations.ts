@@ -1,5 +1,13 @@
 import { Language } from '../types/recipe';
 
+/** Polish noun form for a count: 1 składnik, 2–4 (and 22–24, …) składniki, else składników. */
+function plPlural(n: number, one: string, few: string, many: string): string {
+  if (n === 1) return one;
+  const lastDigit = n % 10;
+  const lastTwo = n % 100;
+  return lastDigit >= 2 && lastDigit <= 4 && (lastTwo < 12 || lastTwo > 14) ? few : many;
+}
+
 export interface UiTranslations {
   vaultTitle: string;
   vaultSubtitle: string;
@@ -83,6 +91,11 @@ export interface UiTranslations {
   quickPasteTitle: string;
   quickPasteApply: string;
   versionBadge: (version: number) => string;
+  versionTooltip: (version: number) => string;
+  byAuthor: (author: string) => string;
+  /** Formats a duration already rounded to 5 minutes, e.g. "~2 hrs 25 mins". */
+  estimatedTime: (minutes: number) => string;
+  shareText: (name: string, author: string) => string;
   saveChanges: string;
 }
 
@@ -171,6 +184,16 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     quickPasteTitle: 'Paste Ingredients List',
     quickPasteApply: 'Insert Ingredients',
     versionBadge: (version: number) => `v${version}`,
+    versionTooltip: (version: number) => `Version ${version}`,
+    byAuthor: (author: string) => `By ${author}`,
+    estimatedTime: (minutes: number) => {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      const hrs = `${hours} ${hours === 1 ? 'hr' : 'hrs'}`;
+      if (hours === 0) return `~${mins} mins`;
+      return mins === 0 ? `~${hrs}` : `~${hrs} ${mins} mins`;
+    },
+    shareText: (name: string, author: string) => `${name} by ${author} - Heirloom Family Recipe`,
     saveChanges: 'Save Changes',
   },
   pl: {
@@ -183,7 +206,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     heirloomBadge: 'Dziedzictwo Wandy',
     familyBadge: 'Przepis Rodzinny',
     viewRecipe: 'Zobacz przepis →',
-    ingredientsCount: (n: number) => `${n} składników`,
+    ingredientsCount: (n: number) => `${n} ${plPlural(n, 'składnik', 'składniki', 'składników')}`,
     recipeBadge: 'Przepis',
     thIngredient: 'Składnik',
     thAmount: 'Ilość',
@@ -257,6 +280,16 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     quickPasteTitle: 'Wklej listę składników',
     quickPasteApply: 'Wstaw składniki',
     versionBadge: (version: number) => `v${version}`,
+    versionTooltip: (version: number) => `Wersja ${version}`,
+    byAuthor: (author: string) => `Autor: ${author}`,
+    estimatedTime: (minutes: number) => {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      if (hours === 0) return `~${mins} min`;
+      return mins === 0 ? `~${hours} godz.` : `~${hours} godz. ${mins} min`;
+    },
+    shareText: (name: string, author: string) =>
+      `${name} (${author}) – rodzinny przepis z tradycją`,
     saveChanges: 'Zapisz zmiany',
   },
 };

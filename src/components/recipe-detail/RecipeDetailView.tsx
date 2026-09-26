@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Recipe, Language } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
-import { calculateRecipeTime, capitalizeFirstLetter } from '../../utils/timeEstimator';
+import { estimateRecipeMinutes, capitalizeFirstLetter } from '../../utils/timeEstimator';
 import { IngredientsTable } from './IngredientsTable';
 import { StepsList } from './StepsList';
 import { BakingOptionsView } from './BakingOptionsView';
@@ -31,7 +31,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   const [zoomImageSrc, setZoomImageSrc] = useState<string | null>(null);
 
   const recipe = getLocalizedRecipe(rawRecipe, language) || rawRecipe;
-  const estimatedTime = calculateRecipeTime(recipe);
+  const estimatedTime = t.estimatedTime(estimateRecipeMinutes(recipe));
 
   const handleIncreaseScale = () => {
     setScale((prev) => (prev === 0.5 ? 1 : Math.min(8, prev + 1)));
@@ -63,10 +63,10 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
         </h1>
         <div className="detail-meta">
           <span id="detailAuthor" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-            By {recipe.author}
+            {t.byAuthor(recipe.author)}
           </span>
           {recipe.version && recipe.version > 1 && (
-            <span className="version-tag" title={`Version ${recipe.version}`}>
+            <span className="version-tag" title={t.versionTooltip(recipe.version)}>
               {t.versionBadge(recipe.version)}
             </span>
           )}
