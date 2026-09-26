@@ -71,6 +71,24 @@ describe('Cook Mode (screen wake lock)', () => {
     expect(screen.getByRole('button', { name: /cook mode: on/i })).toBeInTheDocument();
   });
 
+  it('shows Cook Mode off if the lock cannot be re-acquired on return', async () => {
+    await openRecipeAndTurnOnCookMode();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    request.mockImplementationOnce(() => Promise.reject(new Error('NotAllowedError')));
+
+    await act(async () => {
+      setVisibility('hidden');
+      await sentinels[0].release();
+    });
+    await act(async () => {
+      setVisibility('visible');
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole('button', { name: /cook mode: off/i })).toBeInTheDocument();
+  });
+
   it('stays off after the user explicitly turns Cook Mode off', async () => {
     await openRecipeAndTurnOnCookMode();
 

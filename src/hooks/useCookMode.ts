@@ -69,9 +69,14 @@ export function useCookMode() {
   // The browser drops the lock whenever the page is hidden; take it back on return.
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && wantsLockRef.current) {
-        void acquireLock();
-      }
+      if (document.visibilityState !== 'visible' || !wantsLockRef.current) return;
+      void acquireLock().then((acquired) => {
+        // Don't claim the screen is awake if the browser refused (e.g. battery saver).
+        if (!acquired && wantsLockRef.current) {
+          wantsLockRef.current = false;
+          setIsCookModeOn(false);
+        }
+      });
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
