@@ -50,7 +50,10 @@ export const FloatingMenu: React.FC<FloatingMenuProps> = (props) => {
           id={panelId}
           isClosing={state === 'closing'}
           onClose={close}
+          // Focus already moved on (e.g. Tab out of the menu), so don't pull it back to the button.
+          onFocusLeave={() => setState('closing')}
           onClosed={() => setState('closed')}
+          fabRef={fabRef}
         />
       )}
 
@@ -78,7 +81,9 @@ interface MenuPanelProps extends FloatingMenuProps {
   id: string;
   isClosing: boolean;
   onClose: () => void;
+  onFocusLeave: () => void;
   onClosed: () => void;
+  fabRef: React.RefObject<HTMLButtonElement | null>;
 }
 
 // Mounted only while open (or animating closed).
@@ -86,7 +91,9 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
   id,
   isClosing,
   onClose,
+  onFocusLeave,
   onClosed,
+  fabRef,
   page,
   onNavigate,
   actions,
@@ -136,6 +143,19 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
         ref={focusCurrentPage}
         id={id}
         className="fk-menu-panel"
+        onBlur={(e) => {
+          // Close when keyboard focus leaves for the page behind the scrim. A tap on a
+          // non-focusable part of the panel has no relatedTarget and keeps it open.
+          const next = e.relatedTarget;
+          if (
+            !isClosing &&
+            next instanceof Node &&
+            !e.currentTarget.contains(next) &&
+            next !== fabRef.current
+          ) {
+            onFocusLeave();
+          }
+        }}
         onAnimationEnd={(e) => {
           if (isClosing && e.target === e.currentTarget) onClosed();
         }}

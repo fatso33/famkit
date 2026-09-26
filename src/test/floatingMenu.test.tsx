@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import App from '../App';
 import { DEFAULT_RECIPE } from '../data/defaultRecipe';
 import { UI_TEXT } from '../i18n/translations';
@@ -93,6 +93,29 @@ describe('floating menu', () => {
 
     expect(screen.queryByRole('dialog', { name: t.menu })).toBeNull();
     expect(menuButton()).toHaveFocus();
+  });
+
+  it('closes when keyboard focus leaves it for the page behind', () => {
+    render(<App />);
+    openMenu();
+    const card = screen.getByRole('button', { name: DEFAULT_RECIPE.name });
+
+    // Shift+Tab out of the menu onto content hidden behind the scrim.
+    act(() => card.focus());
+    finishClosing();
+
+    expect(screen.queryByRole('dialog', { name: t.menu })).toBeNull();
+    expect(card).toHaveFocus();
+  });
+
+  it('stays open when focus moves between its own controls or to the menu button', () => {
+    render(<App />);
+    const menu = openMenu();
+
+    act(() => within(menu).getByRole('button', { name: t.makes }).focus());
+    act(() => menuButton().focus());
+
+    expect(screen.getByRole('dialog', { name: t.menu })).not.toHaveClass('is-closing');
   });
 
   it('offers Share on a recipe page, whose back pill returns to the vault', () => {
