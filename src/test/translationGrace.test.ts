@@ -47,8 +47,7 @@ describe('translation grace period across phones', () => {
   });
 
   it("doesn't treat another phone's later edit as saved here after an author-only edit", async () => {
-    const onResult = vi.fn();
-    const { result } = renderHook(() => useRecipes(onResult));
+    const { result } = renderHook(() => useRecipes());
 
     // This phone changes only the author: nothing needs translating.
     act(() => {
@@ -63,7 +62,6 @@ describe('translation grace period across phones', () => {
 
     // Leave it to the phone that made the edit.
     expect(translateRecipe).not.toHaveBeenCalled();
-    expect(onResult).not.toHaveBeenCalled();
   });
 
   it('translates its own text edit straight away', async () => {

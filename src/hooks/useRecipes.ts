@@ -13,7 +13,6 @@ import {
   applyTranslation,
   localizeRecipe,
   needsTranslation,
-  otherLanguage,
   shouldTranslateNow,
   sourceHash,
 } from '../utils/recipeTranslation';
@@ -25,21 +24,14 @@ export function getLocalizedRecipe(
   return recipe ? localizeRecipe(recipe, lang) : null;
 }
 
-/** Outcome of translating a recipe that was saved on this device. */
-export interface TranslationResult {
-  ok: boolean;
-  recipeName: string;
-  targetLanguage: Language;
-}
-
-export function useRecipes(onTranslationResult?: (result: TranslationResult) => void) {
+export function useRecipes() {
   const [recipes, setRecipes] = useState<Recipe[]>(getStoredRecipes);
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
 
   // Background translation bookkeeping (see the effect below).
   const triedKeys = useRef(new Set<string>());
   // Recipe id → text fingerprint this device saved. A later edit from another phone changes the
-  // fingerprint, so it no longer counts as "saved here" (no grace-period skip, no toast).
+  // fingerprint, so it no longer counts as "saved here" (no grace-period skip).
   const savedOnThisDevice = useRef(new Map<string, string>());
   const translationInFlight = useRef(false);
   const [translationScan, setTranslationScan] = useState(0);
@@ -98,30 +90,22 @@ export function useRecipes(onTranslationResult?: (result: TranslationResult) => 
           saveRecipes(updated);
           return updated;
         });
-        const target = otherLanguage(result.detectedLanguage);
         saveTranslationToCloud(recipe.id, result.detectedLanguage, {
           ...result.content,
           sourceHash: hash,
         }).catch((err) => {
           console.warn('Failed to sync recipe translation to cloud (retained locally):', err);
         });
-        if (savedHere) {
-          savedOnThisDevice.current.delete(recipe.id);
-          onTranslationResult?.({ ok: true, recipeName: recipe.name, targetLanguage: target });
-        }
+        if (savedHere) savedOnThisDevice.current.delete(recipe.id);
       })
       .catch((err: unknown) => {
         console.warn('Recipe translation failed (showing the original):', err);
-        if (savedHere) {
-          const target = otherLanguage(recipe.sourceLanguage ?? 'en');
-          onTranslationResult?.({ ok: false, recipeName: recipe.name, targetLanguage: target });
-        }
       })
       .finally(() => {
         translationInFlight.current = false;
         setTranslationScan((n) => n + 1);
       });
-  }, [recipes, translationScan, onTranslationResult]);
+  }, [recipes, translationScan]);
 
   // Back online: retry translations that failed while offline.
   useEffect(() => {

@@ -94,7 +94,7 @@ describe('background recipe translation', () => {
     expect(translate).toHaveBeenCalledTimes(2);
   });
 
-  it('re-translates a recipe after its text is edited, and says when it is ready', async () => {
+  it('quietly re-translates a recipe after its text is edited', async () => {
     seed(withPolish(customRecipe));
     translate.mockResolvedValue({ detectedLanguage: 'en', content: { name: 'Pierogi Oli' } });
     render(<App />);
@@ -107,9 +107,10 @@ describe('background recipe translation', () => {
 
     expect(translate).toHaveBeenCalledTimes(1);
     expect(translate.mock.calls[0][0].name).toBe("Aunt Ola's Pierogi");
-    expect(
-      screen.getByText(UI_TEXT.en.translatedToast("Aunt Ola's Pierogi", 'pl')),
-    ).toBeInTheDocument();
+    const stored = JSON.parse(localStorage.getItem('wandas_recipes')!) as Recipe[];
+    expect(stored.find((r) => r.id === 'custom-1')!.translations?.pl?.name).toBe('Pierogi Oli');
+    // Neither the save nor the finished translation interrupts with a toast.
+    expect(screen.getByRole('status').textContent).toBe('');
   });
 
   it('makes a Polish edit the new original and asks for English', async () => {
@@ -128,9 +129,9 @@ describe('background recipe translation', () => {
     expect(sent.sourceLanguage).toBe('pl');
     expect(sent.name).toBe('Pierogi ruskie cioci Oli');
     expect(sent.steps[0].text).toBe('Wymieszaj.');
-    expect(
-      screen.getByText(UI_TEXT.pl.translationFailedToast('Pierogi ruskie cioci Oli')),
-    ).toBeInTheDocument();
+    // A failed background translation is logged, not shown; the reader still sees their edit.
+    expect(screen.getByRole('status').textContent).toBe('');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Pierogi ruskie cioci Oli');
   });
 
   it('keeps the English original when a Polish reader changes only the author', async () => {

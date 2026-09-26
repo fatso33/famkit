@@ -40,10 +40,6 @@ export interface UiTranslations {
   iosStep2: string;
   iosStep3: string;
   iosModalDone: string;
-  translatedToast: (recipeName: string, language: Language) => string;
-  translationFailedToast: (recipeName: string) => string;
-  switchEnToast: string;
-  switchPlToast: string;
   cookModeOn: string;
   cookModeOff: string;
   cookModeUnsupported: string;
@@ -183,12 +179,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     iosStep2: 'Scroll down and tap <strong>Add to Home Screen</strong> {icon}.',
     iosStep3: 'Tap <strong>Add</strong> in the top-right corner to finish.',
     iosModalDone: 'Got it',
-    translatedToast: (recipeName, language) =>
-      `${recipeName} is now available in ${language === 'pl' ? 'Polish' : 'English'}`,
-    translationFailedToast: (recipeName) =>
-      `Couldn't translate ${recipeName} right now. We'll try again later.`,
-    switchEnToast: 'Language set to English',
-    switchPlToast: 'Język zmieniony na polski',
     cookModeOn: 'Cook Mode: On (Screen Awake)',
     cookModeOff: 'Cook Mode: Off',
     cookModeUnsupported: 'Screen Wake Lock is not supported on this browser.',
@@ -330,12 +320,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     iosStep2: 'Przewiń w dół i wybierz <strong>Do ekranu początkowego</strong> {icon}.',
     iosStep3: 'Dotknij <strong>Dodaj</strong> w prawym górnym rogu ekranu.',
     iosModalDone: 'Rozumiem',
-    translatedToast: (recipeName, language) =>
-      `Przepis „${recipeName}” jest już dostępny w języku ${language === 'pl' ? 'polskim' : 'angielskim'}`,
-    translationFailedToast: (recipeName) =>
-      `Nie udało się teraz przetłumaczyć przepisu „${recipeName}”. Spróbujemy ponownie później.`,
-    switchEnToast: 'Language set to English',
-    switchPlToast: 'Język zmieniony na polski',
     cookModeOn: 'Tryb gotowania: Włączony (ekran wybudzony)',
     cookModeOff: 'Tryb gotowania: Wyłączony',
     cookModeUnsupported: 'Funkcja blokady wygaszania ekranu nie jest wspierana.',

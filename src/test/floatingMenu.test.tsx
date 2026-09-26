@@ -73,7 +73,16 @@ describe('floating menu', () => {
     expect(within(menu).queryByRole('button', { name: t.addRecipe })).toBeNull();
 
     fireEvent.click(within(menu).getByRole('button', { name: t.addMake }));
-    expect(screen.getByText(t.comingSoonToast)).toBeInTheDocument();
+    // Announced through the always-present live region, not a node that appears with its text.
+    expect(screen.getByRole('status')).toHaveTextContent(t.comingSoonToast);
+  });
+
+  it('switches language without a toast, since the whole page changes', () => {
+    render(<App />);
+    fireEvent.click(within(openMenu()).getByRole('button', { name: t.languageToggle }));
+
+    expect(screen.getByRole('heading', { name: UI_TEXT.pl.vaultTitle, level: 1 })).toBeVisible();
+    expect(screen.getByRole('status').textContent).toBe('');
   });
 
   it('opens the Settings page, which explains translation and asks for no API key', () => {

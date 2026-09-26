@@ -1,10 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useTheme } from './hooks/useTheme';
 import { useFontScale } from './hooks/useFontScale';
 import { useLanguage } from './hooks/useLanguage';
 import { useCookMode } from './hooks/useCookMode';
 import { usePWAInstall } from './hooks/usePWAInstall';
-import { useRecipes, getLocalizedRecipe, TranslationResult } from './hooks/useRecipes';
+import { useRecipes, getLocalizedRecipe } from './hooks/useRecipes';
+import { useToast } from './hooks/useToast';
 import { recipeForEditing, resolveEdit } from './utils/recipeTranslation';
 import { Plus, Share2 } from 'lucide-react';
 import { FloatingMenu, MenuAction } from './components/layout/FloatingMenu';
@@ -36,28 +37,9 @@ export default function App() {
   const { isBannerVisible, triggerInstall, dismissBanner, showIOSModal, setShowIOSModal } =
     usePWAInstall();
 
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastIcon, setToastIcon] = useState('✓');
+  const { toast, visible: isToastVisible, showToast, clearToast } = useToast();
 
-  const showToast = useCallback((msg: string, icon: string = '✓') => {
-    setToastMessage(msg);
-    setToastIcon(icon);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 3200);
-  }, []);
-
-  // Recipes saved on this device are translated in the background; report how that went.
-  const handleTranslationResult = useCallback(
-    ({ ok, recipeName, targetLanguage }: TranslationResult) => {
-      if (ok) showToast(t.translatedToast(recipeName, targetLanguage), '🌐');
-      else showToast(t.translationFailedToast(recipeName), '⚠️');
-    },
-    [t, showToast],
-  );
-
-  const { recipes, selectedRecipe, setSelectedRecipeId, addRecipe, updateRecipe } =
-    useRecipes(handleTranslationResult);
+  const { recipes, selectedRecipe, setSelectedRecipeId, addRecipe, updateRecipe } = useRecipes();
   const localizedRecipe = getLocalizedRecipe(selectedRecipe, language);
 
   const [page, setPage] = useState<AppPage>('recipes');
@@ -84,15 +66,6 @@ export default function App() {
     setIsAddModalOpen(true);
   };
 
-  const handleLanguageToggle = () => {
-    toggleLanguage();
-    const nextLang = language === 'en' ? 'pl' : 'en';
-    showToast(
-      nextLang === 'pl' ? t.switchPlToast : t.switchEnToast,
-      nextLang === 'pl' ? '🇵🇱' : '🌾',
-    );
-  };
-
   const handleShare = async () => {
     if (localizedRecipe && navigator.share) {
       try {
@@ -110,8 +83,8 @@ export default function App() {
         navigator.clipboard?.writeText(window.location.href) ??
         Promise.reject(new Error('Clipboard unavailable'));
       copied.then(
-        () => showToast(t.shareSuccess, '🔗'),
-        () => showToast(t.shareFailed, '⚠️'),
+        () => showToast(t.shareSuccess),
+        () => showToast(t.shareFailed, 'error'),
       );
     }
   };
@@ -137,7 +110,7 @@ export default function App() {
           id: 'add-make',
           label: t.addMake,
           icon: Plus,
-          onSelect: () => showToast(t.comingSoonToast, '🥐'),
+          onSelect: () => showToast(t.comingSoonToast, 'info'),
         },
       ];
       break;
@@ -191,7 +164,7 @@ export default function App() {
         onNavigate={navigateTo}
         actions={pageActions}
         language={language}
-        onToggleLanguage={handleLanguageToggle}
+        onToggleLanguage={toggleLanguage}
         theme={theme}
         onToggleTheme={toggleTheme}
         fontPercent={fontPercent}
@@ -213,14 +186,10 @@ export default function App() {
           onSave={(recipeData, existingId, textChanged) => {
             if (existingId && editingRecipe) {
               const edited: Recipe = { ...recipeData, id: existingId };
-              const updated = updateRecipe(
-                resolveEdit(editingRecipe, edited, language, textChanged),
-              );
-              showToast(`Updated ${updated.name} (v${updated.version})!`, '✨');
+              updateRecipe(resolveEdit(editingRecipe, edited, language, textChanged));
             } else {
               // Provisional: translation detects the real language and corrects this.
-              const created = addRecipe({ ...recipeData, sourceLanguage: language });
-              showToast(`Saved ${created.name} to vault!`, '🍞');
+              addRecipe({ ...recipeData, sourceLanguage: language });
             }
             setEditingRecipe(null);
           }}
@@ -232,7 +201,7 @@ export default function App() {
       {showIOSModal && <IOSInstallModal onClose={() => setShowIOSModal(false)} t={t} />}
 
       {/* Toast Feedback */}
-      <Toast message={toastMessage} icon={toastIcon} />
+      <Toast toast={toast} visible={isToastVisible} onHidden={clearToast} />
     </div>
   );
 }
