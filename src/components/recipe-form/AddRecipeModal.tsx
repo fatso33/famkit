@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, History, RotateCcw } from 'lucide-react';
+import { ChevronDown, History, RotateCcw, Trash2 } from 'lucide-react';
 import { Recipe, Ingredient, Step, AuthorMode, Language, VersionSummary } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
 import { ImagePickerWithPreview } from './ImagePickerWithPreview';
@@ -163,6 +163,8 @@ interface AddRecipeModalProps {
   onPickVersion?: (id: string) => Promise<boolean>;
   /** Goes back to the current version. */
   onKeepCurrent?: () => void;
+  /** Deletes the recipe being edited (its owner only); asked to confirm first. */
+  onDelete?: () => void;
   language?: Language;
   t: UiTranslations;
 }
@@ -177,6 +179,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   restore,
   onPickVersion,
   onKeepCurrent,
+  onDelete,
   language = 'en',
   t,
 }) => {
@@ -626,6 +629,23 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
                   value={changeNote}
                   onChange={(e) => setChangeNote(e.target.value)}
                 />
+              </div>
+            )}
+
+            {isEditMode && onDelete && (
+              <div className="delete-recipe-zone">
+                <button
+                  type="button"
+                  className="btn btn-danger-quiet"
+                  onClick={() => {
+                    if (window.confirm(t.confirmDeleteRecipe(initialRecipe?.name ?? ''))) {
+                      onDelete();
+                    }
+                  }}
+                >
+                  <Trash2 size="1em" aria-hidden="true" />
+                  {t.deleteRecipe}
+                </button>
               </div>
             )}
           </div>

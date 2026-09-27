@@ -2104,6 +2104,165 @@
         text-underline-offset: 2px;
       }
 
+      .settings-card + .settings-card {
+        margin-top: 1.25rem;
+      }
+
+      /* Deleted recipes: a disclosure that slides open */
+      .trash-toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        width: 100%;
+        min-height: 44px;
+        margin-top: 1rem;
+        padding: 0.6rem 0.9rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        background: var(--menu-well);
+        color: var(--text-primary);
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+      }
+
+      .trash-toggle:hover {
+        background: var(--menu-well-hover);
+      }
+
+      .trash-toggle:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .trash-count {
+        min-width: 1.6rem;
+        padding: 0.05rem 0.45rem;
+        border-radius: var(--radius-full);
+        background: var(--accent-subtle);
+        color: var(--accent);
+        font-size: 0.78rem;
+        text-align: center;
+      }
+
+      .trash-chevron {
+        margin-left: auto;
+        color: var(--text-muted);
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .trash-toggle[aria-expanded='true'] .trash-chevron {
+        transform: rotate(180deg);
+      }
+
+      .trash-panel {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .trash-panel.is-open {
+        grid-template-rows: 1fr;
+      }
+
+      .trash-panel-inner {
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .trash-list {
+        list-style: none;
+        margin: 0.75rem 0 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .trash-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.5rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+      }
+
+      .trash-thumb {
+        flex-shrink: 0;
+        width: 3rem;
+        height: 3rem;
+        border-radius: var(--radius-sm);
+        object-fit: cover;
+        background: var(--menu-well);
+        filter: grayscale(0.6);
+      }
+
+      .trash-text {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-width: 0;
+      }
+
+      .trash-name {
+        font-weight: 600;
+        overflow-wrap: anywhere;
+      }
+
+      .trash-when {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+      }
+
+      /* Delete in the editor: quiet until pressed, clearly destructive */
+      .delete-recipe-zone {
+        margin-top: 1.5rem;
+        padding-top: 1.25rem;
+        border-top: 1px dashed var(--border-subtle);
+      }
+
+      .btn-danger-quiet {
+        min-height: 44px;
+        gap: 0.4rem;
+        color: #b3261e;
+        background: transparent;
+        border-color: color-mix(in srgb, #b3261e 35%, transparent);
+      }
+
+      [data-theme='dark'] .btn-danger-quiet {
+        color: #f2b8b5;
+        border-color: color-mix(in srgb, #f2b8b5 35%, transparent);
+      }
+
+      .btn-danger-quiet:hover {
+        background: color-mix(in srgb, #b3261e 8%, transparent);
+      }
+
+      /* Toast with an action (Undo) takes taps */
+      .app-toast.has-action.show {
+        pointer-events: auto;
+      }
+
+      .app-toast-action {
+        margin-left: 0.35rem;
+        min-height: 44px;
+        padding: 0 0.6rem;
+        border: 0;
+        border-radius: var(--radius-full);
+        background: color-mix(in srgb, currentColor 16%, transparent);
+        color: inherit;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .app-toast-action:focus-visible {
+        outline: 2px solid currentColor;
+        outline-offset: 2px;
+      }
+
       /* The reCAPTCHA badge would sit under the menu button; Settings shows the required
          attribution text instead, as Google permits. */
       .grecaptcha-badge { visibility: hidden; }

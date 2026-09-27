@@ -5,10 +5,10 @@ import {
   subscribeToRecipes,
   saveRecipeToCloud,
   saveTranslationToCloud,
-  deleteRecipeFromCloud,
   fetchRecipeVersion,
 } from '../services/firestore';
 import { legacyVersions, prepareEdit } from '../utils/recipeVersions';
+import { isDeleted, withDeletedAt } from '../utils/recipeTrash';
 import type { CurrentUser } from './useCurrentUser';
 import { isTranslationAvailable, translateRecipe } from '../services/gemini';
 import { isFirebaseConfigured } from '../services/firebase';
@@ -67,6 +67,7 @@ export function useRecipes(currentUser: CurrentUser | null) {
       // Every synced recipe has an owner, so one without is a stale copy cached from before
       // (e.g. Wanda's, whose hand-written Polish wasn't stamped yet). Its cloud version is coming.
       if (isFirebaseConfigured && !recipe.ownerEmail) continue;
+      if (isDeleted(recipe)) continue;
       if (!needsTranslation(recipe)) continue;
       const hash = sourceHash(recipe);
       if (triedKeys.current.has(`${recipe.id}@${hash}`)) continue;
@@ -130,7 +131,9 @@ export function useRecipes(currentUser: CurrentUser | null) {
     return () => window.removeEventListener('online', handleOnline);
   }, []);
 
-  const selectedRecipe = recipes.find((r) => r.id === selectedRecipeId) || null;
+  // Deleted recipes stay in the vault (for restoring) but aren't shown.
+  const visibleRecipes = recipes.filter((r) => !isDeleted(r));
+  const selectedRecipe = visibleRecipes.find((r) => r.id === selectedRecipeId) || null;
 
   const addRecipe = useCallback(
     (newRecipe: Omit<Recipe, 'id' | 'createdAt'>): Recipe => {
@@ -200,29 +203,36 @@ export function useRecipes(currentUser: CurrentUser | null) {
     [],
   );
 
-  const deleteRecipe = useCallback(
-    async (id: string) => {
-      setRecipes((prev) => {
-        const updated = prev.filter((r) => r.id !== id);
-        saveRecipes(updated);
-        return updated;
-      });
+  /**
+   * Deletes (`deleted`) or restores a recipe. Nothing is erased: the recipe is only marked, so it
+   * stays restorable. Not a content change, so no new version.
+   */
+  const setRecipeDeleted = useCallback((id: string, deleted: boolean) => {
+    const existing = latestRecipes.current.find((r) => r.id === id);
+    if (!existing) return;
+    const updated = withDeletedAt(existing, deleted ? Date.now() : undefined);
 
-      if (selectedRecipeId === id) {
-        setSelectedRecipeId(null);
-      }
+    setRecipes((prev) => {
+      const next = prev.map((r) => (r.id === id ? updated : r));
+      saveRecipes(next);
+      return next;
+    });
 
-      try {
-        await deleteRecipeFromCloud(id);
-      } catch (err) {
-        console.warn('Failed to delete recipe from cloud:', err);
-      }
-    },
-    [selectedRecipeId],
+    saveRecipeToCloud(updated).catch((err) => {
+      console.warn(`Failed to sync recipe ${deleted ? 'deletion' : 'restore'} to cloud:`, err);
+    });
+  }, []);
+
+  const deleteRecipe = useCallback((id: string) => setRecipeDeleted(id, true), [setRecipeDeleted]);
+  const restoreRecipe = useCallback(
+    (id: string) => setRecipeDeleted(id, false),
+    [setRecipeDeleted],
   );
 
   return {
-    recipes,
+    recipes: visibleRecipes,
+    /** Every recipe, deleted ones included. */
+    allRecipes: recipes,
     selectedRecipe,
     selectedRecipeId,
     setSelectedRecipeId,
@@ -230,5 +240,6 @@ export function useRecipes(currentUser: CurrentUser | null) {
     updateRecipe,
     loadVersion,
     deleteRecipe,
+    restoreRecipe,
   };
 }

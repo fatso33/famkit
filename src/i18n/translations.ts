@@ -97,6 +97,18 @@ export interface UiTranslations {
   restoredChip: string;
   changeNoteLabel: string;
   restoredNote: (version: number) => string;
+  // Deleting and restoring recipes
+  deleteRecipe: string;
+  confirmDeleteRecipe: (name: string) => string;
+  recipeDeleted: string;
+  undo: string;
+  deletedRecipes: string;
+  deletedRecipesInfo: string;
+  noDeletedRecipes: string;
+  deletedAgo: (when: string) => string;
+  restoreRecipe: string;
+  restoreRecipeLabel: (name: string) => string;
+  recipeRestored: string;
   byAuthor: (author: string) => string;
   /** Who added a recipe that is credited to someone else. */
   addedBy: (name: string) => string;
@@ -255,6 +267,18 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     restoredChip: 'Restored',
     changeNoteLabel: 'What changed? (optional)',
     restoredNote: (version: number) => `Restored version ${version}`,
+    deleteRecipe: 'Delete recipe',
+    confirmDeleteRecipe: (name: string) =>
+      `Delete “${name}”? You can bring it back later from Settings.`,
+    recipeDeleted: 'Recipe deleted',
+    undo: 'Undo',
+    deletedRecipes: 'Deleted recipes',
+    deletedRecipesInfo: 'Recipes you delete are kept here, so you can bring them back.',
+    noDeletedRecipes: "You haven't deleted any recipes.",
+    deletedAgo: (when: string) => `Deleted ${when}`,
+    restoreRecipe: 'Restore',
+    restoreRecipeLabel: (name: string) => `Restore ${name}`,
+    recipeRestored: 'Recipe restored',
     byAuthor: (author: string) => `By ${author}`,
     addedBy: (name: string) => `Added by ${name}`,
     emptyVault: 'No recipes yet. Add the first one from the menu.',
@@ -415,6 +439,19 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     restoredChip: 'Przywrócone',
     changeNoteLabel: 'Co się zmieniło? (opcjonalnie)',
     restoredNote: (version: number) => `Przywrócono wersję ${version}`,
+    deleteRecipe: 'Usuń przepis',
+    confirmDeleteRecipe: (name: string) =>
+      `Usunąć „${name}”? Możesz go później przywrócić w Ustawieniach.`,
+    recipeDeleted: 'Przepis usunięty',
+    undo: 'Cofnij',
+    deletedRecipes: 'Usunięte przepisy',
+    deletedRecipesInfo:
+      'Usunięte przez Ciebie przepisy są tu przechowywane, więc możesz je przywrócić.',
+    noDeletedRecipes: 'Nie usunięto jeszcze żadnego przepisu.',
+    deletedAgo: (when: string) => `Usunięto ${when}`,
+    restoreRecipe: 'Przywróć',
+    restoreRecipeLabel: (name: string) => `Przywróć: ${name}`,
+    recipeRestored: 'Przepis przywrócony',
     byAuthor: (author: string) => `Autor: ${author}`,
     addedBy: (name: string) => `Dodane przez: ${name}`,
     emptyVault: 'Nie ma jeszcze żadnych przepisów. Dodaj pierwszy z menu.',

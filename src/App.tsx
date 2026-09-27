@@ -16,6 +16,7 @@ import {
   resolveEdit,
 } from './utils/recipeTranslation';
 import { diffRecipes, recipeAtVersion, versionSummaries } from './utils/recipeVersions';
+import { restorableRecipes } from './utils/recipeTrash';
 import { Plus, Share2 } from 'lucide-react';
 import { FloatingMenu, MenuAction } from './components/layout/FloatingMenu';
 import { InstallCard } from './components/layout/InstallCard';
@@ -46,11 +47,20 @@ export default function App() {
   const { isBannerVisible, triggerInstall, dismissBanner, showIOSModal, setShowIOSModal } =
     usePWAInstall();
 
-  const { toast, visible: isToastVisible, showToast, clearToast } = useToast();
+  const { toast, visible: isToastVisible, showToast, hideToast, clearToast } = useToast();
   const currentUser = useCurrentUser();
 
-  const { recipes, selectedRecipe, setSelectedRecipeId, addRecipe, updateRecipe, loadVersion } =
-    useRecipes(currentUser);
+  const {
+    recipes,
+    allRecipes,
+    selectedRecipe,
+    setSelectedRecipeId,
+    addRecipe,
+    updateRecipe,
+    loadVersion,
+    deleteRecipe,
+    restoreRecipe,
+  } = useRecipes(currentUser);
   const localizedRecipe = getLocalizedRecipe(selectedRecipe, language);
 
   const [page, setPage] = useState<AppPage>('recipes');
@@ -77,6 +87,24 @@ export default function App() {
           ),
         }
       : undefined;
+
+  const closeEditor = () => {
+    setIsAddModalOpen(false);
+    setEditingRecipe(null);
+    setRestoredVersion(null);
+  };
+
+  const handleDelete = (id: string) => {
+    deleteRecipe(id);
+    closeEditor();
+    navigateTo('recipes');
+    showToast(t.recipeDeleted, 'info', { label: t.undo, onAction: () => restoreRecipe(id) });
+  };
+
+  const handleRestore = (id: string) => {
+    restoreRecipe(id);
+    showToast(t.recipeRestored);
+  };
 
   const pickVersion = async (id: string): Promise<boolean> => {
     if (!editingRecipe) return false;
@@ -169,7 +197,12 @@ export default function App() {
         {page === 'makes' ? (
           <MakesView t={t} />
         ) : page === 'settings' ? (
-          <SettingsView t={t} />
+          <SettingsView
+            deletedRecipes={restorableRecipes(allRecipes, currentUser, isFirebaseConfigured)}
+            language={language}
+            onRestore={handleRestore}
+            t={t}
+          />
         ) : selectedRecipe ? (
           <RecipeDetailView
             recipe={selectedRecipe}
@@ -231,12 +264,9 @@ export default function App() {
           restore={restore}
           onPickVersion={pickVersion}
           onKeepCurrent={() => setRestoredVersion(null)}
+          onDelete={editingRecipe ? () => handleDelete(editingRecipe.id) : undefined}
           language={language}
-          onClose={() => {
-            setIsAddModalOpen(false);
-            setEditingRecipe(null);
-            setRestoredVersion(null);
-          }}
+          onClose={closeEditor}
           onSave={(recipeData, existingId, textChanged, changeNote) => {
             if (existingId && editBase) {
               const edited: Recipe = { ...recipeData, id: existingId };
@@ -255,7 +285,7 @@ export default function App() {
       {showIOSModal && <IOSInstallModal onClose={() => setShowIOSModal(false)} t={t} />}
 
       {/* Toast Feedback */}
-      <Toast toast={toast} visible={isToastVisible} onHidden={clearToast} />
+      <Toast toast={toast} visible={isToastVisible} onHidden={clearToast} onDismiss={hideToast} />
     </div>
   );
 }

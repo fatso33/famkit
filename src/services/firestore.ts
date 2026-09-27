@@ -4,7 +4,6 @@ import {
   getDoc,
   updateDoc,
   deleteField,
-  deleteDoc,
   onSnapshot,
   writeBatch,
   Unsubscribe,
@@ -137,17 +136,4 @@ export async function saveTranslationToCloud(
     [`translations.${target}`]: translation,
     [`translations.${sourceLanguage}`]: deleteField(),
   });
-}
-
-/**
- * Deletes a recipe document from Cloud Firestore.
- */
-export async function deleteRecipeFromCloud(id: string): Promise<void> {
-  const local = getStoredRecipes();
-  saveToLocalStorage(local.filter((r) => r.id !== id));
-
-  if (!isFirebaseConfigured || !db) return;
-
-  const docRef = doc(db, RECIPES_COLLECTION, id);
-  await deleteDoc(docRef);
 }

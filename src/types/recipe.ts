@@ -111,6 +111,8 @@ export interface Recipe {
   translations?: RecipeTranslations;
   createdAt?: number;
   updatedAt?: number;
+  /** Set when the owner deleted it. Deleted recipes are hidden, never erased, and can be restored. */
+  deletedAt?: number;
 }
 
 export type AuthorMode = 'auto' | 'custom';
