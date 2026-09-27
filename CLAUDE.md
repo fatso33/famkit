@@ -18,9 +18,9 @@ Private family recipe vault PWA. React 19 + TypeScript (strict) + Vite 6 + Tailw
 - `src/services/`: I/O only (`firebase`, `firestore`, `storage` = localStorage, `gemini`)
 - `src/utils/`: pure logic (`fractions` = scaling/formatting, `timeEstimator`)
 - `src/i18n/translations.ts`: all UI strings, typed by the `UiTranslations` interface
-- `src/data/wandasCheeseBread.ts`: one-time seed for adopting Wanda's Cheese Bread as Peter's upload (`utils/legacyAdoption`). Its content is **verbatim heirloom text**. Never paraphrase it. Tests use the copy in `src/test/fixtures/`.
+- `src/test/fixtures/wandasCheeseBread.ts`: test copy of Wanda's Cheese Bread, which lives in Firestore like any recipe (Peter owns it). Its content is **verbatim heirloom text**. Never paraphrase it.
 - `src/test/`: Vitest + Testing Library (jsdom)
-- `public/sw.js`: hand-written service worker. `public/assets/`: recipe photos
+- `public/sw.js`: hand-written service worker. Recipe photos are embedded in the recipes, not stored as files
 
 ## Conventions
 

@@ -30,14 +30,6 @@ service cloud.firestore {
         .hasOnly(['translations', 'sourceLanguage']);
     }
 
-    // TEMPORARY one-time migration: lets Peter adopt recipes saved before owners existed
-    // (Wanda's Cheese Bread and the like). Remove once they all have an owner.
-    function adoptsLegacyRecipe() {
-      return myEmail() == 'p.gzowski33@gmail.com' &&
-        resource.data.get('ownerEmail', null) == null &&
-        ownedByMe(request.resource.data);
-    }
-
     match /recipes/{recipeId} {
       allow read: if isFamily();
       // New recipes must be recorded as added by the person saving them.
@@ -45,8 +37,7 @@ service cloud.firestore {
       // Only the owner edits (and can't hand the recipe to someone else).
       allow update: if isFamily() && (
         (ownedByMe(resource.data) && ownedByMe(request.resource.data)) ||
-        onlyTranslation() ||
-        adoptsLegacyRecipe()
+        onlyTranslation()
       );
       // Recipes are never erased from the app.
       allow delete: if false;

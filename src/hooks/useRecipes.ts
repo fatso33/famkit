@@ -6,10 +6,8 @@ import {
   saveRecipeToCloud,
   saveTranslationToCloud,
   deleteRecipeFromCloud,
-  adoptLegacyRecipes,
 } from '../services/firestore';
 import type { CurrentUser } from './useCurrentUser';
-import { awaitsAdoption, hasLegacyRecipes, isLegacyOwner } from '../utils/legacyAdoption';
 import { isTranslationAvailable, translateRecipe } from '../services/gemini';
 import {
   TRANSLATION_GRACE_MS,
@@ -49,20 +47,6 @@ export function useRecipes(currentUser: CurrentUser | null) {
     return () => unsubscribe();
   }, []);
 
-  // One-time migration on Peter's phone: adopt Wanda's Cheese Bread and any ownerless recipe
-  // (see utils/legacyAdoption). The snapshot listener then delivers the result.
-  const adoptionTried = useRef(false);
-  useEffect(() => {
-    if (adoptionTried.current || !isLegacyOwner(currentUser) || !hasLegacyRecipes(recipes)) return;
-    adoptionTried.current = true;
-    adoptLegacyRecipes(currentUser).catch((err: unknown) => {
-      console.warn(
-        'Could not adopt recipes saved before owners existed (retries next launch):',
-        err,
-      );
-    });
-  }, [currentUser, recipes]);
-
   // Translates new and edited recipes into their other language, one at a time. Each recipe
   // text is tried once per session; coming back online or reopening the app retries failures.
   useEffect(() => {
@@ -72,7 +56,7 @@ export function useRecipes(currentUser: CurrentUser | null) {
     let nextCheckIn = Infinity;
     let job: { recipe: Recipe; hash: string } | null = null;
     for (const recipe of recipes) {
-      if (awaitsAdoption(recipe) || !needsTranslation(recipe)) continue;
+      if (!needsTranslation(recipe)) continue;
       const hash = sourceHash(recipe);
       if (triedKeys.current.has(`${recipe.id}@${hash}`)) continue;
       if (!shouldTranslateNow(recipe, now, savedOnThisDevice.current.get(recipe.id) === hash)) {

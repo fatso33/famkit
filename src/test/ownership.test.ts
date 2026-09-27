@@ -7,12 +7,6 @@ import {
   isHeirloom,
   resolveAuthor,
 } from '../utils/ownership';
-import {
-  awaitsAdoption,
-  hasLegacyRecipes,
-  isLegacyOwner,
-  planAdoption,
-} from '../utils/legacyAdoption';
 import { fitWithin } from '../utils/imageCompression';
 import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 
@@ -75,52 +69,6 @@ describe('authors', () => {
   it('counts recipes passed down from someone else as heirlooms', () => {
     expect(isHeirloom(WANDAS_CHEESE_BREAD)).toBe(true);
     expect(isHeirloom(recipe)).toBe(false);
-  });
-});
-
-describe('legacy adoption', () => {
-  const unownedWanda = { ...WANDAS_CHEESE_BREAD, ownerEmail: undefined, ownerName: undefined };
-
-  it("runs only on Peter's account", () => {
-    expect(isLegacyOwner(peter)).toBe(true);
-    expect(isLegacyOwner({ ...peter, email: 'P.Gzowski33@gmail.com' })).toBe(true);
-    expect(isLegacyOwner(ola)).toBe(false);
-    expect(isLegacyOwner(null)).toBe(false);
-  });
-
-  it('is needed while Wanda is unowned or missing, or any recipe has no owner', () => {
-    expect(hasLegacyRecipes([WANDAS_CHEESE_BREAD, recipe])).toBe(false);
-    expect(hasLegacyRecipes([unownedWanda, recipe])).toBe(true);
-    expect(hasLegacyRecipes([recipe])).toBe(true);
-    expect(hasLegacyRecipes([WANDAS_CHEESE_BREAD, { ...recipe, ownerEmail: undefined }])).toBe(
-      true,
-    );
-  });
-
-  it("keeps machine translation away from Wanda's Polish until she's adopted", () => {
-    expect(awaitsAdoption(unownedWanda)).toBe(true);
-    expect(awaitsAdoption(WANDAS_CHEESE_BREAD)).toBe(false);
-    expect(awaitsAdoption({ ...recipe, ownerEmail: undefined })).toBe(false);
-  });
-
-  it("gives an unowned recipe to Peter, crediting someone else's name as theirs", () => {
-    const plan = planAdoption(
-      [WANDAS_CHEESE_BREAD, { ...recipe, ownerEmail: undefined, author: 'Babcia Zosia' }],
-      peter,
-      5000,
-    );
-    expect(plan.wanda).toBeNull();
-    expect(plan.claims).toEqual([
-      {
-        id: 'pierogi',
-        owner: { ownerEmail: peter.email, ownerName: peter.name, authorMode: 'custom' },
-      },
-    ]);
-  });
-
-  it("dates Wanda's recipe just before the earliest one", () => {
-    const plan = planAdoption([recipe], peter, 5000);
-    expect(plan.wanda?.createdAt).toBeLessThan(recipe.createdAt!);
   });
 });
 

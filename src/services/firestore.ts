@@ -6,16 +6,11 @@ import {
   deleteField,
   deleteDoc,
   onSnapshot,
-  getDocsFromServer,
-  writeBatch,
   Unsubscribe,
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase';
 import { Language, LocalizedRecipeContent, Recipe } from '../types/recipe';
-import type { CurrentUser } from '../hooks/useCurrentUser';
 import { getStoredRecipes, saveRecipes as saveToLocalStorage } from './storage';
-import { embedBundledPhotos, planAdoption, WANDA_ID } from '../utils/legacyAdoption';
-import { compressImage } from '../utils/imageCompression';
 
 const RECIPES_COLLECTION = 'recipes';
 
@@ -114,29 +109,4 @@ export async function deleteRecipeFromCloud(id: string): Promise<void> {
 
   const docRef = doc(db, RECIPES_COLLECTION, id);
   await deleteDoc(docRef);
-}
-
-/**
- * One-time migration (see utils/legacyAdoption): makes Wanda's Cheese Bread an ordinary recipe
- * `owner` added, with embedded photos, and gives them any other recipe nobody owns yet. Reads the
- * server (not the offline cache) so it never acts on a stale view. Returns whether it wrote.
- */
-export async function adoptLegacyRecipes(owner: CurrentUser): Promise<boolean> {
-  if (!isFirebaseConfigured || !db) return false;
-
-  const snapshot = await getDocsFromServer(collection(db, RECIPES_COLLECTION));
-  const cloud = snapshot.docs.map((d) => d.data() as Recipe);
-  const plan = planAdoption(cloud, owner, Date.now());
-  if (!plan.wanda && plan.claims.length === 0) return false;
-
-  const batch = writeBatch(db);
-  if (plan.wanda) {
-    const wanda = await embedBundledPhotos(plan.wanda, (src) => compressImage(src));
-    batch.set(doc(db, RECIPES_COLLECTION, WANDA_ID), wanda);
-  }
-  for (const claim of plan.claims) {
-    batch.update(doc(db, RECIPES_COLLECTION, claim.id), claim.owner);
-  }
-  await batch.commit();
-  return true;
 }
