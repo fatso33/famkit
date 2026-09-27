@@ -2,8 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useRecipes } from '../hooks/useRecipes';
 import { translateRecipe } from '../services/gemini';
+import { saveTranslationToCloud } from '../services/firestore';
 import { Recipe } from '../types/recipe';
-import { sourceHash } from '../utils/recipeTranslation';
+import { ParsedTranslation, sourceHash } from '../utils/recipeTranslation';
 import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 
 // Only I/O is mocked: the translation call, and Firestore so a "remote" edit can be pushed in.
@@ -45,6 +46,7 @@ const translated: Recipe = {
 describe('translation grace period across phones', () => {
   beforeEach(() => {
     vi.mocked(translateRecipe).mockClear();
+    vi.mocked(saveTranslationToCloud).mockClear();
     localStorage.clear();
     localStorage.setItem('wandas_recipes', JSON.stringify([translated]));
   });
@@ -95,5 +97,26 @@ describe('translation grace period across phones', () => {
       firestore.push([WANDAS_CHEESE_BREAD]);
     });
     expect(translateRecipe).not.toHaveBeenCalled();
+  });
+
+  it('drops a translation of text that changed while it was being made', async () => {
+    // This phone starts translating its cached copy...
+    localStorage.setItem('wandas_recipes', JSON.stringify([base]));
+    let finish: (result: ParsedTranslation) => void = () => {};
+    vi.mocked(translateRecipe).mockImplementationOnce(() => new Promise((r) => (finish = r)));
+    const { result } = renderHook(() => useRecipes(null));
+    await act(async () => {});
+    expect(translateRecipe).toHaveBeenCalledTimes(1);
+
+    // ...but the cloud has newer text by the time the translation comes back.
+    await act(async () => {
+      firestore.push([{ ...base, name: "Aunt Ola's Pierogi" }]);
+    });
+    await act(async () => {
+      finish({ detectedLanguage: 'en', content: { name: 'Pierogi cioci Oli' } });
+    });
+
+    expect(result.current.recipes[0].translations).toBeUndefined();
+    expect(saveTranslationToCloud).not.toHaveBeenCalled();
   });
 });

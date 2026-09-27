@@ -14,6 +14,7 @@ import {
   shouldTranslateNow,
   sourceHash,
   translatableContent,
+  translationFitsRecipe,
   translationStatus,
 } from '../utils/recipeTranslation';
 
@@ -128,6 +129,42 @@ describe('applyTranslation', () => {
     expect(result.translations?.pl).toEqual({ name: 'Szarlotka', sourceHash: hash });
     expect(result.version).toBe(3);
     expect(result.updatedAt).toBe(provisional.updatedAt);
+  });
+
+  it('ignores a translation of text that has changed since it was requested', () => {
+    const hash = sourceHash(recipe);
+    const edited = { ...recipe, name: 'Apple Tart' };
+    expect(applyTranslation(edited, { detectedLanguage: 'en', content: polish }, hash)).toBe(
+      edited,
+    );
+  });
+});
+
+describe('translationFitsRecipe', () => {
+  const wandasPolish = WANDAS_CHEESE_BREAD.translations!.pl!;
+
+  it("rejects Polish labelled as the English translation (how Wanda's languages got swapped)", () => {
+    const swapped = { detectedLanguage: 'pl' as const, content: wandasPolish };
+    expect(translationFitsRecipe(WANDAS_CHEESE_BREAD, swapped)).toBe(false);
+    const correct = { detectedLanguage: 'en' as const, content: wandasPolish };
+    expect(translationFitsRecipe(WANDAS_CHEESE_BREAD, correct)).toBe(true);
+  });
+
+  it('accepts a Polish recipe that was provisionally labelled English', () => {
+    const typedInPolish: Recipe = { ...recipe, ...polish, sourceLanguage: 'en' };
+    const english = translatableContent(recipe);
+    expect(translationFitsRecipe(typedInPolish, { detectedLanguage: 'pl', content: english })).toBe(
+      true,
+    );
+    expect(translationFitsRecipe(typedInPolish, { detectedLanguage: 'en', content: english })).toBe(
+      false,
+    );
+  });
+
+  it("won't relabel a recipe when the text gives no clue either way", () => {
+    const noClue = { detectedLanguage: 'en' as const, content: { name: 'Apple Pie' } };
+    expect(translationFitsRecipe(recipe, noClue)).toBe(true);
+    expect(translationFitsRecipe({ ...recipe, sourceLanguage: 'pl' }, noClue)).toBe(false);
   });
 });
 

@@ -2,9 +2,10 @@ import {
   collection,
   doc,
   getDoc,
-  updateDoc,
+  getDocFromServer,
   deleteField,
   onSnapshot,
+  runTransaction,
   writeBatch,
   Unsubscribe,
 } from 'firebase/firestore';
@@ -17,6 +18,7 @@ import {
   saveRecipes as saveToLocalStorage,
 } from './storage';
 import { parseRecipeVersion } from '../utils/recipeVersions';
+import { sourceHash } from '../utils/recipeTranslation';
 
 const RECIPES_COLLECTION = 'recipes';
 // Earlier versions of a recipe: recipes/{recipeId}/versions/{versionId}, written once, never changed.
@@ -98,6 +100,13 @@ export async function saveRecipeToCloud(
   await batch.commit();
 }
 
+/** A recipe as the server has it now, not this device's cache. Null without the cloud or if missing. */
+export async function fetchRecipeFromServer(id: string): Promise<Recipe | null> {
+  if (!isFirebaseConfigured || !db) return null;
+  const snapshot = await getDocFromServer(doc(db, RECIPES_COLLECTION, id));
+  return snapshot.exists() ? (snapshot.data() as Recipe) : null;
+}
+
 /** Loads one earlier version (one read). Rejects if it's missing or malformed. */
 export async function fetchRecipeVersion(
   recipeId: string,
@@ -118,22 +127,32 @@ export async function fetchRecipeVersion(
 }
 
 /**
- * Stores a finished translation. Writes only the translation fields, so it can't overwrite an
- * edit made meanwhile and doesn't count as a new version. Also removes any leftover entry for
- * the source language (older merge saves kept one after a recipe was re-written in the other
- * language).
+ * Stores a finished translation. Writes only the translation fields, so it doesn't count as a
+ * new version, and only while the cloud text is still what was translated (`sourceHash`): a
+ * translation of an outdated copy never lands on a newer recipe. Also removes any leftover entry
+ * for the source language (older merge saves kept one after a recipe was re-written in the
+ * other language). Resolves to whether it wrote.
  */
 export async function saveTranslationToCloud(
   recipeId: string,
   sourceLanguage: Language,
   translation: LocalizedRecipeContent,
-): Promise<void> {
-  if (!isFirebaseConfigured || !db) return;
+): Promise<boolean> {
+  const firestore = db;
+  if (!isFirebaseConfigured || !firestore) return false;
 
   const target: Language = sourceLanguage === 'en' ? 'pl' : 'en';
-  await updateDoc(doc(db, RECIPES_COLLECTION, recipeId), {
-    sourceLanguage,
-    [`translations.${target}`]: translation,
-    [`translations.${sourceLanguage}`]: deleteField(),
+  const recipeRef = doc(firestore, RECIPES_COLLECTION, recipeId);
+  return runTransaction(firestore, async (tx) => {
+    const current = await tx.get(recipeRef);
+    if (!current.exists() || sourceHash(current.data() as Recipe) !== translation.sourceHash) {
+      return false;
+    }
+    tx.update(recipeRef, {
+      sourceLanguage,
+      [`translations.${target}`]: translation,
+      [`translations.${sourceLanguage}`]: deleteField(),
+    });
+    return true;
   });
 }

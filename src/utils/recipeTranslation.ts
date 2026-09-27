@@ -139,12 +139,35 @@ export function localizeRecipe(recipe: Recipe, lang: Language): Recipe {
     : recipe;
 }
 
-/** Stores a finished translation without touching version, history or edit time. */
+// Letters only Polish uses: Polish recipe text practically always has some, English none.
+const POLISH_LETTERS = /[ąćęłńóśźż]/gi;
+
+const polishLetterCount = (content: LocalizedRecipeContent) =>
+  JSON.stringify(content).match(POLISH_LETTERS)?.length ?? 0;
+
+/**
+ * Whether a translation's language labels fit the text: the side called Polish must have more
+ * Polish letters than the other. The model sometimes names the wrong source language, which
+ * would store the English as "Polish" and the Polish as "English". When the letters give no
+ * clue, it may only confirm the recipe's current language, never relabel it.
+ */
+export function translationFitsRecipe(recipe: Recipe, result: ParsedTranslation): boolean {
+  const original = polishLetterCount(translatableContent(recipe));
+  const translation = polishLetterCount(result.content);
+  if (original === translation) return result.detectedLanguage === sourceLanguageOf(recipe);
+  return result.detectedLanguage === 'pl' ? original > translation : translation > original;
+}
+
+/**
+ * Stores a finished translation without touching version, history or edit time. A translation
+ * of text that has changed since (`hashAtRequest` no longer matches) is ignored.
+ */
 export function applyTranslation(
   recipe: Recipe,
   result: ParsedTranslation,
   hashAtRequest: string,
 ): Recipe {
+  if (sourceHash(recipe) !== hashAtRequest) return recipe;
   const target = otherLanguage(result.detectedLanguage);
   const translations = { ...recipe.translations };
   delete translations[result.detectedLanguage];

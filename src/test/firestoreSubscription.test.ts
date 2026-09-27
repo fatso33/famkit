@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fetchRecipeVersion, saveRecipeToCloud, subscribeToRecipes } from '../services/firestore';
+import {
+  fetchRecipeVersion,
+  saveRecipeToCloud,
+  saveTranslationToCloud,
+  subscribeToRecipes,
+} from '../services/firestore';
 import { Recipe, RecipeVersion } from '../types/recipe';
+import { sourceHash } from '../utils/recipeTranslation';
 
 vi.mock('../services/firebase', () => ({ isFirebaseConfigured: true, db: {} }));
 
@@ -61,6 +67,16 @@ vi.mock('firebase/firestore', () => {
       next(snapshotFor(q.orderField));
       return () => {};
     },
+    runTransaction: (_db: unknown, run: (tx: unknown) => Promise<unknown>) =>
+      run({
+        get: (ref: { path: string }) =>
+          Promise.resolve({
+            exists: () => ref.path in cloud.stored,
+            data: () => cloud.stored[ref.path],
+          }),
+        update: (ref: { path: string }, data: unknown) =>
+          cloud.writes.push([ref.path, data, 'update']),
+      }),
     setDoc: () => Promise.resolve(),
     updateDoc: () => Promise.resolve(),
     deleteDoc: () => Promise.resolve(),
@@ -170,5 +186,34 @@ describe('saving versions', () => {
     });
     await expect(fetchRecipeVersion('babka', 'broken')).rejects.toThrow(/malformed/);
     await expect(fetchRecipeVersion('babka', 'v9-9')).rejects.toThrow(/missing/);
+  });
+});
+
+describe('saving translations', () => {
+  const babka = recipe('babka', 1000);
+  const polish = { name: 'Babka', sourceHash: sourceHash(babka) };
+
+  beforeEach(() => {
+    cloud.writes = [];
+    cloud.stored = { 'recipes/babka': babka };
+  });
+
+  it('writes only the translation fields while the cloud text is what was translated', async () => {
+    await expect(saveTranslationToCloud('babka', 'en', polish)).resolves.toBe(true);
+    expect(cloud.writes).toHaveLength(1);
+    expect(cloud.writes[0][0]).toBe('recipes/babka');
+    expect(Object.keys(cloud.writes[0][1] as object).sort()).toEqual([
+      'sourceLanguage',
+      'translations.en',
+      'translations.pl',
+    ]);
+  });
+
+  it('writes nothing once the cloud text has changed, or the recipe is gone', async () => {
+    cloud.stored['recipes/babka'] = { ...babka, name: 'Chocolate Babka' };
+    await expect(saveTranslationToCloud('babka', 'en', polish)).resolves.toBe(false);
+    delete cloud.stored['recipes/babka'];
+    await expect(saveTranslationToCloud('babka', 'en', polish)).resolves.toBe(false);
+    expect(cloud.writes).toEqual([]);
   });
 });

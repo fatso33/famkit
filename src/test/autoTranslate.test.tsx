@@ -80,6 +80,22 @@ describe('background recipe translation', () => {
     expect(screen.getByText('Pierogi cioci Oli')).toBeInTheDocument();
   });
 
+  it("doesn't swap a recipe's languages when the translator names the wrong one", async () => {
+    // Wanda's English with no current Polish: the translator writes Polish but calls the
+    // original Polish, which once stored her English as "Polish" and her Polish as "English".
+    const { translations, ...untranslated } = WANDAS_CHEESE_BREAD;
+    localStorage.setItem('wandas_recipes', JSON.stringify([untranslated]));
+    translate.mockResolvedValue({ detectedLanguage: 'pl', content: translations!.pl! });
+    render(<App />);
+    await settle();
+
+    expect(translate).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Wanda's Cheese Bread")).toBeInTheDocument();
+    const stored = JSON.parse(localStorage.getItem('wandas_recipes')!) as Recipe[];
+    expect(stored[0].sourceLanguage).not.toBe('pl');
+    expect(stored[0].translations).toBeUndefined();
+  });
+
   it('tries a failing translation once, then again when the phone comes back online', async () => {
     seed(customRecipe);
     translate.mockImplementation(offline);
