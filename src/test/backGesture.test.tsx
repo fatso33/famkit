@@ -75,6 +75,11 @@ describe('back gesture', () => {
     await historyAt(0);
   });
 
+  it("leaves scroll to the app, so the browser can't undo the vault's remembered spot", () => {
+    // Browsers restore each entry's saved scroll on back, which jumped a morphing photo mid-flight.
+    expect(window.history.scrollRestoration).toBe('manual');
+  });
+
   it('goes from a recipe back to the vault', async () => {
     render(<App />);
     openBabka();

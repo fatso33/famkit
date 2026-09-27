@@ -63,6 +63,11 @@ function handlePopState(e: PopStateEvent) {
   onBack(!hasUAVisualTransition);
 }
 
+// The app sets the scroll itself on every page change (App's navigateTo). Left to the
+// browser, going back through our entries would also restore the scroll position saved with
+// them, undoing the vault's remembered spot and jerking a photo morph mid-flight.
+window.history.scrollRestoration = 'manual';
+
 // A reload keeps our entries but starts with nothing open, so this entry is the base now.
 // Entries left below it are lined up by sync() when back lands on them.
 if (depthOf(window.history.state) > 0) window.history.replaceState(null, '');
