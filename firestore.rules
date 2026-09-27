@@ -1,7 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     // Checks if the user is authenticated with Google and their email is in the allowed family list
     function isFamily() {
       return request.auth != null &&
@@ -14,10 +14,42 @@ service cloud.firestore {
         ];
     }
 
-    // Secure all recipes
+    function myEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    // The family member who added a recipe owns it. Records from before owners existed have none.
+    function ownedByMe(data) {
+      return data.get('ownerEmail', '').lower() == myEmail();
+    }
+
+    // Any family phone may finish a background translation, so writing only the translation
+    // fields is allowed on anyone's recipe.
+    function onlyTranslation() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['translations', 'sourceLanguage']);
+    }
+
+    // TEMPORARY one-time migration: lets Peter adopt recipes saved before owners existed
+    // (Wanda's Cheese Bread and the like). Remove once they all have an owner.
+    function adoptsLegacyRecipe() {
+      return myEmail() == 'p.gzowski33@gmail.com' &&
+        resource.data.get('ownerEmail', null) == null &&
+        ownedByMe(request.resource.data);
+    }
+
     match /recipes/{recipeId} {
-      // Only approved family members can view, add, modify, or delete recipes
-      allow read, write: if isFamily();
+      allow read: if isFamily();
+      // New recipes must be recorded as added by the person saving them.
+      allow create: if isFamily() && ownedByMe(request.resource.data);
+      // Only the owner edits (and can't hand the recipe to someone else).
+      allow update: if isFamily() && (
+        (ownedByMe(resource.data) && ownedByMe(request.resource.data)) ||
+        onlyTranslation() ||
+        adoptsLegacyRecipe()
+      );
+      // Recipes are never erased from the app.
+      allow delete: if false;
     }
   }
 }

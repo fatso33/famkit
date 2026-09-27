@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import App from '../App';
-import { DEFAULT_RECIPE } from '../data/defaultRecipe';
+import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 
 // Stands in for the browser's WakeLockSentinel. The browser calls release()
 // itself when the tab is hidden or the phone locks, which fires 'release'.
@@ -31,7 +31,7 @@ function setVisibility(state: DocumentVisibilityState) {
 
 async function openRecipeAndTurnOnCookMode() {
   render(<App />);
-  fireEvent.click(screen.getByText(DEFAULT_RECIPE.name));
+  fireEvent.click(screen.getByText(WANDAS_CHEESE_BREAD.name));
   fireEvent.click(screen.getByRole('button', { name: /cook mode: off/i }));
   await act(() => Promise.resolve());
   expect(screen.getByRole('button', { name: /cook mode: on/i })).toBeInTheDocument();
@@ -42,6 +42,7 @@ describe('Cook Mode (screen wake lock)', () => {
     sentinels = [];
     request.mockClear();
     localStorage.clear();
+    localStorage.setItem('wandas_recipes', JSON.stringify([WANDAS_CHEESE_BREAD]));
     window.matchMedia = vi.fn().mockReturnValue({ matches: false });
     window.scrollTo = vi.fn();
     Object.defineProperty(navigator, 'wakeLock', { value: { request }, configurable: true });

@@ -8,6 +8,7 @@ import { StepsList } from './StepsList';
 import { BakingOptionsView } from './BakingOptionsView';
 import { ImageZoomModal } from './ImageZoomModal';
 import { getLocalizedRecipe } from '../../hooks/useRecipes';
+import { addedByName } from '../../utils/ownership';
 
 interface RecipeDetailViewProps {
   recipe: Recipe;
@@ -35,6 +36,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
 
   const recipe = getLocalizedRecipe(rawRecipe, language) || rawRecipe;
   const estimatedTime = t.estimatedTime(estimateRecipeMinutes(recipe));
+  const addedBy = addedByName(rawRecipe);
 
   const handleIncreaseScale = () => {
     setScale((prev) => (prev === 0.5 ? 1 : Math.min(8, prev + 1)));
@@ -73,6 +75,12 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
           <span id="detailAuthor" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
             {t.byAuthor(recipe.author)}
           </span>
+          {addedBy && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="added-by">{t.addedBy(addedBy)}</span>
+            </>
+          )}
           {recipe.version && recipe.version > 1 && (
             <span className="version-tag" title={t.versionTooltip(recipe.version)}>
               {t.versionBadge(recipe.version)}

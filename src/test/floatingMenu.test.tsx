@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import App from '../App';
-import { DEFAULT_RECIPE } from '../data/defaultRecipe';
+import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 import { UI_TEXT } from '../i18n/translations';
 
 vi.mock('../services/gemini', () => ({
@@ -27,7 +27,7 @@ const finishClosing = () => {
 describe('floating menu', () => {
   beforeEach(() => {
     localStorage.clear();
-    localStorage.setItem('wandas_recipes', JSON.stringify([DEFAULT_RECIPE]));
+    localStorage.setItem('wandas_recipes', JSON.stringify([WANDAS_CHEESE_BREAD]));
     window.matchMedia = vi.fn().mockReturnValue({ matches: false });
     window.scrollTo = vi.fn();
   });
@@ -109,7 +109,7 @@ describe('floating menu', () => {
   it('closes when keyboard focus leaves it for the page behind', () => {
     render(<App />);
     openMenu();
-    const card = screen.getByRole('button', { name: DEFAULT_RECIPE.name });
+    const card = screen.getByRole('button', { name: WANDAS_CHEESE_BREAD.name });
 
     // Shift+Tab out of the menu onto content hidden behind the scrim.
     act(() => card.focus());
@@ -131,7 +131,7 @@ describe('floating menu', () => {
 
   it('offers Share on a recipe page, whose back pill returns to the vault', () => {
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: DEFAULT_RECIPE.name }));
+    fireEvent.click(screen.getByRole('button', { name: WANDAS_CHEESE_BREAD.name }));
 
     const menu = openMenu();
     expect(within(menu).getByRole('button', { name: t.shareRecipe })).toBeInTheDocument();

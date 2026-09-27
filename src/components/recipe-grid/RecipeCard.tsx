@@ -3,6 +3,7 @@ import { Recipe, Language } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
 import { estimateRecipeMinutes } from '../../utils/timeEstimator';
 import { getLocalizedRecipe } from '../../hooks/useRecipes';
+import { isHeirloom } from '../../utils/ownership';
 
 interface RecipeCardProps {
   recipe: Recipe;
@@ -18,13 +19,12 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
   t,
 }) => {
   const recipe = getLocalizedRecipe(rawRecipe, language) || rawRecipe;
-  const isWandas = rawRecipe.id === 'wandas-cheese-bread' || rawRecipe.isDefault;
   const estimatedTime = t.estimatedTime(estimateRecipeMinutes(recipe));
 
   const fallbackImage =
     'https://images.unsplash.com/photo-1589367920969-ab8e050bbb04?auto=format&fit=crop&w=1200&q=80';
 
-  const badgeText = isWandas ? t.heirloomBadge : t.familyBadge;
+  const badgeText = isHeirloom(rawRecipe) ? t.heirloomBadge : t.familyBadge;
   const ingCountText = t.ingredientsCount(recipe.ingredients ? recipe.ingredients.length : 0);
 
   const defaultDesc =
@@ -32,16 +32,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
       ? 'Tradycyjny, sprawdzony przepis rodzinny.'
       : 'A time-tested family favorite.';
 
-  const wandasDefaultDesc =
-    language === 'pl'
-      ? 'Pyszny chleb serowy z chrupiącą skórką pieczony w garnku żeliwnym z serem cheddar i papryczkami jalapeno.'
-      : 'A delicious crusty Dutch-oven cheese bread with melted cheddar and spicy crushed jalapenos.';
-
-  const cardDesc =
-    recipe.cardDescription ||
-    recipe.tips ||
-    recipe.notes ||
-    (isWandas ? wandasDefaultDesc : defaultDesc);
+  const cardDesc = recipe.cardDescription || recipe.tips || recipe.notes || defaultDesc;
 
   return (
     <div

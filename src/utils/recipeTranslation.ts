@@ -86,8 +86,6 @@ export function translationStatus(recipe: Recipe, lang: Language): TranslationSt
 
 /** Whether the recipe's other language is missing, outdated, or from before fingerprinting. */
 export function needsTranslation(recipe: Recipe): boolean {
-  // Wanda's Cheese Bread carries a hand-written Polish version.
-  if (recipe.isDefault) return false;
   const status = translationStatus(recipe, otherLanguage(sourceLanguageOf(recipe)));
   return status !== 'fresh';
 }
@@ -154,13 +152,9 @@ export function applyTranslation(
   return { ...recipe, sourceLanguage: result.detectedLanguage, translations };
 }
 
-/**
- * Language the edit form shows: the viewer's own when a usable translation exists. Wanda's
- * heirloom recipe is always edited in its original, since its translation is hand-written and
- * never regenerated.
- */
+/** Language the edit form shows: the viewer's own when a usable translation exists. */
 export function editingLanguage(recipe: Recipe, viewerLanguage: Language): Language {
-  return recipe.isDefault ? sourceLanguageOf(recipe) : displayedLanguage(recipe, viewerLanguage);
+  return displayedLanguage(recipe, viewerLanguage);
 }
 
 /** The recipe as the edit form should show it. */
@@ -172,6 +166,7 @@ export function recipeForEditing(recipe: Recipe, viewerLanguage: Language): Reci
  * Merges an edit-form save into the stored recipe.
  * - Text unchanged: keep the original wording and structure; take only photos and author.
  * - Text changed: the form's text becomes the original, in the language the form showed.
+ * Either way the record's owner and creation date stay as they were.
  */
 export function resolveEdit(
   original: Recipe,
@@ -183,6 +178,7 @@ export function resolveEdit(
     return {
       ...original,
       author: edited.author,
+      authorMode: edited.authorMode,
       heroImage: edited.heroImage,
       steps: (original.steps || []).map((st, i) => ({
         ...st,
@@ -196,6 +192,9 @@ export function resolveEdit(
   delete translations[shownLanguage];
   return {
     ...edited,
+    ownerEmail: original.ownerEmail,
+    ownerName: original.ownerName,
+    createdAt: original.createdAt,
     sourceLanguage: shownLanguage,
     translations,
   };

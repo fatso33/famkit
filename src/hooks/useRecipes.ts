@@ -6,7 +6,10 @@ import {
   saveRecipeToCloud,
   saveTranslationToCloud,
   deleteRecipeFromCloud,
+  adoptLegacyRecipes,
 } from '../services/firestore';
+import type { CurrentUser } from './useCurrentUser';
+import { awaitsAdoption, hasLegacyRecipes, isLegacyOwner } from '../utils/legacyAdoption';
 import { isTranslationAvailable, translateRecipe } from '../services/gemini';
 import {
   TRANSLATION_GRACE_MS,
@@ -24,7 +27,8 @@ export function getLocalizedRecipe(
   return recipe ? localizeRecipe(recipe, lang) : null;
 }
 
-export function useRecipes() {
+/** The vault, kept in sync with Firestore. `currentUser` owns the recipes added here. */
+export function useRecipes(currentUser: CurrentUser | null) {
   const [recipes, setRecipes] = useState<Recipe[]>(getStoredRecipes);
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
 
@@ -45,6 +49,20 @@ export function useRecipes() {
     return () => unsubscribe();
   }, []);
 
+  // One-time migration on Peter's phone: adopt Wanda's Cheese Bread and any ownerless recipe
+  // (see utils/legacyAdoption). The snapshot listener then delivers the result.
+  const adoptionTried = useRef(false);
+  useEffect(() => {
+    if (adoptionTried.current || !isLegacyOwner(currentUser) || !hasLegacyRecipes(recipes)) return;
+    adoptionTried.current = true;
+    adoptLegacyRecipes(currentUser).catch((err: unknown) => {
+      console.warn(
+        'Could not adopt recipes saved before owners existed (retries next launch):',
+        err,
+      );
+    });
+  }, [currentUser, recipes]);
+
   // Translates new and edited recipes into their other language, one at a time. Each recipe
   // text is tried once per session; coming back online or reopening the app retries failures.
   useEffect(() => {
@@ -54,7 +72,7 @@ export function useRecipes() {
     let nextCheckIn = Infinity;
     let job: { recipe: Recipe; hash: string } | null = null;
     for (const recipe of recipes) {
-      if (!needsTranslation(recipe)) continue;
+      if (awaitsAdoption(recipe) || !needsTranslation(recipe)) continue;
       const hash = sourceHash(recipe);
       if (triedKeys.current.has(`${recipe.id}@${hash}`)) continue;
       if (!shouldTranslateNow(recipe, now, savedOnThisDevice.current.get(recipe.id) === hash)) {
@@ -119,34 +137,39 @@ export function useRecipes() {
 
   const selectedRecipe = recipes.find((r) => r.id === selectedRecipeId) || null;
 
-  const addRecipe = useCallback((newRecipe: Omit<Recipe, 'id' | 'createdAt'>): Recipe => {
-    const recipeWithId: Recipe = {
-      ...newRecipe,
-      id: 'recipe-' + Date.now(),
-      version: 1,
-      history: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
+  const addRecipe = useCallback(
+    (newRecipe: Omit<Recipe, 'id' | 'createdAt'>): Recipe => {
+      const recipeWithId: Recipe = {
+        ...newRecipe,
+        ownerEmail: currentUser?.email,
+        ownerName: currentUser?.name,
+        id: 'recipe-' + Date.now(),
+        version: 1,
+        history: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
 
-    savedOnThisDevice.current.set(recipeWithId.id, sourceHash(recipeWithId));
+      savedOnThisDevice.current.set(recipeWithId.id, sourceHash(recipeWithId));
 
-    // Optimistic local update
-    setRecipes((prev) => {
-      const updated = [recipeWithId, ...prev];
-      saveRecipes(updated);
-      return updated;
-    });
+      // Optimistic local update
+      setRecipes((prev) => {
+        const updated = [recipeWithId, ...prev];
+        saveRecipes(updated);
+        return updated;
+      });
 
-    setSelectedRecipeId(recipeWithId.id);
+      setSelectedRecipeId(recipeWithId.id);
 
-    // Async sync to Cloud Firestore in background
-    saveRecipeToCloud(recipeWithId).catch((err) => {
-      console.warn('Failed to sync new recipe to cloud (retained locally):', err);
-    });
+      // Async sync to Cloud Firestore in background
+      saveRecipeToCloud(recipeWithId).catch((err) => {
+        console.warn('Failed to sync new recipe to cloud (retained locally):', err);
+      });
 
-    return recipeWithId;
-  }, []);
+      return recipeWithId;
+    },
+    [currentUser],
+  );
 
   const updateRecipe = useCallback((recipeUpdates: Recipe): Recipe => {
     let finalRecipe: Recipe = recipeUpdates;
@@ -166,6 +189,7 @@ export function useRecipes() {
                 id: existing.id,
                 name: existing.name,
                 author: existing.author,
+                authorMode: existing.authorMode,
                 category: existing.category,
                 heroImage: existing.heroImage?.startsWith('data:') ? '' : existing.heroImage || '',
                 yieldHeader: existing.yieldHeader,

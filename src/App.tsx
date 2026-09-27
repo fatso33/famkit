@@ -6,6 +6,9 @@ import { useCookMode } from './hooks/useCookMode';
 import { usePWAInstall } from './hooks/usePWAInstall';
 import { useRecipes, getLocalizedRecipe } from './hooks/useRecipes';
 import { useToast } from './hooks/useToast';
+import { useCurrentUser } from './hooks/useCurrentUser';
+import { isFirebaseConfigured } from './services/firebase';
+import { canEditRecipe } from './utils/ownership';
 import { recipeForEditing, resolveEdit } from './utils/recipeTranslation';
 import { Plus, Share2 } from 'lucide-react';
 import { FloatingMenu, MenuAction } from './components/layout/FloatingMenu';
@@ -38,8 +41,10 @@ export default function App() {
     usePWAInstall();
 
   const { toast, visible: isToastVisible, showToast, clearToast } = useToast();
+  const currentUser = useCurrentUser();
 
-  const { recipes, selectedRecipe, setSelectedRecipeId, addRecipe, updateRecipe } = useRecipes();
+  const { recipes, selectedRecipe, setSelectedRecipeId, addRecipe, updateRecipe } =
+    useRecipes(currentUser);
   const localizedRecipe = getLocalizedRecipe(selectedRecipe, language);
 
   const [page, setPage] = useState<AppPage>('recipes');
@@ -133,10 +138,14 @@ export default function App() {
             isWakeLocked={isCookModeOn}
             onToggleWakeLock={() => void toggleCookMode()}
             isWakeLockSupported={isWakeLockSupported}
-            onEditRecipe={(rec) => {
-              setEditingRecipe(rec);
-              setIsAddModalOpen(true);
-            }}
+            onEditRecipe={
+              canEditRecipe(selectedRecipe, currentUser, isFirebaseConfigured)
+                ? (rec) => {
+                    setEditingRecipe(rec);
+                    setIsAddModalOpen(true);
+                  }
+                : undefined
+            }
             onBack={() => navigateTo('recipes')}
             t={t}
           />

@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Recipe, Ingredient, Step } from '../../types/recipe';
+import { Recipe, Ingredient, Step, AuthorMode } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
 import { ImagePickerWithPreview } from './ImagePickerWithPreview';
 import { IngredientBuilder, IngredientRowState } from './IngredientBuilder';
 import { StepBuilder, StepBuilderItem } from './StepBuilder';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
+import { authorModeOf, resolveAuthor } from '../../utils/ownership';
 
 const DRAFT_STORAGE_KEY = 'family_kitchen_recipe_draft';
 
@@ -18,6 +20,8 @@ function writeDraft(json: string) {
 
 interface FormState {
   title: string;
+  authorMode: AuthorMode;
+  /** The typed name, used when the recipe is someone else's. */
   author: string;
   cardDescription: string;
   yieldHeader: string;
@@ -31,6 +35,7 @@ interface FormState {
 
 const EMPTY_FORM: FormState = {
   title: '',
+  authorMode: 'auto',
   author: '',
   cardDescription: '',
   yieldHeader: 'For 1 loaf:',
@@ -45,9 +50,11 @@ const EMPTY_FORM: FormState = {
 // Initial form contents: the recipe being edited, else a saved create-mode draft, else empty.
 function loadInitialForm(initialRecipe?: Recipe | null): FormState {
   if (initialRecipe) {
+    const authorMode = authorModeOf(initialRecipe);
     return {
       title: initialRecipe.name || '',
-      author: initialRecipe.author || '',
+      authorMode,
+      author: authorMode === 'custom' ? initialRecipe.author || '' : '',
       cardDescription: initialRecipe.cardDescription || '',
       yieldHeader: initialRecipe.yieldHeader || EMPTY_FORM.yieldHeader,
       heroImage: initialRecipe.heroImage || '',
@@ -93,6 +100,8 @@ function loadInitialForm(initialRecipe?: Recipe | null): FormState {
       const parsed = JSON.parse(savedDraft);
       return {
         title: parsed.title || '',
+        // Drafts from before the author choice only have a typed name.
+        authorMode: parsed.authorMode ?? (parsed.author ? 'custom' : 'auto'),
         author: parsed.author || '',
         cardDescription: parsed.cardDescription || '',
         yieldHeader: parsed.yieldHeader || EMPTY_FORM.yieldHeader,
@@ -154,6 +163,10 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
   const [initial] = useState(() => loadInitialForm(initialRecipe));
   const [title, setTitle] = useState(initial.title);
+  const currentUser = useCurrentUser();
+  const [chosenAuthorMode, setAuthorMode] = useState<AuthorMode>(initial.authorMode);
+  // With nobody signed in there is no "me" to credit, so the author is always typed.
+  const authorMode: AuthorMode = currentUser ? chosenAuthorMode : 'custom';
   const [author, setAuthor] = useState(initial.author);
   const [cardDescription, setCardDescription] = useState(initial.cardDescription);
   const [yieldHeader, setYieldHeader] = useState(initial.yieldHeader);
@@ -168,6 +181,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
   const resetForm = () => {
     setTitle(EMPTY_FORM.title);
+    setAuthorMode(EMPTY_FORM.authorMode);
     setAuthor(EMPTY_FORM.author);
     setCardDescription(EMPTY_FORM.cardDescription);
     setYieldHeader(EMPTY_FORM.yieldHeader);
@@ -196,7 +210,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
     // Only save if there's some content
     const hasContent =
       title.trim() ||
-      author.trim() ||
+      (authorMode === 'custom' && author.trim()) ||
       ingredientRows.some((r) => r.name.trim()) ||
       steps.some((s) => s.text.trim());
     if (!hasContent) {
@@ -206,6 +220,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
     const json = JSON.stringify({
       title,
+      authorMode,
       author,
       cardDescription,
       yieldHeader,
@@ -224,6 +239,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   }, [
     isEditMode,
     title,
+    authorMode,
     author,
     cardDescription,
     yieldHeader,
@@ -281,9 +297,9 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
     const recipeData: Omit<Recipe, 'id' | 'createdAt'> = {
       name: title.trim(),
-      author: author.trim(),
+      author: resolveAuthor(authorMode, author, currentUser),
+      authorMode,
       category: initialRecipe?.category || 'family',
-      isDefault: initialRecipe?.isDefault ?? false,
       heroImage: heroImage || fallbackImage,
       yieldHeader: yieldHeader.trim() || 'For 1 loaf:',
       baseYield: initialRecipe?.baseYield ?? 1,
@@ -383,20 +399,45 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
               />
             </div>
 
-            {/* Author */}
-            <div className="form-group">
-              <label className="form-label" htmlFor="recipeAuthorInput">
-                {t.authorContributor}
-              </label>
-              <input
-                className="form-control"
-                type="text"
-                id="recipeAuthorInput"
-                required
-                value={author}
-                onChange={(e) => setAuthor(e.target.value)}
-              />
-            </div>
+            {/* Author: the signed-in family member, or someone else by name */}
+            <fieldset className="form-group author-field">
+              <legend className="form-label">{t.authorLabel}</legend>
+              {currentUser && (
+                <div className="author-choice" data-value={authorMode}>
+                  <span className="author-choice-thumb" aria-hidden="true" />
+                  {(['auto', 'custom'] as const).map((mode) => (
+                    <label key={mode} className={authorMode === mode ? 'is-active' : ''}>
+                      <input
+                        type="radio"
+                        name="authorMode"
+                        value={mode}
+                        checked={authorMode === mode}
+                        onChange={() => setAuthorMode(mode)}
+                      />
+                      {mode === 'auto' ? t.authorMe : t.authorSomeoneElse}
+                    </label>
+                  ))}
+                </div>
+              )}
+              {authorMode === 'auto' && currentUser ? (
+                <p className="author-hint">{t.authorShownAs(currentUser.name)}</p>
+              ) : (
+                <div className="author-custom">
+                  <label className="form-label" htmlFor="recipeAuthorInput">
+                    {t.authorNameLabel}
+                  </label>
+                  <input
+                    className="form-control"
+                    type="text"
+                    id="recipeAuthorInput"
+                    required
+                    autoComplete="off"
+                    value={author}
+                    onChange={(e) => setAuthor(e.target.value)}
+                  />
+                </div>
+              )}
+            </fieldset>
 
             {/* Description */}
             <div className="form-group">

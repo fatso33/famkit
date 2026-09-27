@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Recipe } from '../types/recipe';
-import { DEFAULT_RECIPE } from '../data/defaultRecipe';
+import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 import {
   TRANSLATION_GRACE_MS,
   applyTranslation,
@@ -78,7 +78,7 @@ describe('translationStatus / needsTranslation', () => {
   });
 
   it("never re-translates Wanda's hand-written Polish", () => {
-    expect(needsTranslation(DEFAULT_RECIPE)).toBe(false);
+    expect(needsTranslation(WANDAS_CHEESE_BREAD)).toBe(false);
   });
 
   it('looks for English when the recipe was written in Polish', () => {
@@ -111,7 +111,7 @@ describe('overlayTranslation / localizeRecipe', () => {
   });
 
   it("still shows Wanda's Polish version", () => {
-    expect(localizeRecipe(DEFAULT_RECIPE, 'pl').name).toBe('Chleb Serowy Wandy');
+    expect(localizeRecipe(WANDAS_CHEESE_BREAD, 'pl').name).toBe('Chleb Serowy Wandy');
   });
 });
 
@@ -166,12 +166,21 @@ describe('resolveEdit', () => {
     expect(needsTranslation(saved)).toBe(false);
   });
 
-  it("always edits Wanda's heirloom recipe in its English original", () => {
-    expect(recipeForEditing(DEFAULT_RECIPE, 'pl').name).toBe("Wanda's Cheese Bread");
-    const edited = { ...DEFAULT_RECIPE, tips: 'Nowa wskazówka' };
-    const saved = resolveEdit(DEFAULT_RECIPE, edited, 'pl', true);
-    expect(saved.sourceLanguage).toBe('en');
-    expect(saved.translations?.pl).toBeDefined();
+  it('keeps the owner and creation date when the text is edited', () => {
+    const owned = { ...recipe, ownerEmail: 'ola@example.com', ownerName: 'Ola', createdAt: 5 };
+    // The form sends no record metadata, only what it edits.
+    const edited = { ...recipe, name: 'Pear Pie', createdAt: undefined };
+    const saved = resolveEdit(owned, edited, 'en', true);
+    expect(saved).toMatchObject({
+      name: 'Pear Pie',
+      ownerEmail: 'ola@example.com',
+      ownerName: 'Ola',
+      createdAt: 5,
+    });
+  });
+
+  it("edits Wanda's recipe like any other: in Polish for a Polish viewer", () => {
+    expect(recipeForEditing(WANDAS_CHEESE_BREAD, 'pl').name).toBe('Chleb Serowy Wandy');
   });
 
   it('edits the original when no usable translation was shown', () => {

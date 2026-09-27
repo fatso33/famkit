@@ -18,7 +18,7 @@ Private family recipe vault PWA. React 19 + TypeScript (strict) + Vite 6 + Tailw
 - `src/services/`: I/O only (`firebase`, `firestore`, `storage` = localStorage, `gemini`)
 - `src/utils/`: pure logic (`fractions` = scaling/formatting, `timeEstimator`)
 - `src/i18n/translations.ts`: all UI strings, typed by the `UiTranslations` interface
-- `src/data/defaultRecipe.ts`: canonical Wanda's Cheese Bread. Its content is **verbatim heirloom text**. Never paraphrase it.
+- `src/data/wandasCheeseBread.ts`: one-time seed for adopting Wanda's Cheese Bread as Peter's upload (`utils/legacyAdoption`). Its content is **verbatim heirloom text**. Never paraphrase it. Tests use the copy in `src/test/fixtures/`.
 - `src/test/`: Vitest + Testing Library (jsdom)
 - `public/sw.js`: hand-written service worker. `public/assets/`: recipe photos
 
@@ -72,7 +72,7 @@ Tools enforce most of these: TS strict, ESLint (react-hooks, jsx-a11y, promise s
 - **Service worker:** JS/CSS/HTML are network-first, but images are **cache-first**. If you replace an image at an existing path, bump `CACHE_NAME` in `public/sw.js`, or users keep seeing the old one.
 - **Secrets:** `VITE_*` env vars are baked into the public bundle. Never commit `.env`. CI reads them from GitHub Secrets (`deploy.yml`).
 - **Access control** has two layers that must agree: the `VITE_FAMILY_EMAILS` secret (client UX) and the email list in `firestore.rules` (real enforcement, deployed separately via the Firebase CLI/console).
-- **Local UI testing:** there's no local `.env`, so Firebase is off in dev. "Connect with Google" logs in as a fake dev user, and data stays in localStorage, so it's safe to click through anything. In the preview browser, the hidden pane stalls `document.startViewTransition`. If navigation clicks do nothing, run `document.startViewTransition = undefined` in the page first.
+- **Local UI testing:** there's no local `.env`, so Firebase is off in dev. "Connect with Google" logs in as a fake dev user, and data stays in localStorage, so it's safe to click through anything. The vault starts empty: no recipe is built into the app. In the preview browser, the hidden pane stalls `document.startViewTransition`. If navigation clicks do nothing, run `document.startViewTransition = undefined` in the page first.
 - **Offline-first:** Firestore uses IndexedDB persistence, and recipes also live in localStorage. Test changes signed out (local-only) as well as signed in.
 - **Translation:** a recipe's top-level text is the original in `sourceLanguage`, and `translations[other]` carries a `sourceHash`. A mismatched hash means the translation is stale, and `useRecipes` re-translates it in the background. The logic lives in `utils/recipeTranslation`. Firebase is off locally, so translation only runs in tests (mocked) or with a real `.env` plus an App Check debug token.
 - **Images:** photos are compressed client-side and embedded. Keep history snapshots free of embedded photos (see `useRecipes`).
@@ -83,6 +83,12 @@ Tools enforce most of these: TS strict, ESLint (react-hooks, jsx-a11y, promise s
 2. UI changes were checked in the preview browser (light + dark, EN + PL, phone width).
 3. Commit in the repo style (`feat:`, `fix:`, `style:`, `refactor:`, `test:`, `chore:`).
 4. **Don't push without Peter's explicit OK.** Use `/ship`.
+
+## Recipes and ownership
+
+- Every recipe is one a family member added. There is no built-in or default recipe.
+- `ownerEmail` is who added it, and only they can edit it (`utils/ownership` for the UI, `firestore.rules` for real enforcement). Any phone may still write translation fields.
+- `author` is the displayed name. `authorMode: 'auto'` means it's the owner's Google name, and `'custom'` means it's someone else's recipe (an heirloom) with a typed name.
 
 ## Known risks (not yet addressed)
 

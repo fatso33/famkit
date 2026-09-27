@@ -47,7 +47,7 @@ describe('translation grace period across phones', () => {
   });
 
   it("doesn't treat another phone's later edit as saved here after an author-only edit", async () => {
-    const { result } = renderHook(() => useRecipes());
+    const { result } = renderHook(() => useRecipes(null));
 
     // This phone changes only the author: nothing needs translating.
     act(() => {
@@ -65,7 +65,7 @@ describe('translation grace period across phones', () => {
   });
 
   it('translates its own text edit straight away', async () => {
-    const { result } = renderHook(() => useRecipes());
+    const { result } = renderHook(() => useRecipes(null));
 
     await act(async () => {
       result.current.updateRecipe({ ...translated, name: "Aunt Ola's Pierogi" });

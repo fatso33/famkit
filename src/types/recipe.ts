@@ -55,11 +55,20 @@ export interface RecipeTranslations {
 export interface Recipe {
   id: string;
   name: string;
+  /** The name shown as the recipe's author (see `authorMode`). */
   author: string;
+  /**
+   * 'auto': the author is the family member who added it. 'custom': it's someone else's recipe
+   * (e.g. a grandma who doesn't use the app), typed in. Missing on older records.
+   */
+  authorMode?: AuthorMode;
+  /** Google email of the family member who added the recipe. Only they may edit it. */
+  ownerEmail?: string;
+  /** Their Google name when they added it, shown as "added by" on someone else's recipe. */
+  ownerName?: string;
   category: 'breads' | 'heirloom' | 'family' | string;
   version?: number;
   history?: RecipeHistoryEntry[];
-  isDefault?: boolean;
   heroImage: string;
   yieldHeader: string;
   baseYield?: number;
@@ -77,6 +86,7 @@ export interface Recipe {
   updatedAt?: number;
 }
 
+export type AuthorMode = 'auto' | 'custom';
 export type Language = 'en' | 'pl';
 export type Theme = 'light' | 'dark';
 export type FilterType = 'all' | 'breads' | 'heirloom' | 'recent';

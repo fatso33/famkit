@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import App from '../App';
 import { translateRecipe } from '../services/gemini';
-import { DEFAULT_RECIPE } from '../data/defaultRecipe';
+import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 import { Recipe } from '../types/recipe';
 import { UI_TEXT } from '../i18n/translations';
 import { sourceHash } from '../utils/recipeTranslation';
@@ -46,7 +46,7 @@ const withPolish = (r: Recipe): Recipe => ({
 });
 
 const seed = (...recipes: Recipe[]) =>
-  localStorage.setItem('wandas_recipes', JSON.stringify([DEFAULT_RECIPE, ...recipes]));
+  localStorage.setItem('wandas_recipes', JSON.stringify([WANDAS_CHEESE_BREAD, ...recipes]));
 
 const editOpenRecipe = (lang: 'en' | 'pl', changes: Record<string, string>) => {
   fireEvent.click(screen.getByRole('button', { name: new RegExp(UI_TEXT[lang].editRecipe) }));

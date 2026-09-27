@@ -10,7 +10,7 @@ import {
   setStoredFontScale,
   clearLegacyApiKey,
 } from '../services/storage';
-import { DEFAULT_RECIPE } from '../data/defaultRecipe';
+import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 import { Recipe } from '../types/recipe';
 
 describe('storage service', () => {
@@ -18,10 +18,19 @@ describe('storage service', () => {
     localStorage.clear();
   });
 
-  it('initializes with DEFAULT_RECIPE if localStorage is empty', () => {
-    const recipes = getStoredRecipes();
-    expect(recipes.length).toBeGreaterThanOrEqual(1);
-    expect(recipes[0].id).toBe(DEFAULT_RECIPE.id);
+  it('starts with an empty vault: no recipe is built into the app', () => {
+    expect(getStoredRecipes()).toEqual([]);
+  });
+
+  it('keeps stored recipes exactly as saved', () => {
+    const edited = { ...WANDAS_CHEESE_BREAD, tips: 'Grease the pot first.' };
+    saveRecipes([edited]);
+    expect(getStoredRecipes()).toEqual([edited]);
+  });
+
+  it('starts empty rather than crashing on corrupt storage', () => {
+    localStorage.setItem('wandas_recipes', '{not json');
+    expect(getStoredRecipes()).toEqual([]);
   });
 
   it('persists and retrieves custom recipes', () => {
@@ -36,7 +45,7 @@ describe('storage service', () => {
       steps: [{ num: 1, text: 'Slice apples and bake.' }],
     };
 
-    saveRecipes([DEFAULT_RECIPE, customRecipe]);
+    saveRecipes([WANDAS_CHEESE_BREAD, customRecipe]);
     const stored = getStoredRecipes();
     expect(stored.length).toBe(2);
     expect(stored[1].name).toBe("Grandma's Apple Pie");

@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { CurrentUser, CurrentUserContext } from '../../hooks/useCurrentUser';
 import { useTheme } from '../../hooks/useTheme';
 import { useLanguage } from '../../hooks/useLanguage';
 import { ThemeToggle } from '../common/ThemeToggle';
@@ -15,6 +16,13 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
 
   const { theme, toggleTheme } = useTheme();
   const { language, toggleLanguage, t } = useLanguage();
+
+  const email = user?.email ?? '';
+  const displayName = user?.displayName;
+  const currentUser = useMemo<CurrentUser | null>(
+    () => (email ? { email, name: displayName || email } : null),
+    [email, displayName],
+  );
 
   // 1. Loading Screen (Warm Heirloom Style)
   if (isLoading) {
@@ -267,7 +275,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
           </span>
         </div>
       )}
-      {children}
+      <CurrentUserContext value={currentUser}>{children}</CurrentUserContext>
     </>
   );
 };

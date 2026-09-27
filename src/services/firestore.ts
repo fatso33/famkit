@@ -6,13 +6,16 @@ import {
   deleteField,
   deleteDoc,
   onSnapshot,
-  getDocs,
+  getDocsFromServer,
+  writeBatch,
   Unsubscribe,
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase';
 import { Language, LocalizedRecipeContent, Recipe } from '../types/recipe';
-import { DEFAULT_RECIPE } from '../data/defaultRecipe';
+import type { CurrentUser } from '../hooks/useCurrentUser';
 import { getStoredRecipes, saveRecipes as saveToLocalStorage } from './storage';
+import { embedBundledPhotos, planAdoption, WANDA_ID } from '../utils/legacyAdoption';
+import { compressImage } from '../utils/imageCompression';
 
 const RECIPES_COLLECTION = 'recipes';
 
@@ -37,45 +40,18 @@ export function subscribeToRecipes(
   return onSnapshot(
     collection(db, RECIPES_COLLECTION),
     (snapshot) => {
+      // An empty answer from an empty offline cache says nothing about the vault: keep showing
+      // this device's copy rather than wiping it.
+      if (snapshot.empty && snapshot.metadata.fromCache) {
+        onUpdate(getStoredRecipes());
+        return;
+      }
+
       const cloudRecipes: Recipe[] = [];
       snapshot.forEach((docSnap) => {
         cloudRecipes.push(docSnap.data() as Recipe);
       });
       cloudRecipes.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
-
-      // Synchronize canonical default recipe properties if present
-      const defaultIdx = cloudRecipes.findIndex(
-        (r) => r.id === 'wandas-cheese-bread' || r.isDefault,
-      );
-
-      if (defaultIdx !== -1) {
-        cloudRecipes[defaultIdx] = {
-          ...DEFAULT_RECIPE,
-          ...cloudRecipes[defaultIdx],
-          ingredients: DEFAULT_RECIPE.ingredients,
-          steps: DEFAULT_RECIPE.steps,
-          laminationDirective: DEFAULT_RECIPE.laminationDirective,
-          bakingOptions: DEFAULT_RECIPE.bakingOptions,
-          tips: DEFAULT_RECIPE.tips,
-          notes: DEFAULT_RECIPE.notes,
-          translations: DEFAULT_RECIPE.translations,
-          heroImage: DEFAULT_RECIPE.heroImage,
-        };
-      }
-
-      // If cloud is empty (e.g. brand new database), trigger seeding
-      if (cloudRecipes.length === 0) {
-        seedInitialRecipesIfEmpty()
-          .then((seeded) => {
-            onUpdate(seeded);
-          })
-          .catch((error: Error) => {
-            console.warn('Seeding Firestore failed (falling back to local cache):', error);
-            if (onError) onError(error);
-            onUpdate(getStoredRecipes());
-          });
-        return;
-      }
 
       // Also mirror to localStorage for instantaneous offline boots
       saveToLocalStorage(cloudRecipes);
@@ -141,27 +117,26 @@ export async function deleteRecipeFromCloud(id: string): Promise<void> {
 }
 
 /**
- * Automatically seeds the cloud database with Wanda's Cheese Bread and any existing
- * recipes stored in localStorage so no previous work is lost.
+ * One-time migration (see utils/legacyAdoption): makes Wanda's Cheese Bread an ordinary recipe
+ * `owner` added, with embedded photos, and gives them any other recipe nobody owns yet. Reads the
+ * server (not the offline cache) so it never acts on a stale view. Returns whether it wrote.
  */
-export async function seedInitialRecipesIfEmpty(): Promise<Recipe[]> {
-  const local = getStoredRecipes();
-  const recipesToSeed = local.length > 0 ? local : [DEFAULT_RECIPE];
+export async function adoptLegacyRecipes(owner: CurrentUser): Promise<boolean> {
+  if (!isFirebaseConfigured || !db) return false;
 
-  if (!isFirebaseConfigured || !db) {
-    return recipesToSeed;
+  const snapshot = await getDocsFromServer(collection(db, RECIPES_COLLECTION));
+  const cloud = snapshot.docs.map((d) => d.data() as Recipe);
+  const plan = planAdoption(cloud, owner, Date.now());
+  if (!plan.wanda && plan.claims.length === 0) return false;
+
+  const batch = writeBatch(db);
+  if (plan.wanda) {
+    const wanda = await embedBundledPhotos(plan.wanda, (src) => compressImage(src));
+    batch.set(doc(db, RECIPES_COLLECTION, WANDA_ID), wanda);
   }
-
-  try {
-    const existing = await getDocs(collection(db, RECIPES_COLLECTION));
-    if (existing.empty) {
-      for (const recipe of recipesToSeed) {
-        await setDoc(doc(db, RECIPES_COLLECTION, recipe.id), recipe);
-      }
-    }
-  } catch (err) {
-    console.warn('Could not seed initial recipes to Firestore:', err);
+  for (const claim of plan.claims) {
+    batch.update(doc(db, RECIPES_COLLECTION, claim.id), claim.owner);
   }
-
-  return recipesToSeed;
+  await batch.commit();
+  return true;
 }

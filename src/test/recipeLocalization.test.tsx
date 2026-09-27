@@ -2,11 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import App from '../App';
 import { UI_TEXT } from '../i18n/translations';
+import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 
 describe('recipe page in Polish', () => {
   beforeEach(() => {
     localStorage.clear();
     localStorage.setItem('wandas_language', 'pl');
+    localStorage.setItem('wandas_recipes', JSON.stringify([WANDAS_CHEESE_BREAD]));
     window.matchMedia = vi.fn().mockReturnValue({ matches: false });
     window.scrollTo = vi.fn();
   });
@@ -17,7 +19,8 @@ describe('recipe page in Polish', () => {
 
     const meta = container.querySelector<HTMLElement>('.detail-meta');
     expect(meta).not.toBeNull();
-    expect(within(meta!).getByText(/^Autor: /)).toBeInTheDocument();
+    expect(within(meta!).getByText('Autor: Wanda G.')).toBeInTheDocument();
+    expect(within(meta!).getByText('Dodane przez: Peter Gzowski')).toBeInTheDocument();
     expect(meta!.textContent).toMatch(/~\d+ (godz\.|min)/);
     expect(meta!.textContent).not.toMatch(/\b(By|hrs?|mins)\b/);
 

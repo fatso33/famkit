@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { UiTranslations } from '../../i18n/translations';
+import { compressImage, PHOTO_MAX_DIMENSION, PHOTO_QUALITY } from '../../utils/imageCompression';
 
 interface ImagePickerWithPreviewProps {
   imageUrl: string;
@@ -19,8 +20,8 @@ export const ImagePickerWithPreview: React.FC<ImagePickerWithPreviewProps> = ({
   idPrefix = 'img-picker',
   helpText,
   t,
-  maxDimension = 1000,
-  quality = 0.8,
+  maxDimension = PHOTO_MAX_DIMENSION,
+  quality = PHOTO_QUALITY,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -30,35 +31,9 @@ export const ImagePickerWithPreview: React.FC<ImagePickerWithPreviewProps> = ({
     reader.onload = (ev) => {
       const dataUrl = ev.target?.result as string;
       if (!dataUrl) return;
-
-      const img = new Image();
-      img.onload = () => {
-        let width = img.width;
-        let height = img.height;
-
-        if (width > maxDimension || height > maxDimension) {
-          if (width > height) {
-            height = Math.round((height * maxDimension) / width);
-            width = maxDimension;
-          } else {
-            width = Math.round((width * maxDimension) / height);
-            height = maxDimension;
-          }
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressed = canvas.toDataURL('image/jpeg', quality);
-          onChange(compressed);
-        } else {
-          onChange(dataUrl);
-        }
-      };
-      img.src = dataUrl;
+      compressImage(dataUrl, maxDimension, quality).then(onChange, (err: unknown) => {
+        console.warn('Photo could not be compressed (not added):', err);
+      });
     };
     reader.readAsDataURL(file);
   };

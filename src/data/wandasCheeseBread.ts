@@ -1,11 +1,14 @@
 import { Recipe } from '../types/recipe';
 
-export const DEFAULT_RECIPE: Recipe = {
+/**
+ * Wanda's Cheese Bread as it was bundled with the app. Used once to adopt it as Peter's
+ * upload (see utils/legacyAdoption), then deleted. The text is verbatim heirloom wording.
+ */
+export const WANDAS_CHEESE_BREAD_SEED: Recipe = {
   id: 'wandas-cheese-bread',
   name: "Wanda's Cheese Bread",
   author: 'Wanda G.',
   category: 'breads',
-  isDefault: true,
   heroImage: './assets/wandas-cheese-bread.jpg',
   yieldHeader: 'For 1 loaf:',
   baseYield: 1,

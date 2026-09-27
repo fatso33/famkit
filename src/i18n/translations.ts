@@ -54,7 +54,11 @@ export interface UiTranslations {
   saveToVault: string;
   cancel: string;
   recipeTitle: string;
-  authorContributor: string;
+  authorLabel: string;
+  authorMe: string;
+  authorSomeoneElse: string;
+  authorShownAs: (name: string) => string;
+  authorNameLabel: string;
   yieldHeader: string;
   heroPhoto: string;
   photoOptionalHelp: string;
@@ -82,6 +86,10 @@ export interface UiTranslations {
   versionBadge: (version: number) => string;
   versionTooltip: (version: number) => string;
   byAuthor: (author: string) => string;
+  /** Who added a recipe that is credited to someone else. */
+  addedBy: (name: string) => string;
+  emptyVault: string;
+  emptyFilter: string;
   /** Formats a duration already rounded to 5 minutes, e.g. "~2 hrs 25 mins". */
   estimatedTime: (minutes: number) => string;
   shareText: (name: string, author: string) => string;
@@ -153,9 +161,9 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
       'Heirloom family recipes crafted with precision, love, and time-honored tradition.',
     allRecipes: 'All Recipes',
     breads: 'Artisan Breads',
-    heirlooms: "Wanda's Heirlooms",
+    heirlooms: 'Heirlooms',
     recent: 'Recent Additions',
-    heirloomBadge: "Wanda's Heirloom",
+    heirloomBadge: 'Heirloom',
     familyBadge: 'Family Recipe',
     viewRecipe: 'View Recipe →',
     ingredientsCount: (n: number) => `${n} ingredient${n === 1 ? '' : 's'}`,
@@ -193,7 +201,11 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     saveToVault: 'Save to Vault',
     cancel: 'Cancel',
     recipeTitle: 'Recipe Title *',
-    authorContributor: 'Author / Contributor *',
+    authorLabel: 'Author',
+    authorMe: 'Me',
+    authorSomeoneElse: 'Someone else',
+    authorShownAs: (name: string) => `Shown as ${name}`,
+    authorNameLabel: 'Whose recipe is it?',
     yieldHeader: 'Yield Header *',
     heroPhoto: 'Hero Photo',
     photoOptionalHelp: 'Or leave blank to use an artisan kitchen placeholder photo.',
@@ -221,6 +233,9 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     versionBadge: (version: number) => `v${version}`,
     versionTooltip: (version: number) => `Version ${version}`,
     byAuthor: (author: string) => `By ${author}`,
+    addedBy: (name: string) => `Added by ${name}`,
+    emptyVault: 'No recipes yet. Add the first one from the menu.',
+    emptyFilter: 'No recipes here yet.',
     estimatedTime: (minutes: number) => {
       const hours = Math.floor(minutes / 60);
       const mins = minutes % 60;
@@ -293,9 +308,9 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     vaultSubtitle: 'Dziedzictwo kulinarnych sekretów przekazywane z pokolenia na pokolenie.',
     allRecipes: 'Wszystkie przepisy',
     breads: 'Chleby rzemieślnicze',
-    heirlooms: 'Przepisy Wandy',
+    heirlooms: 'Z tradycją',
     recent: 'Nowe przepisy',
-    heirloomBadge: 'Dziedzictwo Wandy',
+    heirloomBadge: 'Przepis z tradycją',
     familyBadge: 'Przepis Rodzinny',
     viewRecipe: 'Zobacz przepis →',
     ingredientsCount: (n: number) => `${n} ${plPlural(n, 'składnik', 'składniki', 'składników')}`,
@@ -334,7 +349,11 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     saveToVault: 'Zapisz w skarbcu',
     cancel: 'Anuluj',
     recipeTitle: 'Tytuł przepisu *',
-    authorContributor: 'Autor / Źródło *',
+    authorLabel: 'Autor',
+    authorMe: 'Ja',
+    authorSomeoneElse: 'Ktoś inny',
+    authorShownAs: (name: string) => `Widoczne jako: ${name}`,
+    authorNameLabel: 'Czyj to przepis?',
     yieldHeader: 'Porcja wyjściowa *',
     heroPhoto: 'Zdjęcie główne',
     photoOptionalHelp: 'Pozostaw puste, aby użyć domyślnego zdjęcia rzemieślniczego.',
@@ -362,6 +381,9 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     versionBadge: (version: number) => `v${version}`,
     versionTooltip: (version: number) => `Wersja ${version}`,
     byAuthor: (author: string) => `Autor: ${author}`,
+    addedBy: (name: string) => `Dodane przez: ${name}`,
+    emptyVault: 'Nie ma jeszcze żadnych przepisów. Dodaj pierwszy z menu.',
+    emptyFilter: 'Nie ma tu jeszcze przepisów.',
     estimatedTime: (minutes: number) => {
       const hours = Math.floor(minutes / 60);
       const mins = minutes % 60;

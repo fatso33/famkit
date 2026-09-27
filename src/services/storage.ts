@@ -1,5 +1,4 @@
 import { Recipe, Language, Theme } from '../types/recipe';
-import { DEFAULT_RECIPE } from '../data/defaultRecipe';
 
 const RECIPES_KEY = 'wandas_recipes';
 const THEME_KEY = 'wandas_theme';
@@ -8,51 +7,20 @@ const FONT_SCALE_KEY = 'wandas_font_scale';
 const LEGACY_API_KEY_STORAGE = 'wandas_gemini_api_key';
 const INSTALL_DISMISSED_KEY = 'family_kitchen_install_dismissed';
 
+/** This device's copy of the vault. Every recipe was added by a family member; none is built in. */
 export function getStoredRecipes(): Recipe[] {
-  if (typeof window === 'undefined') return [DEFAULT_RECIPE];
+  if (typeof window === 'undefined') return [];
 
   const raw = localStorage.getItem(RECIPES_KEY);
-  let recipes: Recipe[];
-
-  if (!raw) {
-    recipes = [DEFAULT_RECIPE];
-    saveRecipes(recipes);
-    return recipes;
-  }
+  if (!raw) return [];
 
   try {
-    recipes = JSON.parse(raw);
-    if (!Array.isArray(recipes) || recipes.length === 0) {
-      recipes = [DEFAULT_RECIPE];
-    }
+    const recipes: unknown = JSON.parse(raw);
+    return Array.isArray(recipes) ? (recipes as Recipe[]) : [];
   } catch (e) {
-    console.warn('Failed to parse stored recipes, resetting to default:', e);
-    recipes = [DEFAULT_RECIPE];
+    console.warn('Failed to parse stored recipes, starting with an empty vault:', e);
+    return [];
   }
-
-  // Synchronize default recipe properties (ensures latest verbatim instructions/translations)
-  const defaultIdx = recipes.findIndex((r) => r.id === 'wandas-cheese-bread' || r.isDefault);
-
-  if (defaultIdx !== -1) {
-    recipes[defaultIdx] = {
-      ...DEFAULT_RECIPE,
-      ...recipes[defaultIdx],
-      // Always ensure canonical heirloom content takes precedence
-      ingredients: DEFAULT_RECIPE.ingredients,
-      steps: DEFAULT_RECIPE.steps,
-      laminationDirective: DEFAULT_RECIPE.laminationDirective,
-      bakingOptions: DEFAULT_RECIPE.bakingOptions,
-      tips: DEFAULT_RECIPE.tips,
-      notes: DEFAULT_RECIPE.notes,
-      translations: DEFAULT_RECIPE.translations,
-      heroImage: DEFAULT_RECIPE.heroImage,
-    };
-  } else {
-    recipes.unshift(DEFAULT_RECIPE);
-  }
-
-  saveRecipes(recipes);
-  return recipes;
 }
 
 export function saveRecipes(recipes: Recipe[]): void {

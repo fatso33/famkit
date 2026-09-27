@@ -5,7 +5,7 @@ import {
   estimateRecipeMinutes,
   capitalizeFirstLetter,
 } from '../utils/timeEstimator';
-import { DEFAULT_RECIPE } from '../data/defaultRecipe';
+import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 
 describe('extractTimeFromText', () => {
   it('identifies explicit minute durations', () => {
@@ -36,7 +36,7 @@ describe('estimateActionDuration', () => {
 
 describe('estimateRecipeMinutes', () => {
   it('computes total recipe time for Wanda Cheese Bread, rounded to 5 minutes', () => {
-    const minutes = estimateRecipeMinutes(DEFAULT_RECIPE);
+    const minutes = estimateRecipeMinutes(WANDAS_CHEESE_BREAD);
     expect(minutes).toBeGreaterThan(60);
     expect(minutes % 5).toBe(0);
   });
