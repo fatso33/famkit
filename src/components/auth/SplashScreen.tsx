@@ -4,7 +4,10 @@ import { useTheme } from '../../hooks/useTheme';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useFontScale } from '../../hooks/useFontScale';
 import { transitionTheme } from '../../utils/viewTransition';
+import { resolveSeason, Season, SEASONS } from '../../utils/season';
+import { getStoredSeasonPreference } from '../../services/storage';
 import { SplashEmblem } from './SplashEmblem';
+import { SeasonalField } from './SeasonalField';
 import { at } from './introTiming';
 
 /**
@@ -14,6 +17,19 @@ import { at } from './introTiming';
  * skipped: like live, with the rest of the intro dropped.
  */
 type Phase = 'intro' | 'live' | 'skipped';
+
+/**
+ * The season the page is showing: the one on <html>, which the particle colours in index.css
+ * follow, so the particles' shapes always match their colours. That attribute can lag the
+ * calendar (App updates it when the phone wakes), so it wins over a fresh calendar read. The
+ * calendar is only the fallback for a page without one.
+ */
+function pageSeason(): Season {
+  const onPage = document.documentElement.dataset.season;
+  return SEASONS.includes(onPage as Season)
+    ? (onPage as Season)
+    : resolveSeason(getStoredSeasonPreference(), new Date());
+}
 
 const isKeyboardFocus = (el: EventTarget) => {
   try {
@@ -60,6 +76,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ error, onSignIn }) =
   const { language, toggleLanguage, t } = useLanguage();
   const { percent, increaseScale, decreaseScale } = useFontScale();
   const [phase, setPhase] = useState<Phase>('intro');
+  const [season] = useState(pageSeason);
   // After a language change the words swap with a quick blur instead of replaying the intro.
   const [swapped, setSwapped] = useState(false);
   const [tick, setTick] = useState<'up' | 'down' | null>(null);
@@ -98,8 +115,9 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ error, onSignIn }) =
         if (isKeyboardFocus(e.target)) skipIntro();
       }}
     >
+      <SeasonalField season={season} layer="back" />
       <main className="fk-splash-stage">
-        <SplashEmblem label={t.liftTheLid} canTap={phase !== 'intro'} />
+        <SplashEmblem label={t.liftTheLid} canTap={phase !== 'intro'} season={season} />
 
         <h1 className="fk-splash-title">
           <span className="fk-splash-welcome">
@@ -230,7 +248,13 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ error, onSignIn }) =
               className="fk-splash-trace fk-a fk-anim-trace"
               style={at(3.95, 1.3)}
               aria-hidden="true"
-            />
+            >
+              <span className="fk-splash-trace-light" />
+            </span>
+            {/* After the intro, the lap of light comes round again every so often. */}
+            <span className="fk-splash-trace fk-splash-trace-loop" aria-hidden="true">
+              <span className="fk-splash-trace-light" />
+            </span>
             <button type="button" className="fk-splash-google" onClick={onSignIn}>
               <GoogleLogo />
               {swapped ? (
@@ -256,6 +280,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ error, onSignIn }) =
           )}
         </div>
       </main>
+      <SeasonalField season={season} layer="front" />
     </div>
   );
 };

@@ -2,6 +2,10 @@ import React, { useRef, useState } from 'react';
 import { EMBLEM_PATHS as P } from './emblemPaths';
 import { at } from './introTiming';
 import { prefersReducedMotion } from '../../utils/viewTransition';
+import type { Season } from '../../utils/season';
+import { between, LANDER, scatter } from '../../utils/splashParticles';
+import { useLidLander } from '../../hooks/useLidLander';
+import { ParticleArt } from './ParticleArt';
 
 // The clay rises behind a wavy edge: half-waves 30 units wide along y 300, moved up from below.
 const WAVE = `M-20 300q15-12 30 0${'t30 0'.repeat(18)}V560H-20Z`;
@@ -10,14 +14,8 @@ const OPENING = { cx: 235, cy: 337, rx: 172, ry: 34 };
 // Mask regions reach past the emblem so nothing clips while parts move.
 const MASK_AREA = { maskUnits: 'userSpaceOnUse', x: -40, y: -60, width: 560, height: 680 } as const;
 
-/** A repeatable stand-in for random numbers in [0, 1), so the motes look the same every visit. */
-const scatter = (i: number, salt: number) => {
-  const v = Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453;
-  return v - Math.floor(v);
-};
-const between = (min: number, max: number, t: number) => min + (max - min) * t;
-
-// Gold motes drifting up from the pot once the intro is over.
+// Motes drifting up from the pot once the intro is over, tinted by the season (index.css).
+// Seeded, so they look the same every visit.
 const MOTES = Array.from(
   { length: 11 },
   (_, i) =>
@@ -90,6 +88,8 @@ interface SplashEmblemProps {
   label: string;
   /** False during the intro, when a tap skips the intro (the splash handles that) instead. */
   canTap: boolean;
+  /** Picks the particle that now and then settles on the lid. */
+  season: Season;
 }
 
 /**
@@ -97,8 +97,10 @@ interface SplashEmblemProps {
  * makes the lid jump, steam burst out, the wheat and heart flutter, and sparks fly.
  * Nested groups keep each motion on its own transform (e.g. lid: drop › simmer › hop).
  */
-export const SplashEmblem: React.FC<SplashEmblemProps> = ({ label, canTap }) => {
+export const SplashEmblem: React.FC<SplashEmblemProps> = ({ label, canTap, season }) => {
   const svgRef = useRef<SVGSVGElement>(null);
+  const { landerRef, simmerRef, fling } = useLidLander(season, canTap);
+  const landerArt = LANDER[season];
   const nextSparkId = useRef(0);
   const [sparks, setSparks] = useState<Spark[]>([]);
 
@@ -114,6 +116,7 @@ export const SplashEmblem: React.FC<SplashEmblemProps> = ({ label, canTap }) => 
     const fresh = makeSparks(nextSparkId.current);
     nextSparkId.current += fresh.length;
     setSparks((current) => [...current, ...fresh]);
+    fling();
   };
 
   const buzzOnLanding = (e: React.AnimationEvent) => {
@@ -207,7 +210,7 @@ export const SplashEmblem: React.FC<SplashEmblemProps> = ({ label, canTap }) => 
           />
 
           <g className="fk-emblem-lid fk-a fk-anim-lid" style={at(1.15, 0.95)}>
-            <g className="fk-emblem-lid-simmer">
+            <g className="fk-emblem-lid-simmer" ref={simmerRef}>
               <g className="fk-emblem-lid-hop">
                 <g clipPath="url(#fk-emblem-lid-clip)">
                   <path className="fk-emblem-clay" d={P.lid.clay} />
@@ -221,6 +224,12 @@ export const SplashEmblem: React.FC<SplashEmblemProps> = ({ label, canTap }) => 
                   <path className="fk-emblem-clay" d={P.knob.clay} />
                   <path className="fk-emblem-shade" d={P.knob.shade} />
                   <path className="fk-emblem-gold" d={P.knob.gold} />
+                </g>
+                {/* Now and then a leaf, petal, seed or snowflake settles here (useLidLander). */}
+                <g className="fk-emblem-lander" ref={landerRef}>
+                  <g transform={`scale(${landerArt.scale})`}>
+                    <ParticleArt kind={landerArt.kind} />
+                  </g>
                 </g>
               </g>
             </g>

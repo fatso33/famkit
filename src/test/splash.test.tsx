@@ -40,12 +40,15 @@ describe('sign-in splash', () => {
   beforeEach(() => {
     localStorage.clear();
     root.removeAttribute('data-theme');
+    root.removeAttribute('data-season');
     root.lang = 'en';
     root.style.removeProperty('--font-scale');
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    // Here rather than in the test, so a failing test can't leave the clock faked.
+    vi.useRealTimers();
   });
 
   it('shows the welcome, the pot, the preferences and the Google button', () => {
@@ -58,6 +61,44 @@ describe('sign-in splash', () => {
     expect(screen.getByRole('group', { name: en.textScaling })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: en.darkMode })).toBeInTheDocument();
     expect(screen.queryByText('App Content')).not.toBeInTheDocument();
+  });
+
+  it("drifts the season's particles across the page, and hides them from screen readers", () => {
+    localStorage.setItem('wandas_season', 'winter');
+    renderSplash();
+
+    const layers = document.querySelectorAll('[data-season-field]');
+    expect(layers).toHaveLength(2);
+    for (const layer of layers) {
+      expect(layer).toHaveAttribute('data-season-field', 'winter');
+      expect(layer).toHaveAttribute('aria-hidden', 'true');
+    }
+    const kinds = new Set(
+      [...document.querySelectorAll('.fk-particle')].map((p) => p.getAttribute('data-kind')),
+    );
+    expect(kinds).toEqual(new Set(['flake', 'crystal']));
+  });
+
+  it('follows the calendar when no season is chosen (autumn leaves in October)', () => {
+    vi.useFakeTimers({ now: new Date(2026, 9, 15), toFake: ['Date'] });
+    renderSplash();
+    const kinds = new Set(
+      [...document.querySelectorAll('.fk-particle')].map((p) => p.getAttribute('data-kind')),
+    );
+    expect(kinds).toEqual(new Set(['maple', 'beech', 'willow']));
+  });
+
+  it("matches the particles to the page's colours when the calendar has moved on", () => {
+    // Regression: a phone kept awake past 1 December still shows autumn's colours on <html>
+    // (App updates it when the phone wakes), and signing out then drew winter's snow in
+    // autumn's rust and ochre.
+    vi.useFakeTimers({ now: new Date(2026, 11, 1), toFake: ['Date'] });
+    root.dataset.season = 'autumn';
+    renderSplash();
+    const kinds = new Set(
+      [...document.querySelectorAll('.fk-particle')].map((p) => p.getAttribute('data-kind')),
+    );
+    expect(kinds).toEqual(new Set(['maple', 'beech', 'willow']));
   });
 
   it('switches everything to Polish', () => {
