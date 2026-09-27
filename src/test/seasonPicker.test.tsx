@@ -63,6 +63,16 @@ describe('choosing a season in Settings', () => {
     }
   });
 
+  it('goes back to Automatic in the season the calendar gives now, even if the app stayed open', () => {
+    // Cook Mode kept the screen on from January to June: no visibilitychange.
+    vi.setSystemTime(new Date(2027, 5, 1, 8));
+    fireEvent.click(screen.getByRole('radio', { name: new RegExp(t.seasonNames.spring) }));
+    fireEvent.click(screen.getByRole('radio', { name: new RegExp(t.seasonAuto) }));
+
+    expect(root.dataset.season).toBe('summer');
+    expect(screen.getByText(t.seasonAutoNow('summer'))).toBeInTheDocument();
+  });
+
   it('moves on to spring when the app is next looked at after 1 March', () => {
     vi.setSystemTime(new Date(2027, 2, 1, 8));
     act(() => {

@@ -41,6 +41,8 @@ export function useSeason() {
   }, [season]);
 
   const setPreference = (next: SeasonPreference) => {
+    // Re-read the calendar too: a screen kept on (Cook Mode) never fires visibilitychange.
+    if (next === 'auto') setCalendarSeason(seasonOn(new Date()));
     setPreferenceState(next);
     setStoredSeasonPreference(next);
   };
