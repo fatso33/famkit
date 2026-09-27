@@ -7,8 +7,6 @@ import {
   deleteDoc,
   onSnapshot,
   getDocs,
-  query,
-  orderBy,
   Unsubscribe,
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase';
@@ -34,15 +32,16 @@ export function subscribeToRecipes(
     return () => {};
   }
 
-  const q = query(collection(db, RECIPES_COLLECTION), orderBy('createdAt', 'desc'));
-
+  // Deliberately unordered: a Firestore orderBy silently drops documents missing that field,
+  // which once hid a recipe saved without createdAt. Sorted newest first below instead.
   return onSnapshot(
-    q,
+    collection(db, RECIPES_COLLECTION),
     (snapshot) => {
       const cloudRecipes: Recipe[] = [];
       snapshot.forEach((docSnap) => {
         cloudRecipes.push(docSnap.data() as Recipe);
       });
+      cloudRecipes.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
 
       // Synchronize canonical default recipe properties if present
       const defaultIdx = cloudRecipes.findIndex(
