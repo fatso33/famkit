@@ -6,10 +6,8 @@ import {
   saveRecipeToCloud,
   saveTranslationToCloud,
   fetchRecipeVersion,
-  fetchRecipeFromServer,
 } from '../services/firestore';
 import { legacyVersions, prepareEdit } from '../utils/recipeVersions';
-import { WANDA_REPAIR_NOTE, needsWandaRepair, repairWanda } from '../utils/wandaRepair';
 import { isDeleted, withDeletedAt } from '../utils/recipeTrash';
 import type { CurrentUser } from './useCurrentUser';
 import { isTranslationAvailable, translateRecipe } from '../services/gemini';
@@ -207,25 +205,6 @@ export function useRecipes(currentUser: CurrentUser | null) {
 
     return finalRecipe;
   }, []);
-
-  // One-time repair of Wanda's Cheese Bread on its owner's device (see utils/wandaRepair). It
-  // checks the server's copy first, so a stale cached copy never overwrites a newer edit.
-  const repairTried = useRef(false);
-  useEffect(() => {
-    if (repairTried.current) return;
-    const broken = recipes.find((r) => needsWandaRepair(r, currentUser));
-    if (!broken) return;
-    repairTried.current = true;
-    fetchRecipeFromServer(broken.id)
-      .then((server) => {
-        if (server && needsWandaRepair(server, currentUser)) {
-          updateRecipe(repairWanda(server), WANDA_REPAIR_NOTE);
-        }
-      })
-      .catch((err: unknown) => {
-        console.warn("Could not repair Wanda's Cheese Bread (retries next launch):", err);
-      });
-  }, [recipes, currentUser, updateRecipe]);
 
   /** One earlier version of a recipe, for the owner to restore. Rejects when it can't be loaded. */
   const loadVersion = useCallback(

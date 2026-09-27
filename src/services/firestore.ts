@@ -2,7 +2,6 @@ import {
   collection,
   doc,
   getDoc,
-  getDocFromServer,
   deleteField,
   onSnapshot,
   runTransaction,
@@ -98,13 +97,6 @@ export async function saveRecipeToCloud(
     batch.set(doc(recipeRef, VERSIONS_COLLECTION, version.id), version);
   }
   await batch.commit();
-}
-
-/** A recipe as the server has it now, not this device's cache. Null without the cloud or if missing. */
-export async function fetchRecipeFromServer(id: string): Promise<Recipe | null> {
-  if (!isFirebaseConfigured || !db) return null;
-  const snapshot = await getDocFromServer(doc(db, RECIPES_COLLECTION, id));
-  return snapshot.exists() ? (snapshot.data() as Recipe) : null;
 }
 
 /** Loads one earlier version (one read). Rejects if it's missing or malformed. */
