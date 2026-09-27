@@ -117,66 +117,69 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ error, onSignIn }) =
     >
       <SeasonalField season={season} layer="back" />
       <main className="fk-splash-stage">
+        {/* The greeting at the top, the pot centred below it, the controls within thumb reach. */}
+        <div className="fk-splash-heading">
+          <h1 className="fk-splash-title">
+            <span className="fk-splash-welcome">
+              {swapped ? (
+                <span key={language} className="fk-splash-quick">
+                  {t.welcomeTo}
+                </span>
+              ) : (
+                <span className="fk-a fk-anim-rise" style={at(2.7, 0.8)}>
+                  {t.welcomeTo}
+                </span>
+              )}
+            </span>{' '}
+            <span className="fk-splash-name">
+              {words.map((word, i) => (
+                <React.Fragment key={`${language}-${i}`}>
+                  {i > 0 && ' '}
+                  {swapped ? (
+                    <span
+                      className="fk-splash-word fk-splash-quick"
+                      style={{ animationDelay: `${i * 0.07}s` }}
+                    >
+                      {word}
+                    </span>
+                  ) : (
+                    <span
+                      className="fk-splash-word fk-a fk-anim-unblur"
+                      style={at(2.9 + i * 0.16, 1.05)}
+                    >
+                      {word}
+                    </span>
+                  )}
+                </React.Fragment>
+              ))}
+            </span>
+          </h1>
+
+          <svg
+            className="fk-splash-flourish"
+            viewBox="0 0 160 14"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path
+              className="fk-splash-flourish-line fk-a fk-anim-draw"
+              pathLength={1}
+              style={at(3.25, 0.75)}
+              d="M70 7.5C56 3.5 42 11 26 7.5C18 5.8 11 5.8 4 7.5"
+            />
+            <path
+              className="fk-splash-flourish-line fk-a fk-anim-draw"
+              pathLength={1}
+              style={at(3.25, 0.75)}
+              d="M90 7.5C104 3.5 118 11 134 7.5C142 5.8 149 5.8 156 7.5"
+            />
+            <g className="fk-splash-flourish-gem fk-a fk-anim-pop" style={at(3.2, 0.5)}>
+              <path d="M80 12.5C77 10.5 74.5 8.3 74.5 6C74.5 4.2 75.8 3 77.3 3C78.5 3 79.5 3.7 80 4.7C80.5 3.7 81.5 3 82.7 3C84.2 3 85.5 4.2 85.5 6C85.5 8.3 83 10.5 80 12.5Z" />
+            </g>
+          </svg>
+        </div>
+
         <SplashEmblem label={t.liftTheLid} canTap={phase !== 'intro'} season={season} />
-
-        <h1 className="fk-splash-title">
-          <span className="fk-splash-welcome">
-            {swapped ? (
-              <span key={language} className="fk-splash-quick">
-                {t.welcomeTo}
-              </span>
-            ) : (
-              <span className="fk-a fk-anim-rise" style={at(2.7, 0.8)}>
-                {t.welcomeTo}
-              </span>
-            )}
-          </span>{' '}
-          <span className="fk-splash-name">
-            {words.map((word, i) => (
-              <React.Fragment key={`${language}-${i}`}>
-                {i > 0 && ' '}
-                {swapped ? (
-                  <span
-                    className="fk-splash-word fk-splash-quick"
-                    style={{ animationDelay: `${i * 0.07}s` }}
-                  >
-                    {word}
-                  </span>
-                ) : (
-                  <span
-                    className="fk-splash-word fk-a fk-anim-unblur"
-                    style={at(2.9 + i * 0.16, 1.05)}
-                  >
-                    {word}
-                  </span>
-                )}
-              </React.Fragment>
-            ))}
-          </span>
-        </h1>
-
-        <svg
-          className="fk-splash-flourish"
-          viewBox="0 0 160 14"
-          aria-hidden="true"
-          focusable="false"
-        >
-          <path
-            className="fk-splash-flourish-line fk-a fk-anim-draw"
-            pathLength={1}
-            style={at(3.25, 0.75)}
-            d="M70 7.5C56 3.5 42 11 26 7.5C18 5.8 11 5.8 4 7.5"
-          />
-          <path
-            className="fk-splash-flourish-line fk-a fk-anim-draw"
-            pathLength={1}
-            style={at(3.25, 0.75)}
-            d="M90 7.5C104 3.5 118 11 134 7.5C142 5.8 149 5.8 156 7.5"
-          />
-          <g className="fk-splash-flourish-gem fk-a fk-anim-pop" style={at(3.2, 0.5)}>
-            <path d="M80 12.5C77 10.5 74.5 8.3 74.5 6C74.5 4.2 75.8 3 77.3 3C78.5 3 79.5 3.7 80 4.7C80.5 3.7 81.5 3 82.7 3C84.2 3 85.5 4.2 85.5 6C85.5 8.3 83 10.5 80 12.5Z" />
-          </g>
-        </svg>
 
         <div className="fk-splash-controls">
           <div className="fk-splash-prefs">

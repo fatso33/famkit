@@ -3882,7 +3882,7 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: max(2rem, env(safe-area-inset-top)) 1rem max(1.25rem, env(safe-area-inset-bottom));
+        padding: max(2.5rem, env(safe-area-inset-top) + 1rem) 1rem max(2.5rem, env(safe-area-inset-bottom) + 1.25rem);
         /* The glow and motes reach past the emblem; never let them widen the page. */
         overflow-x: hidden;
         overflow-x: clip;
@@ -3898,14 +3898,21 @@
         /* Between the two layers of seasonal particles. */
         position: relative;
         z-index: 1;
+        /* The whole screen on a phone, spread top to bottom; on a tall monitor it stops
+           growing and sits in the middle. */
+        flex: 1;
+        max-height: 54em;
         margin-block: auto;
         width: 100%;
         max-width: 28em;
         display: flex;
         flex-direction: column;
         align-items: center;
+        gap: 1.75em;
         text-align: center;
       }
+      /* The pot takes the middle of the room left between the greeting and the controls. */
+      .fk-splash-stage > .fk-emblem { margin-block: auto; }
       /* Taps during the intro reach the page (which skips it), not the controls. */
       .fk-splash.is-intro .fk-splash-controls,
       .fk-splash.is-intro .fk-emblem-pot {
@@ -3916,8 +3923,8 @@
       .fk-emblem {
         position: relative;
         flex: none;
-        width: min(58vw, 27vh, 232px);
-        width: min(58vw, 27svh, 232px);
+        width: min(66vw, 32vh, 290px);
+        width: min(66vw, 32svh, 290px);
         aspect-ratio: 469 / 536;
       }
       .fk-emblem-glow {
@@ -4093,7 +4100,7 @@
 
       /* Title */
       .fk-splash-title {
-        margin: 0.45em 0 0;
+        margin: 0;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -4138,7 +4145,6 @@
         align-items: center;
         gap: 0.9em;
         width: 100%;
-        margin-top: 1.5em;
       }
       .fk-splash-prefs {
         display: flex;
@@ -4161,8 +4167,10 @@
       }
       .fk-splash-pill:active { scale: 0.95; }
       .fk-splash-pill.fk-segmented { min-width: 0; }
+      /* The thumb is as wide as one half and as tall as the pill (46px at any text size), so
+         each half is at least 50px: a pill like the menu's, never an upright oval. */
       .fk-splash-pill.fk-segmented > span:not(.fk-segmented-thumb) {
-        min-width: 2.6em;
+        min-width: max(3.2em, 50px);
         padding: 0 0.4em;
         font-size: 1em;
       }
@@ -4188,33 +4196,33 @@
 
       .fk-splash-google-wrap {
         position: relative;
-        width: min(100%, 17em);
-        /* Set a little apart from the preference pills. */
-        margin-top: 0.9em;
+        width: min(100%, 20em);
+        /* Set apart from the preference pills: the way in, not another setting. */
+        margin-top: 1.4em;
       }
       .fk-splash-google {
         position: relative;
         overflow: hidden;
         display: flex;
         width: 100%;
-        min-height: 3.2em;
+        min-height: 3.5em;
         align-items: center;
         justify-content: center;
-        gap: 0.65em;
-        padding: 0.5em 1.25em;
+        gap: 0.7em;
+        padding: 0.55em 1.4em;
         border: 1px solid var(--fk-google-border);
         border-radius: var(--radius-full);
         background: var(--fk-google-bg);
         color: var(--fk-google-text);
-        font: 600 1em/1.2 var(--font-sans);
+        font: 600 1.2em/1.2 var(--font-sans);
         box-shadow: 0 14px 28px -18px rgba(60, 35, 20, 0.6);
         cursor: pointer;
         transition: scale 0.15s ease;
       }
       .fk-splash-google:active { scale: 0.97; }
       .fk-splash-google svg {
-        width: 1.3em;
-        height: 1.3em;
+        width: 1.25em;
+        height: 1.25em;
         flex: none;
       }
       .fk-splash-google:focus-visible,
@@ -4224,11 +4232,14 @@
       }
       /* A lap of gold light around the button: a ring masked to a 2px border, with a conic
          gradient turning inside it. Turning the gradient (a transform) rather than its angle
-         keeps the lap off the main thread. Once in the intro, then again every 8s. */
+         keeps the lap off the main thread. Once in the intro, then again every 8s. The mask
+         only hides the turning square: overflow clips it too, or its corners (over twice the
+         button's height as it turns) reach past the page's bottom and flash a scrollbar. */
       .fk-splash-trace {
         position: absolute;
         inset: -5px;
         padding: 2px;
+        overflow: hidden;
         border-radius: var(--radius-full);
         -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
         -webkit-mask-composite: xor;
