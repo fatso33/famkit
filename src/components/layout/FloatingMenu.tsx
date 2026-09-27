@@ -93,7 +93,7 @@ export const FloatingMenu: React.FC<FloatingMenuProps> = (props) => {
         >
           <ArrowLeft
             className="fab-back-arrow"
-            size="1.4rem"
+            size="1.6rem"
             strokeWidth={2.2}
             aria-hidden="true"
           />
@@ -135,8 +135,9 @@ interface MenuPanelProps extends FloatingMenuProps {
  */
 function unfurlReach(panel: HTMLElement) {
   const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-  // The button's centre from the panel's top-left corner (--menu-origin in index.css).
-  const reach = Math.hypot(panel.offsetWidth - 1.75 * rem, panel.offsetHeight + 2.5 * rem);
+  // The button's centre from the panel's top-left corner (--menu-origin in index.css, with
+  // --fab-size 4rem: half the button in from the side, the 0.75rem gap plus half below).
+  const reach = Math.hypot(panel.offsetWidth - 2 * rem, panel.offsetHeight + 2.75 * rem);
   panel.style.setProperty('--menu-reach', `${Math.ceil(reach + 2)}px`);
 }
 

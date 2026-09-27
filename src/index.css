@@ -373,6 +373,9 @@
         /* The recipe photo's flight between its card and the recipe page. hooks/useUnroll
            reads the real duration from the running animation, so this is the only copy. */
         --morph-duration: 0.56s;
+        /* The floating menu button (and the back button beside it). The menu panel, the toast
+           and the page's bottom padding are placed from it. */
+        --fab-size: 4rem;
         /* The two ends of the recipe photo morph, so its corners can reshape in flight:
            the hero's rounded frame, and a card's photo (rounded top inside the card's 1px
            border, square bottom where the card's text begins). */
@@ -864,7 +867,7 @@
         max-width: 1080px;
         margin: 0 auto;
         /* Bottom room so the floating menu button never covers the last content. */
-        padding: 1.5rem 1.25rem calc(7rem + env(safe-area-inset-bottom));
+        padding: 1.5rem 1.25rem calc(3.5rem + var(--fab-size) + env(safe-area-inset-bottom));
         width: 100%;
         flex: 1;
       }
@@ -2383,8 +2386,8 @@
       /* In-app Toast Notification */
       .app-toast {
         position: fixed;
-        /* Just above the floating menu button (1.25rem inset + 3.5rem button + gap). */
-        bottom: calc(5.5rem + env(safe-area-inset-bottom));
+        /* Just above the floating menu button (1.25rem inset + the button + gap). */
+        bottom: calc(1.25rem + var(--fab-size) + 0.75rem + env(safe-area-inset-bottom));
         left: 50%;
         width: max-content;
         max-width: calc(100vw - 2rem);
@@ -3132,9 +3135,8 @@
          left side. With both out they sit in one glass pill, a single control. The menu button
          never moves: the group's padding is taken off its offset from the corner. */
       .fab-group {
-        --fab-size: 3.5rem;
         --fab-pad: 0.375rem;
-        --fab-gap: 0.375rem;
+        --fab-gap: 0.625rem;
         /* How far the back button travels out from behind the menu button. */
         --fab-shift: calc(var(--fab-size) + var(--fab-gap));
         position: fixed;
@@ -3166,7 +3168,7 @@
         position: absolute;
         inset: 0;
         border-radius: inherit;
-        background: color-mix(in srgb, var(--bg-card) 84%, transparent);
+        background: color-mix(in srgb, var(--bg-card) 95%, transparent);
         backdrop-filter: blur(16px) saturate(1.4);
         -webkit-backdrop-filter: blur(16px) saturate(1.4);
         border: 1px solid var(--border-strong);
@@ -3290,8 +3292,8 @@
 
       .fab-menu-glyph {
         position: relative;
-        width: 1.25rem;
-        height: 1rem;
+        width: 1.4rem;
+        height: 1.125rem;
       }
 
       .fab-menu-glyph > span {
@@ -3309,14 +3311,14 @@
       .fab-menu-glyph > span:nth-child(3) { bottom: 0; }
 
       .fab-menu.is-open .fab-menu-glyph > span:nth-child(1) {
-        transform: translateY(calc(0.5rem - 1px)) rotate(45deg);
+        transform: translateY(calc(0.5625rem - 1px)) rotate(45deg);
       }
       .fab-menu.is-open .fab-menu-glyph > span:nth-child(2) {
         opacity: 0;
         transform: scaleX(0);
       }
       .fab-menu.is-open .fab-menu-glyph > span:nth-child(3) {
-        transform: translateY(calc(-0.5rem + 1px)) rotate(-45deg);
+        transform: translateY(calc(-0.5625rem + 1px)) rotate(-45deg);
       }
 
       /* Menu layer: soft scrim + panel that blooms out of the button */
@@ -3338,9 +3340,9 @@
       .fk-menu-panel {
         position: absolute;
         right: calc(1.25rem + env(safe-area-inset-right));
-        bottom: calc(1.25rem + 3.5rem + 0.75rem + env(safe-area-inset-bottom));
+        bottom: calc(1.25rem + var(--fab-size) + 0.75rem + env(safe-area-inset-bottom));
         width: min(20rem, calc(100vw - 2rem));
-        max-height: calc(100dvh - 7rem - env(safe-area-inset-bottom));
+        max-height: calc(100dvh - 3.5rem - var(--fab-size) - env(safe-area-inset-bottom));
         overflow-y: auto;
         overscroll-behavior: contain;
         padding: 0.75rem;
@@ -3351,7 +3353,7 @@
         /* The menu button's centre, from the panel's corner. FloatingMenu measures how far
            the panel's far corner is (--menu-reach), so the unfurl spends none of its time
            growing where nothing shows. */
-        --menu-origin: calc(100% - 1.75rem) calc(100% + 2.5rem);
+        --menu-origin: calc(100% - var(--fab-size) / 2) calc(100% + 0.75rem + var(--fab-size) / 2);
         transform-origin: var(--menu-origin);
         /* Backwards only: once open, nothing clips the panel, so it can grow (larger text). */
         animation: fk-menu-in 0.56s var(--ease-glide) backwards;
@@ -3669,7 +3671,7 @@
         from {
           opacity: 0;
           transform: translateY(0.5rem) scale(0.94);
-          clip-path: circle(1.75rem at var(--menu-origin));
+          clip-path: circle(calc(var(--fab-size) / 2) at var(--menu-origin));
         }
         22% { opacity: 1; }
         to {
@@ -3722,7 +3724,7 @@
         to {
           opacity: 0;
           transform: translateY(0.35rem) scale(0.96);
-          clip-path: circle(1.75rem at var(--menu-origin));
+          clip-path: circle(calc(var(--fab-size) / 2) at var(--menu-origin));
         }
       }
 
