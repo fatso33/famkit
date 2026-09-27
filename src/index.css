@@ -3911,8 +3911,17 @@
         gap: 1.75em;
         text-align: center;
       }
-      /* The pot takes the middle of the room left between the greeting and the controls. */
-      .fk-splash-stage > .fk-emblem { margin-block: auto; }
+      /* Spare height goes 10 : 5.5 : 5.5 : 10 above the pot, between the pot and the pills,
+         between the pills and the button, and below the button (the controls' fr rows), so
+         the pot sits a little above the middle and the controls clear the bottom edge. A
+         short phone has none to spare, and then nothing moves and the page doesn't grow. The
+         greeting keeps its text at its top, so only the room under it grows. */
+      .fk-splash-heading {
+        flex-grow: 10;
+        /* Nudged down (20px at 100% text) without moving the pot or growing the page. */
+        position: relative;
+        top: 1.33em;
+      }
       /* Taps during the intro reach the page (which skips it), not the controls. */
       .fk-splash.is-intro .fk-splash-controls,
       .fk-splash.is-intro .fk-emblem-pot {
@@ -4109,11 +4118,13 @@
         font-weight: inherit;
       }
       .fk-splash-welcome {
-        font: italic 500 1.15em/1.2 var(--font-serif);
+        /* A step below the name. The tight line keeps the tops of the letters where they sat
+           at 1.7em/1.2, so only the name moves down to make room. */
+        font: italic 500 2em/1.14 var(--font-serif);
         color: var(--accent);
       }
       .fk-splash-name {
-        font: var(--weight-heading) 2.1em/1.08 var(--font-serif);
+        font: var(--weight-heading) 2.45em/1.08 var(--font-serif);
         letter-spacing: -0.015em;
         text-wrap: balance;
         color: var(--text-primary);
@@ -4140,13 +4151,16 @@
 
       /* Controls: the menu's segmented pills and stepper, dressed as floating pills. */
       .fk-splash-controls {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.9em;
+        flex-grow: 21;
+        display: grid;
+        /* Spare room, pills, a gap that sets the button apart (the way in, not another
+           setting), spare room, button, error, spare room. */
+        grid-template-rows: 5.5fr auto 2.3em 5.5fr auto auto 10fr;
+        justify-items: center;
         width: 100%;
       }
       .fk-splash-prefs {
+        grid-row: 2;
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
@@ -4161,7 +4175,9 @@
         background: var(--bg-surface);
         box-shadow: var(--fk-splash-pill-shadow);
         color: var(--text-primary);
-        font-size: 0.8em;
+        /* Larger than the menu's: the text size stepper should be readable by the people who
+           need it. */
+        font-size: 0.93em;
         /* Press feedback uses scale: the entrance animation's fill holds transform. */
         transition: scale 0.15s ease;
       }
@@ -4195,10 +4211,9 @@
       .fk-segmented[data-value="dark"] .fk-segmented-thumb { transform: translateX(100%); }
 
       .fk-splash-google-wrap {
+        grid-row: 5;
         position: relative;
         width: min(100%, 20em);
-        /* Set apart from the preference pills: the way in, not another setting. */
-        margin-top: 1.4em;
       }
       .fk-splash-google {
         position: relative;
@@ -4273,10 +4288,12 @@
         pointer-events: none;
       }
       .fk-splash-error {
+        grid-row: 6;
         display: flex;
         align-items: center;
         gap: 0.5em;
         max-width: 24em;
+        margin-top: 0.9em;
         padding: 0.5em 1em;
         border: 1px solid var(--accent);
         border-radius: var(--radius-lg);
