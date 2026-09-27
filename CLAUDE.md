@@ -26,7 +26,7 @@ Private family recipe vault PWA. React 19 + TypeScript (strict) + Vite 6 + Tailw
 
 - Imports are relative (`../hooks/useX`). The `@/` alias exists, but the code doesn't use it, so stay consistent.
 - New UI text goes in `UiTranslations`, with **both `en` and `pl`** entries (tsc enforces this). Polish must be natural culinary Polish with correct plural forms. Never hard-code strings in JSX.
-- Styling uses the heirloom design tokens in `src/index.css` (`--bg-*`, `--text-*`, `--border-*`, Fraunces/Plus Jakarta Sans). Dark mode is `[data-theme="dark"]`. Reuse existing classes before adding new ones.
+- Styling uses the heirloom design tokens in `src/index.css` (`--bg-*`, `--text-*`, `--border-*`, Playfair Display/Plus Jakarta Sans). Dark mode is `[data-theme="dark"]`. Reuse existing classes before adding new ones.
 - Changes to the recipe shape go through `src/types/recipe.ts`. Keep the version bookkeeping (`version`, `versionIndex`, `changeNote`) intact (see `utils/recipeVersions`), and handle old records with optional fields.
 - Pure logic goes in `utils/` and gets a test in `src/test/`. Bug fixes get a regression test when the logic is testable.
 - Don't sync state in effects (`react-hooks/set-state-in-effect`). Use lazy `useState` initializers, derive values during render, or remount with a `key` (see `AddRecipeModal`, `ImageZoomModal`). Keep effects for external systems only.
