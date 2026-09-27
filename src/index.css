@@ -109,6 +109,16 @@
         --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
         --ease-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
         --ease-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+        /* The two ends of the recipe photo morph, so its corners can reshape in flight:
+           the hero's rounded frame, and a card's photo (rounded top inside the card's 1px
+           border, square bottom where the card's text begins). */
+        --hero-radius: var(--radius-lg);
+        --card-photo-corners: calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px) 0 0;
+      }
+      @media (max-width: 768px) {
+        :root {
+          --hero-radius: var(--radius-md);
+        }
       }
 
       ::view-transition-old(root),
@@ -196,9 +206,24 @@
         animation-duration: 0.48s;
         animation-timing-function: var(--ease-emphasized);
       }
-      ::view-transition-old(recipe-photo),
-      ::view-transition-new(recipe-photo) {
-        border-radius: var(--radius-md);
+      /* The photo's corners reshape in flight, clipped by the frame both snapshots share,
+         so it lands with exactly the corners of where it's going: no snap at the end. */
+      ::view-transition-image-pair(recipe-photo) {
+        overflow: clip;
+      }
+      :root[data-nav='forward']::view-transition-image-pair(recipe-photo) {
+        animation: vt-corners-to-hero 0.48s var(--ease-emphasized) both;
+      }
+      :root[data-nav='back']::view-transition-image-pair(recipe-photo) {
+        animation: vt-corners-to-card 0.48s var(--ease-emphasized) both;
+      }
+      @keyframes vt-corners-to-hero {
+        from { border-radius: var(--card-photo-corners); }
+        to { border-radius: var(--hero-radius); }
+      }
+      @keyframes vt-corners-to-card {
+        from { border-radius: var(--hero-radius); }
+        to { border-radius: var(--card-photo-corners); }
       }
       ::view-transition-old(zoom-photo),
       ::view-transition-new(zoom-photo) {
@@ -673,7 +698,7 @@
 
       .detail-hero-frame {
         position: relative;
-        border-radius: var(--radius-lg);
+        border-radius: var(--hero-radius);
         overflow: hidden;
         width: 100%;
         aspect-ratio: 21/9;
@@ -696,7 +721,6 @@
         .detail-hero-frame {
           aspect-ratio: 16/10;
           min-height: 190px;
-          border-radius: var(--radius-md);
           margin-bottom: 1.25rem;
         }
       }
