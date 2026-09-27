@@ -9,6 +9,7 @@ import {
 } from '../services/firestore';
 import type { CurrentUser } from './useCurrentUser';
 import { isTranslationAvailable, translateRecipe } from '../services/gemini';
+import { isFirebaseConfigured } from '../services/firebase';
 import {
   TRANSLATION_GRACE_MS,
   applyTranslation,
@@ -56,6 +57,9 @@ export function useRecipes(currentUser: CurrentUser | null) {
     let nextCheckIn = Infinity;
     let job: { recipe: Recipe; hash: string } | null = null;
     for (const recipe of recipes) {
+      // Every synced recipe has an owner, so one without is a stale copy cached from before
+      // (e.g. Wanda's, whose hand-written Polish wasn't stamped yet). Its cloud version is coming.
+      if (isFirebaseConfigured && !recipe.ownerEmail) continue;
       if (!needsTranslation(recipe)) continue;
       const hash = sourceHash(recipe);
       if (triedKeys.current.has(`${recipe.id}@${hash}`)) continue;

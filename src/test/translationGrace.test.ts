@@ -4,8 +4,10 @@ import { useRecipes } from '../hooks/useRecipes';
 import { translateRecipe } from '../services/gemini';
 import { Recipe } from '../types/recipe';
 import { sourceHash } from '../utils/recipeTranslation';
+import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 
 // Only I/O is mocked: the translation call, and Firestore so a "remote" edit can be pushed in.
+vi.mock('../services/firebase', () => ({ isFirebaseConfigured: true }));
 vi.mock('../services/gemini', () => ({
   isTranslationAvailable: true,
   translateRecipe: vi.fn(() => new Promise(() => {})),
@@ -26,6 +28,7 @@ const base: Recipe = {
   id: 'custom-1',
   name: 'Aunt Ola Pierogi',
   author: 'Ola',
+  ownerEmail: 'ola@example.com',
   category: 'family',
   heroImage: '',
   yieldHeader: 'For 1 batch:',
@@ -72,5 +75,25 @@ describe('translation grace period across phones', () => {
     });
 
     expect(translateRecipe).toHaveBeenCalledTimes(1);
+  });
+
+  it("doesn't translate a copy cached from before recipes had owners", async () => {
+    // This phone last synced before Peter adopted Wanda's Cheese Bread: its copy has no owner,
+    // and its hand-written Polish isn't stamped yet, so it looks untranslated.
+    const { ownerEmail: _o, ownerName: _n, translations, ...cached } = WANDAS_CHEESE_BREAD;
+    const { sourceHash: _h, ...unstamped } = translations!.pl!;
+    localStorage.setItem(
+      'wandas_recipes',
+      JSON.stringify([{ ...cached, translations: { pl: unstamped } }]),
+    );
+    renderHook(() => useRecipes(null));
+    await act(async () => {});
+    expect(translateRecipe).not.toHaveBeenCalled();
+
+    // The adopted recipe arrives from the cloud, with its Polish current: still nothing to do.
+    await act(async () => {
+      firestore.push([WANDAS_CHEESE_BREAD]);
+    });
+    expect(translateRecipe).not.toHaveBeenCalled();
   });
 });
