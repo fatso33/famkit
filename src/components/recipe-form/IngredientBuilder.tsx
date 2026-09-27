@@ -10,10 +10,17 @@ export interface IngredientRowState {
 interface IngredientBuilderProps {
   rows: IngredientRowState[];
   onChange: (rows: IngredientRowState[]) => void;
+  /** Positions of rows restored from an earlier version, to highlight. */
+  restoredRows?: ReadonlySet<number>;
   t: UiTranslations;
 }
 
-export const IngredientBuilder: React.FC<IngredientBuilderProps> = ({ rows, onChange, t }) => {
+export const IngredientBuilder: React.FC<IngredientBuilderProps> = ({
+  rows,
+  onChange,
+  restoredRows,
+  t,
+}) => {
   const [showBulkPaste, setShowBulkPaste] = useState(false);
   const [bulkText, setBulkText] = useState('');
   const bulkPasteId = useId();
@@ -164,7 +171,11 @@ export const IngredientBuilder: React.FC<IngredientBuilderProps> = ({ rows, onCh
 
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {rows.map((row, index) => (
-          <div key={row.id} className="ingredient-builder-row">
+          <div
+            key={row.id}
+            className={`ingredient-builder-row${restoredRows?.has(index) ? ' is-restored' : ''}`}
+          >
+            {restoredRows?.has(index) && <span className="sr-only">{t.restoredChip}</span>}
             <input
               type="text"
               className="form-control"

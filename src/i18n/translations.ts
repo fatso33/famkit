@@ -83,8 +83,20 @@ export interface UiTranslations {
   quickPaste: string;
   quickPasteTitle: string;
   quickPasteApply: string;
-  versionBadge: (version: number) => string;
-  versionTooltip: (version: number) => string;
+  // Version history (only the recipe's author sees these, in the editor)
+  versionHistory: string;
+  versionLabel: (version: number) => string;
+  currentVersion: string;
+  versionLoading: string;
+  versionLoadFailed: string;
+  restoredFrom: (version: number, date: string) => string;
+  changesCount: (n: number) => string;
+  noChanges: string;
+  nextChange: string;
+  keepCurrent: string;
+  restoredChip: string;
+  changeNoteLabel: string;
+  restoredNote: (version: number) => string;
   byAuthor: (author: string) => string;
   /** Who added a recipe that is credited to someone else. */
   addedBy: (name: string) => string;
@@ -230,8 +242,19 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     quickPaste: 'Bulk Paste',
     quickPasteTitle: 'Paste Ingredients List',
     quickPasteApply: 'Insert Ingredients',
-    versionBadge: (version: number) => `v${version}`,
-    versionTooltip: (version: number) => `Version ${version}`,
+    versionHistory: 'Version history',
+    versionLabel: (version: number) => `Version ${version}`,
+    currentVersion: 'Current',
+    versionLoading: 'Loading…',
+    versionLoadFailed: "Couldn't load that version. Check your connection and try again.",
+    restoredFrom: (version: number, date: string) => `Version ${version} from ${date}`,
+    changesCount: (n: number) => `${n} change${n === 1 ? '' : 's'} highlighted`,
+    noChanges: 'Same as the current version',
+    nextChange: 'Next change',
+    keepCurrent: 'Keep current',
+    restoredChip: 'Restored',
+    changeNoteLabel: 'What changed? (optional)',
+    restoredNote: (version: number) => `Restored version ${version}`,
     byAuthor: (author: string) => `By ${author}`,
     addedBy: (name: string) => `Added by ${name}`,
     emptyVault: 'No recipes yet. Add the first one from the menu.',
@@ -378,8 +401,20 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     quickPaste: 'Wklej listę',
     quickPasteTitle: 'Wklej listę składników',
     quickPasteApply: 'Wstaw składniki',
-    versionBadge: (version: number) => `v${version}`,
-    versionTooltip: (version: number) => `Wersja ${version}`,
+    versionHistory: 'Historia wersji',
+    versionLabel: (version: number) => `Wersja ${version}`,
+    currentVersion: 'Aktualna',
+    versionLoading: 'Wczytywanie…',
+    versionLoadFailed: 'Nie udało się wczytać tej wersji. Sprawdź połączenie i spróbuj ponownie.',
+    restoredFrom: (version: number, date: string) => `Wersja ${version} z ${date}`,
+    changesCount: (n: number) =>
+      `${n} ${plPlural(n, 'zaznaczona zmiana', 'zaznaczone zmiany', 'zaznaczonych zmian')}`,
+    noChanges: 'Taka sama jak aktualna wersja',
+    nextChange: 'Następna zmiana',
+    keepCurrent: 'Zostaw aktualną',
+    restoredChip: 'Przywrócone',
+    changeNoteLabel: 'Co się zmieniło? (opcjonalnie)',
+    restoredNote: (version: number) => `Przywrócono wersję ${version}`,
     byAuthor: (author: string) => `Autor: ${author}`,
     addedBy: (name: string) => `Dodane przez: ${name}`,
     emptyVault: 'Nie ma jeszcze żadnych przepisów. Dodaj pierwszy z menu.',

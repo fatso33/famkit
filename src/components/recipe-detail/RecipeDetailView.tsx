@@ -81,11 +81,6 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
               <span className="added-by">{t.addedBy(addedBy)}</span>
             </>
           )}
-          {recipe.version && recipe.version > 1 && (
-            <span className="version-tag" title={t.versionTooltip(recipe.version)}>
-              {t.versionBadge(recipe.version)}
-            </span>
-          )}
           <span aria-hidden="true">·</span>
           <span
             id="detailEstimatedTime"

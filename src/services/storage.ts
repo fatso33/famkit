@@ -1,4 +1,4 @@
-import { Recipe, Language, Theme } from '../types/recipe';
+import { Recipe, RecipeVersion, Language, Theme } from '../types/recipe';
 
 const RECIPES_KEY = 'wandas_recipes';
 const THEME_KEY = 'wandas_theme';
@@ -6,6 +6,9 @@ const LANG_KEY = 'wandas_language';
 const FONT_SCALE_KEY = 'wandas_font_scale';
 const LEGACY_API_KEY_STORAGE = 'wandas_gemini_api_key';
 const INSTALL_DISMISSED_KEY = 'family_kitchen_install_dismissed';
+// Earlier recipe versions, only when there is no cloud (local dev). With Firebase they live in
+// Firestore, whose offline cache already covers them.
+const LOCAL_VERSIONS_KEY = 'family_kitchen_versions';
 
 /** This device's copy of the vault. Every recipe was added by a family member; none is built in. */
 export function getStoredRecipes(): Recipe[] {
@@ -30,6 +33,37 @@ export function saveRecipes(recipes: Recipe[]): void {
   } catch (e) {
     console.error('Failed to save recipes to localStorage:', e);
   }
+}
+
+function readLocalVersions(): Record<string, RecipeVersion[]> {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(LOCAL_VERSIONS_KEY) || '{}');
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as Record<string, RecipeVersion[]>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Keeps earlier versions on this device (no-cloud mode). Existing versions are never replaced. */
+export function saveLocalVersions(recipeId: string, versions: RecipeVersion[]): void {
+  if (typeof window === 'undefined' || versions.length === 0) return;
+  const all = readLocalVersions();
+  const kept = all[recipeId] ?? [];
+  const known = new Set(kept.map((v) => v.id));
+  all[recipeId] = [...kept, ...versions.filter((v) => !known.has(v.id))];
+  try {
+    localStorage.setItem(LOCAL_VERSIONS_KEY, JSON.stringify(all));
+  } catch (e) {
+    console.warn('Could not keep an earlier recipe version on this device (storage full?):', e);
+  }
+}
+
+/** An earlier version kept on this device, as stored (validate before use). */
+export function getLocalVersion(recipeId: string, versionId: string): unknown {
+  if (typeof window === 'undefined') return null;
+  return readLocalVersions()[recipeId]?.find((v) => v.id === versionId) ?? null;
 }
 
 export function getStoredLanguage(): Language {

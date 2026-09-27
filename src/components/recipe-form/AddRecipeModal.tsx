@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Recipe, Ingredient, Step, AuthorMode } from '../../types/recipe';
+import { ChevronDown, History, RotateCcw } from 'lucide-react';
+import { Recipe, Ingredient, Step, AuthorMode, Language, VersionSummary } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
 import { ImagePickerWithPreview } from './ImagePickerWithPreview';
 import { IngredientBuilder, IngredientRowState } from './IngredientBuilder';
@@ -7,6 +8,8 @@ import { StepBuilder, StepBuilderItem } from './StepBuilder';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { authorModeOf, resolveAuthor } from '../../utils/ownership';
+import { formatVersionDate, RecipeChanges, RestorableField } from '../../utils/recipeVersions';
+import { VersionHistorySheet } from './VersionHistorySheet';
 
 const DRAFT_STORAGE_KEY = 'family_kitchen_recipe_draft';
 
@@ -141,25 +144,66 @@ type TextField =
 
 interface AddRecipeModalProps {
   onClose: () => void;
-  /** `textChanged` is false when an edit touched only photos or the author. */
+  /**
+   * `textChanged` is false when an edit touched only photos or the author. `changeNote` is the
+   * author's optional "what changed" (edits only).
+   */
   onSave: (
     recipeData: Omit<Recipe, 'id' | 'createdAt'>,
     existingId: string | undefined,
     textChanged: boolean,
+    changeNote: string,
   ) => void;
   initialRecipe?: Recipe | null;
+  /** Earlier versions the author can restore (edit mode). */
+  versions?: VersionSummary[];
+  /** Set when the form holds an earlier version: which one, and what differs from the current. */
+  restore?: { version: VersionSummary; changes: RecipeChanges };
+  /** Loads an earlier version into the form; resolves false if it couldn't be loaded. */
+  onPickVersion?: (id: string) => Promise<boolean>;
+  /** Goes back to the current version. */
+  onKeepCurrent?: () => void;
+  language?: Language;
   t: UiTranslations;
 }
 
-// Mount only while open, keyed by recipe, so each opening starts from loadInitialForm().
+// Mount only while open, keyed by recipe (and restored version), so each opening starts from
+// loadInitialForm().
 export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   onClose,
   onSave,
   initialRecipe,
+  versions = [],
+  restore,
+  onPickVersion,
+  onKeepCurrent,
+  language = 'en',
   t,
 }) => {
   const isEditMode = Boolean(initialRecipe);
   const backdropProps = useDialogDismiss(onClose);
+  const [isHistoryOpen, setHistoryOpen] = useState(false);
+  const [changeNote, setChangeNote] = useState(() =>
+    restore ? t.restoredNote(restore.version.version) : '',
+  );
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const nextChangeIndex = useRef(0);
+
+  const changes = restore?.changes;
+  const restoredClass = (field: RestorableField) =>
+    changes?.fields.has(field) ? ' is-restored' : '';
+  const restoredChip = (field: RestorableField) =>
+    changes?.fields.has(field) && <span className="restored-chip">{t.restoredChip}</span>;
+
+  // Brings the next highlighted field into view, cycling through them.
+  const showNextChange = () => {
+    const highlighted = bodyRef.current?.querySelectorAll<HTMLElement>('.is-restored');
+    if (!highlighted?.length) return;
+    const target = highlighted[nextChangeIndex.current % highlighted.length];
+    nextChangeIndex.current += 1;
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    target.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' });
+  };
 
   const [initial] = useState(() => loadInitialForm(initialRecipe));
   const [title, setTitle] = useState(initial.title);
@@ -315,7 +359,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
     const textChanged =
       formText(initial) !==
       formText({ title, cardDescription, yieldHeader, tips, notes, ingredientRows, steps });
-    onSave(recipeData, initialRecipe?.id, textChanged);
+    onSave(recipeData, initialRecipe?.id, textChanged, changeNote);
 
     // Clear draft upon successful save
     if (!isEditMode) {
@@ -370,6 +414,17 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
                 {t.clearDraft}
               </button>
             )}
+            {isEditMode && onPickVersion && versions.length > 0 && (
+              <button
+                type="button"
+                className="btn btn-icon"
+                aria-label={t.versionHistory}
+                title={t.versionHistory}
+                onClick={() => setHistoryOpen(true)}
+              >
+                <History size="1.1em" strokeWidth={2} aria-hidden="true" />
+              </button>
+            )}
             <button
               className="btn btn-icon"
               id="closeModalBtn"
@@ -383,9 +438,40 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
         {/* Scrollable Body */}
         <form id="addRecipeForm" onSubmit={handleSubmit} style={{ display: 'contents' }}>
-          <div className="modal-body-scroll">
+          <div className="modal-body-scroll" ref={bodyRef}>
+            {restore && (
+              <div className="restore-banner" role="status">
+                <RotateCcw size="1.1em" strokeWidth={2} aria-hidden="true" />
+                <div className="restore-banner-text">
+                  <strong>
+                    {t.restoredFrom(
+                      restore.version.version,
+                      formatVersionDate(restore.version.savedAt, language),
+                    )}
+                  </strong>
+                  <span>
+                    {restore.changes.count > 0
+                      ? t.changesCount(restore.changes.count)
+                      : t.noChanges}
+                  </span>
+                </div>
+                <div className="restore-banner-actions">
+                  {restore.changes.count > 0 && (
+                    <button type="button" className="btn btn-meta-pill" onClick={showNextChange}>
+                      {t.nextChange}
+                      <ChevronDown size="1em" aria-hidden="true" />
+                    </button>
+                  )}
+                  <button type="button" className="btn btn-meta-pill" onClick={onKeepCurrent}>
+                    {t.keepCurrent}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Title */}
-            <div className="form-group">
+            <div className={`form-group${restoredClass('name')}`}>
+              {restoredChip('name')}
               <label className="form-label" htmlFor="recipeTitleInput">
                 {t.recipeTitle}
               </label>
@@ -400,7 +486,8 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             </div>
 
             {/* Author: the signed-in family member, or someone else by name */}
-            <fieldset className="form-group author-field">
+            <fieldset className={`form-group author-field${restoredClass('author')}`}>
+              {restoredChip('author')}
               <legend className="form-label">{t.authorLabel}</legend>
               {currentUser && (
                 <div className="author-choice" data-value={authorMode}>
@@ -440,7 +527,8 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             </fieldset>
 
             {/* Description */}
-            <div className="form-group">
+            <div className={`form-group${restoredClass('cardDescription')}`}>
+              {restoredChip('cardDescription')}
               <label className="form-label" htmlFor="recipeDescInput">
                 {t.descriptionOptional}
               </label>
@@ -454,7 +542,8 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             </div>
 
             {/* Yield Header */}
-            <div className="form-group">
+            <div className={`form-group${restoredClass('yieldHeader')}`}>
+              {restoredChip('yieldHeader')}
               <label className="form-label" htmlFor="recipeYieldInput">
                 {t.yieldHeader}
               </label>
@@ -469,7 +558,8 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             </div>
 
             {/* Hero Photo Picker with Thumbnail & Delete X */}
-            <div className="form-group">
+            <div className={`form-group${restoredClass('heroImage')}`}>
+              {restoredChip('heroImage')}
               <ImagePickerWithPreview
                 imageUrl={heroImage}
                 onChange={setHeroImage}
@@ -481,10 +571,16 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             </div>
 
             {/* Interactive Row-by-Row Ingredients Builder */}
-            <IngredientBuilder rows={ingredientRows} onChange={setIngredientRows} t={t} />
+            <IngredientBuilder
+              rows={ingredientRows}
+              onChange={setIngredientRows}
+              restoredRows={changes?.ingredients}
+              t={t}
+            />
 
             {/* Kitchen Tip (Moved above steps) */}
-            <div className="form-group">
+            <div className={`form-group${restoredClass('tips')}`}>
+              {restoredChip('tips')}
               <label className="form-label" htmlFor="recipeTipsInput">
                 💡 {t.tipsOptional}
               </label>
@@ -498,7 +594,8 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             </div>
 
             {/* Crucial Notes / Warnings (Moved ABOVE Steps to match viewing view) */}
-            <div className="form-group">
+            <div className={`form-group${restoredClass('notes')}`}>
+              {restoredChip('notes')}
               <label className="form-label" htmlFor="recipeNotesInput">
                 ⚠️ {t.notesOptional}
               </label>
@@ -512,7 +609,25 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             </div>
 
             {/* Interactive Step Builder with Step Notes & Pictures */}
-            <StepBuilder steps={steps} onChange={setSteps} t={t} />
+            <StepBuilder steps={steps} onChange={setSteps} restoredSteps={changes?.steps} t={t} />
+
+            {/* What changed: kept with this version in its history */}
+            {isEditMode && (
+              <div className="form-group change-note">
+                <label className="form-label" htmlFor="recipeChangeNoteInput">
+                  {t.changeNoteLabel}
+                </label>
+                <input
+                  className="form-control"
+                  type="text"
+                  id="recipeChangeNoteInput"
+                  maxLength={200}
+                  autoComplete="off"
+                  value={changeNote}
+                  onChange={(e) => setChangeNote(e.target.value)}
+                />
+              </div>
+            )}
           </div>
 
           {/* Sticky Footer */}
@@ -526,6 +641,22 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
           </div>
         </form>
       </div>
+
+      {isHistoryOpen && onPickVersion && (
+        <VersionHistorySheet
+          current={{
+            version: initialRecipe?.version ?? 1,
+            savedAt: initialRecipe?.updatedAt ?? initialRecipe?.createdAt ?? 0,
+            note: initialRecipe?.changeNote,
+          }}
+          versions={versions}
+          shownId={restore?.version.id}
+          language={language}
+          onPick={onPickVersion}
+          onClose={() => setHistoryOpen(false)}
+          t={t}
+        />
+      )}
     </div>
   );
 };

@@ -16,7 +16,8 @@ A push to `main` is a **live deploy to the family**. Never push without an expli
    - Secrets or `.env` values, stray debug code, commented-out blocks.
    - New UI text present in `src/i18n/translations.ts` for both `en` and `pl`, in natural Polish.
    - Images replaced at an existing path under `public/` need a bump to `CACHE_NAME` in `public/sw.js`.
-   - Recipe shape changes keep `version`/`history` intact (`useRecipes.ts`) and still load old records.
+   - Recipe shape changes keep the version bookkeeping intact (`utils/recipeVersions`) and still load old records.
+   - If `firestore.rules` changed, remind Peter to publish them in the Firebase console, and say whether that must happen before or after the push.
 4. **UI changes:** confirm they were checked in the preview browser this session (light + dark, EN + PL, phone width). If not, do it now (`preview_start` name `dev`, see CLAUDE.md "Local UI testing").
 5. **Commit.** Stage files by name (never `git add -A`). Make one focused commit per logical change, in the repo's style (`feat:`, `fix:`, `style:`, `refactor:`, `test:`, `docs:`, `chore:`): imperative, lower case, what and why.
 6. **Confirm.** Show `git log --oneline origin/main..HEAD` and a short plain-language summary of what the family will notice. Ask: "Push to main and deploy?"

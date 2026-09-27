@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { subscribeToRecipes } from '../services/firestore';
-import { Recipe } from '../types/recipe';
+import { fetchRecipeVersion, saveRecipeToCloud, subscribeToRecipes } from '../services/firestore';
+import { Recipe, RecipeVersion } from '../types/recipe';
 
 vi.mock('../services/firebase', () => ({ isFirebaseConfigured: true, db: {} }));
 
@@ -11,6 +11,10 @@ const cloud = vi.hoisted(() => ({
   /** Whether snapshots come from the device's offline cache rather than the server. */
   fromCache: false,
   listeners: [] as { orderField?: string; next: (snap: unknown) => void }[],
+  /** Documents stored by path, e.g. "recipes/babka/versions/v1-1000". */
+  stored: {} as Record<string, unknown>,
+  /** Every batch write: [path, data, options]. */
+  writes: [] as [string, unknown, unknown][],
 }));
 
 vi.mock('firebase/firestore', () => {
@@ -27,7 +31,26 @@ vi.mock('firebase/firestore', () => {
   };
   return {
     collection: () => ({}),
-    doc: () => ({}),
+    // Paths only: enough to see where each document goes.
+    doc: (parent: { path?: string }, ...segments: string[]) => ({
+      path: [...(parent.path ? [parent.path] : []), ...segments].join('/'),
+    }),
+    writeBatch: () => {
+      const pending: [string, unknown, unknown][] = [];
+      return {
+        set: (ref: { path: string }, data: unknown, options?: unknown) =>
+          pending.push([ref.path, data, options]),
+        commit: () => {
+          cloud.writes.push(...pending);
+          return Promise.resolve();
+        },
+      };
+    },
+    getDoc: (ref: { path: string }) =>
+      Promise.resolve({
+        exists: () => ref.path in cloud.stored,
+        data: () => cloud.stored[ref.path],
+      }),
     orderBy: (field: string) => ({ orderField: field }),
     query: (_col: unknown, ...constraints: { orderField?: string }[]) => ({
       orderField: constraints.find((c) => c.orderField)?.orderField,
@@ -108,5 +131,44 @@ describe('subscribeToRecipes', () => {
     subscribeToRecipes((r) => updates.push(r));
 
     expect(updates[updates.length - 1]).toEqual([]);
+  });
+});
+
+describe('saving versions', () => {
+  const babka = { ...recipe('babka', 1000), version: 2 };
+  const v1: RecipeVersion = {
+    id: 'v1-1000',
+    version: 1,
+    savedAt: 1000,
+    hasPhotos: true,
+    recipe: { ...babka, name: 'Old Babka', version: 1 },
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+    cloud.writes = [];
+    cloud.stored = {};
+  });
+
+  it('writes the recipe whole, with the version it replaces, in one batch', async () => {
+    await saveRecipeToCloud(babka, [v1]);
+
+    expect(cloud.writes).toEqual([
+      // No merge: a field cleared in the editor (e.g. a removed tip) must be cleared in the cloud.
+      ['recipes/babka', babka, undefined],
+      ['recipes/babka/versions/v1-1000', v1, undefined],
+    ]);
+  });
+
+  it('loads one version, and refuses a missing or malformed one', async () => {
+    cloud.stored['recipes/babka/versions/v1-1000'] = v1;
+    cloud.stored['recipes/babka/versions/broken'] = { ...v1, id: 'broken', recipe: 'nope' };
+
+    await expect(fetchRecipeVersion('babka', 'v1-1000')).resolves.toMatchObject({
+      version: 1,
+      recipe: { name: 'Old Babka' },
+    });
+    await expect(fetchRecipeVersion('babka', 'broken')).rejects.toThrow(/malformed/);
+    await expect(fetchRecipeVersion('babka', 'v9-9')).rejects.toThrow(/missing/);
   });
 });

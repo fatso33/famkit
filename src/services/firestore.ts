@@ -1,18 +1,27 @@
 import {
   collection,
   doc,
-  setDoc,
+  getDoc,
   updateDoc,
   deleteField,
   deleteDoc,
   onSnapshot,
+  writeBatch,
   Unsubscribe,
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase';
-import { Language, LocalizedRecipeContent, Recipe } from '../types/recipe';
-import { getStoredRecipes, saveRecipes as saveToLocalStorage } from './storage';
+import { Language, LocalizedRecipeContent, Recipe, RecipeVersion } from '../types/recipe';
+import {
+  getLocalVersion,
+  getStoredRecipes,
+  saveLocalVersions,
+  saveRecipes as saveToLocalStorage,
+} from './storage';
+import { parseRecipeVersion } from '../utils/recipeVersions';
 
 const RECIPES_COLLECTION = 'recipes';
+// Earlier versions of a recipe: recipes/{recipeId}/versions/{versionId}, written once, never changed.
+const VERSIONS_COLLECTION = 'versions';
 
 /**
  * Real-time listener for the recipes collection.
@@ -62,9 +71,13 @@ export function subscribeToRecipes(
 }
 
 /**
- * Saves a recipe document to Cloud Firestore.
+ * Saves a recipe, together with the earlier versions this save backs up, in one atomic write.
+ * The recipe document is replaced whole, so a field cleared in the editor is cleared in the cloud.
  */
-export async function saveRecipeToCloud(recipe: Recipe): Promise<void> {
+export async function saveRecipeToCloud(
+  recipe: Recipe,
+  newVersions: RecipeVersion[] = [],
+): Promise<void> {
   // Always update local cache immediately
   const local = getStoredRecipes();
   const existingIdx = local.findIndex((r) => r.id === recipe.id);
@@ -72,16 +85,44 @@ export async function saveRecipeToCloud(recipe: Recipe): Promise<void> {
     existingIdx !== -1 ? local.map((r) => (r.id === recipe.id ? recipe : r)) : [recipe, ...local];
   saveToLocalStorage(updatedLocal);
 
-  if (!isFirebaseConfigured || !db) return;
+  if (!isFirebaseConfigured || !db) {
+    saveLocalVersions(recipe.id, newVersions);
+    return;
+  }
 
-  const docRef = doc(db, RECIPES_COLLECTION, recipe.id);
-  await setDoc(docRef, recipe, { merge: true });
+  const recipeRef = doc(db, RECIPES_COLLECTION, recipe.id);
+  const batch = writeBatch(db);
+  batch.set(recipeRef, recipe);
+  for (const version of newVersions) {
+    batch.set(doc(recipeRef, VERSIONS_COLLECTION, version.id), version);
+  }
+  await batch.commit();
+}
+
+/** Loads one earlier version (one read). Rejects if it's missing or malformed. */
+export async function fetchRecipeVersion(
+  recipeId: string,
+  versionId: string,
+): Promise<RecipeVersion> {
+  let raw: unknown;
+  if (!isFirebaseConfigured || !db) {
+    raw = getLocalVersion(recipeId, versionId);
+  } else {
+    const snapshot = await getDoc(
+      doc(db, RECIPES_COLLECTION, recipeId, VERSIONS_COLLECTION, versionId),
+    );
+    raw = snapshot.exists() ? snapshot.data() : null;
+  }
+  const version = parseRecipeVersion(raw);
+  if (!version) throw new Error(`Recipe version ${recipeId}/${versionId} is missing or malformed`);
+  return version;
 }
 
 /**
  * Stores a finished translation. Writes only the translation fields, so it can't overwrite an
  * edit made meanwhile and doesn't count as a new version. Also removes any leftover entry for
- * the source language (a merge save keeps it after a recipe is re-written in the other language).
+ * the source language (older merge saves kept one after a recipe was re-written in the other
+ * language).
  */
 export async function saveTranslationToCloud(
   recipeId: string,

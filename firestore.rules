@@ -41,6 +41,16 @@ service cloud.firestore {
       );
       // Recipes are never erased from the app.
       allow delete: if false;
+
+      // Earlier versions: a backup only the recipe's owner can read or add to. Once written, a
+      // version can't be changed or deleted by anyone, the owner included.
+      match /versions/{versionId} {
+        function ownsRecipe() {
+          return ownedByMe(get(/databases/$(database)/documents/recipes/$(recipeId)).data);
+        }
+        allow read, create: if isFamily() && ownsRecipe();
+        allow update, delete: if false;
+      }
     }
   }
 }

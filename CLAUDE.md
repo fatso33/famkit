@@ -27,7 +27,7 @@ Private family recipe vault PWA. React 19 + TypeScript (strict) + Vite 6 + Tailw
 - Imports are relative (`../hooks/useX`). The `@/` alias exists, but the code doesn't use it, so stay consistent.
 - New UI text goes in `UiTranslations`, with **both `en` and `pl`** entries (tsc enforces this). Polish must be natural culinary Polish with correct plural forms. Never hard-code strings in JSX.
 - Styling uses the heirloom design tokens in `src/index.css` (`--bg-*`, `--text-*`, `--border-*`, Fraunces/Plus Jakarta Sans). Dark mode is `[data-theme="dark"]`. Reuse existing classes before adding new ones.
-- Changes to the recipe shape go through `src/types/recipe.ts`. Keep `version`/`history` intact (see `useRecipes.ts`), and handle old records with optional fields.
+- Changes to the recipe shape go through `src/types/recipe.ts`. Keep the version bookkeeping (`version`, `versionIndex`, `changeNote`) intact (see `utils/recipeVersions`), and handle old records with optional fields.
 - Pure logic goes in `utils/` and gets a test in `src/test/`. Bug fixes get a regression test when the logic is testable.
 - Don't sync state in effects (`react-hooks/set-state-in-effect`). Use lazy `useState` initializers, derive values during render, or remount with a `key` (see `AddRecipeModal`, `ImageZoomModal`). Keep effects for external systems only.
 - Modals are mounted only while open (`{open && <Modal/>}`) and use `useDialogDismiss` for Escape and backdrop close.
@@ -75,7 +75,7 @@ Tools enforce most of these: TS strict, ESLint (react-hooks, jsx-a11y, promise s
 - **Local UI testing:** there's no local `.env`, so Firebase is off in dev. "Connect with Google" logs in as a fake dev user, and data stays in localStorage, so it's safe to click through anything. The vault starts empty: no recipe is built into the app. In the preview browser, the hidden pane stalls `document.startViewTransition`. If navigation clicks do nothing, run `document.startViewTransition = undefined` in the page first.
 - **Offline-first:** Firestore uses IndexedDB persistence, and recipes also live in localStorage. Test changes signed out (local-only) as well as signed in.
 - **Translation:** a recipe's top-level text is the original in `sourceLanguage`, and `translations[other]` carries a `sourceHash`. A mismatched hash means the translation is stale, and `useRecipes` re-translates it in the background. The logic lives in `utils/recipeTranslation`. Firebase is off locally, so translation only runs in tests (mocked) or with a real `.env` plus an App Check debug token.
-- **Images:** photos are compressed client-side and embedded. Keep history snapshots free of embedded photos (see `useRecipes`).
+- **Images:** photos are compressed client-side and embedded. Version backups include them, so a restore brings photos back, and each backup is its own document. Keep photos out of the recipe document's `versionIndex`.
 
 ## Definition of done
 
@@ -89,6 +89,9 @@ Tools enforce most of these: TS strict, ESLint (react-hooks, jsx-a11y, promise s
 - Every recipe is one a family member added. There is no built-in or default recipe.
 - `ownerEmail` is who added it, and only they can edit it (`utils/ownership` for the UI, `firestore.rules` for real enforcement). Any phone may still write translation fields.
 - `author` is the displayed name. `authorMode: 'auto'` means it's the owner's Google name, and `'custom'` means it's someone else's recipe (an heirloom) with a typed name.
+
+- **Versions:** each edit backs up the replaced version whole to `recipes/{id}/versions/{versionId}`, in the same batch as the recipe. Rules make them owner-only and create-only, so never write code that updates or deletes a version. `versionIndex` on the recipe lists them, so showing the list costs no reads. Loading one costs one read. Old records may still carry an inline `history` (no photos). It moves into `versions` on the next save.
+- Recipe saves replace the whole document (no merge), so a field cleared in the editor is cleared in the cloud.
 
 ## Known risks (not yet addressed)
 

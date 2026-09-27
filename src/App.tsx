@@ -9,7 +9,13 @@ import { useToast } from './hooks/useToast';
 import { useCurrentUser } from './hooks/useCurrentUser';
 import { isFirebaseConfigured } from './services/firebase';
 import { canEditRecipe } from './utils/ownership';
-import { recipeForEditing, resolveEdit } from './utils/recipeTranslation';
+import {
+  editingLanguage,
+  localizeRecipe,
+  recipeForEditing,
+  resolveEdit,
+} from './utils/recipeTranslation';
+import { diffRecipes, recipeAtVersion, versionSummaries } from './utils/recipeVersions';
 import { Plus, Share2 } from 'lucide-react';
 import { FloatingMenu, MenuAction } from './components/layout/FloatingMenu';
 import { InstallCard } from './components/layout/InstallCard';
@@ -20,7 +26,7 @@ import { IOSInstallModal } from './components/layout/IOSInstallModal';
 import { MakesView } from './components/makes/MakesView';
 import { SettingsView } from './components/settings/SettingsView';
 import { Toast } from './components/common/Toast';
-import { Recipe } from './types/recipe';
+import { Recipe, RecipeVersion } from './types/recipe';
 import { AppPage } from './types/navigation';
 
 // Animates a view change where supported (a hidden preview pane can stall it; see CLAUDE.md).
@@ -43,13 +49,46 @@ export default function App() {
   const { toast, visible: isToastVisible, showToast, clearToast } = useToast();
   const currentUser = useCurrentUser();
 
-  const { recipes, selectedRecipe, setSelectedRecipeId, addRecipe, updateRecipe } =
+  const { recipes, selectedRecipe, setSelectedRecipeId, addRecipe, updateRecipe, loadVersion } =
     useRecipes(currentUser);
   const localizedRecipe = getLocalizedRecipe(selectedRecipe, language);
 
   const [page, setPage] = useState<AppPage>('recipes');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
+  // An earlier version the author loaded into the editor, to restore on save.
+  const [restoredVersion, setRestoredVersion] = useState<RecipeVersion | null>(null);
+
+  // What the editor starts from: the recipe, or an earlier version's content on it.
+  const editBase =
+    editingRecipe && restoredVersion
+      ? recipeAtVersion(editingRecipe, restoredVersion)
+      : editingRecipe;
+  // Edit in the viewer's language where possible; see resolveEdit for how saves merge.
+  const editForm = editBase && recipeForEditing(editBase, language);
+  const restore =
+    editingRecipe && editBase && editForm && restoredVersion
+      ? {
+          version: restoredVersion,
+          changes: diffRecipes(
+            localizeRecipe(editingRecipe, editingLanguage(editBase, language)),
+            editForm,
+            restoredVersion.hasPhotos,
+          ),
+        }
+      : undefined;
+
+  const pickVersion = async (id: string): Promise<boolean> => {
+    if (!editingRecipe) return false;
+    try {
+      setRestoredVersion(await loadVersion(editingRecipe, id));
+      return true;
+    } catch (err) {
+      console.warn('Could not load an earlier recipe version:', err);
+      showToast(t.versionLoadFailed, 'error');
+      return false;
+    }
+  };
 
   const handleSelectRecipe = (id: string) => {
     withViewTransition(() => {
@@ -185,17 +224,23 @@ export default function App() {
       {/* Add / Edit Recipe Modal */}
       {isAddModalOpen && (
         <AddRecipeModal
-          key={editingRecipe?.id ?? 'new'}
-          // Edit in the viewer's language where possible; see resolveEdit for how saves merge.
-          initialRecipe={editingRecipe && recipeForEditing(editingRecipe, language)}
+          // A restored version reopens the form on its content.
+          key={`${editingRecipe?.id ?? 'new'}:${restoredVersion?.id ?? 'current'}`}
+          initialRecipe={editForm}
+          versions={editingRecipe ? versionSummaries(editingRecipe) : []}
+          restore={restore}
+          onPickVersion={pickVersion}
+          onKeepCurrent={() => setRestoredVersion(null)}
+          language={language}
           onClose={() => {
             setIsAddModalOpen(false);
             setEditingRecipe(null);
+            setRestoredVersion(null);
           }}
-          onSave={(recipeData, existingId, textChanged) => {
-            if (existingId && editingRecipe) {
+          onSave={(recipeData, existingId, textChanged, changeNote) => {
+            if (existingId && editBase) {
               const edited: Recipe = { ...recipeData, id: existingId };
-              updateRecipe(resolveEdit(editingRecipe, edited, language, textChanged));
+              updateRecipe(resolveEdit(editBase, edited, language, textChanged), changeNote);
             } else {
               // Provisional: translation detects the real language and corrects this.
               addRecipe({ ...recipeData, sourceLanguage: language });

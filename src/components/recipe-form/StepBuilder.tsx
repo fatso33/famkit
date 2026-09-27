@@ -15,10 +15,12 @@ export interface StepBuilderItem {
 interface StepBuilderProps {
   steps: StepBuilderItem[];
   onChange: (steps: StepBuilderItem[]) => void;
+  /** Positions of steps restored from an earlier version, to highlight. */
+  restoredSteps?: ReadonlySet<number>;
   t: UiTranslations;
 }
 
-export const StepBuilder: React.FC<StepBuilderProps> = ({ steps, onChange, t }) => {
+export const StepBuilder: React.FC<StepBuilderProps> = ({ steps, onChange, restoredSteps, t }) => {
   const handleUpdate = (id: string, field: keyof StepBuilderItem, value: string | undefined) => {
     onChange(steps.map((st) => (st.id === id ? { ...st, [field]: value } : st)));
   };
@@ -77,7 +79,11 @@ export const StepBuilder: React.FC<StepBuilderProps> = ({ steps, onChange, t }) 
 
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {steps.map((step, index) => (
-          <div key={step.id} className="step-builder-card">
+          <div
+            key={step.id}
+            className={`step-builder-card${restoredSteps?.has(index) ? ' is-restored' : ''}`}
+          >
+            {restoredSteps?.has(index) && <span className="restored-chip">{t.restoredChip}</span>}
             <div className="step-builder-header">
               <span className="step-builder-badge">
                 <span>{t.stepLabel(index + 1)}</span>

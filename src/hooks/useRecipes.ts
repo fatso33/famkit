@@ -1,12 +1,14 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Recipe, Language } from '../types/recipe';
+import { Recipe, RecipeVersion, Language } from '../types/recipe';
 import { getStoredRecipes, saveRecipes } from '../services/storage';
 import {
   subscribeToRecipes,
   saveRecipeToCloud,
   saveTranslationToCloud,
   deleteRecipeFromCloud,
+  fetchRecipeVersion,
 } from '../services/firestore';
+import { legacyVersions, prepareEdit } from '../utils/recipeVersions';
 import type { CurrentUser } from './useCurrentUser';
 import { isTranslationAvailable, translateRecipe } from '../services/gemini';
 import { isFirebaseConfigured } from '../services/firebase';
@@ -29,6 +31,11 @@ export function getLocalizedRecipe(
 /** The vault, kept in sync with Firestore. `currentUser` owns the recipes added here. */
 export function useRecipes(currentUser: CurrentUser | null) {
   const [recipes, setRecipes] = useState<Recipe[]>(getStoredRecipes);
+  // The latest list, for callbacks that must build on it (an edit needs the version it replaces).
+  const latestRecipes = useRef(recipes);
+  useEffect(() => {
+    latestRecipes.current = recipes;
+  }, [recipes]);
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
 
   // Background translation bookkeeping (see the effect below).
@@ -133,7 +140,6 @@ export function useRecipes(currentUser: CurrentUser | null) {
         ownerName: currentUser?.name,
         id: 'recipe-' + Date.now(),
         version: 1,
-        history: [],
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
@@ -159,68 +165,40 @@ export function useRecipes(currentUser: CurrentUser | null) {
     [currentUser],
   );
 
-  const updateRecipe = useCallback((recipeUpdates: Recipe): Recipe => {
-    let finalRecipe: Recipe = recipeUpdates;
+  /**
+   * Saves an edit as a new version. The version it replaces is backed up whole, photos included,
+   * so the owner can restore it later. `note` is the optional "what changed".
+   */
+  const updateRecipe = useCallback((recipeUpdates: Recipe, note = ''): Recipe => {
     savedOnThisDevice.current.set(recipeUpdates.id, sourceHash(recipeUpdates));
 
+    const existing = latestRecipes.current.find((r) => r.id === recipeUpdates.id);
+    const now = Date.now();
+    const { recipe: finalRecipe, newVersions } = existing
+      ? prepareEdit(existing, recipeUpdates, note, now)
+      : { recipe: { ...recipeUpdates, updatedAt: now }, newVersions: [] };
+
     setRecipes((prev) => {
-      const existing = prev.find((r) => r.id === recipeUpdates.id);
-      const currentVersion = existing?.version || 1;
-      const newVersion = currentVersion + 1;
-
-      const historyEntry = existing
-        ? [
-            {
-              version: currentVersion,
-              savedAt: existing.updatedAt || existing.createdAt || Date.now(),
-              recipe: {
-                id: existing.id,
-                name: existing.name,
-                author: existing.author,
-                authorMode: existing.authorMode,
-                category: existing.category,
-                heroImage: existing.heroImage?.startsWith('data:') ? '' : existing.heroImage || '',
-                yieldHeader: existing.yieldHeader,
-                baseYield: existing.baseYield,
-                ingredients: existing.ingredients,
-                cardDescription: existing.cardDescription,
-                tips: existing.tips,
-                steps: (existing.steps || []).map((st) => ({
-                  ...st,
-                  imageSrc: st.imageSrc?.startsWith('data:') ? '' : st.imageSrc,
-                })),
-                laminationDirective: existing.laminationDirective,
-                bakingOptions: existing.bakingOptions,
-                notes: existing.notes,
-                sourceLanguage: existing.sourceLanguage,
-                translations: existing.translations,
-                createdAt: existing.createdAt,
-                version: existing.version,
-              },
-            },
-            ...(existing.history || []),
-          ]
-        : [];
-
-      finalRecipe = {
-        ...recipeUpdates,
-        version: newVersion,
-        history: historyEntry,
-        updatedAt: Date.now(),
-      };
-
       const updated = prev.map((r) => (r.id === finalRecipe.id ? finalRecipe : r));
       saveRecipes(updated);
       return updated;
     });
 
     // Async sync to Cloud Firestore in background
-    saveRecipeToCloud(finalRecipe).catch((err) => {
+    saveRecipeToCloud(finalRecipe, newVersions).catch((err) => {
       console.warn('Failed to sync updated recipe to cloud (retained locally):', err);
     });
 
     return finalRecipe;
   }, []);
+
+  /** One earlier version of a recipe, for the owner to restore. Rejects when it can't be loaded. */
+  const loadVersion = useCallback(
+    async (recipe: Recipe, versionId: string): Promise<RecipeVersion> =>
+      legacyVersions(recipe).find((v) => v.id === versionId) ??
+      fetchRecipeVersion(recipe.id, versionId),
+    [],
+  );
 
   const deleteRecipe = useCallback(
     async (id: string) => {
@@ -250,6 +228,7 @@ export function useRecipes(currentUser: CurrentUser | null) {
     setSelectedRecipeId,
     addRecipe,
     updateRecipe,
+    loadVersion,
     deleteRecipe,
   };
 }
