@@ -3,6 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <script>
+      // Apply the stored theme, text size and language before the first paint, so dark mode
+      // and large text don't flash in at the start of the splash. Same keys and rules as
+      // services/storage.ts; React takes over from here.
+      (function () {
+        var root = document.documentElement;
+        try {
+          var theme = localStorage.getItem('wandas_theme');
+          if (theme !== 'dark' && theme !== 'light') {
+            theme =
+              window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+          }
+          root.setAttribute('data-theme', theme);
+          var scale = parseFloat(localStorage.getItem('wandas_font_scale') || '1');
+          if (!isNaN(scale)) {
+            root.style.setProperty('--font-scale', String(Math.min(1.4, Math.max(0.85, scale))));
+          }
+          if (localStorage.getItem('wandas_language') === 'pl') root.lang = 'pl';
+        } catch (e) {
+          // Storage blocked (private mode): the app's defaults apply.
+        }
+      })();
+    </script>
     <title>Family Kitchen - Family Recipe Vault</title>
     <meta
       name="description"

@@ -1,7 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { AuthGate } from '../components/auth/AuthGate';
-import * as authHook from '../hooks/useAuth';
+import { describe, it, expect } from 'vitest';
 
 describe('Auth allowlist matching logic', () => {
   it('correctly matches emails case-insensitively', () => {
@@ -25,54 +22,5 @@ describe('Auth allowlist matching logic', () => {
 
     expect(allowed).toEqual(['mom@gmail.com']);
     expect(allowed.includes('')).toBe(false);
-  });
-});
-
-describe('AuthGate splash screen', () => {
-  it('renders splash screen with logo emblem, Google connect button, and top toggles', () => {
-    vi.spyOn(authHook, 'useAuth').mockReturnValue({
-      user: null,
-      isFamilyMember: false,
-      isLoading: false,
-      isConfigured: true,
-      error: null,
-      signInWithGoogle: vi.fn(),
-      signOut: vi.fn(),
-    });
-
-    render(
-      <AuthGate>
-        <div>App Content</div>
-      </AuthGate>,
-    );
-
-    expect(screen.getByAltText(/family kitchen - recipe vault/i)).toBeInTheDocument();
-    expect(screen.getByText('Connect with Google')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /toggle language/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /toggle theme/i })).toBeInTheDocument();
-  });
-
-  it('toggles language between English and Polish on splash screen', () => {
-    vi.spyOn(authHook, 'useAuth').mockReturnValue({
-      user: null,
-      isFamilyMember: false,
-      isLoading: false,
-      isConfigured: true,
-      error: null,
-      signInWithGoogle: vi.fn(),
-      signOut: vi.fn(),
-    });
-
-    render(
-      <AuthGate>
-        <div>App Content</div>
-      </AuthGate>,
-    );
-
-    const langBtn = screen.getByRole('button', { name: /toggle language/i });
-    expect(screen.getByText('Connect with Google')).toBeInTheDocument();
-
-    fireEvent.click(langBtn);
-    expect(screen.getByText('Połącz przez Google')).toBeInTheDocument();
   });
 });

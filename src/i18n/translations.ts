@@ -120,7 +120,6 @@ export interface UiTranslations {
   saveChanges: string;
   // Screen-reader labels, tooltips and image descriptions
   logoAlt: string;
-  vaultEmblemAlt: string;
   languageToggle: string;
   decreaseTextSize: string;
   increaseTextSize: string;
@@ -153,6 +152,11 @@ export interface UiTranslations {
   photoCaptionLabel: string;
   draftRestoredTooltip: string;
   descriptionOptional: string;
+  // Sign-in splash
+  welcomeTo: string;
+  welcomeKitchen: string;
+  connectWithGoogle: string;
+  liftTheLid: string;
   // Floating menu, pages and settings
   menu: string;
   openMenu: string;
@@ -293,7 +297,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     shareText: (name: string, author: string) => `${name} by ${author} - Heirloom Family Recipe`,
     saveChanges: 'Save Changes',
     logoAlt: 'Family Kitchen logo',
-    vaultEmblemAlt: 'Family Kitchen - Recipe Vault',
     languageToggle: 'Toggle language: English / Polish',
     decreaseTextSize: 'Decrease text size',
     increaseTextSize: 'Increase text size',
@@ -326,6 +329,10 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     photoCaptionLabel: 'Photo caption (optional)',
     draftRestoredTooltip: 'Restored from previous session',
     descriptionOptional: 'Description (Optional)',
+    welcomeTo: 'Welcome to',
+    welcomeKitchen: 'Family Kitchen',
+    connectWithGoogle: 'Connect with Google',
+    liftTheLid: 'Lift the lid',
     menu: 'Menu',
     openMenu: 'Open menu',
     closeMenu: 'Close menu',
@@ -466,7 +473,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
       `${name} (${author}) – rodzinny przepis z tradycją`,
     saveChanges: 'Zapisz zmiany',
     logoAlt: 'Logo Family Kitchen',
-    vaultEmblemAlt: 'Rodzinna Kuchnia - Skarbiec Przepisów',
     languageToggle: 'Zmień język: angielski / polski',
     decreaseTextSize: 'Zmniejsz tekst',
     increaseTextSize: 'Powiększ tekst',
@@ -499,6 +505,10 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     photoCaptionLabel: 'Podpis zdjęcia (opcjonalnie)',
     draftRestoredTooltip: 'Przywrócono z poprzedniej sesji',
     descriptionOptional: 'Opis (opcjonalnie)',
+    welcomeTo: 'Witamy w',
+    welcomeKitchen: 'Rodzinnej Kuchni',
+    connectWithGoogle: 'Połącz przez Google',
+    liftTheLid: 'Podnieś pokrywkę',
     menu: 'Menu',
     openMenu: 'Otwórz menu',
     closeMenu: 'Zamknij menu',
