@@ -1,9 +1,11 @@
 import { Recipe, RecipeVersion, Language, Theme } from '../types/recipe';
+import { isSeasonPreference, SeasonPreference } from '../utils/season';
 
 const RECIPES_KEY = 'wandas_recipes';
 const THEME_KEY = 'wandas_theme';
 const LANG_KEY = 'wandas_language';
 const FONT_SCALE_KEY = 'wandas_font_scale';
+const SEASON_KEY = 'wandas_season';
 const LEGACY_API_KEY_STORAGE = 'wandas_gemini_api_key';
 const INSTALL_DISMISSED_KEY = 'family_kitchen_install_dismissed';
 // Earlier recipe versions, only when there is no cloud (local dev). With Firebase they live in
@@ -89,6 +91,17 @@ export function getStoredTheme(): Theme {
 export function setStoredTheme(theme: Theme): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(THEME_KEY, theme);
+}
+
+export function getStoredSeasonPreference(): SeasonPreference {
+  if (typeof window === 'undefined') return 'auto';
+  const value = localStorage.getItem(SEASON_KEY);
+  return isSeasonPreference(value) ? value : 'auto';
+}
+
+export function setStoredSeasonPreference(preference: SeasonPreference): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(SEASON_KEY, preference);
 }
 
 export function getStoredFontScale(): number {

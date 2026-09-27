@@ -1,6 +1,14 @@
 # Family Kitchen · Design Blueprint
 
-_Design direction only. No code has been changed._ Prepared 27 September 2026.
+Prepared 27 September 2026. **Implemented the same day** with Peter's choices:
+
+- Set A: Fraunces and Source Sans 3, self-hosted, with a Fraunces italic subset for the splash.
+- Baltic for summer.
+- Seasons follow the calendar automatically (spring from 1 March, summer from 1 June, autumn from 1 September, winter from 1 December). A Settings picker can keep one season all year.
+- Android's status bar matches the page background of the current season and theme.
+- A new `--border-field` token gives form fields a visible 3:1 edge.
+
+The Autumn palette and Appendix A are now the live tokens in `src/index.css`.
 
 This blueprint covers two things:
 
@@ -16,8 +24,8 @@ The brief: professional, elegant and modern, used mostly on phones by young adul
 - **Readability never changes with the season.** Every seasonal colour has the same luminance as its autumn counterpart, so every text/background pair keeps the contrast the family is used to. All text passes WCAG AA in every season and mode, and the seasonal accents are slightly stronger than autumn's.
 - **Found along the way (live today):**
   1. Plus Jakarta Sans draws capital **I** and lowercase **l** as identical bars, so a Polish ingredient such as "1 l mleka" (1 litre of milk) is easy to misread.
-  2. The fractions ⅓ ⅔ ⅛ ⅜ ⅝ ⅞ in ingredient amounts render in the phone's fallback font rather than the app's font, because Google Fonts' standard subsets don't include them. ½ ¼ ¾ are fine. _Fixed on 27 September 2026 with a 2 KB bundled subset of Plus Jakarta Sans; see §2.6 for when the fonts change._
-  3. Form-field borders are 1.5:1 against their fill, where the WCAG guideline for input edges is 3:1. Flagged, not changed: see [§3.9](#39-observations-on-todays-palette-not-changed).
+  2. The fractions ⅓ ⅔ ⅛ ⅜ ⅝ ⅞ in ingredient amounts render in the phone's fallback font rather than the app's font, because Google Fonts' standard subsets don't include them. ½ ¼ ¾ are fine. _Fixed on 27 September 2026, first with a bundled subset of Plus Jakarta Sans, then by self-hosting Source Sans 3 with the fraction block._
+  3. Form-field borders are 1.5:1 against their fill, where the WCAG guideline for input edges is 3:1. _Fixed with `--border-field` (3.26–3.28:1 in every palette; see §3.9)._
 
 ## 1. Guiding principles
 
@@ -223,13 +231,15 @@ Every colour pair the stylesheet actually uses was checked in all ten palettes (
 - **Body text stays at 15–17.5:1** (AAA) all year.
 - **Only two pairs fall short, identically in every season:** the form-field edge and the dashed-border edge (see below).
 
-### 3.9 Observations on today's palette (not changed)
+### 3.9 Observations on today's palette
 
-- **Form fields are hard to find.** `--border-strong` against the field fill is 1.49:1 in light mode and 1.80:1 in dark. WCAG 1.4.11 asks for 3:1 at the edge of a text field, and the older relatives are the ones who'll struggle to see where to type. If you want to fix it later, a dedicated field-border token (for example, `--text-muted` at 1.5px) would pass in every season without touching the rest of the palette.
+- **Form fields are hard to find.** `--border-strong` against the field fill is 1.49:1 in light mode and 1.80:1 in dark. WCAG 1.4.11 asks for 3:1 at the edge of a text field, and the older relatives are the ones who'll struggle to see where to type. _Fixed:_ a dedicated `--border-field` token at 1.5px, computed per palette at 3:1 against both the field fill and the surface.
 - **Colours outside the token system,** which no season would change:
   - the `rgba(200, 90, 50, 0.1)` tint on the not-family screen (`AuthGate.tsx`)
   - `<meta name="theme-color">` and the manifest's `theme_color` / `background_color` (`#ad4f2d` / `#fbf9f5`), which colour Android's status bar and install splash
   - the danger and warning reds, deliberately
+
+  _Since implemented:_ the tint is now `--accent-subtle`. `theme-color` follows the season and theme at runtime (`hooks/useSeason`). Each build writes the season's page colour into the manifest, and `deploy.yml` rebuilds on the first day of every season. The reds stay fixed.
 
 ### 3.10 Out of scope
 

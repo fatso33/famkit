@@ -1,32 +1,98 @@
 @import "tailwindcss";
 
-      /* Google's Plus Jakarta Sans subsets stop short of the Number Forms block, so ingredient
-         amounts like ⅓ and ⅛ fell back to the phone's font (½ ¼ ¾ are Latin-1 and arrive with
-         the main font). This is Google's own subset of just those six glyphs, all weights (2 KB,
-         OFL: see OFL-PlusJakartaSans.txt). Vite inlines it into this stylesheet, so it works
-         offline from the first visit. Remove it once the reading font is self-hosted with the
-         fraction block included. */
+      /* ── Fonts ──
+         Fraunces for headings and Source Sans 3 for everything else, self-hosted so they work
+         offline from the first visit and nothing is fetched from Google. Both are variable (OFL,
+         see OFL-*.txt): one file per script covers every weight, and Fraunces tunes its own
+         detail to the size it's set at. Google's standard subsets stop short of the Number
+         Forms block, so ⅓ ⅔ ⅛ ⅜ ⅝ ⅞ come from their own 2 KB file (½ ¼ ¾ are in the latin
+         one). The italic holds only the splash's "Welcome to" and "Witamy w". fonts.test.ts
+         checks both. */
       @font-face {
-        font-family: 'Plus Jakarta Sans Fractions';
+        font-family: 'Fraunces';
         font-style: normal;
-        font-weight: 200 800;
+        font-weight: 500 700;
         font-display: swap;
-        src: url('./assets/fonts/plus-jakarta-sans-fractions.woff2') format('woff2');
+        src: url('./assets/fonts/fraunces-latin.woff2') format('woff2');
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+      @font-face {
+        font-family: 'Fraunces';
+        font-style: normal;
+        font-weight: 500 700;
+        font-display: swap;
+        src: url('./assets/fonts/fraunces-latin-ext.woff2') format('woff2');
+        unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+      }
+      @font-face {
+        font-family: 'Fraunces';
+        font-style: italic;
+        font-weight: 500 700;
+        font-display: swap;
+        src: url('./assets/fonts/fraunces-italic-welcome.woff2') format('woff2');
+        unicode-range: U+0057, U+0061, U+0063, U+0065, U+0069, U+006C-006D, U+006F, U+0074, U+0077, U+0079;
+      }
+      @font-face {
+        font-family: 'Source Sans 3';
+        font-style: normal;
+        font-weight: 400 700;
+        font-display: swap;
+        src: url('./assets/fonts/source-sans-3-latin.woff2') format('woff2');
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+      @font-face {
+        font-family: 'Source Sans 3';
+        font-style: normal;
+        font-weight: 400 700;
+        font-display: swap;
+        src: url('./assets/fonts/source-sans-3-latin-ext.woff2') format('woff2');
+        unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+      }
+      @font-face {
+        font-family: 'Source Sans 3';
+        font-style: normal;
+        font-weight: 400 700;
+        font-display: swap;
+        src: url('./assets/fonts/source-sans-3-fractions.woff2') format('woff2');
         unicode-range: U+2153-2154, U+215B-215E;
       }
 
       :root {
         --font-scale: 1;
-        --font-serif: 'Playfair Display', Georgia, serif;
-        --font-sans: 'Plus Jakarta Sans Fractions', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+        --font-serif: 'Fraunces', Georgia, serif;
+        --font-sans: 'Source Sans 3', system-ui, -apple-system, sans-serif;
+        /* Reading text is a touch heavier by day; light text on dark blooms, so 400 at night. */
+        --weight-body: 450;
+        --weight-heading: 620;
+        --radius-sm: 8px;
+        --radius-md: 14px;
+        --radius-lg: 20px;
+        --radius-xl: 24px;
+        --radius-full: 9999px;
+      }
+      [data-theme="dark"] {
+        --weight-body: 400;
+      }
 
-        /* Family Kitchen Heirloom (light). Terracotta and honey are deepened slightly so text meets 4.5:1. */
+      /* ── Seasons ──
+         Four palettes, each light and dark, picked by <html data-season> (hooks/useSeason).
+         Every colour keeps the WCAG luminance of its autumn twin, so each text/background pair
+         keeps its contrast all year and only the hue moves (design-blueprint.md, Appendix A).
+         The status reds and the emblem's colours never change. Any element can carry
+         data-season to show another season's colours, as the Settings swatches do.
+         --border-field edges a text field at 3:1 against its fill in every palette
+         (WCAG 1.4.11). The Autumn blocks double as the defaults. */
+
+      /* Autumn · Heirloom Hearth: terracotta and honey on cream, espresso at night */
+      :root,
+      [data-season="autumn"] {
         --bg-main: #fbf9f5;
         --bg-surface: #ffffff;
         --bg-card: #f5f0e6;
         --bg-card-hover: #ede6d8;
         --border-subtle: #e7dec8;
         --border-strong: #dcc1b9;
+        --border-field: #987f78;
         --text-primary: #1c1917;
         --text-secondary: #56423d;
         --text-muted: #6f6862;
@@ -46,21 +112,17 @@
         --shadow-md: 0 8px 24px -6px rgba(60, 35, 20, 0.1);
         --shadow-lg: 0 16px 36px -8px rgba(60, 35, 20, 0.16);
         --fab-shadow: 0 10px 24px -6px rgba(173, 79, 45, 0.45), inset 0 -1px 0 rgba(0, 0, 0, 0.15);
-        --radius-sm: 8px;
-        --radius-md: 14px;
-        --radius-lg: 20px;
-        --radius-xl: 24px;
-        --radius-full: 9999px;
       }
-
-      /* Nocturne Hearth Heirloom (dark) */
-      [data-theme="dark"] {
+      [data-theme="dark"],
+      [data-theme="dark"][data-season="autumn"],
+      [data-theme="dark"] [data-season="autumn"] {
         --bg-main: #161311;
         --bg-surface: #211b17;
         --bg-card: #2b231e;
         --bg-card-hover: #362d27;
         --border-subtle: #3d312a;
         --border-strong: #5a493e;
+        --border-field: #827064;
         --text-primary: #f8f1e9;
         --text-secondary: #d8cdc3;
         --text-muted: #a8988c;
@@ -82,6 +144,183 @@
         --fab-shadow: 0 4px 20px rgba(224, 109, 72, 0.32);
       }
 
+      /* Winter · Porcelain & Cobalt: Bolesławiec stoneware, frost and Wigilia candlelight */
+      [data-season="winter"] {
+        --bg-main: #f8f9fb;
+        --bg-surface: #ffffff;
+        --bg-card: #edf1f5;
+        --bg-card-hover: #e2e7ed;
+        --border-subtle: #d8dfe8;
+        --border-strong: #bec7d7;
+        --border-field: #7d8594;
+        --text-primary: #161a20;
+        --text-secondary: #3c475a;
+        --text-muted: #646a71;
+        --accent: #3b5dab;
+        --accent-hover: #2c4d99;
+        --accent-subtle: #e6edfa;
+        --on-accent: #ffffff;
+        --accent-gold: #855f0f;
+        --accent-gold-subtle: #faf1de;
+        --success: #2d4a3e;
+        --success-subtle: #e6efe9;
+        --elev-menu: #ffffff;
+        --menu-well: #edf1f5;
+        --menu-well-hover: #e2e7ed;
+        --scrim: rgba(22, 26, 32, 0.28);
+        --shadow-sm: 0 1px 3px rgba(30, 42, 59, 0.06);
+        --shadow-md: 0 8px 24px -6px rgba(30, 42, 59, 0.1);
+        --shadow-lg: 0 16px 36px -8px rgba(30, 42, 59, 0.16);
+        --fab-shadow: 0 10px 24px -6px rgba(59, 93, 171, 0.45), inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+      }
+      [data-theme="dark"][data-season="winter"],
+      [data-theme="dark"] [data-season="winter"] {
+        --bg-main: #121417;
+        --bg-surface: #191c23;
+        --bg-card: #20252d;
+        --bg-card-hover: #2a2f38;
+        --border-subtle: #2d3440;
+        --border-strong: #434d5e;
+        --border-field: #697486;
+        --text-primary: #eef3f8;
+        --text-secondary: #c7d0db;
+        --text-muted: #919cab;
+        --accent: #7394da;
+        --accent-hover: #7d9fe5;
+        --accent-subtle: #1d283e;
+        --on-accent: #131519;
+        --accent-gold: #ebbc5a;
+        --accent-gold-subtle: #2d2417;
+        --success: #aecebd;
+        --success-subtle: #1c2a24;
+        --elev-menu: #20252d;
+        --menu-well: #2a2f38;
+        --menu-well-hover: #333a47;
+        --scrim: rgba(6, 8, 11, 0.55);
+        --shadow-sm: 0 1px 3px rgba(4, 6, 9, 0.35);
+        --shadow-md: 0 8px 24px -6px rgba(4, 6, 9, 0.5);
+        --shadow-lg: 0 16px 36px -8px rgba(4, 6, 9, 0.6);
+        --fab-shadow: 0 4px 20px rgba(115, 148, 218, 0.32);
+      }
+
+      /* Spring · Dill & Butter: nowalijki, new potatoes with butter and dill */
+      [data-season="spring"] {
+        --bg-main: #faf9f6;
+        --bg-surface: #ffffff;
+        --bg-card: #f2f1e8;
+        --bg-card-hover: #e9e7db;
+        --border-subtle: #e2dfcd;
+        --border-strong: #bbcbbb;
+        --border-field: #7a897a;
+        --text-primary: #151b16;
+        --text-secondary: #394b3c;
+        --text-muted: #686a62;
+        --accent: #327243;
+        --accent-hover: #1f6133;
+        --accent-subtle: #e2f0e2;
+        --on-accent: #ffffff;
+        --accent-gold: #836000;
+        --accent-gold-subtle: #f9f2dc;
+        --success: #2d4a3e;
+        --success-subtle: #e6efe9;
+        --elev-menu: #ffffff;
+        --menu-well: #f2f1e8;
+        --menu-well-hover: #e9e7db;
+        --scrim: rgba(21, 27, 22, 0.28);
+        --shadow-sm: 0 1px 3px rgba(30, 45, 27, 0.06);
+        --shadow-md: 0 8px 24px -6px rgba(30, 45, 27, 0.1);
+        --shadow-lg: 0 16px 36px -8px rgba(30, 45, 27, 0.16);
+        --fab-shadow: 0 10px 24px -6px rgba(50, 114, 67, 0.45), inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+      }
+      [data-theme="dark"][data-season="spring"],
+      [data-theme="dark"] [data-season="spring"] {
+        --bg-main: #121412;
+        --bg-surface: #181d19;
+        --bg-card: #1f2621;
+        --bg-card-hover: #29312a;
+        --border-subtle: #2c362d;
+        --border-strong: #415044;
+        --border-field: #67776a;
+        --text-primary: #f3f2eb;
+        --text-secondary: #ced0c4;
+        --text-muted: #949e90;
+        --accent: #59a16a;
+        --accent-hover: #63ac74;
+        --accent-subtle: #182d1c;
+        --on-accent: #121613;
+        --accent-gold: #e5bf50;
+        --accent-gold-subtle: #2b2516;
+        --success: #aecebd;
+        --success-subtle: #1c2a24;
+        --elev-menu: #1f2621;
+        --menu-well: #29312a;
+        --menu-well-hover: #323d34;
+        --scrim: rgba(6, 8, 6, 0.55);
+        --shadow-sm: 0 1px 3px rgba(4, 6, 4, 0.35);
+        --shadow-md: 0 8px 24px -6px rgba(4, 6, 4, 0.5);
+        --shadow-lg: 0 16px 36px -8px rgba(4, 6, 4, 0.6);
+        --fab-shadow: 0 4px 20px rgba(89, 161, 106, 0.32);
+      }
+
+      /* Summer · Baltic: sea glass and amber, holidays by the sea */
+      [data-season="summer"] {
+        --bg-main: #f7fafa;
+        --bg-surface: #ffffff;
+        --bg-card: #ebf2f2;
+        --bg-card-hover: #dee9e9;
+        --border-subtle: #d2e2e2;
+        --border-strong: #b2cbd0;
+        --border-field: #71898e;
+        --text-primary: #121b1e;
+        --text-secondary: #304b52;
+        --text-muted: #616b6d;
+        --accent: #007384;
+        --accent-hover: #00616f;
+        --accent-subtle: #dbf1f3;
+        --on-accent: #ffffff;
+        --accent-gold: #915905;
+        --accent-gold-subtle: #fdf1dc;
+        --success: #2d4a3e;
+        --success-subtle: #e6efe9;
+        --elev-menu: #ffffff;
+        --menu-well: #ebf2f2;
+        --menu-well-hover: #dee9e9;
+        --scrim: rgba(18, 27, 30, 0.28);
+        --shadow-sm: 0 1px 3px rgba(14, 45, 56, 0.06);
+        --shadow-md: 0 8px 24px -6px rgba(14, 45, 56, 0.1);
+        --shadow-lg: 0 16px 36px -8px rgba(14, 45, 56, 0.16);
+        --fab-shadow: 0 10px 24px -6px rgba(0, 115, 132, 0.45), inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+      }
+      [data-theme="dark"][data-season="summer"],
+      [data-theme="dark"] [data-season="summer"] {
+        --bg-main: #101416;
+        --bg-surface: #151e21;
+        --bg-card: #1b262a;
+        --bg-card-hover: #243135;
+        --border-subtle: #25363c;
+        --border-strong: #375059;
+        --border-field: #5d7781;
+        --text-primary: #f4f2ec;
+        --text-secondary: #c4d1d2;
+        --text-muted: #8b9ea2;
+        --accent: #279da8;
+        --accent-hover: #36a7b3;
+        --accent-subtle: #092c32;
+        --on-accent: #101618;
+        --accent-gold: #fab64e;
+        --accent-gold-subtle: #2e2417;
+        --success: #aecebd;
+        --success-subtle: #1c2a24;
+        --elev-menu: #1b262a;
+        --menu-well: #243135;
+        --menu-well-hover: #2b3d43;
+        --scrim: rgba(4, 8, 10, 0.55);
+        --shadow-sm: 0 1px 3px rgba(3, 6, 8, 0.35);
+        --shadow-md: 0 8px 24px -6px rgba(3, 6, 8, 0.5);
+        --shadow-lg: 0 16px 36px -8px rgba(3, 6, 8, 0.6);
+        --fab-shadow: 0 4px 20px rgba(39, 157, 168, 0.32);
+      }
+
       * {
         box-sizing: border-box;
         margin: 0;
@@ -96,6 +335,7 @@
 
       body {
         font-family: var(--font-sans);
+        font-weight: var(--weight-body);
         background-color: var(--bg-main);
         color: var(--text-primary);
         line-height: 1.6;
@@ -352,7 +592,7 @@
       .brand-title {
         font-family: var(--font-serif);
         font-size: 1.3rem;
-        font-weight: 700;
+        font-weight: var(--weight-heading);
         letter-spacing: -0.01em;
         line-height: 1.2;
       }
@@ -463,7 +703,7 @@
         background: rgba(19, 18, 17, 0.78);
         backdrop-filter: blur(4px);
         color: #fff;
-        font-size: 0.8rem;
+        font-size: 0.8125rem;
         width: 28px;
         height: 28px;
         border-radius: 50%;
@@ -483,7 +723,7 @@
         gap: 0.4rem;
         padding: 0.5rem 0.875rem;
         border-radius: var(--radius-sm);
-        font-size: 0.875rem;
+        font-size: 0.9375rem;
         font-weight: 600;
         border: 1px solid var(--border-subtle);
         background: var(--bg-surface);
@@ -541,15 +781,16 @@
       }
 
       .vault-hero h1 {
-        font-size: clamp(1.8rem, 4vw, 2.5rem);
-        font-weight: 700;
+        font-size: clamp(2rem, 5vw, 2.75rem);
+        font-weight: var(--weight-heading);
         line-height: 1.15;
         margin-bottom: 0.35rem;
+        letter-spacing: -0.01em;
       }
 
       .vault-hero p {
         color: var(--text-secondary);
-        font-size: 0.95rem;
+        font-size: 1rem;
         max-width: 580px;
       }
 
@@ -566,7 +807,7 @@
         padding: 0.4rem 0.85rem;
         min-height: 44px;
         border-radius: var(--radius-full);
-        font-size: 0.85rem;
+        font-size: 0.9375rem;
         font-weight: 600;
         border: 1px solid var(--border-subtle);
         background: var(--bg-surface);
@@ -642,10 +883,10 @@
         backdrop-filter: blur(6px);
         color: #fff;
         padding: 0.25rem 0.6rem;
-        font-size: 0.7rem;
+        font-size: 0.75rem;
         font-weight: 600;
         border-radius: var(--radius-full);
-        letter-spacing: 0.03em;
+        letter-spacing: 0.05em;
         text-transform: uppercase;
       }
 
@@ -658,14 +899,15 @@
 
       .card-title {
         font-family: var(--font-serif);
-        font-size: 1.35rem;
-        font-weight: 700;
+        font-size: 1.375rem;
+        font-weight: var(--weight-heading);
         margin-bottom: 0.4rem;
         line-height: 1.25;
+        letter-spacing: -0.01em;
       }
 
       .card-meta {
-        font-size: 0.825rem;
+        font-size: 0.875rem;
         color: var(--text-muted);
         display: flex;
         align-items: center;
@@ -674,7 +916,7 @@
       }
 
       .card-desc {
-        font-size: 0.875rem;
+        font-size: 0.9375rem;
         color: var(--text-secondary);
         line-height: 1.5;
         margin-bottom: 1.25rem;
@@ -687,7 +929,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        font-size: 0.825rem;
+        font-size: 0.875rem;
         font-weight: 600;
         color: var(--accent);
       }
@@ -754,13 +996,14 @@
       .detail-title {
         font-family: var(--font-serif);
         font-size: clamp(2rem, 5vw, 3rem);
-        font-weight: 700;
+        font-weight: var(--weight-heading);
         line-height: 1.15;
         margin-bottom: 0.5rem;
+        letter-spacing: -0.01em;
       }
 
       .detail-meta {
-        font-size: 0.95rem;
+        font-size: 1rem;
         color: var(--text-muted);
         display: flex;
         align-items: center;
@@ -777,7 +1020,7 @@
         border: 1px solid var(--accent-gold);
         padding: 0.5rem 0.9rem;
         border-radius: var(--radius-sm);
-        font-size: 0.825rem;
+        font-size: 0.875rem;
         font-weight: 600;
         margin-bottom: 1.5rem;
       }
@@ -786,7 +1029,7 @@
       .btn-meta-pill {
         padding: 0.35rem 0.9rem;
         min-height: 44px;
-        font-size: 0.8rem;
+        font-size: 0.875rem;
         gap: 0.35rem;
         border-radius: var(--radius-full);
       }
@@ -847,8 +1090,9 @@
 
       .panel-title {
         font-family: var(--font-serif);
-        font-size: 1.35rem;
-        font-weight: 700;
+        font-size: 1.5rem;
+        font-weight: var(--weight-heading);
+        letter-spacing: -0.01em;
       }
 
       /* Portion Scaler */
@@ -890,7 +1134,7 @@
       }
 
       .yield-text {
-        font-size: 0.85rem;
+        font-size: 0.9375rem;
         color: var(--accent);
         font-weight: 600;
         margin-bottom: 1rem;
@@ -910,7 +1154,7 @@
       .ingredient-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 0.95rem;
+        font-size: 1.125rem;
         line-height: 1.45;
       }
 
@@ -919,7 +1163,7 @@
         font-size: 0.75rem;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.07em;
         color: var(--text-secondary);
         background: var(--bg-card);
         border-bottom: 1px solid var(--border-subtle);
@@ -976,14 +1220,14 @@
       .ingredient-name {
         font-weight: 600;
         color: var(--text-primary);
-        font-size: 0.95rem;
+        font-size: 1.125rem;
         line-height: 1.35;
       }
 
       .ingredient-bracket-note {
-        font-size: 0.825rem;
+        font-size: 0.875rem;
         color: var(--accent);
-        font-style: italic;
+        font-style: normal;
         font-weight: 500;
         line-height: 1.25;
       }
@@ -992,7 +1236,7 @@
         display: inline-block;
         font-weight: 600;
         color: var(--text-primary);
-        font-size: 0.95rem;
+        font-size: 1.125rem;
         letter-spacing: 0.01em;
         line-height: 1.35;
         text-align: left;
@@ -1011,7 +1255,8 @@
         padding: 1rem 1.15rem;
         border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
         margin-bottom: 1.5rem;
-        font-size: 0.925rem;
+        font-size: 1.0625rem;
+        line-height: 1.55;
       }
 
       .callout-box.gold {
@@ -1034,7 +1279,7 @@
         font-size: 0.75rem;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.07em;
         margin-bottom: 0.25rem;
         color: var(--accent);
       }
@@ -1051,9 +1296,10 @@
 
       .section-heading {
         font-family: var(--font-serif);
-        font-size: 1.6rem;
-        font-weight: 700;
+        font-size: 1.5rem;
+        font-weight: var(--weight-heading);
         margin-bottom: 0.75rem;
+        letter-spacing: -0.01em;
       }
 
       .step-card {
@@ -1076,7 +1322,7 @@
         background: var(--accent-subtle);
         color: var(--accent);
         font-weight: 700;
-        font-size: 0.78rem;
+        font-size: 0.875rem;
         display: grid;
         place-items: center;
         flex-shrink: 0;
@@ -1089,9 +1335,10 @@
       }
 
       .step-text {
-        font-size: 0.975rem;
+        font-size: 1.125rem;
         line-height: 1.6;
         color: var(--text-primary);
+        font-weight: var(--weight-body);
       }
 
       .directive-bullet-list,
@@ -1102,7 +1349,7 @@
         display: flex;
         flex-direction: column;
         gap: 0.45rem;
-        font-size: 0.935rem;
+        font-size: 1.0625rem;
         line-height: 1.55;
         color: var(--text-primary);
       }
@@ -1128,7 +1375,7 @@
       }
 
       .step-visual-caption {
-        font-size: 0.775rem;
+        font-size: 0.8125rem;
         color: var(--text-secondary);
         padding: 0.5rem 0.75rem;
         background: var(--bg-card);
@@ -1163,7 +1410,7 @@
         font-size: 0.75rem;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.07em;
         color: var(--accent);
         margin-bottom: 0.5rem;
       }
@@ -1297,10 +1544,11 @@
       .modal-title {
         font-family: var(--font-serif);
         font-size: 1.4rem;
-        font-weight: 700;
+        font-weight: var(--weight-heading);
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        letter-spacing: -0.01em;
       }
 
       .form-group {
@@ -1384,7 +1632,7 @@
 
       /* "Added by" under an heirloom recipe's author */
       .added-by {
-        font-size: 0.8rem;
+        font-size: 0.8125rem;
         font-weight: 500;
         color: var(--text-muted);
       }
@@ -1467,7 +1715,7 @@
         border-radius: var(--radius-full);
         background: var(--accent);
         color: var(--on-accent);
-        font-size: 0.66rem;
+        font-size: 0.75rem;
         font-weight: 700;
         letter-spacing: 0.07em;
         text-transform: uppercase;
@@ -1557,7 +1805,8 @@
         gap: 0.5rem;
         font-family: var(--font-serif);
         font-size: 1.2rem;
-        font-weight: 700;
+        font-weight: var(--weight-heading);
+        letter-spacing: -0.01em;
       }
 
       .version-sheet-title > svg {
@@ -1679,14 +1928,14 @@
         border-radius: var(--radius-full);
         background: var(--accent-subtle);
         color: var(--accent);
-        font-size: 0.68rem;
+        font-size: 0.75rem;
         font-weight: 700;
         letter-spacing: 0.06em;
         text-transform: uppercase;
       }
 
       .version-loading {
-        font-size: 0.78rem;
+        font-size: 0.8125rem;
         color: var(--text-muted);
         animation: version-pulse 1.2s ease-in-out infinite;
       }
@@ -1696,13 +1945,13 @@
       }
 
       .version-date {
-        font-size: 0.8rem;
+        font-size: 0.8125rem;
         color: var(--text-muted);
       }
 
       .version-note {
-        font-size: 0.85rem;
-        font-style: italic;
+        font-size: 0.875rem;
+        font-style: normal;
         color: var(--text-secondary);
       }
 
@@ -1719,28 +1968,42 @@
 
       .form-label {
         display: block;
-        font-size: 0.85rem;
+        font-size: 0.9375rem;
         font-weight: 600;
         margin-bottom: 0.35rem;
         color: var(--text-primary);
       }
 
+      /* A field's edge is --border-field, 3:1 against its fill (WCAG 1.4.11), so the older
+         relatives can see where to type. 17px text also stops iOS zooming in on focus. */
       .form-control {
         width: 100%;
-        padding: 0.6rem 0.75rem;
+        min-height: 48px;
+        padding: 0.65rem 0.875rem;
         border-radius: var(--radius-sm);
-        border: 1px solid var(--border-strong);
+        border: 1.5px solid var(--border-field);
         background: var(--bg-card);
         color: var(--text-primary);
         font-family: inherit;
-        font-size: 0.9rem;
-        transition: border-color 0.15s, background-color 0.15s;
+        font-size: 1.0625rem;
+        line-height: 1.45;
+        transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+      }
+
+      .form-control::placeholder {
+        color: var(--text-muted);
+        opacity: 1;
+      }
+
+      .form-control:hover:not(:focus) {
+        border-color: var(--text-muted);
       }
 
       .form-control:focus {
         outline: none;
         border-color: var(--accent);
         background: var(--bg-surface);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
       }
 
       textarea.form-control {
@@ -1816,7 +2079,7 @@
         align-items: center;
         gap: 0.35rem;
         padding: 0.4rem 0.75rem;
-        font-size: 0.82rem;
+        font-size: 0.875rem;
         font-weight: 600;
         border-radius: var(--radius-sm);
         border: 1px solid var(--border-subtle);
@@ -1858,7 +2121,7 @@
       .step-builder-badge {
         background: var(--accent);
         color: var(--on-accent);
-        font-size: 0.8rem;
+        font-size: 0.8125rem;
         font-weight: 700;
         padding: 0.2rem 0.65rem;
         border-radius: var(--radius-full);
@@ -1975,7 +2238,7 @@
         border-radius: var(--radius-sm);
         background: var(--accent-gold-subtle);
         border-left: 3px solid var(--accent-gold);
-        font-size: 0.85rem;
+        font-size: 0.9375rem;
         color: var(--text-primary);
         display: flex;
         align-items: flex-start;
@@ -2014,7 +2277,7 @@
         color: var(--bg-surface);
         padding: 0.7rem 1.25rem;
         border-radius: var(--radius-full);
-        font-size: 0.9rem;
+        font-size: 0.9375rem;
         font-weight: 600;
         box-shadow: var(--shadow-lg);
         display: flex;
@@ -2101,14 +2364,15 @@
 
       .ios-modal-title {
         font-size: 1.05rem;
-        font-weight: 700;
+        font-weight: var(--weight-heading);
         font-family: var(--font-serif);
         margin: 0;
         line-height: 1.2;
+        letter-spacing: -0.01em;
       }
 
       .ios-modal-subtitle {
-        font-size: 0.78rem;
+        font-size: 0.8125rem;
         color: var(--text-secondary);
         margin: 0.15rem 0 0 0;
       }
@@ -2151,7 +2415,7 @@
         border-radius: 50%;
         background: var(--accent);
         color: var(--on-accent);
-        font-size: 0.78rem;
+        font-size: 0.8125rem;
         font-weight: 700;
         display: grid;
         place-items: center;
@@ -2217,7 +2481,7 @@
         border: 1px solid var(--border-subtle);
         border-radius: var(--radius-md);
         color: var(--text-primary);
-        font-size: 0.875rem;
+        font-size: 0.9375rem;
         animation: fk-rise-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
@@ -2286,7 +2550,8 @@
       .empty-state-title {
         font-family: var(--font-serif);
         font-size: 1.35rem;
-        font-weight: 600;
+        font-weight: var(--weight-heading);
+        letter-spacing: -0.01em;
       }
 
       .empty-state-body {
@@ -2312,7 +2577,8 @@
         margin-bottom: 1.1rem;
         font-family: var(--font-serif);
         font-size: 1.25rem;
-        font-weight: 600;
+        font-weight: var(--weight-heading);
+        letter-spacing: -0.01em;
       }
 
       .settings-card-icon {
@@ -2326,14 +2592,14 @@
       }
 
       .settings-body {
-        font-size: 0.95rem;
+        font-size: 1rem;
         line-height: 1.55;
         color: var(--text-primary);
       }
 
       .settings-note {
         margin-top: 0.6rem;
-        font-size: 0.8rem;
+        font-size: 0.875rem;
         color: var(--text-muted);
       }
 
@@ -2345,6 +2611,238 @@
 
       .settings-card + .settings-card {
         margin-top: 1.25rem;
+      }
+
+      /* Seasons: "Automatic", then a tile per season. Each tile (and each slice of the
+         Automatic wheel) carries its own data-season, so it's drawn in that season's colours. */
+      .season-picker {
+        display: grid;
+        gap: 0.75rem;
+        min-width: 0;
+        margin-top: 1.1rem;
+        padding: 0;
+        border: 0;
+      }
+
+      .season-auto,
+      .season-tile {
+        position: relative;
+        border: 1.5px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        color: var(--text-primary);
+        cursor: pointer;
+        transition:
+          transform 0.3s var(--ease-emphasized),
+          border-color 0.2s ease,
+          box-shadow 0.3s var(--ease-emphasized);
+      }
+
+      /* The radios stay in the tab order and keyboard-operable (arrows move between seasons);
+         only their dots are hidden. */
+      .season-radio {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+
+      .season-auto:has(.season-radio:focus-visible),
+      .season-tile:has(.season-radio:focus-visible) {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+      }
+
+      @media (hover: hover) {
+        .season-auto:hover,
+        .season-tile:hover {
+          border-color: var(--border-strong);
+          box-shadow: var(--shadow-md);
+          transform: translateY(-2px);
+        }
+      }
+
+      .season-auto.is-selected,
+      .season-tile.is-selected {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent), var(--shadow-md);
+      }
+
+      .season-auto {
+        display: flex;
+        align-items: center;
+        gap: 0.9rem;
+        min-height: 4.25rem;
+        padding: 0.7rem 1rem;
+        background: var(--bg-card);
+      }
+
+      /* The four seasons' accents as a pinwheel, clockwise from spring at the top left. */
+      .season-auto-wheel {
+        position: relative;
+        display: grid;
+        flex: none;
+        grid-template-columns: 1fr 1fr;
+        width: 2.75rem;
+        height: 2.75rem;
+        overflow: hidden;
+        border-radius: 50%;
+        box-shadow: var(--shadow-sm);
+        transition: rotate 0.6s var(--ease-emphasized);
+      }
+      .season-auto.is-selected .season-auto-wheel { rotate: 90deg; }
+      .season-auto-slice { background: var(--accent); }
+      .season-auto-slice:nth-child(3) { grid-area: 2 / 2; }
+      .season-auto-slice:nth-child(4) { grid-area: 2 / 1; }
+      .season-auto-hub {
+        position: absolute;
+        inset: 22%;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--bg-surface);
+        color: var(--text-secondary);
+        font-size: 0.8125rem;
+        transition: rotate 0.6s var(--ease-emphasized);
+      }
+      .season-auto.is-selected .season-auto-hub { rotate: -90deg; }
+
+      .season-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+      }
+      @media (min-width: 560px) {
+        .season-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      }
+
+      .season-tile {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        padding: 0.5rem 0.5rem 0.7rem;
+        background: var(--bg-main);
+      }
+
+      /* A peek at a recipe card in the season's colours. */
+      .season-preview {
+        position: relative;
+        display: block;
+        aspect-ratio: 5 / 4;
+        overflow: hidden;
+        border-radius: calc(var(--radius-md) - 6px);
+        background:
+          radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 65%),
+          radial-gradient(circle at 0% 100%, var(--accent-gold-subtle), transparent 70%),
+          var(--accent-subtle);
+      }
+      .season-preview-card {
+        position: absolute;
+        inset: 22% 14% -12%;
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        padding: 0.35rem;
+        border-radius: 0.5rem;
+        background: var(--bg-surface);
+        box-shadow: var(--shadow-md);
+        transition: translate 0.4s var(--ease-emphasized);
+      }
+      .season-tile.is-selected .season-preview-card { translate: 0 -8%; }
+      .season-preview-photo {
+        display: grid;
+        flex: none;
+        place-items: center;
+        height: 2.1rem;
+        border-radius: 0.3rem;
+        background: var(--accent-subtle);
+        color: var(--accent);
+        font-size: 0.875rem;
+      }
+      .season-preview-line {
+        flex: none;
+        width: 80%;
+        height: 0.28rem;
+        border-radius: var(--radius-full);
+        background: var(--border-subtle);
+      }
+      .season-preview-line.is-accent {
+        width: 55%;
+        height: 0.34rem;
+        background: var(--accent);
+      }
+      .season-preview-line.is-short { width: 40%; }
+      .season-preview-dots {
+        position: absolute;
+        top: 0.4rem;
+        right: 0.45rem;
+        display: flex;
+      }
+      .season-preview-dots > span {
+        width: 0.75rem;
+        height: 0.75rem;
+        border: 2px solid var(--bg-card);
+        border-radius: 50%;
+      }
+      .season-preview-dots > span + span { margin-left: -0.2rem; }
+      .season-preview-dots .is-accent { background: var(--accent); }
+      .season-preview-dots .is-gold { background: var(--accent-gold); }
+
+      .season-option-text {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        padding-inline: 0.2rem;
+        line-height: 1.25;
+      }
+      .season-option-name {
+        font-family: var(--font-serif);
+        font-size: 1.0625rem;
+        font-weight: var(--weight-heading);
+        letter-spacing: -0.01em;
+      }
+      .season-option-sub {
+        margin-top: 0.1rem;
+        font-size: 0.8125rem;
+        color: var(--text-muted);
+      }
+
+      .season-check {
+        flex: none;
+        width: 1.5rem;
+        height: 1.5rem;
+        padding: 0.22rem;
+        border-radius: 50%;
+        background: var(--accent);
+        color: var(--on-accent);
+        box-shadow: var(--shadow-sm);
+        opacity: 0;
+        scale: 0.4;
+        transition:
+          opacity 0.2s ease,
+          scale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      .season-auto .season-check { margin-left: auto; }
+      .season-tile .season-check {
+        position: absolute;
+        top: 0.9rem;
+        left: 0.9rem;
+      }
+      .is-selected > .season-check {
+        opacity: 1;
+        scale: 1;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .season-auto,
+        .season-tile,
+        .season-auto-wheel,
+        .season-auto-hub,
+        .season-preview-card,
+        .season-check {
+          transition: none;
+        }
       }
 
       /* Deleted recipes: a disclosure that slides open */
@@ -2381,7 +2879,7 @@
         border-radius: var(--radius-full);
         background: var(--accent-subtle);
         color: var(--accent);
-        font-size: 0.78rem;
+        font-size: 0.8125rem;
         text-align: center;
       }
 
@@ -2451,7 +2949,7 @@
       }
 
       .trash-when {
-        font-size: 0.8rem;
+        font-size: 0.8125rem;
         color: var(--text-muted);
       }
 
@@ -2635,7 +3133,7 @@
       .fk-menu-brand-title {
         font-family: var(--font-serif);
         font-size: 1.15rem;
-        font-weight: 700;
+        font-weight: var(--weight-heading);
         letter-spacing: -0.01em;
       }
 
@@ -2645,7 +3143,7 @@
 
       .fk-menu-eyebrow {
         padding: 0.35rem 0.5rem 0.25rem;
-        font-size: 0.68rem;
+        font-size: 0.75rem;
         font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
@@ -2854,7 +3352,7 @@
         background: transparent;
         color: var(--text-primary);
         font-family: inherit;
-        font-size: 0.8rem;
+        font-size: 0.8125rem;
         font-weight: 700;
         cursor: pointer;
         transition: background-color 0.15s ease;
@@ -2865,7 +3363,7 @@
       .fk-stepper-value {
         min-width: 3rem;
         text-align: center;
-        font-size: 0.78rem;
+        font-size: 0.8125rem;
         font-weight: 600;
         color: var(--text-secondary);
         font-variant-numeric: tabular-nums;
@@ -3207,11 +3705,11 @@
         font-weight: inherit;
       }
       .fk-splash-welcome {
-        font: italic 400 1.15em/1.2 var(--font-serif);
+        font: italic 500 1.15em/1.2 var(--font-serif);
         color: var(--accent);
       }
       .fk-splash-name {
-        font: 700 2.1em/1.08 var(--font-serif);
+        font: var(--weight-heading) 2.1em/1.08 var(--font-serif);
         letter-spacing: -0.015em;
         text-wrap: balance;
         color: var(--text-primary);
@@ -3260,7 +3758,7 @@
         background: var(--bg-surface);
         box-shadow: var(--fk-splash-pill-shadow);
         color: var(--text-primary);
-        font-size: 0.78em;
+        font-size: 0.8em;
         /* Press feedback uses scale: the entrance animation's fill holds transform. */
         transition: scale 0.15s ease;
       }

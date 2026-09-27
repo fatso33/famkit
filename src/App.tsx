@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useTheme } from './hooks/useTheme';
 import { useFontScale } from './hooks/useFontScale';
+import { useSeason } from './hooks/useSeason';
 import { useLanguage } from './hooks/useLanguage';
 import { useCookMode } from './hooks/useCookMode';
 import { usePWAInstall } from './hooks/usePWAInstall';
@@ -19,7 +20,8 @@ import {
 } from './utils/recipeTranslation';
 import { diffRecipes, recipeAtVersion, versionSummaries } from './utils/recipeVersions';
 import { restorableRecipes } from './utils/recipeTrash';
-import { isOnScreen, transitionView } from './utils/viewTransition';
+import { isOnScreen, transitionTheme, transitionView } from './utils/viewTransition';
+import { SeasonPreference } from './utils/season';
 import { Plus, Share2 } from 'lucide-react';
 import { FloatingMenu, MenuAction } from './components/layout/FloatingMenu';
 import { InstallCard } from './components/layout/InstallCard';
@@ -49,6 +51,13 @@ interface NavigateOptions {
 export default function App() {
   const { theme, toggleTheme } = useTheme();
   const { percent: fontPercent, increaseScale, decreaseScale } = useFontScale();
+  const {
+    preference: seasonPreference,
+    season,
+    calendarSeason,
+    setPreference: setSeasonPreference,
+    seasonFor,
+  } = useSeason();
   const { language, toggleLanguage, t } = useLanguage();
   const { isCookModeOn, toggleCookMode, isSupported: isWakeLockSupported } = useCookMode();
   const { isBannerVisible, triggerInstall, dismissBanner, showIOSModal, setShowIOSModal } =
@@ -122,6 +131,12 @@ export default function App() {
       },
     });
     showToast(t.recipeDeleted, 'info', { label: t.undo, onAction: () => restoreRecipe(id) });
+  };
+
+  // A new season's colours spread out in a circle from the option that was tapped.
+  const changeSeason = (next: SeasonPreference, origin: { x: number; y: number }) => {
+    if (seasonFor(next) === season) setSeasonPreference(next);
+    else transitionTheme(() => setSeasonPreference(next), origin);
   };
 
   const handleRestore = (id: string) => {
@@ -256,6 +271,10 @@ export default function App() {
             deletedRecipes={restorableRecipes(allRecipes, currentUser, isFirebaseConfigured)}
             language={language}
             onRestore={handleRestore}
+            seasonPreference={seasonPreference}
+            season={season}
+            calendarSeason={calendarSeason}
+            onSeasonChange={changeSeason}
             t={t}
           />
         ) : selectedRecipe ? (

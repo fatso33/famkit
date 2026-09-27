@@ -5,6 +5,10 @@ on:
     branches:
       - main
   workflow_dispatch:
+  # Rebuild on the first day of each season, so the manifest's colours (the installed app's
+  # splash screen) follow the season. See seasonalManifest() in vite.config.ts.
+  schedule:
+    - cron: '5 0 1 3,6,9,12 *'
 
 permissions:
   contents: read

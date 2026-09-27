@@ -1,4 +1,5 @@
 import { Language } from '../types/recipe';
+import type { Season } from '../utils/season';
 
 /** Polish noun form for a count: 1 składnik, 2–4 (and 22–24, …) składniki, else składników. */
 function plPlural(n: number, one: string, few: string, many: string): string {
@@ -171,6 +172,14 @@ export interface UiTranslations {
   comingSoonToast: string;
   makesEmptyTitle: string;
   makesEmptyBody: string;
+  seasonSection: string;
+  seasonInfo: string;
+  seasonAuto: string;
+  /** Under "Automatic": which season the calendar gives today. */
+  seasonAutoNow: (season: Season) => string;
+  seasonNames: Record<Season, string>;
+  /** Each season's palette, named for what inspired it. */
+  seasonPalettes: Record<Season, string>;
   translationSection: string;
   translationInfo: string;
   translationOfflineNote: string;
@@ -346,6 +355,19 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     comingSoonToast: 'Makes are coming soon!',
     makesEmptyTitle: 'No makes yet',
     makesEmptyBody: 'This is where your makes will live. Coming soon.',
+    seasonSection: 'Seasons',
+    seasonInfo:
+      'The colours change with the seasons. Text stays just as easy to read all year round.',
+    seasonAuto: 'Automatic',
+    seasonAutoNow: (season: Season) =>
+      `Follows the calendar, now ${UI_TEXT.en.seasonNames[season].toLowerCase()}`,
+    seasonNames: { spring: 'Spring', summer: 'Summer', autumn: 'Autumn', winter: 'Winter' },
+    seasonPalettes: {
+      spring: 'Dill & Butter',
+      summer: 'Baltic',
+      autumn: 'Heirloom Hearth',
+      winter: 'Porcelain & Cobalt',
+    },
     translationSection: 'Recipe translation',
     translationInfo:
       'New and edited recipes are translated automatically between English and Polish, so everyone can read them in their own language.',
@@ -522,6 +544,19 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     comingSoonToast: 'Wypieki już wkrótce!',
     makesEmptyTitle: 'Nie ma jeszcze wypieków',
     makesEmptyBody: 'Tu wkrótce pojawią się Twoje wypieki.',
+    seasonSection: 'Pory roku',
+    seasonInfo:
+      'Kolory zmieniają się razem z porami roku. Tekst przez cały rok czyta się równie łatwo.',
+    seasonAuto: 'Automatycznie',
+    seasonAutoNow: (season: Season) =>
+      `Według kalendarza, teraz ${UI_TEXT.pl.seasonNames[season].toLowerCase()}`,
+    seasonNames: { spring: 'Wiosna', summer: 'Lato', autumn: 'Jesień', winter: 'Zima' },
+    seasonPalettes: {
+      spring: 'Koperek i masło',
+      summer: 'Bałtyk',
+      autumn: 'Domowe ognisko',
+      winter: 'Porcelana i kobalt',
+    },
     translationSection: 'Tłumaczenie przepisów',
     translationInfo:
       'Nowe i edytowane przepisy są automatycznie tłumaczone między polskim a angielskim, aby każdy mógł je przeczytać w swoim języku.',

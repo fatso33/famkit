@@ -92,7 +92,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
             <div
               className="w-14 h-14 rounded-[var(--radius-md)] flex items-center justify-center mx-auto mb-4 border"
               style={{
-                backgroundColor: 'rgba(200, 90, 50, 0.1)',
+                backgroundColor: 'var(--accent-subtle)',
                 borderColor: 'var(--accent)',
                 color: 'var(--accent)',
               }}
