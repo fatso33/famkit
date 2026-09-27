@@ -1,10 +1,24 @@
 @import "tailwindcss";
 
+      /* Google's Plus Jakarta Sans subsets stop short of the Number Forms block, so ingredient
+         amounts like ⅓ and ⅛ fell back to the phone's font (½ ¼ ¾ are Latin-1 and arrive with
+         the main font). This is Google's own subset of just those six glyphs, all weights (2 KB,
+         OFL: see OFL-PlusJakartaSans.txt). Vite inlines it into this stylesheet, so it works
+         offline from the first visit. Remove it once the reading font is self-hosted with the
+         fraction block included. */
+      @font-face {
+        font-family: 'Plus Jakarta Sans Fractions';
+        font-style: normal;
+        font-weight: 200 800;
+        font-display: swap;
+        src: url('./assets/fonts/plus-jakarta-sans-fractions.woff2') format('woff2');
+        unicode-range: U+2153-2154, U+215B-215E;
+      }
 
       :root {
         --font-scale: 1;
         --font-serif: 'Playfair Display', Georgia, serif;
-        --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+        --font-sans: 'Plus Jakarta Sans Fractions', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 
         /* Family Kitchen Heirloom (light). Terracotta and honey are deepened slightly so text meets 4.5:1. */
         --bg-main: #fbf9f5;
