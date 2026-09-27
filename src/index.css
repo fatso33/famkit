@@ -363,6 +363,16 @@
         --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
         --ease-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
         --ease-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+        /* The app's motion (the splash keeps its own tuned curves above). Each starts at no
+           more than ~3x its average speed. Curves that burst out at 5-14x put most of the
+           movement into the first few frames, which reads as stutter on a phone. */
+        --ease-glide: cubic-bezier(0.32, 0.72, 0, 1);
+        --ease-soft: cubic-bezier(0.25, 0.8, 0.25, 1);
+        /* A damped spring (ζ 0.65, ~7% overshoot), sampled: things that pop out of a button. */
+        --spring-soft: linear(0, 0.0922, 0.2933, 0.5193, 0.721, 0.876, 0.9799, 1.0391, 1.0644, 1.0672, 1.0575, 1.0427, 1.0276, 1.0149, 1.0056, 0.9996, 0.9965, 0.9954, 0.9956, 0.9964, 1);
+        /* The recipe photo's flight between its card and the recipe page. hooks/useUnroll
+           reads the real duration from the running animation, so this is the only copy. */
+        --morph-duration: 0.56s;
         /* The two ends of the recipe photo morph, so its corners can reshape in flight:
            the hero's rounded frame, and a card's photo (rounded top inside the card's 1px
            border, square bottom where the card's text begins). */
@@ -383,16 +393,16 @@
       /* Into a sub-page (a recipe, Settings): it slides in from the right as the page
          behind drifts left and fades. Back out reverses it. */
       :root[data-nav='forward']::view-transition-old(root) {
-        animation: vt-exit-to-left 0.32s var(--ease-emphasized) both;
+        animation: vt-exit-to-left 0.32s var(--ease-glide) both;
       }
       :root[data-nav='forward']::view-transition-new(root) {
-        animation: vt-enter-from-right 0.42s var(--ease-emphasized) both;
+        animation: vt-enter-from-right 0.46s var(--ease-glide) both;
       }
       :root[data-nav='back']::view-transition-old(root) {
-        animation: vt-exit-to-right 0.32s var(--ease-emphasized) both;
+        animation: vt-exit-to-right 0.32s var(--ease-glide) both;
       }
       :root[data-nav='back']::view-transition-new(root) {
-        animation: vt-enter-from-left 0.42s var(--ease-emphasized) both;
+        animation: vt-enter-from-left 0.46s var(--ease-glide) both;
       }
 
       /* Between main pages: the old page fades out, the new one fades up through it. */
@@ -400,7 +410,7 @@
         animation: vt-fade-out 0.12s linear both;
       }
       :root[data-nav='fade']::view-transition-new(root) {
-        animation: vt-fade-through 0.34s var(--ease-decelerate) both;
+        animation: vt-fade-through 0.38s var(--ease-soft) both;
       }
 
       /* A photo opening or closing: the page cross-fades under the photo's morph. */
@@ -411,7 +421,7 @@
 
       /* The floating button, its menu and the toast stay put while the page moves:
          only their live selves show, never a sliding snapshot. */
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade']) .fab-menu {
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade']) .fab-group {
         view-transition-name: fk-fab;
       }
       :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade']) .fk-menu-layer {
@@ -446,8 +456,8 @@
       }
       ::view-transition-group(recipe-photo),
       ::view-transition-group(zoom-photo) {
-        animation-duration: 0.48s;
-        animation-timing-function: var(--ease-emphasized);
+        animation-duration: var(--morph-duration);
+        animation-timing-function: var(--ease-glide);
       }
       /* The two ends crop the photo differently, so both fill the moving frame, cropped. */
       ::view-transition-old(recipe-photo),
@@ -457,31 +467,110 @@
         height: 100%;
         object-fit: cover;
         overflow: clip;
-        animation-duration: 0.48s;
-        animation-timing-function: var(--ease-emphasized);
+        animation-duration: var(--morph-duration);
+        animation-timing-function: var(--ease-glide);
       }
-      /* The photo's corners reshape in flight, clipped by the frame both snapshots share,
-         so it lands with exactly the corners of where it's going: no snap at the end. */
-      ::view-transition-image-pair(recipe-photo) {
-        overflow: clip;
-      }
+      /* The photo's corners reshape in flight, so it lands with exactly the corners of where
+         it's going. A clip-path, not border-radius: the compositor animates it, so it never
+         waits on the page's main thread. */
       :root[data-nav='forward']::view-transition-image-pair(recipe-photo) {
-        animation: vt-corners-to-hero 0.48s var(--ease-emphasized) both;
+        animation: vt-clip-to-hero var(--morph-duration) var(--ease-glide) both;
       }
       :root[data-nav='back']::view-transition-image-pair(recipe-photo) {
-        animation: vt-corners-to-card 0.48s var(--ease-emphasized) both;
+        animation: vt-clip-to-card var(--morph-duration) var(--ease-glide) both;
       }
-      @keyframes vt-corners-to-hero {
-        from { border-radius: var(--card-photo-corners); }
-        to { border-radius: var(--hero-radius); }
+      @keyframes vt-clip-to-hero {
+        from { clip-path: inset(0 round var(--card-photo-corners)); }
+        to { clip-path: inset(0 round var(--hero-radius)); }
       }
-      @keyframes vt-corners-to-card {
-        from { border-radius: var(--hero-radius); }
-        to { border-radius: var(--card-photo-corners); }
+      @keyframes vt-clip-to-card {
+        from { clip-path: inset(0 round var(--hero-radius)); }
+        to { clip-path: inset(0 round var(--card-photo-corners)); }
       }
       ::view-transition-old(zoom-photo),
       ::view-transition-new(zoom-photo) {
         border-radius: var(--radius-sm);
+      }
+
+      /* Where the browser can nest morphs, the photo flies uncropped (utils/photoMorph) inside
+         its frame: the frame morphs from the card's photo area to the hero's and clips the
+         whole photo, so there is only ever one picture in flight, never two crops fading. */
+      @supports (view-transition-group: nearest) and selector(::view-transition-group-children(a)) {
+        :root[data-morph='recipe'] .recipe-card.is-morph-target .card-media,
+        :root[data-morph='recipe'] .detail-hero-frame {
+          view-transition-name: recipe-frame;
+        }
+        :root[data-morph='recipe'] .recipe-card.is-morph-target .card-media img,
+        :root[data-morph='recipe'] .detail-hero-img {
+          view-transition-group: nearest;
+        }
+        /* The card's badge fades where it is rather than riding under the photo. */
+        :root[data-morph='recipe'] .recipe-card.is-morph-target .card-badge {
+          view-transition-name: recipe-badge;
+        }
+        /* The browser carries the badge's frosted backdrop over to its morph group, where it
+           would stay drawn on the flying photo after the badge itself had faded. */
+        ::view-transition-group(recipe-badge) {
+          backdrop-filter: none;
+        }
+        ::view-transition-group(recipe-frame) {
+          animation-duration: var(--morph-duration);
+          animation-timing-function: var(--ease-glide);
+        }
+        ::view-transition-old(recipe-frame),
+        ::view-transition-new(recipe-frame) {
+          height: 100%;
+          animation-duration: var(--morph-duration);
+          animation-timing-function: var(--ease-glide);
+        }
+        ::view-transition-group-children(recipe-frame) {
+          overflow: clip;
+        }
+        /* The corners now reshape on the frame's clip instead of the photo's. */
+        :root[data-nav]::view-transition-image-pair(recipe-photo) {
+          animation: none;
+        }
+        :root[data-nav='forward']::view-transition-group-children(recipe-frame) {
+          animation: vt-clip-to-hero var(--morph-duration) var(--ease-glide) both;
+        }
+        :root[data-nav='back']::view-transition-group-children(recipe-frame) {
+          animation: vt-clip-to-card var(--morph-duration) var(--ease-glide) both;
+        }
+        :root[data-nav='forward']::view-transition-old(recipe-badge) {
+          animation: vt-fade-out 0.16s linear both;
+        }
+        :root[data-nav='back']::view-transition-new(recipe-badge) {
+          animation: fk-fade-in 0.24s ease calc(var(--morph-duration) * 0.7) both;
+        }
+      }
+
+      /* Opening a recipe, the vault recedes and fades as the photo flies up; going back, it
+         comes forward as the photo flies home. The page on top fades over an opaque one below,
+         blended normally, so the background never dips or flashes mid-fade. */
+      @media (prefers-reduced-motion: no-preference) {
+        :root[data-morph='recipe'][data-nav]::view-transition-image-pair(root) {
+          isolation: auto;
+        }
+        :root[data-morph='recipe'][data-nav]::view-transition-old(root),
+        :root[data-morph='recipe'][data-nav]::view-transition-new(root) {
+          mix-blend-mode: normal;
+          animation: none;
+        }
+        :root[data-morph='recipe'][data-nav='forward']::view-transition-old(root) {
+          z-index: 1;
+          animation: vt-recede 0.42s var(--ease-soft) both;
+        }
+        :root[data-morph='recipe'][data-nav='back']::view-transition-new(root) {
+          animation: vt-come-forward var(--morph-duration) var(--ease-soft) both;
+        }
+      }
+      @keyframes vt-recede {
+        to { opacity: 0; transform: scale(0.96); }
+      }
+      @keyframes vt-come-forward {
+        from { opacity: 0; transform: scale(0.965); }
+        70% { opacity: 1; }
+        to { opacity: 1; transform: none; }
       }
 
       @keyframes vt-exit-to-left {
@@ -524,8 +613,20 @@
           animation: fk-fade-in 0.15s linear both;
         }
         ::view-transition-group(recipe-photo),
-        ::view-transition-group(zoom-photo) {
+        ::view-transition-group(recipe-frame),
+        ::view-transition-group(zoom-photo),
+        ::view-transition-group-children(recipe-frame) {
           animation: none;
+        }
+        ::view-transition-old(recipe-frame),
+        ::view-transition-old(recipe-badge) {
+          animation: vt-fade-out 0.15s linear both;
+        }
+        ::view-transition-new(recipe-badge) {
+          animation: fk-fade-in 0.15s linear both;
+        }
+        ::view-transition-new(recipe-frame) {
+          animation: fk-fade-in 0.15s linear both;
         }
       }
 
@@ -862,6 +963,8 @@
         aspect-ratio: 16/10;
         background: var(--bg-card);
         overflow: hidden;
+        /* The card clips these corners anyway; the photo's frame carries them into its morph. */
+        border-radius: var(--card-photo-corners);
       }
 
       .card-media img {
@@ -871,8 +974,12 @@
         transition: transform 0.35s ease;
       }
 
-      .recipe-card:hover .card-media img {
-        transform: scale(1.03);
+      /* Only where hover is real: a tap on a phone would leave the photo zoomed, and the morph
+         would start from the zoomed photo, a visible jump. */
+      @media (hover: hover) {
+        .recipe-card:hover .card-media img {
+          transform: scale(1.03);
+        }
       }
 
       .card-badge {
@@ -954,6 +1061,8 @@
 
       .detail-hero-frame {
         position: relative;
+        /* Above the recipe's roll, which tucks away under the photo. */
+        z-index: 2;
         border-radius: var(--hero-radius);
         overflow: hidden;
         width: 100%;
@@ -1064,6 +1173,13 @@
         .recipe-layout {
           grid-template-columns: 1fr;
           gap: 2rem;
+        }
+        /* Stacked under the ingredients, the method starts off screen, so the browser lays it
+           out only as it nears the screen. Opening a recipe then lays out half as much text
+           before its photo can start to fly. */
+        .method-panel {
+          content-visibility: auto;
+          contain-intrinsic-size: auto 1200px;
         }
       }
 
@@ -1451,7 +1567,7 @@
       /* The editor rises from the bottom like a native sheet on phones, and settles in as a
          dialog on larger screens. Closing reverses it (fk-exit-*, see useExitAnimation). */
       .modal-sheet {
-        animation: fk-sheet-up 0.52s var(--ease-decelerate) both;
+        animation: fk-sheet-up 0.5s var(--ease-glide) both;
       }
       .modal-overlay.is-closing {
         pointer-events: none;
@@ -1464,7 +1580,7 @@
       }
       @media (min-width: 640px) {
         .modal-sheet {
-          animation: fk-dialog-in 0.38s var(--ease-decelerate) both;
+          animation: fk-dialog-in 0.38s var(--ease-glide) both;
         }
         .modal-overlay.is-closing .modal-sheet {
           animation: fk-exit-dialog 0.22s var(--ease-accelerate) both;
@@ -1651,7 +1767,7 @@
         background: var(--accent-subtle);
         border-bottom: 1px solid var(--border-subtle);
         color: var(--text-primary);
-        animation: fk-rise-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: fk-rise-in 0.35s var(--ease-glide) both;
       }
 
       .restore-banner > svg {
@@ -1762,7 +1878,7 @@
         border-bottom: 0;
         border-radius: var(--radius-xl) var(--radius-xl) 0 0;
         box-shadow: var(--shadow-lg);
-        animation: version-sheet-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: version-sheet-in 0.42s var(--ease-glide) both;
       }
 
       .version-sheet:focus {
@@ -1826,7 +1942,7 @@
         grid-template-columns: 1.5rem 1fr;
         gap: 0.5rem;
         padding-bottom: 0.6rem;
-        animation: fk-rise-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: fk-rise-in 0.4s var(--ease-glide) both;
       }
 
       .version-entry::before {
@@ -2288,7 +2404,7 @@
         opacity: 0;
         /* Hidden (and out of the accessibility tree) once the fade-out has finished. */
         visibility: hidden;
-        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease,
+        transition: transform 0.3s var(--ease-glide), opacity 0.25s ease,
           visibility 0s linear 0.3s;
       }
       .app-toast.show {
@@ -2338,7 +2454,7 @@
         width: 100%;
         max-width: 400px;
         overflow: hidden;
-        animation: fk-dialog-in 0.36s var(--ease-decelerate) both;
+        animation: fk-dialog-in 0.36s var(--ease-glide) both;
       }
 
       .ios-modal-header {
@@ -2448,26 +2564,34 @@
         background: var(--bg-card);
       }
 
-      /* Back pill on a recipe page: sticks to the top so the way back is always in reach. */
-      .detail-back-pill {
-        position: sticky;
-        top: calc(0.75rem + env(safe-area-inset-top));
-        z-index: 20;
-        margin-bottom: 1rem;
-        color: var(--text-primary);
-        background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        box-shadow: var(--shadow-md);
+      /* The recipe unrolls down out of its photo like a scroll (hooks/useUnroll): the roll
+         travels down the page and the paper above it shows. It's only visible mid-roll. */
+      .detail-unroll {
+        position: relative;
       }
 
-      .detail-back-pill:hover {
-        background: var(--bg-card);
-      }
-
-      .detail-back-pill:focus-visible {
-        outline: 3px solid var(--accent);
-        outline-offset: 2px;
+      .detail-roll {
+        position: absolute;
+        z-index: 1;
+        top: 0;
+        left: -0.4rem;
+        right: -0.4rem;
+        height: 1.4rem;
+        margin-top: -0.7rem;
+        border-radius: var(--radius-full);
+        /* A paper cylinder lit from above: shaded top, a highlight, then its underside. */
+        background: linear-gradient(
+          180deg,
+          color-mix(in srgb, var(--bg-card) 62%, var(--text-muted)) 0%,
+          var(--bg-surface) 30%,
+          var(--bg-card) 58%,
+          color-mix(in srgb, var(--bg-card) 50%, var(--text-muted)) 100%
+        );
+        box-shadow:
+          0 0.75rem 1.25rem -0.65rem rgba(30, 18, 10, 0.42),
+          0 1px 2px rgba(30, 18, 10, 0.16);
+        opacity: 0;
+        pointer-events: none;
       }
 
       /* Install prompt card at the top of the recipe list */
@@ -2482,7 +2606,7 @@
         border-radius: var(--radius-md);
         color: var(--text-primary);
         font-size: 0.9375rem;
-        animation: fk-rise-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: fk-rise-in 0.4s var(--ease-glide) both;
       }
 
       .install-card-icon {
@@ -2632,9 +2756,9 @@
         color: var(--text-primary);
         cursor: pointer;
         transition:
-          transform 0.3s var(--ease-emphasized),
+          transform 0.3s var(--ease-glide),
           border-color 0.2s ease,
-          box-shadow 0.3s var(--ease-emphasized);
+          box-shadow 0.3s var(--ease-glide);
       }
 
       /* The radios stay in the tab order and keyboard-operable (arrows move between seasons);
@@ -2689,7 +2813,7 @@
         overflow: hidden;
         border-radius: 50%;
         box-shadow: var(--shadow-sm);
-        transition: rotate 0.6s var(--ease-emphasized);
+        transition: rotate 0.6s var(--ease-glide);
       }
       .season-auto.is-selected .season-auto-wheel { rotate: 90deg; }
       .season-auto-slice { background: var(--accent); }
@@ -2704,7 +2828,7 @@
         background: var(--bg-surface);
         color: var(--text-secondary);
         font-size: 0.8125rem;
-        transition: rotate 0.6s var(--ease-emphasized);
+        transition: rotate 0.6s var(--ease-glide);
       }
       .season-auto.is-selected .season-auto-hub { rotate: -90deg; }
 
@@ -2747,7 +2871,7 @@
         border-radius: 0.5rem;
         background: var(--bg-surface);
         box-shadow: var(--shadow-md);
-        transition: translate 0.4s var(--ease-emphasized);
+        transition: translate 0.4s var(--ease-glide);
       }
       .season-tile.is-selected .season-preview-card { translate: 0 -8%; }
       .season-preview-photo {
@@ -2886,7 +3010,7 @@
       .trash-chevron {
         margin-left: auto;
         color: var(--text-muted);
-        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        transition: transform 0.3s var(--ease-glide);
       }
 
       .trash-toggle[aria-expanded='true'] .trash-chevron {
@@ -2896,7 +3020,7 @@
       .trash-panel {
         display: grid;
         grid-template-rows: 0fr;
-        transition: grid-template-rows 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        transition: grid-template-rows 0.35s var(--ease-glide);
       }
 
       .trash-panel.is-open {
@@ -3004,14 +3128,136 @@
          attribution text instead, as Google permits. */
       .grecaptcha-badge { visibility: hidden; }
 
+      /* The floating menu button, and on a recipe page the back button that grows out of its
+         left side. With both out they sit in one glass pill, a single control. The menu button
+         never moves: the group's padding is taken off its offset from the corner. */
+      .fab-group {
+        --fab-size: 3.5rem;
+        --fab-pad: 0.375rem;
+        --fab-gap: 0.375rem;
+        /* How far the back button travels out from behind the menu button. */
+        --fab-shift: calc(var(--fab-size) + var(--fab-gap));
+        position: fixed;
+        right: calc(1.25rem - var(--fab-pad) + env(safe-area-inset-right));
+        bottom: calc(1.25rem - var(--fab-pad) + env(safe-area-inset-bottom));
+        z-index: 62;
+        display: flex;
+        gap: var(--fab-gap);
+        padding: var(--fab-pad);
+        /* The pill's padding shouldn't catch taps meant for the page. */
+        pointer-events: none;
+      }
+
+      .fab-group > button {
+        pointer-events: auto;
+      }
+
+      /* The pill slides out with the back button, clipped to its final shape, so its left end
+         stays perfectly round the whole way (a stretched shape would squash it). */
+      .fab-pill-track {
+        position: absolute;
+        inset: 0;
+        border-radius: var(--radius-full);
+        overflow: clip;
+        pointer-events: none;
+      }
+
+      .fab-pill {
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: color-mix(in srgb, var(--bg-card) 84%, transparent);
+        backdrop-filter: blur(16px) saturate(1.4);
+        -webkit-backdrop-filter: blur(16px) saturate(1.4);
+        border: 1px solid var(--border-strong);
+        box-shadow: inset 0 1px 0 color-mix(in srgb, var(--bg-surface) 70%, transparent);
+      }
+
+      .fab-group[data-back='none'] .fab-pill-track,
+      .fab-group[data-back='none'] .fab-back {
+        display: none;
+      }
+
+      .fab-back {
+        position: relative;
+        z-index: 1;
+        width: var(--fab-size);
+        height: var(--fab-size);
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 1px solid var(--border-subtle);
+        border-radius: 50%;
+        background: var(--bg-surface);
+        color: var(--accent);
+        box-shadow: var(--shadow-md);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          background-color 0.2s ease,
+          transform 0.3s var(--spring-soft);
+      }
+
+      .fab-back:hover { background: var(--bg-card-hover); }
+      .fab-back:active { transform: scale(0.92); }
+
+      .fab-back:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 3px;
+      }
+
+      /* Out: the menu button bulges as if pushing it out, the back button springs out from
+         behind it with the pill, and its arrow slides in last. Separate scale and translate
+         properties leave the button's own transform (the open X's turn, a press) alone. */
+      .fab-group[data-back='shown'] .fab-menu { animation: fab-push 0.56s ease-in-out both; }
+      .fab-group[data-back='shown'] .fab-back { animation: fab-back-out 0.74s var(--spring-soft) both; }
+      .fab-group[data-back='shown'] .fab-back-arrow { animation: fab-arrow-in 0.5s var(--ease-glide) 0.14s both; }
+      .fab-group[data-back='shown'] .fab-pill { animation: fab-pill-out 0.6s var(--ease-glide) both; }
+      /* In: it slides back under the menu button, which swallows it with a small squash. */
+      .fab-group[data-back='hidden'] .fab-back { animation: fab-back-in 0.34s cubic-bezier(0.5, 0, 0.25, 1) both; }
+      .fab-group[data-back='hidden'] .fab-pill { animation: fab-pill-in 0.34s cubic-bezier(0.5, 0, 0.25, 1) both; }
+      .fab-group[data-back='hidden'] .fab-menu { animation: fab-absorb 0.5s ease-out 0.16s both; }
+
+      @keyframes fab-push {
+        24% { scale: 1.07 0.94; translate: -0.15rem 0; }
+        58% { scale: 0.98 1.02; translate: 0 0; }
+        to { scale: 1; translate: 0 0; }
+      }
+      @keyframes fab-back-out {
+        from { translate: var(--fab-shift) 0; scale: 0.5; opacity: 0; }
+        25% { opacity: 1; }
+        to { translate: 0 0; scale: 1; opacity: 1; }
+      }
+      @keyframes fab-arrow-in {
+        from { translate: 0.5rem 0; opacity: 0; }
+      }
+      @keyframes fab-pill-out {
+        from { translate: var(--fab-shift) 0; opacity: 0; }
+        20% { opacity: 1; }
+        to { translate: 0 0; opacity: 1; }
+      }
+      @keyframes fab-back-in {
+        from { translate: 0 0; scale: 1; opacity: 1; }
+        65% { opacity: 1; }
+        to { translate: var(--fab-shift) 0; scale: 0.5; opacity: 0; visibility: hidden; }
+      }
+      @keyframes fab-pill-in {
+        from { translate: 0 0; opacity: 1; }
+        75% { opacity: 1; }
+        to { translate: var(--fab-shift) 0; opacity: 0; }
+      }
+      @keyframes fab-absorb {
+        35% { scale: 1.06 0.95; }
+        70% { scale: 0.99 1.01; }
+        to { scale: 1; }
+      }
+
       /* Floating menu button: bars morph into an X while the menu is open */
       .fab-menu {
-        position: fixed;
-        right: calc(1.25rem + env(safe-area-inset-right));
-        bottom: calc(1.25rem + env(safe-area-inset-bottom));
-        z-index: 62;
-        width: 3.5rem;
-        height: 3.5rem;
+        position: relative;
+        z-index: 2;
+        width: var(--fab-size);
+        height: var(--fab-size);
         display: grid;
         place-items: center;
         border: none;
@@ -3102,17 +3348,22 @@
         border: 1px solid var(--border-subtle);
         border-radius: var(--radius-xl);
         box-shadow: var(--shadow-lg);
-        transform-origin: calc(100% - 1.75rem) calc(100% + 2.5rem);
-        animation: fk-menu-in 0.46s cubic-bezier(0.16, 1, 0.3, 1) both;
+        /* The menu button's centre, from the panel's corner. FloatingMenu measures how far
+           the panel's far corner is (--menu-reach), so the unfurl spends none of its time
+           growing where nothing shows. */
+        --menu-origin: calc(100% - 1.75rem) calc(100% + 2.5rem);
+        transform-origin: var(--menu-origin);
+        /* Backwards only: once open, nothing clips the panel, so it can grow (larger text). */
+        animation: fk-menu-in 0.56s var(--ease-glide) backwards;
       }
 
       .fk-menu-layer.is-closing .fk-menu-panel {
-        animation: fk-menu-out 0.18s cubic-bezier(0.4, 0, 1, 1) both;
+        animation: fk-menu-out 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
       }
 
       .fk-menu-row {
-        animation: fk-rise-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
-        animation-delay: calc(60ms + var(--i, 0) * 26ms);
+        animation: fk-menu-row-in 0.46s var(--ease-glide) both;
+        animation-delay: calc(70ms + var(--i, 0) * 22ms);
       }
 
       .fk-menu-brand {
@@ -3404,23 +3655,33 @@
         to { opacity: 0; }
       }
 
+      @keyframes fab-fade-away {
+        to { opacity: 0; visibility: hidden; }
+      }
+
       @keyframes fk-rise-in {
         from { opacity: 0; transform: translateY(6px); }
         to { opacity: 1; transform: translateY(0); }
       }
 
+      /* Unfurls out of the menu button itself: the circle starts the button's size. */
       @keyframes fk-menu-in {
         from {
           opacity: 0;
-          transform: translateY(10px) scale(0.9);
-          clip-path: circle(0% at calc(100% - 1.75rem) calc(100% + 2.5rem));
+          transform: translateY(0.5rem) scale(0.94);
+          clip-path: circle(1.75rem at var(--menu-origin));
         }
-        40% { opacity: 1; }
+        22% { opacity: 1; }
         to {
           opacity: 1;
-          transform: translateY(0) scale(1);
-          clip-path: circle(150% at calc(100% - 1.75rem) calc(100% + 2.5rem));
+          transform: none;
+          clip-path: circle(var(--menu-reach, 60rem) at var(--menu-origin));
         }
+      }
+
+      @keyframes fk-menu-row-in {
+        from { opacity: 0; transform: translateY(0.6rem); }
+        to { opacity: 1; transform: none; }
       }
 
       @keyframes fk-sheet-up {
@@ -3450,9 +3711,19 @@
         to { opacity: 0; transform: translateY(10px) scale(0.97); }
       }
 
+      /* Furls back into the button. */
       @keyframes fk-menu-out {
-        from { opacity: 1; transform: translateY(0) scale(1); }
-        to { opacity: 0; transform: translateY(8px) scale(0.94); }
+        from {
+          opacity: 1;
+          transform: none;
+          clip-path: circle(var(--menu-reach, 60rem) at var(--menu-origin));
+        }
+        60% { opacity: 1; }
+        to {
+          opacity: 0;
+          transform: translateY(0.35rem) scale(0.96);
+          clip-path: circle(1.75rem at var(--menu-origin));
+        }
       }
 
       /* Reduced motion: a short fade instead of the bloom (it still ends, so the panel unmounts). */
@@ -3465,6 +3736,12 @@
         }
         .fk-menu-row,
         .install-card { animation: none; }
+        .fab-group[data-back='shown'] :is(.fab-menu, .fab-back-arrow) { animation: none; }
+        .fab-group[data-back='shown'] :is(.fab-back, .fab-pill) { animation: fk-fade-in 0.2s ease both; }
+        .fab-group[data-back='hidden'] .fab-menu { animation: none; }
+        .fab-group[data-back='hidden'] .fab-pill { animation: fk-fade-out 0.15s ease both; }
+        .fab-group[data-back='hidden'] .fab-back { animation: fab-fade-away 0.15s ease both; }
+        .fab-back,
         .fab-menu,
         .fab-menu-glyph > span,
         .fk-segmented-thumb,
@@ -4308,6 +4585,9 @@
         }
         .recipe-layout {
           display: block !important;
+        }
+        .method-panel {
+          content-visibility: visible !important;
         }
         .ingredients-panel {
           position: static !important;

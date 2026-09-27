@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useTheme } from './hooks/useTheme';
 import { useFontScale } from './hooks/useFontScale';
@@ -20,13 +20,21 @@ import {
 } from './utils/recipeTranslation';
 import { diffRecipes, recipeAtVersion, versionSummaries } from './utils/recipeVersions';
 import { restorableRecipes } from './utils/recipeTrash';
-import { isOnScreen, transitionTheme, transitionView } from './utils/viewTransition';
+import {
+  isOnScreen,
+  transitionTheme,
+  transitionView,
+  type NavMotion,
+} from './utils/viewTransition';
 import { SeasonPreference } from './utils/season';
 import { Plus, Share2 } from 'lucide-react';
 import { FloatingMenu, MenuAction } from './components/layout/FloatingMenu';
 import { InstallCard } from './components/layout/InstallCard';
 import { RecipeGridView } from './components/recipe-grid/RecipeGridView';
-import { RecipeDetailView } from './components/recipe-detail/RecipeDetailView';
+import {
+  RecipeDetailView,
+  type RecipePageHandle,
+} from './components/recipe-detail/RecipeDetailView';
 import { AddRecipeModal } from './components/recipe-form/AddRecipeModal';
 import { IOSInstallModal } from './components/layout/IOSInstallModal';
 import { MakesView } from './components/makes/MakesView';
@@ -44,6 +52,8 @@ interface NavigateOptions {
   animated?: boolean;
   /** False when the open recipe's card won't be there to morph into. */
   morph?: boolean;
+  /** How the page moves, when not the usual for where it's going. */
+  motion?: NavMotion;
   /** Other state changes that belong to the same transition. */
   alongside?: () => void;
 }
@@ -94,6 +104,12 @@ export default function App() {
   const [restoredVersion, setRestoredVersion] = useState<RecipeVersion | null>(null);
   // Switching versions remounts the editor, which shouldn't slide in again.
   const [editorReopened, setEditorReopened] = useState(false);
+  // The open recipe page, which unrolls out of its photo and rolls back up into it.
+  const recipePage = useRef<RecipePageHandle>(null);
+  // Set once the recipe has unrolled: a back button grows out of the menu button.
+  const [backShown, setBackShown] = useState(false);
+  // While the recipe rolls up on its way back to the vault.
+  const leavingRecipe = useRef(false);
 
   // What the editor starts from: the recipe, or an earlier version's content on it.
   const editBase =
@@ -166,6 +182,7 @@ export default function App() {
     flushSync(() => setLastRecipeId(id));
     transitionView(
       () => {
+        setBackShown(false);
         setSelectedRecipeId(id);
         jumpTo(0);
       },
@@ -175,11 +192,11 @@ export default function App() {
 
   const navigateTo = (
     target: AppPage,
-    { animated = true, morph = true, alongside }: NavigateOptions = {},
+    { animated = true, morph = true, motion: motionOverride, alongside }: NavigateOptions = {},
   ) => {
     const fromDepth = onSubPage ? 1 : 0;
     const toDepth = target === 'settings' ? 1 : 0;
-    const motion = toDepth > fromDepth ? 'forward' : toDepth < fromDepth ? 'back' : 'fade';
+    const goingBack = toDepth < fromDepth;
     if (page !== 'settings' && !onSubPage) mainScroll.current[page] = window.scrollY;
     // The recipe's photo shrinks back into its card, when it's in view to be seen doing so.
     const morphsBack =
@@ -187,21 +204,56 @@ export default function App() {
       target === 'recipes' &&
       !!selectedRecipe &&
       isOnScreen(document.querySelector('.detail-hero-img'));
+    const motion: NavMotion = morphsBack
+      ? 'back'
+      : (motionOverride ?? (toDepth > fromDepth ? 'forward' : goingBack ? 'back' : 'fade'));
 
     transitionView(
       () => {
         alongside?.();
+        setBackShown(false);
         setPage(target);
         if (target !== 'settings') setMainPage(target);
         setSelectedRecipeId(null);
-        jumpTo(motion === 'back' && target !== 'settings' ? mainScroll.current[target] : 0);
+        jumpTo(goingBack && target !== 'settings' ? mainScroll.current[target] : 0);
       },
       { motion, morph: morphsBack ? 'recipe' : undefined, animated },
     );
   };
 
+  const latestNavigateTo = useRef(navigateTo);
+  const onRecipePage = useRef(false);
+  useEffect(() => {
+    latestNavigateTo.current = navigateTo;
+    onRecipePage.current = page === 'recipes' && !!selectedRecipe;
+  });
+
+  // Back from a recipe: it rolls up into its photo (as the back button tucks into the menu
+  // button), then the photo flies home to its card as the vault fades in.
+  const leaveRecipe = (animated = true) => {
+    if (leavingRecipe.current) return;
+    setBackShown(false);
+    const rolling = animated ? recipePage.current?.rollUp() : null;
+    if (!rolling) {
+      navigateTo('recipes', { animated });
+      return;
+    }
+    leavingRecipe.current = true;
+    void rolling.then(() => {
+      leavingRecipe.current = false;
+      // Something else already left the recipe while it rolled up.
+      if (!onRecipePage.current) return;
+      // Where the photo can't fly home (scrolled off screen), the vault simply fades in.
+      latestNavigateTo.current('recipes', { motion: 'fade' });
+    });
+  };
+
   // From a recipe or Settings, the phone's back gesture returns to the last main page.
-  useBackStep(onSubPage, (animated) => navigateTo(mainPage, { animated }));
+  useBackStep(onSubPage, (animated) =>
+    selectedRecipe && page === 'recipes'
+      ? leaveRecipe(animated)
+      : navigateTo(mainPage, { animated }),
+  );
 
   const openAddRecipe = () => {
     setEditingRecipe(null);
@@ -279,6 +331,7 @@ export default function App() {
           />
         ) : selectedRecipe ? (
           <RecipeDetailView
+            key={selectedRecipe.id}
             recipe={selectedRecipe}
             language={language}
             isWakeLocked={isCookModeOn}
@@ -292,7 +345,8 @@ export default function App() {
                   }
                 : undefined
             }
-            onBack={() => navigateTo('recipes')}
+            ref={recipePage}
+            onUnrolled={() => setBackShown(true)}
             t={t}
           />
         ) : (
@@ -328,6 +382,8 @@ export default function App() {
         fontPercent={fontPercent}
         onIncreaseFont={increaseScale}
         onDecreaseFont={decreaseScale}
+        showBack={backShown && page === 'recipes' && !!selectedRecipe}
+        onBack={() => leaveRecipe()}
         t={t}
       />
 

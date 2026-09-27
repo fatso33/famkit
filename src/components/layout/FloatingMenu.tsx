@@ -1,5 +1,13 @@
-import React, { useCallback, useId, useRef, useState } from 'react';
-import { BookOpen, CookingPot, Moon, Settings, Sun, type LucideIcon } from 'lucide-react';
+import React, { useCallback, useId, useLayoutEffect, useRef, useState } from 'react';
+import {
+  ArrowLeft,
+  BookOpen,
+  CookingPot,
+  Moon,
+  Settings,
+  Sun,
+  type LucideIcon,
+} from 'lucide-react';
 import { Language, Theme } from '../../types/recipe';
 import { AppPage } from '../../types/navigation';
 import { UiTranslations } from '../../i18n/translations';
@@ -24,6 +32,9 @@ interface FloatingMenuProps {
   fontPercent: number;
   onIncreaseFont: () => void;
   onDecreaseFont: () => void;
+  /** A back button grows out of the menu button's left side while this is true. */
+  showBack: boolean;
+  onBack: () => void;
   t: UiTranslations;
 }
 
@@ -31,11 +42,18 @@ interface FloatingMenuProps {
 type MenuState = 'closed' | 'open' | 'closing';
 
 export const FloatingMenu: React.FC<FloatingMenuProps> = (props) => {
-  const { t } = props;
+  const { t, showBack, onBack } = props;
   const [state, setState] = useState<MenuState>('closed');
   const fabRef = useRef<HTMLButtonElement>(null);
   const panelId = useId();
   const isOpen = state === 'open';
+
+  // The back button tucks back into the menu button while the menu is open.
+  const backShown = showBack && state === 'closed';
+  // Until it first appears there's nothing to animate away, so it isn't there at all.
+  const [backEverShown, setBackEverShown] = useState(false);
+  if (backShown && !backEverShown) setBackEverShown(true);
+  const back = backShown ? 'shown' : backEverShown ? 'hidden' : 'none';
 
   const close = useCallback(() => {
     setState('closing');
@@ -57,22 +75,46 @@ export const FloatingMenu: React.FC<FloatingMenuProps> = (props) => {
         />
       )}
 
-      <button
-        ref={fabRef}
-        type="button"
-        className={`fab-menu ${isOpen ? 'is-open' : ''}`}
-        id="fabMenuBtn"
-        aria-label={isOpen ? t.closeMenu : t.openMenu}
-        aria-expanded={isOpen}
-        aria-controls={state !== 'closed' ? panelId : undefined}
-        onClick={() => (isOpen ? close() : setState('open'))}
-      >
-        <span className="fab-menu-glyph" aria-hidden="true">
-          <span />
-          <span />
-          <span />
+      <div className="fab-group" data-back={back}>
+        <span className="fab-pill-track" aria-hidden="true">
+          <span className="fab-pill" />
         </span>
-      </button>
+        <button
+          type="button"
+          className="fab-back"
+          aria-label={t.backToRecipes}
+          aria-hidden={!backShown || undefined}
+          inert={!backShown}
+          onClick={() => {
+            // It's about to tuck away, so keyboard focus moves to the menu button it merges into.
+            fabRef.current?.focus({ preventScroll: true });
+            onBack();
+          }}
+        >
+          <ArrowLeft
+            className="fab-back-arrow"
+            size="1.4rem"
+            strokeWidth={2.2}
+            aria-hidden="true"
+          />
+        </button>
+        <button
+          ref={fabRef}
+          type="button"
+          className={`fab-menu ${isOpen ? 'is-open' : ''}`}
+          id="fabMenuBtn"
+          aria-label={isOpen ? t.closeMenu : t.openMenu}
+          aria-expanded={isOpen}
+          aria-controls={state !== 'closed' ? panelId : undefined}
+          onClick={() => (isOpen ? close() : setState('open'))}
+        >
+          <span className="fab-menu-glyph" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
+        </button>
+      </div>
     </>
   );
 };
@@ -84,6 +126,18 @@ interface MenuPanelProps extends FloatingMenuProps {
   onFocusLeave: () => void;
   onClosed: () => void;
   fabRef: React.RefObject<HTMLButtonElement | null>;
+}
+
+/**
+ * The menu unfurls in a circle out of the menu button's centre (index.css). It only needs to
+ * grow as far as the panel's farthest corner: any bigger and the start of the unfurl is spent
+ * where nothing shows, so what can be seen happens in fewer, bigger steps.
+ */
+function unfurlReach(panel: HTMLElement) {
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  // The button's centre from the panel's top-left corner (--menu-origin in index.css).
+  const reach = Math.hypot(panel.offsetWidth - 1.75 * rem, panel.offsetHeight + 2.5 * rem);
+  panel.style.setProperty('--menu-reach', `${Math.ceil(reach + 2)}px`);
 }
 
 // Mounted only while open (or animating closed).
@@ -112,10 +166,18 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
   const darkLabelId = useId();
   const textLabelId = useId();
 
+  const panelRef = useRef<HTMLDivElement | null>(null);
   // Stable callback ref, so focus moves to the current page once on open, not on every re-render.
   const focusCurrentPage = useCallback((panel: HTMLDivElement | null) => {
-    panel?.querySelector<HTMLElement>('[aria-current="page"]')?.focus({ preventScroll: true });
+    panelRef.current = panel;
+    if (!panel) return;
+    unfurlReach(panel);
+    panel.querySelector<HTMLElement>('[aria-current="page"]')?.focus({ preventScroll: true });
   }, []);
+  // The text size can change while it's open, so it furls up from its size now.
+  useLayoutEffect(() => {
+    if (isClosing && panelRef.current) unfurlReach(panelRef.current);
+  }, [isClosing]);
 
   const go = (target: AppPage) => {
     onNavigate(target);

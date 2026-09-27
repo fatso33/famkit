@@ -57,6 +57,8 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
           alt={recipe.name}
           // The photo coming back from the recipe must be ready to land in its card.
           loading={isMorphTarget ? 'eager' : 'lazy'}
+          // Laid out uncropped while it morphs (utils/photoMorph).
+          data-morph-photo={isMorphTarget ? '' : undefined}
         />
         <div className="card-badge">{badgeText}</div>
       </div>

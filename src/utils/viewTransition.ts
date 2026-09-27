@@ -1,4 +1,5 @@
 import { flushSync } from 'react-dom';
+import { canNestMorphs, uncropMorphPhotos } from './photoMorph';
 
 /**
  * How a view change moves, read by the `::view-transition` rules in index.css:
@@ -39,9 +40,16 @@ export function transitionView(update: () => void, { motion, morph, animated = t
   if (morph) root.dataset.morph = morph;
   else delete root.dataset.morph;
 
-  const transition = document.startViewTransition(() => flushSync(update));
+  // The recipe photo morphs uncropped at both ends (see utils/photoMorph).
+  const uncrop = morph === 'recipe' && canNestMorphs();
+  const restore: (() => void)[] = uncrop ? [uncropMorphPhotos()] : [];
+  const transition = document.startViewTransition(() => {
+    flushSync(update);
+    if (uncrop) restore.push(uncropMorphPhotos());
+  });
   current = transition;
   const cleanUp = () => {
+    for (const undo of restore) undo();
     // A newer transition skips this one; its markers belong to the newer one now.
     if (current !== transition) return;
     current = null;
@@ -49,6 +57,34 @@ export function transitionView(update: () => void, { motion, morph, animated = t
     delete root.dataset.morph;
   };
   void transition.finished.then(cleanUp, cleanUp);
+}
+
+/**
+ * Resolves once the page transition under way (if any) starts animating, so motion inside the
+ * new page can be timed against it. Resolves at once when nothing is running.
+ */
+export function transitionStarted(): Promise<void> {
+  return current ? current.ready.then(noop, noop) : Promise.resolve();
+}
+
+const noop = () => {};
+
+/**
+ * How long until the recipe photo lands in its new place, in ms from now: when the morph has
+ * mostly settled, so what follows it can start. 0 when no photo is morphing.
+ */
+export function recipePhotoLandsIn(settled = 0.6): number {
+  if (!document.getAnimations) return 0;
+  const flight = document.getAnimations().find((animation) => {
+    const pseudo = (animation.effect as KeyframeEffect | null)?.pseudoElement;
+    return (
+      pseudo === '::view-transition-group(recipe-frame)' ||
+      pseudo === '::view-transition-group(recipe-photo)'
+    );
+  });
+  const timing = flight?.effect?.getComputedTiming();
+  if (!flight || !timing || typeof timing.endTime !== 'number') return 0;
+  return Math.max(0, timing.endTime * settled - Number(flight.currentTime ?? 0));
 }
 
 /** Whether the viewer asked the system for less motion. */
