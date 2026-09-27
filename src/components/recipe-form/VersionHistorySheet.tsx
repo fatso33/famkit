@@ -42,9 +42,11 @@ export const VersionHistorySheet: React.FC<VersionHistorySheetProps> = ({
 
   const pick = (id: string) => {
     setLoadingId(id);
-    // On success the editor reopens on that version and this sheet unmounts.
+    // Usually the editor reopens on that version, unmounting this sheet. Picking the version
+    // already shown changes nothing, so close explicitly.
     void onPick(id).then((loaded) => {
-      if (!loaded) setLoadingId(null);
+      if (loaded) onClose();
+      else setLoadingId(null);
     });
   };
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import App from '../App';
 import { UI_TEXT } from '../i18n/translations';
 import { Recipe } from '../types/recipe';
@@ -97,6 +97,21 @@ describe('version history', () => {
 
     expect(screen.queryByText(/^Version 1 from/)).not.toBeInTheDocument();
     expect(screen.getByLabelText(t.recipeTitle)).toHaveValue('Babka Wielkanocna');
+  });
+
+  it('closes the version list when the version already shown is picked again', async () => {
+    renameTo('Babka Wielkanocna', '');
+    const editor = openEditor();
+    fireEvent.click(within(editor).getByRole('button', { name: t.versionHistory }));
+    fireEvent.click(screen.getByRole('button', { name: /version 1/i }));
+    await screen.findByText(/^Version 1 from/);
+
+    fireEvent.click(screen.getByRole('button', { name: t.versionHistory }));
+    fireEvent.click(screen.getByRole('button', { name: /version 1/i }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: t.versionHistory })).not.toBeInTheDocument(),
+    );
   });
 
   it('closes only the version list on Escape, leaving the editor open', () => {
