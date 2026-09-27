@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
+import { useBackStep } from '../../hooks/useBackStep';
 import { UiTranslations } from '../../i18n/translations';
 
 interface ImageZoomModalProps {
   imageSrc: string;
-  onClose: () => void;
+  /** Pass false when the browser already animated it (the iOS back swipe). */
+  onClose: (animated?: boolean) => void;
   t: UiTranslations;
 }
 
@@ -15,7 +17,9 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClos
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const didPan = useRef(false);
-  const backdropProps = useDialogDismiss(onClose);
+  const backdropProps = useDialogDismiss(() => onClose());
+  // The back gesture closes the photo, back to the page it was opened from.
+  useBackStep(true, onClose);
 
   // Lock page scroll behind the lightbox.
   useEffect(() => {
@@ -139,7 +143,7 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClos
           id="closeImageModalBtn"
           aria-label={t.closePhotoPreview}
           style={{ fontSize: '1.15rem', padding: '0.35rem 0.75rem' }}
-          onClick={onClose}
+          onClick={() => onClose()}
         >
           ✕
         </button>

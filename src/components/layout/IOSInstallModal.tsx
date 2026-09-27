@@ -1,6 +1,7 @@
 import React from 'react';
 import { UiTranslations } from '../../i18n/translations';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
+import { useExitAnimation } from '../../hooks/useExitAnimation';
 
 interface IOSInstallModalProps {
   onClose: () => void;
@@ -15,12 +16,14 @@ const withIcon = (html: string, icon: string) => html.replace('{icon}', icon);
 
 // Mount only while open.
 export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ onClose, t }) => {
-  const backdropProps = useDialogDismiss(onClose);
+  const { ref, isClosing, requestClose } = useExitAnimation<HTMLDivElement>(onClose);
+  const backdropProps = useDialogDismiss(requestClose);
 
   return (
     // Backdrop click is a mouse shortcut; keyboard users close with Escape (useDialogDismiss).
     <div
-      className="ios-install-modal-overlay open"
+      ref={ref}
+      className={`ios-install-modal-overlay open${isClosing ? ' is-closing' : ''}`}
       id="iosInstallModal"
       role="dialog"
       aria-modal="true"
@@ -46,7 +49,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ onClose, t }) 
             className="ios-modal-close"
             id="iosModalCloseBtn"
             aria-label={t.closeDialog}
-            onClick={onClose}
+            onClick={requestClose}
           >
             ✕
           </button>
@@ -86,7 +89,7 @@ export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ onClose, t }) 
             className="btn btn-primary"
             id="iosModalDoneBtn"
             style={{ width: '100%', justifyContent: 'center' }}
-            onClick={onClose}
+            onClick={requestClose}
           >
             {t.iosModalDone}
           </button>

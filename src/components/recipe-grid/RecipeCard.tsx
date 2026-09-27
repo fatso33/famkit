@@ -8,6 +8,8 @@ import { isHeirloom } from '../../utils/ownership';
 interface RecipeCardProps {
   recipe: Recipe;
   language: Language;
+  /** Its photo morphs into the recipe's hero photo and back (see transitionView). */
+  isMorphTarget?: boolean;
   onSelect: (id: string) => void;
   t: UiTranslations;
 }
@@ -15,6 +17,7 @@ interface RecipeCardProps {
 export const RecipeCard: React.FC<RecipeCardProps> = ({
   recipe: rawRecipe,
   language,
+  isMorphTarget = false,
   onSelect,
   t,
 }) => {
@@ -36,7 +39,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
 
   return (
     <div
-      className="recipe-card"
+      className={`recipe-card${isMorphTarget ? ' is-morph-target' : ''}`}
       role="button"
       tabIndex={0}
       aria-label={recipe.name}
@@ -49,7 +52,12 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
       }}
     >
       <div className="card-media">
-        <img src={recipe.heroImage || fallbackImage} alt={recipe.name} loading="lazy" />
+        <img
+          src={recipe.heroImage || fallbackImage}
+          alt={recipe.name}
+          // The photo coming back from the recipe must be ready to land in its card.
+          loading={isMorphTarget ? 'eager' : 'lazy'}
+        />
         <div className="card-badge">{badgeText}</div>
       </div>
       <div className="card-body">

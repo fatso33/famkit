@@ -3,6 +3,7 @@ import { History } from 'lucide-react';
 import { Language, VersionSummary } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
+import { useExitAnimation } from '../../hooks/useExitAnimation';
 import { formatVersionDate } from '../../utils/recipeVersions';
 
 interface VersionHistorySheetProps {
@@ -28,7 +29,8 @@ export const VersionHistorySheet: React.FC<VersionHistorySheetProps> = ({
   onClose,
   t,
 }) => {
-  const backdropProps = useDialogDismiss(onClose);
+  const { ref: layerRef, isClosing, requestClose } = useExitAnimation<HTMLDivElement>(onClose);
+  const backdropProps = useDialogDismiss(requestClose);
   const titleId = useId();
   const sheetRef = useRef<HTMLDivElement>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -45,14 +47,18 @@ export const VersionHistorySheet: React.FC<VersionHistorySheetProps> = ({
     // Usually the editor reopens on that version, unmounting this sheet. Picking the version
     // already shown changes nothing, so close explicitly.
     void onPick(id).then((loaded) => {
-      if (loaded) onClose();
+      if (loaded) requestClose();
       else setLoadingId(null);
     });
   };
 
   return (
     // Backdrop click is a mouse shortcut; keyboard users close with Escape (useDialogDismiss).
-    <div className="version-sheet-layer" {...backdropProps}>
+    <div
+      ref={layerRef}
+      className={`version-sheet-layer${isClosing ? ' is-closing' : ''}`}
+      {...backdropProps}
+    >
       <div
         ref={sheetRef}
         className="version-sheet"
@@ -71,7 +77,7 @@ export const VersionHistorySheet: React.FC<VersionHistorySheetProps> = ({
             type="button"
             className="btn btn-icon"
             aria-label={t.closeDialog}
-            onClick={onClose}
+            onClick={requestClose}
           >
             ✕
           </button>

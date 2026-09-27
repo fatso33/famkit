@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useTheme } from './hooks/useTheme';
 import { useFontScale } from './hooks/useFontScale';
 import { useLanguage } from './hooks/useLanguage';
@@ -7,6 +8,7 @@ import { usePWAInstall } from './hooks/usePWAInstall';
 import { useRecipes, getLocalizedRecipe } from './hooks/useRecipes';
 import { useToast } from './hooks/useToast';
 import { useCurrentUser } from './hooks/useCurrentUser';
+import { useBackStep } from './hooks/useBackStep';
 import { isFirebaseConfigured } from './services/firebase';
 import { canEditRecipe } from './utils/ownership';
 import {
@@ -17,6 +19,7 @@ import {
 } from './utils/recipeTranslation';
 import { diffRecipes, recipeAtVersion, versionSummaries } from './utils/recipeVersions';
 import { restorableRecipes } from './utils/recipeTrash';
+import { isOnScreen, transitionView } from './utils/viewTransition';
 import { Plus, Share2 } from 'lucide-react';
 import { FloatingMenu, MenuAction } from './components/layout/FloatingMenu';
 import { InstallCard } from './components/layout/InstallCard';
@@ -27,16 +30,20 @@ import { IOSInstallModal } from './components/layout/IOSInstallModal';
 import { MakesView } from './components/makes/MakesView';
 import { SettingsView } from './components/settings/SettingsView';
 import { Toast } from './components/common/Toast';
-import { Recipe, RecipeVersion } from './types/recipe';
-import { AppPage } from './types/navigation';
+import { FilterType, Recipe, RecipeVersion } from './types/recipe';
+import { AppPage, MainPage } from './types/navigation';
 
-// Animates a view change where supported (a hidden preview pane can stall it; see CLAUDE.md).
-function withViewTransition(changeView: () => void) {
-  if (document.startViewTransition) {
-    document.startViewTransition(changeView);
-  } else {
-    changeView();
-  }
+// Page changes jump straight to their scroll position: html's smooth scrolling would
+// otherwise play out in the middle of the page transition.
+const jumpTo = (top: number) => window.scrollTo({ top, behavior: 'instant' });
+
+interface NavigateOptions {
+  /** False when the browser already animated it (the iOS back swipe). */
+  animated?: boolean;
+  /** False when the open recipe's card won't be there to morph into. */
+  morph?: boolean;
+  /** Other state changes that belong to the same transition. */
+  alongside?: () => void;
 }
 
 export default function App() {
@@ -64,10 +71,20 @@ export default function App() {
   const localizedRecipe = getLocalizedRecipe(selectedRecipe, language);
 
   const [page, setPage] = useState<AppPage>('recipes');
+  // The last main page (not Settings), where the back gesture returns to.
+  const [mainPage, setMainPage] = useState<MainPage>('recipes');
+  // The vault's filter and each main page's scroll survive a visit to a sub-page, so going
+  // back returns to the same spot (and a recipe's photo can shrink back into its card).
+  const [vaultFilter, setVaultFilter] = useState<FilterType>('all');
+  const mainScroll = useRef<Record<MainPage, number>>({ recipes: 0, makes: 0 });
+  // The recipe last opened from the vault: its card is where the photo morphs to and from.
+  const [lastRecipeId, setLastRecipeId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   // An earlier version the author loaded into the editor, to restore on save.
   const [restoredVersion, setRestoredVersion] = useState<RecipeVersion | null>(null);
+  // Switching versions remounts the editor, which shouldn't slide in again.
+  const [editorReopened, setEditorReopened] = useState(false);
 
   // What the editor starts from: the recipe, or an earlier version's content on it.
   const editBase =
@@ -92,12 +109,18 @@ export default function App() {
     setIsAddModalOpen(false);
     setEditingRecipe(null);
     setRestoredVersion(null);
+    setEditorReopened(false);
   };
 
   const handleDelete = (id: string) => {
-    deleteRecipe(id);
-    closeEditor();
-    navigateTo('recipes');
+    // Inside the transition, so it animates from the recipe rather than an already-empty page.
+    navigateTo('recipes', {
+      morph: false,
+      alongside: () => {
+        deleteRecipe(id);
+        closeEditor();
+      },
+    });
     showToast(t.recipeDeleted, 'info', { label: t.undo, onAction: () => restoreRecipe(id) });
   };
 
@@ -110,6 +133,7 @@ export default function App() {
     if (!editingRecipe) return false;
     try {
       setRestoredVersion(await loadVersion(editingRecipe, id));
+      setEditorReopened(true);
       return true;
     } catch (err) {
       console.warn('Could not load an earlier recipe version:', err);
@@ -118,20 +142,51 @@ export default function App() {
     }
   };
 
+  // Sub-pages (a recipe, Settings) sit one level above the main pages.
+  const onSubPage = page === 'settings' || (page === 'recipes' && !!selectedRecipe);
+
   const handleSelectRecipe = (id: string) => {
-    withViewTransition(() => {
-      setSelectedRecipeId(id);
-      window.scrollTo(0, 0);
-    });
+    mainScroll.current.recipes = window.scrollY;
+    // Marks the tapped card before the browser snapshots the vault.
+    flushSync(() => setLastRecipeId(id));
+    transitionView(
+      () => {
+        setSelectedRecipeId(id);
+        jumpTo(0);
+      },
+      { motion: 'forward', morph: 'recipe' },
+    );
   };
 
-  const navigateTo = (target: AppPage) => {
-    withViewTransition(() => {
-      setPage(target);
-      setSelectedRecipeId(null);
-      window.scrollTo(0, 0);
-    });
+  const navigateTo = (
+    target: AppPage,
+    { animated = true, morph = true, alongside }: NavigateOptions = {},
+  ) => {
+    const fromDepth = onSubPage ? 1 : 0;
+    const toDepth = target === 'settings' ? 1 : 0;
+    const motion = toDepth > fromDepth ? 'forward' : toDepth < fromDepth ? 'back' : 'fade';
+    if (page !== 'settings' && !onSubPage) mainScroll.current[page] = window.scrollY;
+    // The recipe's photo shrinks back into its card, when it's in view to be seen doing so.
+    const morphsBack =
+      morph &&
+      target === 'recipes' &&
+      !!selectedRecipe &&
+      isOnScreen(document.querySelector('.detail-hero-img'));
+
+    transitionView(
+      () => {
+        alongside?.();
+        setPage(target);
+        if (target !== 'settings') setMainPage(target);
+        setSelectedRecipeId(null);
+        jumpTo(motion === 'back' && target !== 'settings' ? mainScroll.current[target] : 0);
+      },
+      { motion, morph: morphsBack ? 'recipe' : undefined, animated },
+    );
   };
+
+  // From a recipe or Settings, the phone's back gesture returns to the last main page.
+  useBackStep(onSubPage, (animated) => navigateTo(mainPage, { animated }));
 
   const openAddRecipe = () => {
     setEditingRecipe(null);
@@ -225,6 +280,9 @@ export default function App() {
           <RecipeGridView
             recipes={recipes}
             language={language}
+            filter={vaultFilter}
+            onFilterChange={setVaultFilter}
+            morphRecipeId={lastRecipeId}
             onSelectRecipe={handleSelectRecipe}
             banner={
               isBannerVisible && (
@@ -242,7 +300,7 @@ export default function App() {
 
       <FloatingMenu
         page={page}
-        onNavigate={navigateTo}
+        onNavigate={(target) => navigateTo(target)}
         actions={pageActions}
         language={language}
         onToggleLanguage={toggleLanguage}
@@ -263,7 +321,11 @@ export default function App() {
           versions={editingRecipe ? versionSummaries(editingRecipe) : []}
           restore={restore}
           onPickVersion={pickVersion}
-          onKeepCurrent={() => setRestoredVersion(null)}
+          onKeepCurrent={() => {
+            setRestoredVersion(null);
+            setEditorReopened(true);
+          }}
+          animateIn={!editorReopened}
           onDelete={editingRecipe ? () => handleDelete(editingRecipe.id) : undefined}
           language={language}
           onClose={closeEditor}
@@ -275,7 +337,7 @@ export default function App() {
               // Provisional: translation detects the real language and corrects this.
               addRecipe({ ...recipeData, sourceLanguage: language });
             }
-            setEditingRecipe(null);
+            // The editor then closes itself, and closeEditor clears it once it has slid away.
           }}
           t={t}
         />

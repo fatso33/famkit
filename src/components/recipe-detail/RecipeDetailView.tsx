@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { flushSync } from 'react-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Recipe, Language } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
@@ -9,6 +10,7 @@ import { BakingOptionsView } from './BakingOptionsView';
 import { ImageZoomModal } from './ImageZoomModal';
 import { getLocalizedRecipe } from '../../hooks/useRecipes';
 import { addedByName } from '../../utils/ownership';
+import { transitionView } from '../../utils/viewTransition';
 
 interface RecipeDetailViewProps {
   recipe: Recipe;
@@ -32,7 +34,21 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   t,
 }) => {
   const [scale, setScale] = useState(1);
-  const [zoomImageSrc, setZoomImageSrc] = useState<string | null>(null);
+  // The step photo shown full screen. The step stays set after closing, so the photo has
+  // its thumbnail to shrink back into.
+  const [zoom, setZoom] = useState<{ src: string; step: number; open: boolean } | null>(null);
+
+  const openZoom = (src: string, step: number) => {
+    // Marks the thumbnail before the browser snapshots the page, so the photo grows from it.
+    flushSync(() => setZoom({ src, step, open: false }));
+    transitionView(() => setZoom({ src, step, open: true }), { motion: 'zoom', morph: 'photo' });
+  };
+  const closeZoom = (animated = true) =>
+    transitionView(() => setZoom((z) => z && { ...z, open: false }), {
+      motion: 'zoom',
+      morph: 'photo',
+      animated,
+    });
 
   const recipe = getLocalizedRecipe(rawRecipe, language) || rawRecipe;
   const estimatedTime = t.estimatedTime(estimateRecipeMinutes(recipe));
@@ -159,7 +175,10 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
           <StepsList
             steps={recipe.steps || []}
             laminationDirective={recipe.laminationDirective}
-            onZoomImage={setZoomImageSrc}
+            // Only while the viewer is closed: the open viewer carries the morphing photo's name,
+            // and two elements sharing it would cancel the transition.
+            zoomSource={zoom && !zoom.open ? zoom.step : undefined}
+            onZoomImage={openZoom}
             t={t}
           />
 
@@ -169,13 +188,8 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
       </div>
 
       {/* Image Zoom Lightbox Modal */}
-      {zoomImageSrc && (
-        <ImageZoomModal
-          key={zoomImageSrc}
-          imageSrc={zoomImageSrc}
-          onClose={() => setZoomImageSrc(null)}
-          t={t}
-        />
+      {zoom?.open && (
+        <ImageZoomModal key={zoom.src} imageSrc={zoom.src} onClose={closeZoom} t={t} />
       )}
     </article>
   );

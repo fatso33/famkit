@@ -6,6 +6,8 @@ import { ImagePickerWithPreview } from './ImagePickerWithPreview';
 import { IngredientBuilder, IngredientRowState } from './IngredientBuilder';
 import { StepBuilder, StepBuilderItem } from './StepBuilder';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
+import { useBlockBack } from '../../hooks/useBackStep';
+import { useExitAnimation } from '../../hooks/useExitAnimation';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { authorModeOf, resolveAuthor } from '../../utils/ownership';
 import { formatVersionDate, RecipeChanges, RestorableField } from '../../utils/recipeVersions';
@@ -144,6 +146,8 @@ type TextField =
 
 interface AddRecipeModalProps {
   onClose: () => void;
+  /** False when it reopens on another version, which swaps the form in place. */
+  animateIn?: boolean;
   /**
    * `textChanged` is false when an edit touched only photos or the author. `changeNote` is the
    * author's optional "what changed" (edits only).
@@ -173,6 +177,7 @@ interface AddRecipeModalProps {
 // loadInitialForm().
 export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   onClose,
+  animateIn = true,
   onSave,
   initialRecipe,
   versions = [],
@@ -184,7 +189,11 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   t,
 }) => {
   const isEditMode = Boolean(initialRecipe);
-  const backdropProps = useDialogDismiss(onClose);
+  // Every way of closing slides the editor away first; onClose runs once it's gone.
+  const { ref: layerRef, isClosing, requestClose } = useExitAnimation<HTMLDivElement>(onClose);
+  const backdropProps = useDialogDismiss(requestClose);
+  // A stray back swipe must not close the editor and lose the draft.
+  useBlockBack();
   const [isHistoryOpen, setHistoryOpen] = useState(false);
   const [changeNote, setChangeNote] = useState(() =>
     restore ? t.restoredNote(restore.version.version) : '',
@@ -374,14 +383,15 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
       }
     }
 
-    resetForm();
-    onClose();
+    // Not reset: the form keeps its content while it slides away, then unmounts.
+    requestClose();
   };
 
   return (
     // Backdrop click is a mouse shortcut; keyboard users close with Escape (useDialogDismiss).
     <div
-      className="modal-overlay active"
+      ref={layerRef}
+      className={`modal-overlay active${animateIn ? '' : ' is-instant'}${isClosing ? ' is-closing' : ''}`}
       id="addRecipeModal"
       role="dialog"
       aria-modal="true"
@@ -432,7 +442,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
               className="btn btn-icon"
               id="closeModalBtn"
               aria-label={t.closeDialog}
-              onClick={onClose}
+              onClick={requestClose}
             >
               ✕
             </button>
@@ -652,7 +662,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
           {/* Sticky Footer */}
           <div className="modal-footer-sticky">
-            <button type="button" className="btn" id="cancelModalBtn" onClick={onClose}>
+            <button type="button" className="btn" id="cancelModalBtn" onClick={requestClose}>
               {t.cancel}
             </button>
             <button type="submit" className="btn btn-primary">

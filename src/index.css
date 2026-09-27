@@ -99,10 +99,155 @@
         letter-spacing: 0.02em;
       }
 
-      /* View Transitions support */
+      /* ── Motion ──
+         Page changes run as view transitions: utils/viewTransition marks <html> with
+         data-nav (how the page moves) and data-morph (which photo morphs) while one runs.
+         Layers mounted only while open animate in with CSS and out with fk-exit-* keyframes,
+         which hooks/useExitAnimation waits for before unmounting them. Everything animates
+         only transform and opacity, so it stays smooth on older phones. */
+      :root {
+        --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+        --ease-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+        --ease-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+      }
+
       ::view-transition-old(root),
       ::view-transition-new(root) {
         animation-duration: 0.24s;
+      }
+
+      /* Into a sub-page (a recipe, Settings): it slides in from the right as the page
+         behind drifts left and fades. Back out reverses it. */
+      :root[data-nav='forward']::view-transition-old(root) {
+        animation: vt-exit-to-left 0.32s var(--ease-emphasized) both;
+      }
+      :root[data-nav='forward']::view-transition-new(root) {
+        animation: vt-enter-from-right 0.42s var(--ease-emphasized) both;
+      }
+      :root[data-nav='back']::view-transition-old(root) {
+        animation: vt-exit-to-right 0.32s var(--ease-emphasized) both;
+      }
+      :root[data-nav='back']::view-transition-new(root) {
+        animation: vt-enter-from-left 0.42s var(--ease-emphasized) both;
+      }
+
+      /* Between main pages: the old page fades out, the new one fades up through it. */
+      :root[data-nav='fade']::view-transition-old(root) {
+        animation: vt-fade-out 0.12s linear both;
+      }
+      :root[data-nav='fade']::view-transition-new(root) {
+        animation: vt-fade-through 0.34s var(--ease-decelerate) both;
+      }
+
+      /* A photo opening or closing: the page cross-fades under the photo's morph. */
+      :root[data-nav='zoom']::view-transition-old(root),
+      :root[data-nav='zoom']::view-transition-new(root) {
+        animation-duration: 0.32s;
+      }
+
+      /* The floating button, its menu and the toast stay put while the page moves:
+         only their live selves show, never a sliding snapshot. */
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade']) .fab-menu {
+        view-transition-name: fk-fab;
+      }
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade']) .fk-menu-layer {
+        view-transition-name: fk-menu;
+      }
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade']) .app-toast {
+        view-transition-name: fk-toast;
+      }
+      ::view-transition-group(fk-fab),
+      ::view-transition-group(fk-menu),
+      ::view-transition-group(fk-toast),
+      ::view-transition-new(fk-fab),
+      ::view-transition-new(fk-menu),
+      ::view-transition-new(fk-toast) {
+        animation: none;
+      }
+      ::view-transition-old(fk-fab),
+      ::view-transition-old(fk-menu),
+      ::view-transition-old(fk-toast) {
+        display: none;
+      }
+
+      /* Morphs: a recipe card's photo grows into the recipe's hero photo (and shrinks back),
+         and a step photo grows into the full-screen viewer (and back into its step). */
+      :root[data-morph='recipe'] .recipe-card.is-morph-target .card-media img,
+      :root[data-morph='recipe'] .detail-hero-img {
+        view-transition-name: recipe-photo;
+      }
+      :root[data-morph='photo'] .step-visual-frame.is-zoom-source .step-visual-img,
+      :root[data-morph='photo'] .zoomable-image {
+        view-transition-name: zoom-photo;
+      }
+      ::view-transition-group(recipe-photo),
+      ::view-transition-group(zoom-photo) {
+        animation-duration: 0.48s;
+        animation-timing-function: var(--ease-emphasized);
+      }
+      /* The two ends crop the photo differently, so both fill the moving frame, cropped. */
+      ::view-transition-old(recipe-photo),
+      ::view-transition-new(recipe-photo),
+      ::view-transition-old(zoom-photo),
+      ::view-transition-new(zoom-photo) {
+        height: 100%;
+        object-fit: cover;
+        overflow: clip;
+        animation-duration: 0.48s;
+        animation-timing-function: var(--ease-emphasized);
+      }
+      ::view-transition-old(recipe-photo),
+      ::view-transition-new(recipe-photo) {
+        border-radius: var(--radius-md);
+      }
+      ::view-transition-old(zoom-photo),
+      ::view-transition-new(zoom-photo) {
+        border-radius: var(--radius-sm);
+      }
+
+      @keyframes vt-exit-to-left {
+        45% { opacity: 0; }
+        to { opacity: 0; transform: translateX(-40px); }
+      }
+      @keyframes vt-exit-to-right {
+        45% { opacity: 0; }
+        to { opacity: 0; transform: translateX(40px); }
+      }
+      @keyframes vt-enter-from-right {
+        from { opacity: 0; transform: translateX(40px); }
+        25% { opacity: 0; }
+        to { opacity: 1; transform: none; }
+      }
+      @keyframes vt-enter-from-left {
+        from { opacity: 0; transform: translateX(-40px); }
+        25% { opacity: 0; }
+        to { opacity: 1; transform: none; }
+      }
+      @keyframes vt-fade-out {
+        to { opacity: 0; }
+      }
+      @keyframes vt-fade-through {
+        from { opacity: 0; transform: scale(0.985); }
+        30% { opacity: 0; transform: scale(0.985); }
+        to { opacity: 1; transform: none; }
+      }
+
+      /* Reduced motion: nothing slides or morphs; pages and photos just cross-fade quickly. */
+      @media (prefers-reduced-motion: reduce) {
+        :root[data-nav]::view-transition-old(root),
+        ::view-transition-old(recipe-photo),
+        ::view-transition-old(zoom-photo) {
+          animation: vt-fade-out 0.15s linear both;
+        }
+        :root[data-nav]::view-transition-new(root),
+        ::view-transition-new(recipe-photo),
+        ::view-transition-new(zoom-photo) {
+          animation: fk-fade-in 0.15s linear both;
+        }
+        ::view-transition-group(recipe-photo),
+        ::view-transition-group(zoom-photo) {
+          animation: none;
+        }
       }
 
       /* Header */
@@ -989,8 +1134,6 @@
       .modal-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(19, 18, 17, 0.65);
-        backdrop-filter: blur(6px);
         display: none;
         place-items: center;
         z-index: 100;
@@ -1006,6 +1149,46 @@
 
       .modal-overlay.active {
         display: grid;
+      }
+
+      /* The scrim is its own layer, so it can fade while the sheet slides. */
+      .modal-overlay::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background: rgba(19, 18, 17, 0.65);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        animation: fk-fade-in 0.32s ease both;
+      }
+
+      /* The editor rises from the bottom like a native sheet on phones, and settles in as a
+         dialog on larger screens. Closing reverses it (fk-exit-*, see useExitAnimation). */
+      .modal-sheet {
+        animation: fk-sheet-up 0.52s var(--ease-decelerate) both;
+      }
+      .modal-overlay.is-closing {
+        pointer-events: none;
+      }
+      .modal-overlay.is-closing::before {
+        animation: fk-exit-fade 0.3s ease both;
+      }
+      .modal-overlay.is-closing .modal-sheet {
+        animation: fk-exit-sheet-down 0.3s var(--ease-accelerate) both;
+      }
+      @media (min-width: 640px) {
+        .modal-sheet {
+          animation: fk-dialog-in 0.38s var(--ease-decelerate) both;
+        }
+        .modal-overlay.is-closing .modal-sheet {
+          animation: fk-exit-dialog 0.22s var(--ease-accelerate) both;
+        }
+      }
+      /* Reopening on another version swaps the form in place. */
+      .modal-overlay.is-instant:not(.is-closing)::before,
+      .modal-overlay.is-instant:not(.is-closing) .modal-sheet {
+        animation: none;
       }
 
       .modal-sheet {
@@ -1303,6 +1486,15 @@
       @keyframes version-sheet-in {
         from { transform: translateY(100%); }
         to { transform: translateY(0); }
+      }
+
+      /* Closing: the sheet drops away as the scrim clears. */
+      .version-sheet-layer.is-closing {
+        pointer-events: none;
+        animation: fk-exit-scrim 0.28s ease both;
+      }
+      .version-sheet-layer.is-closing .version-sheet {
+        animation: fk-exit-sheet-down 0.28s var(--ease-accelerate) both;
       }
 
       .version-sheet-grip {
@@ -1820,7 +2012,16 @@
         align-items: center;
         justify-content: center;
         padding: 1rem;
-        animation: fadeIn 0.2s ease-out;
+        animation: fk-fade-in 0.24s ease both;
+      }
+
+      .ios-install-modal-overlay.is-closing {
+        pointer-events: none;
+        animation: fk-exit-fade 0.22s ease both;
+      }
+
+      .ios-install-modal-overlay.is-closing .ios-install-modal-card {
+        animation: fk-exit-dialog 0.22s var(--ease-accelerate) both;
       }
 
       .ios-install-modal-overlay.open {
@@ -1836,7 +2037,7 @@
         width: 100%;
         max-width: 400px;
         overflow: hidden;
-        animation: scaleUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        animation: fk-dialog-in 0.36s var(--ease-decelerate) both;
       }
 
       .ios-modal-header {
@@ -2686,6 +2887,33 @@
         }
       }
 
+      @keyframes fk-sheet-up {
+        from { transform: translateY(100%); }
+        to { transform: none; }
+      }
+
+      @keyframes fk-dialog-in {
+        from { opacity: 0; transform: translateY(16px) scale(0.97); }
+        to { opacity: 1; transform: none; }
+      }
+
+      /* Exits: useExitAnimation waits for keyframes named fk-exit-* before unmounting. */
+      @keyframes fk-exit-fade {
+        to { opacity: 0; }
+      }
+
+      @keyframes fk-exit-scrim {
+        to { background-color: transparent; }
+      }
+
+      @keyframes fk-exit-sheet-down {
+        to { transform: translateY(100%); }
+      }
+
+      @keyframes fk-exit-dialog {
+        to { opacity: 0; transform: translateY(10px) scale(0.97); }
+      }
+
       @keyframes fk-menu-out {
         from { opacity: 1; transform: translateY(0) scale(1); }
         to { opacity: 0; transform: translateY(8px) scale(0.94); }
@@ -2713,6 +2941,16 @@
         .version-entry,
         .version-sheet,
         .version-loading { animation: none; }
+        /* Layers fade in and out instead of sliding (the fade still ends, so they unmount). */
+        .modal-overlay .modal-sheet,
+        .ios-install-modal-overlay .ios-install-modal-card {
+          animation: fk-fade-in 0.15s ease both;
+        }
+        .modal-overlay.is-closing .modal-sheet,
+        .version-sheet-layer.is-closing .version-sheet,
+        .ios-install-modal-overlay.is-closing .ios-install-modal-card {
+          animation: fk-exit-fade 0.15s ease both;
+        }
         /* The toast still fades (its fade-out end clears the text), but doesn't slide. */
         .app-toast,
         .app-toast.show { transform: translate(-50%, 0); }

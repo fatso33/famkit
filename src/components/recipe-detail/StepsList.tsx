@@ -6,13 +6,16 @@ import { UiTranslations } from '../../i18n/translations';
 interface StepsListProps {
   steps: Step[];
   laminationDirective?: string;
-  onZoomImage: (src: string) => void;
+  /** The step whose photo is (or was last) full screen, to morph from and back into. */
+  zoomSource?: number;
+  onZoomImage: (src: string, step: number) => void;
   t: UiTranslations;
 }
 
 export const StepsList: React.FC<StepsListProps> = ({
   steps,
   laminationDirective,
+  zoomSource,
   onZoomImage,
   t,
 }) => {
@@ -47,13 +50,13 @@ export const StepsList: React.FC<StepsListProps> = ({
 
                 {step.hasImage && step.imageSrc && (
                   <div
-                    className="step-visual-frame clickable-zoom"
+                    className={`step-visual-frame clickable-zoom${idx === zoomSource ? ' is-zoom-source' : ''}`}
                     title={t.viewStepPhoto}
                     role="button"
                     tabIndex={0}
-                    onClick={() => onZoomImage(step.imageSrc!)}
+                    onClick={() => onZoomImage(step.imageSrc!, idx)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') onZoomImage(step.imageSrc!);
+                      if (e.key === 'Enter' || e.key === ' ') onZoomImage(step.imageSrc!, idx);
                     }}
                   >
                     <img
