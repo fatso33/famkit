@@ -2,20 +2,28 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Checks if the user is authenticated with Google and their email is in the allowed family list
-    function isFamily() {
-      return request.auth != null &&
-        request.auth.token.email.lower() in [
-          // Replace these placeholder emails with your actual family Gmail addresses
-          "your_email@gmail.com",
-          "mom_email@gmail.com",
-          "dad_email@gmail.com",
-          "sister_email@gmail.com"
-        ];
+    // Signed in with an email the sign-in provider has verified, so nobody can claim someone
+    // else's address.
+    function isVerified() {
+      return request.auth != null && request.auth.token.email_verified == true;
     }
 
     function myEmail() {
       return request.auth.token.email.lower();
+    }
+
+    // On the family list: family_members/{email}, the email in lowercase. The list is kept in the
+    // Firebase console only; nobody can change it from the app.
+    function isFamily() {
+      return isVerified() &&
+        exists(/databases/$(database)/documents/family_members/$(myEmail()));
+    }
+
+    // Each person may look up only their own entry, so the app can tell whether they're family
+    // without anyone being able to read the list.
+    match /family_members/{email} {
+      allow get: if isVerified() && myEmail() == email;
+      allow list, create, update, delete: if false;
     }
 
     // The family member who added a recipe owns it. Records from before owners existed have none.

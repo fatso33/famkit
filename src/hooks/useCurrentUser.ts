@@ -3,7 +3,7 @@ import { createContext, useContext } from 'react';
 /** The signed-in family member, as the rest of the app needs them. */
 export interface CurrentUser {
   email: string;
-  /** Google display name, falling back to the email. */
+  /** The family list's name for them, else their Google display name, else the email. */
   name: string;
 }
 

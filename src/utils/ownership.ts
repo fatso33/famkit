@@ -41,6 +41,27 @@ export function shortName(name: string): string {
   return `${words[0]} ${words.at(-1)!.charAt(0).toUpperCase()}.`;
 }
 
+const MAX_MEMBER_NAME = 60;
+
+/**
+ * The `name` a family_members entry gives someone, tidied, or null when it has none usable.
+ * The entry comes from Firestore, so anything that isn't a sensible short text is ignored.
+ */
+export function familyMemberName(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const name = raw.replace(/\s+/g, ' ').trim().slice(0, MAX_MEMBER_NAME).trim();
+  return name || null;
+}
+
+/** Who a signed-in person is credited as: the family list's name, then Google's, then email. */
+export function memberDisplayName(
+  listName: string | null,
+  googleName: string | null | undefined,
+  email: string,
+): string {
+  return listName || googleName?.trim() || email;
+}
+
 /** The author to store for a save from the form. */
 export function resolveAuthor(mode: AuthorMode, typedAuthor: string, user: CurrentUser | null) {
   return mode === 'auto' && user ? user.name : typedAuthor.trim();

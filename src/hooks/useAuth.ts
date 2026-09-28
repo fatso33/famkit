@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   User,
   onAuthStateChanged,
@@ -6,38 +6,49 @@ import {
   signOut as firebaseSignOut,
 } from 'firebase/auth';
 import { auth, googleProvider, isFirebaseConfigured } from '../services/firebase';
+import { fetchFamilyMembership } from '../services/firestore';
+import { getConfirmedMember, setConfirmedMember } from '../services/storage';
 
 export interface AuthState {
   user: User | null;
   isFamilyMember: boolean;
+  /** The name the family list gives this person, overriding their Google name; null if unset. */
+  memberName: string | null;
   isLoading: boolean;
   isConfigured: boolean;
   error: string | null;
+  /** Signed out because the family list couldn't be checked (e.g. the connection dropped). */
+  familyListUnavailable: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
+/** The family list's answer for one email (lowercase). */
+interface Membership {
+  email: string;
+  isMember: boolean;
+  name: string | null;
+}
+
 export function useAuth(): AuthState {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(isFirebaseConfigured && auth !== null);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(
+    isFirebaseConfigured && auth !== null,
+  );
   const [error, setError] = useState<string | null>(null);
+  // A returning member starts with the answer this device last confirmed, so the vault opens
+  // straight away (and offline); the list is checked again below.
+  const [membership, setMembership] = useState<Membership | null>(() => {
+    const confirmed = getConfirmedMember();
+    return confirmed ? { ...confirmed, isMember: true } : null;
+  });
+  const [familyListUnavailable, setFamilyListUnavailable] = useState(false);
 
-  const rawFamilyEmails = import.meta.env.VITE_FAMILY_EMAILS || '';
-  const familyEmails = useMemo(() => {
-    return rawFamilyEmails
-      .split(',')
-      .map((email: string) => email.trim().toLowerCase())
-      .filter(Boolean);
-  }, [rawFamilyEmails]);
-
-  const isFamilyMember = useMemo(() => {
-    if (!isFirebaseConfigured) return true; // In unconfigured/dev mode, allow access
-    if (!user || !user.email) return false;
-    // If no emails are specified in allowlist, default to open for authenticated users,
-    // otherwise strictly match allowlist
-    if (familyEmails.length === 0) return true;
-    return familyEmails.includes(user.email.toLowerCase());
-  }, [user, familyEmails]);
+  const email = user?.email?.trim().toLowerCase() ?? '';
+  const known = membership && email && membership.email === email ? membership : null;
+  const isFamilyMember = !isFirebaseConfigured || Boolean(known?.isMember);
+  // Signed in but the list hasn't answered for this person yet (first sign-in on this device).
+  const isCheckingMembership = isFirebaseConfigured && Boolean(email) && !known;
 
   useEffect(() => {
     if (!isFirebaseConfigured || !auth) return;
@@ -46,18 +57,54 @@ export function useAuth(): AuthState {
       auth,
       (currentUser) => {
         setUser(currentUser);
-        setIsLoading(false);
+        setIsAuthLoading(false);
         setError(null);
+        // Signed in again (by any route, e.g. another tab): the old "couldn't check" no longer applies.
+        if (currentUser) setFamilyListUnavailable(false);
       },
       (err) => {
         console.error('Auth state error:', err);
         setError(err.message);
-        setIsLoading(false);
+        setIsAuthLoading(false);
       },
     );
 
     return () => unsubscribe();
   }, []);
+
+  // Asks the family list (Firestore) about whoever is signed in. firestore.rules enforce the
+  // same list, so this only decides which screen to show.
+  useEffect(() => {
+    if (!isFirebaseConfigured || !email) return;
+    let cancelled = false;
+
+    fetchFamilyMembership(email)
+      .then(({ isMember, name }) => {
+        if (cancelled) return;
+        setConfirmedMember(isMember ? { email, name } : null);
+        setMembership({ email, isMember, name });
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        // Someone this device already confirmed carries on with that answer until the list
+        // can be reached again.
+        if (getConfirmedMember()?.email === email) {
+          console.warn('Could not recheck the family list; using the answer from last time:', err);
+          return;
+        }
+        console.warn('Could not check the family list, so signing out to try again later:', err);
+        setFamilyListUnavailable(true);
+        if (auth) {
+          firebaseSignOut(auth).catch((signOutErr: unknown) => {
+            console.error('Sign out after a failed family list check failed:', signOutErr);
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [email]);
 
   const signInWithGoogle = useCallback(async () => {
     if (!isFirebaseConfigured || !auth || !googleProvider) {
@@ -69,6 +116,7 @@ export function useAuth(): AuthState {
       return;
     }
     setError(null);
+    setFamilyListUnavailable(false);
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err: unknown) {
@@ -89,15 +137,20 @@ export function useAuth(): AuthState {
         console.error('Sign out failed:', err);
       }
     }
+    // Forget who this device vouched for, so the next person to sign in is checked afresh.
+    setConfirmedMember(null);
+    setMembership(null);
     setUser(null);
   }, []);
 
   return {
     user,
     isFamilyMember,
-    isLoading,
+    memberName: known?.name ?? null,
+    isLoading: isAuthLoading || isCheckingMembership,
     isConfigured: isFirebaseConfigured,
     error,
+    familyListUnavailable,
     signInWithGoogle,
     signOut,
   };

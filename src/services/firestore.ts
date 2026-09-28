@@ -16,10 +16,13 @@ import {
   saveLocalVersions,
   saveRecipes as saveToLocalStorage,
 } from './storage';
+import { familyMemberName } from '../utils/ownership';
 import { parseRecipeVersion } from '../utils/recipeVersions';
 import { sourceHash } from '../utils/recipeTranslation';
 
 const RECIPES_COLLECTION = 'recipes';
+// The family list: family_members/{lowercase email}, kept in the Firebase console only.
+const FAMILY_MEMBERS_COLLECTION = 'family_members';
 // Earlier versions of a recipe: recipes/{recipeId}/versions/{versionId}, written once, never changed.
 const VERSIONS_COLLECTION = 'versions';
 
@@ -116,6 +119,35 @@ export async function fetchRecipeVersion(
   const version = parseRecipeVersion(raw);
   if (!version) throw new Error(`Recipe version ${recipeId}/${versionId} is missing or malformed`);
   return version;
+}
+
+export interface FamilyMembership {
+  isMember: boolean;
+  /** The name the family list gives them, overriding their Google name; null when unset. */
+  name: string | null;
+}
+
+/**
+ * Looks this email up on the family list (one read). Being on it is the entry existing; its only
+ * field read is an optional `name`. Rejects when the answer can't be had (e.g. offline with
+ * nothing cached), so a lost connection isn't mistaken for "not family".
+ */
+export async function fetchFamilyMembership(email: string): Promise<FamilyMembership> {
+  if (!isFirebaseConfigured || !db) return { isMember: true, name: null };
+  try {
+    const snapshot = await getDoc(doc(db, FAMILY_MEMBERS_COLLECTION, email.trim().toLowerCase()));
+    if (!snapshot.exists()) return { isMember: false, name: null };
+    const data: unknown = snapshot.data();
+    const rawName =
+      typeof data === 'object' && data !== null ? (data as { name?: unknown }).name : null;
+    return { isMember: true, name: familyMemberName(rawName) };
+  } catch (err) {
+    // The rules refuse the lookup outright for an unverified email: not family.
+    if ((err as { code?: unknown } | null)?.code === 'permission-denied') {
+      return { isMember: false, name: null };
+    }
+    throw err;
+  }
 }
 
 /**

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
+  fetchFamilyMembership,
   fetchRecipeVersion,
   saveRecipeToCloud,
   saveTranslationToCloud,
@@ -21,6 +22,8 @@ const cloud = vi.hoisted(() => ({
   stored: {} as Record<string, unknown>,
   /** Every batch write: [path, data, options]. */
   writes: [] as [string, unknown, unknown][],
+  /** When set, getDoc fails with this Firestore error code (e.g. offline: 'unavailable'). */
+  getDocErrorCode: null as string | null,
 }));
 
 vi.mock('firebase/firestore', () => {
@@ -53,10 +56,14 @@ vi.mock('firebase/firestore', () => {
       };
     },
     getDoc: (ref: { path: string }) =>
-      Promise.resolve({
-        exists: () => ref.path in cloud.stored,
-        data: () => cloud.stored[ref.path],
-      }),
+      cloud.getDocErrorCode
+        ? Promise.reject(
+            Object.assign(new Error('Firestore failed'), { code: cloud.getDocErrorCode }),
+          )
+        : Promise.resolve({
+            exists: () => ref.path in cloud.stored,
+            data: () => cloud.stored[ref.path],
+          }),
     orderBy: (field: string) => ({ orderField: field }),
     query: (_col: unknown, ...constraints: { orderField?: string }[]) => ({
       orderField: constraints.find((c) => c.orderField)?.orderField,
@@ -215,5 +222,54 @@ describe('saving translations', () => {
     delete cloud.stored['recipes/babka'];
     await expect(saveTranslationToCloud('babka', 'en', polish)).resolves.toBe(false);
     expect(cloud.writes).toEqual([]);
+  });
+});
+
+describe('fetchFamilyMembership', () => {
+  beforeEach(() => {
+    cloud.stored = {};
+    cloud.getDocErrorCode = null;
+  });
+
+  it('finds a family member by their lowercase email, whatever case they signed in with', async () => {
+    cloud.stored['family_members/mom@example.com'] = {};
+    await expect(fetchFamilyMembership(' Mom@Example.com ')).resolves.toEqual({
+      isMember: true,
+      name: null,
+    });
+  });
+
+  it('reads the name the family list gives someone, ignoring anything unusable', async () => {
+    cloud.stored['family_members/k@example.com'] = { name: '  Babcia ' };
+    await expect(fetchFamilyMembership('k@example.com')).resolves.toEqual({
+      isMember: true,
+      name: 'Babcia',
+    });
+
+    cloud.stored['family_members/k@example.com'] = { name: ['<b>Babcia</b>'] };
+    await expect(fetchFamilyMembership('k@example.com')).resolves.toEqual({
+      isMember: true,
+      name: null,
+    });
+  });
+
+  it('says no for an email not on the list', async () => {
+    await expect(fetchFamilyMembership('stranger@example.com')).resolves.toEqual({
+      isMember: false,
+      name: null,
+    });
+  });
+
+  it('says no when the rules refuse the lookup (an unverified email)', async () => {
+    cloud.getDocErrorCode = 'permission-denied';
+    await expect(fetchFamilyMembership('mom@example.com')).resolves.toEqual({
+      isMember: false,
+      name: null,
+    });
+  });
+
+  it("fails rather than answering no when the list can't be reached", async () => {
+    cloud.getDocErrorCode = 'unavailable';
+    await expect(fetchFamilyMembership('mom@example.com')).rejects.toThrow('Firestore failed');
   });
 });

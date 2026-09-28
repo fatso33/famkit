@@ -14,9 +14,11 @@ type AuthState = ReturnType<typeof authHook.useAuth>;
 const signedOut = (overrides: Partial<AuthState> = {}): AuthState => ({
   user: null,
   isFamilyMember: false,
+  memberName: null,
   isLoading: false,
   isConfigured: true,
   error: null,
+  familyListUnavailable: false,
   signInWithGoogle: vi.fn(() => Promise.resolve()),
   signOut: vi.fn(() => Promise.resolve()),
   ...overrides,

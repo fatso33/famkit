@@ -5,6 +5,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useLanguage } from '../../hooks/useLanguage';
 import { ThemeToggle } from '../common/ThemeToggle';
 import { SplashScreen } from './SplashScreen';
+import { memberDisplayName } from '../../utils/ownership';
 import { LogOut, ShieldAlert } from 'lucide-react';
 
 interface AuthGateProps {
@@ -12,8 +13,17 @@ interface AuthGateProps {
 }
 
 export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
-  const { user, isFamilyMember, isLoading, isConfigured, error, signInWithGoogle, signOut } =
-    useAuth();
+  const {
+    user,
+    isFamilyMember,
+    memberName,
+    isLoading,
+    isConfigured,
+    error,
+    familyListUnavailable,
+    signInWithGoogle,
+    signOut,
+  } = useAuth();
 
   const { theme, toggleTheme } = useTheme();
   const { language, toggleLanguage, t } = useLanguage();
@@ -21,8 +31,8 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const email = user?.email ?? '';
   const displayName = user?.displayName;
   const currentUser = useMemo<CurrentUser | null>(
-    () => (email ? { email, name: displayName || email } : null),
-    [email, displayName],
+    () => (email ? { email, name: memberDisplayName(memberName, displayName, email) } : null),
+    [email, memberName, displayName],
   );
 
   // 1. Loading Screen (Warm Heirloom Style)
@@ -44,7 +54,12 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
 
   // 2. Signed out: the animated splash with sign-in
   if (!user) {
-    return <SplashScreen error={error} onSignIn={() => void signInWithGoogle()} />;
+    return (
+      <SplashScreen
+        error={familyListUnavailable ? t.familyListUnavailable : error}
+        onSignIn={() => void signInWithGoogle()}
+      />
+    );
   }
 
   // 3. Authenticated but Unauthorized (Stranger / Non-Family Google Account)

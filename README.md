@@ -15,7 +15,7 @@ Deployable directly as a zero-server static Single Page Application (SPA) to **G
 - **🔍 Click-to-Zoom Visual Lightbox**: Inspect step photos (e.g. sloppy dough consistency) with pan, drag, and 100%–350% zoom controls.
 - **📱 Offline PWA & 1-Click Install**: Installs directly to iOS Safari Home Screen and Android/Desktop Chrome with instant offline caching via Service Worker.
 - **☁️ Cloud Sync & Multi-Device Sharing**: Powered by Cloud Firestore with IndexedDB multi-tab offline persistence. Recipes saved on one phone or tablet instantly appear across all family devices.
-- **🔒 Family Google Authentication & Guest List**: Private heirloom vault protected by Google Sign-In with an allowlist restricted to approved family Gmail addresses.
+- **🔒 Family Google Authentication & Guest List**: Private heirloom vault protected by Google Sign-In with a family list kept in Firestore that only the project owner can change, in the Firebase console.
 - **📝 Step Builder, Photos & Version Archiving**: Add step-by-step consistency notes, photo thumbnails, and automatic version incrementing (`v1`, `v2`, `v3`) with historical archive snapshots.
 - **🤖 Two-way Family Translation via Gemini 3.5 / 3.8 Flash**: Bundled with verified offline translations for heirloom recipes. New and edited recipes are translated automatically between English and Polish through Firebase AI Logic (Gemini 3.5 Flash Lite, with Gemini 3.8 Flash fallback), protected by App Check. No Gemini key ships in the app.
 
@@ -68,7 +68,7 @@ The codebase is organized into clean, modular, testable components:
 │   ├── data/
 │   │   └── defaultRecipe.ts        # Canonical Wanda's Cheese Bread with bilingual data
 │   ├── hooks/
-│   │   ├── useAuth.ts              # Firebase Google Auth & allowlist state
+│   │   ├── useAuth.ts              # Firebase Google Auth & family list check
 │   │   ├── useCookMode.ts          # Screen Wake Lock API controller
 │   │   ├── useFontScale.ts         # Accessibility text scaling (85%–140%)
 │   │   ├── useLanguage.ts          # EN / PL localization provider
@@ -83,7 +83,7 @@ The codebase is organized into clean, modular, testable components:
 │   │   ├── gemini.ts               # Two-way translation via Firebase AI Logic
 │   │   └── storage.ts              # LocalStorage fallback & preference persistence
 │   ├── test/                       # Vitest unit test suite (31 tests across 6 files)
-│   │   ├── auth.test.tsx           # Email allowlist & splash screen tests
+│   │   ├── auth.test.tsx           # Family list & splash screen tests
 │   │   ├── fractions.test.ts       # Fraction formatting & ingredient parsing tests
 │   │   ├── gemini.test.ts          # Translation service tests
 │   │   ├── recipeVersioning.test.ts # Version increments & historical archive tests
@@ -155,16 +155,15 @@ cp .env.example .env.local
 
 Configure the following variables:
 
-| Variable                            | Required? | Description                                                                           |
-| :---------------------------------- | :-------: | :------------------------------------------------------------------------------------ |
-| `VITE_FIREBASE_API_KEY`             | Optional* | Firebase project Web API Key                                                          |
-| `VITE_FIREBASE_AUTH_DOMAIN`         | Optional* | Firebase Auth Domain (e.g. `your-app.firebaseapp.com`)                                |
-| `VITE_FIREBASE_PROJECT_ID`          | Optional* | Firebase Project ID                                                                   |
-| `VITE_FIREBASE_STORAGE_BUCKET`      | Optional  | Firebase Storage Bucket name                                                          |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Optional  | Firebase Cloud Messaging sender ID                                                    |
-| `VITE_FIREBASE_APP_ID`              | Optional* | Firebase Web Application ID                                                           |
-| `VITE_FAMILY_EMAILS`                | Optional  | Comma-separated list of approved Google emails (e.g. `"mom@gmail.com,dad@gmail.com"`) |
-| `VITE_RECAPTCHA_SITE_KEY`           | Optional  | reCAPTCHA Enterprise site key for Firebase App Check (protects recipe translation)    |
+| Variable                            | Required? | Description                                                                        |
+| :---------------------------------- | :-------: | :--------------------------------------------------------------------------------- |
+| `VITE_FIREBASE_API_KEY`             | Optional* | Firebase project Web API Key                                                       |
+| `VITE_FIREBASE_AUTH_DOMAIN`         | Optional* | Firebase Auth Domain (e.g. `your-app.firebaseapp.com`)                             |
+| `VITE_FIREBASE_PROJECT_ID`          | Optional* | Firebase Project ID                                                                |
+| `VITE_FIREBASE_STORAGE_BUCKET`      | Optional  | Firebase Storage Bucket name                                                       |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Optional  | Firebase Cloud Messaging sender ID                                                 |
+| `VITE_FIREBASE_APP_ID`              | Optional* | Firebase Web Application ID                                                        |
+| `VITE_RECAPTCHA_SITE_KEY`           | Optional  | reCAPTCHA Enterprise site key for Firebase App Check (protects recipe translation) |
 
 _\*Required only if enabling multi-device cloud synchronization and Google family authentication._
 
@@ -194,31 +193,19 @@ To enable multi-device sync and family authentication:
 2. Choose a region close to your family (e.g. `nam5` or `eur3`).
 3. Start in **Production mode**.
 
-### 4. Configure & Deploy Security Rules
+### 4. Add Family Members
 
-Edit [`firestore.rules`](firestore.rules) to replace the placeholder emails with your actual family Gmail addresses:
+Who may sign in is the Firestore collection `family_members`, one document per person. The rules stop anyone changing it from the app, so it is edited only in the Firebase Console. Add everyone **before** deploying the rules below, or nobody can reach the cloud.
 
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    function isFamily() {
-      return request.auth != null &&
-        request.auth.token.email.lower() in [
-          "your_email@gmail.com",
-          "mom_email@gmail.com",
-          "dad_email@gmail.com"
-        ];
-    }
+1. Go to **Firestore Database** → **Data** and open (or start) the `family_members` collection.
+2. **Add document**, with the **Document ID** set to their Google account email in **lowercase** (e.g. `mom@gmail.com`). An ID with capitals never matches.
+3. Optionally add a string field `name` (e.g. `Babcia`). Recipes they add are then credited to that name instead of their Google name. Leave it out to use the Google name.
 
-    match /recipes/{recipeId} {
-      allow read, write: if isFamily();
-    }
-  }
-}
-```
+To remove someone, delete their document. They lose access to the cloud at once; recipes already on their phone stay there.
 
-Deploy the rules to Firebase:
+### 5. Deploy Security Rules
+
+[`firestore.rules`](firestore.rules) holds no emails, so deploy it as it is:
 
 ```bash
 # Install Firebase CLI if not already installed
@@ -229,7 +216,7 @@ firebase login
 firebase deploy --only firestore:rules
 ```
 
-_(Alternatively, copy and paste the rules directly into the Firebase Console under **Firestore Database** → **Rules**)._
+_(Alternatively, copy and paste the rules directly into the Firebase Console under **Firestore Database** → **Rules**. The console keeps earlier versions, so a bad deploy can be rolled back there.)_
 
 ---
 
@@ -252,7 +239,6 @@ To enable Cloud Sync and recipe translation on GitHub Pages, navigate to **Setti
 - `VITE_FIREBASE_STORAGE_BUCKET`
 - `VITE_FIREBASE_MESSAGING_SENDER_ID`
 - `VITE_FIREBASE_APP_ID`
-- `VITE_FAMILY_EMAILS`: e.g. `mom@gmail.com,dad@gmail.com,sister@gmail.com`
 - `VITE_RECAPTCHA_SITE_KEY`: reCAPTCHA Enterprise site key (see below)
 
 ### 3. Enable Recipe Translation (Firebase AI Logic + App Check)

@@ -72,7 +72,7 @@ Tools enforce most of these: TS strict, ESLint (react-hooks, jsx-a11y, promise s
 
 - **Service worker:** JS/CSS/HTML are network-first, but images are **cache-first**. If you replace an image at an existing path, bump `CACHE_NAME` in `public/sw.js`, or users keep seeing the old one.
 - **Secrets:** `VITE_*` env vars are baked into the public bundle. Never commit `.env`. CI reads them from GitHub Secrets (`deploy.yml`).
-- **Access control** has two layers that must agree: the `VITE_FAMILY_EMAILS` secret (client UX) and the email list in `firestore.rules` (real enforcement, deployed separately via the Firebase CLI/console).
+- **Access control:** the family list is the Firestore collection `family_members/{lowercase email}`, edited only in the Firebase console (rules forbid app writes and listing; each person may read only their own entry). `firestore.rules` checks it for real; `useAuth` reads the signed-in person's entry only to pick the screen, remembering the last confirmed member so returning members start instantly and offline. An optional `name` field overrides the Google name for author credit (`utils/ownership`). Rules deploy separately (Firebase CLI/console), so deploy rules **before** any client change that depends on them.
 - **Local UI testing:** there's no local `.env`, so Firebase is off in dev. "Connect with Google" logs in as a fake dev user, and data stays in localStorage, so it's safe to click through anything. The vault starts empty: no recipe is built into the app. In the preview browser, the hidden pane stalls `document.startViewTransition`. If navigation clicks do nothing, run `document.startViewTransition = undefined` in the page first.
 - **Offline-first:** Firestore uses IndexedDB persistence, and recipes also live in localStorage. Test changes signed out (local-only) as well as signed in.
 - **Translation:** a recipe's top-level text is the original in `sourceLanguage`, and `translations[other]` carries a `sourceHash`. A mismatched hash means the translation is stale, and `useRecipes` re-translates it in the background. The logic lives in `utils/recipeTranslation`. Firebase is off locally, so translation only runs in tests (mocked) or with a real `.env` plus an App Check debug token.
@@ -93,7 +93,3 @@ Tools enforce most of these: TS strict, ESLint (react-hooks, jsx-a11y, promise s
 
 - **Versions:** each edit backs up the replaced version whole to `recipes/{id}/versions/{versionId}`, in the same batch as the recipe. Rules make them owner-only and create-only, so never write code that updates or deletes a version. `versionIndex` on the recipe lists them, so showing the list costs no reads. Loading one costs one read. Old records may still carry an inline `history` (no photos). It moves into `versions` on the next save.
 - Recipe saves replace the whole document (no merge), so a field cleared in the editor is cleared in the cloud.
-
-## Known risks (not yet addressed)
-
-- `firestore.rules` in the repo still holds placeholder emails. Confirm the deployed rules contain the real family list.

@@ -1,4 +1,5 @@
 import { Recipe, RecipeVersion, Language, Theme, VaultSort, VaultView } from '../types/recipe';
+import { familyMemberName } from '../utils/ownership';
 import { isSeasonPreference, SeasonPreference } from '../utils/season';
 import { DEFAULT_SORT, formatVaultSort, parseVaultSort } from '../utils/vault';
 
@@ -151,6 +152,40 @@ function writeSetting(key: string, value: string): void {
     localStorage.setItem(key, value);
   } catch (e) {
     console.warn(`Could not remember the vault setting ${key} on this device:`, e);
+  }
+}
+
+// The last person this device confirmed is on the family list, so a returning member gets in
+// straight away (and offline) while the list is checked again in the background.
+const CONFIRMED_MEMBER_KEY = 'family_kitchen_confirmed_member';
+
+export interface ConfirmedMember {
+  /** Lowercase. */
+  email: string;
+  /** The name the family list gives them, if any. */
+  name: string | null;
+}
+
+export function getConfirmedMember(): ConfirmedMember | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const parsed: unknown = JSON.parse(readSetting(CONFIRMED_MEMBER_KEY) ?? 'null');
+    if (typeof parsed !== 'object' || parsed === null) return null;
+    const { email, name } = parsed as Record<string, unknown>;
+    if (typeof email !== 'string' || !email) return null;
+    return { email, name: familyMemberName(name) };
+  } catch {
+    return null;
+  }
+}
+
+export function setConfirmedMember(member: ConfirmedMember | null): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (member) localStorage.setItem(CONFIRMED_MEMBER_KEY, JSON.stringify(member));
+    else localStorage.removeItem(CONFIRMED_MEMBER_KEY);
+  } catch (e) {
+    console.warn('Could not remember family membership on this device:', e);
   }
 }
 

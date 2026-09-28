@@ -4,7 +4,9 @@ import {
   addedByName,
   authorModeOf,
   canEditRecipe,
+  familyMemberName,
   isHeirloom,
+  memberDisplayName,
   resolveAuthor,
   shortName,
 } from '../utils/ownership';
@@ -70,6 +72,28 @@ describe('authors', () => {
   it('counts recipes passed down from someone else as heirlooms', () => {
     expect(isHeirloom(WANDAS_CHEESE_BREAD)).toBe(true);
     expect(isHeirloom(recipe)).toBe(false);
+  });
+});
+
+describe('names from the family list', () => {
+  it('tidies the name a family_members entry gives someone', () => {
+    expect(familyMemberName('  Babcia  ')).toBe('Babcia');
+    expect(familyMemberName('Ciocia\n  Ola')).toBe('Ciocia Ola');
+    expect(familyMemberName('x'.repeat(200))).toHaveLength(60);
+  });
+
+  it('ignores an entry name that is missing, blank or not text', () => {
+    expect(familyMemberName(undefined)).toBeNull();
+    expect(familyMemberName('   ')).toBeNull();
+    expect(familyMemberName(42)).toBeNull();
+    expect(familyMemberName({ first: 'Babcia' })).toBeNull();
+  });
+
+  it("credits the family list's name first, then Google's, then the email", () => {
+    expect(memberDisplayName('Babcia', 'Krystyna Nowak', 'k@example.com')).toBe('Babcia');
+    expect(memberDisplayName(null, 'Krystyna Nowak', 'k@example.com')).toBe('Krystyna Nowak');
+    expect(memberDisplayName(null, '  ', 'k@example.com')).toBe('k@example.com');
+    expect(memberDisplayName(null, null, 'k@example.com')).toBe('k@example.com');
   });
 });
 
