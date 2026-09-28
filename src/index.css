@@ -2483,7 +2483,19 @@
         color: var(--accent);
         font-weight: 600;
         margin-bottom: 1rem;
-        display: block;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 0.5rem;
+      }
+
+      /* How many times a scaled recipe is made, beside the recipe's own yield. */
+      .yield-scale {
+        font-size: 0.8125rem;
+        font-variant-numeric: tabular-nums;
+        padding: 0.05rem 0.5rem;
+        border-radius: var(--radius-sm);
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
       }
 
       /* Modern 2-Column Ingredients Table */

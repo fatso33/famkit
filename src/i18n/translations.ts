@@ -51,7 +51,6 @@ export interface UiTranslations {
   thAmount: string;
   ingredients: string;
   for1Loaf: string;
-  forNLoaves: (n: number) => string;
   kitchenTip: string;
   crucialNote: string;
   prepSteps: string;
@@ -370,7 +369,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     thAmount: 'Amount',
     ingredients: 'Ingredients',
     for1Loaf: 'For 1 loaf:',
-    forNLoaves: (n: number) => `For ${n} ${n === 1 ? 'loaf' : 'loaves'}:`,
     kitchenTip: 'Kitchen Tip',
     crucialNote: 'Crucial Note',
     prepSteps: 'Preparation Steps',
@@ -676,8 +674,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     thAmount: 'Ilość',
     ingredients: 'Składniki',
     for1Loaf: 'Na 1 bochenek:',
-    forNLoaves: (n: number) =>
-      `Na ${n} ${n === 1 ? 'bochenek' : n >= 2 && n <= 4 ? 'bochenki' : 'bochenków'}:`,
     kitchenTip: 'Wskazówka kuchenna',
     crucialNote: 'Ważna uwaga',
     prepSteps: 'Sposób przygotowania',

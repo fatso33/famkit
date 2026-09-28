@@ -1,7 +1,7 @@
 import React from 'react';
 import { Ingredient, Language } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
-import { parseIngredientRow } from '../../utils/fractions';
+import { formatFraction, parseIngredientRow } from '../../utils/fractions';
 import { ingredientGroups } from '../../utils/recipeMethod';
 import { ArrowLeftRight } from 'lucide-react';
 import { PortionScaler } from './PortionScaler';
@@ -26,7 +26,9 @@ export const IngredientsTable: React.FC<IngredientsTableProps> = ({
   language,
   t,
 }) => {
-  const yieldDisplay = scale === 1 ? (yieldHeader ?? t.for1Loaf) : t.forNLoaves(scale);
+  // The recipe's own yield stays as written; a scaled recipe says how many times it is made.
+  const yieldText = yieldHeader ?? t.for1Loaf;
+  const scaled = scale !== 1;
 
   return (
     <aside className="ingredients-panel">
@@ -41,9 +43,10 @@ export const IngredientsTable: React.FC<IngredientsTableProps> = ({
       </div>
 
       {/* Verbatim Yield Header */}
-      {yieldDisplay && (
+      {(yieldText || scaled) && (
         <span className="yield-text" id="yieldHeaderDisplay">
-          {yieldDisplay}
+          {yieldText}
+          {scaled && <span className="yield-scale">×{formatFraction(scale)}</span>}
         </span>
       )}
 

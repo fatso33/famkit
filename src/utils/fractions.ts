@@ -1,5 +1,6 @@
 import { Ingredient, Language, ParsedIngredientRow } from '../types/recipe';
 import { polishUnit } from './polish';
+import { scaleAmountText } from './scaleAmount';
 
 /**
  * Formats a decimal number into an authentic culinary fraction.
@@ -72,7 +73,8 @@ export function parseIngredientRow(
   let name: string;
   let amount: string;
 
-  if (ing.qty !== undefined && ing.qty !== null && !isNaN(Number(ing.qty))) {
+  const hasQty = ing.qty !== undefined && ing.qty !== null && !isNaN(Number(ing.qty));
+  if (hasQty) {
     let cleanPrefix = extractBrackets(ing.prefix || '');
     cleanPrefix = cleanPrefix.replace(/[-–—:]\s*$/, '').trim();
 
@@ -175,6 +177,8 @@ export function parseIngredientRow(
     .replace(/[-–—:]\s*$/, '')
     .trim();
   amount = extractBrackets(amount).trim();
+  // Amounts typed as text (the current editor, translations) scale as the cook wrote them.
+  if (!hasQty) amount = scaleAmountText(amount, scaleRatio, lang);
 
   const note = ing.note?.trim();
   const substitute = ing.substitute?.trim();
@@ -184,7 +188,10 @@ export function parseIngredientRow(
     amount,
     originalText: rawText,
     substitute: substitute
-      ? { name: substitute, amount: (ing.substituteAmount ?? '').trim() }
+      ? {
+          name: substitute,
+          amount: scaleAmountText((ing.substituteAmount ?? '').trim(), scaleRatio, lang),
+        }
       : undefined,
   };
 }
