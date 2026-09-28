@@ -16,10 +16,8 @@ import {
   translationStatus,
 } from '../utils/recipeTranslation';
 import { buildTranslation, pieceHash, recipePieces } from '../utils/translationPieces';
-import { restoreWandasPolish } from '../utils/wandaPolish';
 import { Piece } from '../utils/translationPieces';
 
-const peter = { email: 'p.gzowski33@gmail.com', name: 'Peter Gzowski' } as const;
 const labels = (lang: 'en' | 'pl') => ({
   bakingSection: UI_TEXT[lang].bakingOptions,
   bakingPaths: UI_TEXT[lang].legacyBakingPaths,
@@ -132,53 +130,6 @@ describe('only what changed is translated again', () => {
   it('stores nothing undefined (Firestore rejects it)', () => {
     const tr = translated.translations!.pl!;
     expect(JSON.parse(JSON.stringify(tr))).toEqual(tr);
-  });
-});
-
-describe("restoring Wanda's hand-written Polish (one-time repair)", () => {
-  // What the migration left in the cloud: machine Polish for every piece but the fork.
-  const migrated = migrateInEnglish();
-  const machine = applyTranslation(
-    migrated,
-    answer(recipePieces(translatableContent(migrated)), isFork),
-    sourceHash(migrated),
-  );
-
-  it('puts her words back wherever the English is unchanged, and the app’s Polish on the fork', () => {
-    const restored = restoreWandasPolish(machine, peter)!;
-    const shown = localizeRecipe(restored, 'pl');
-    const handWritten = WANDAS_CHEESE_BREAD.translations!.pl!;
-
-    expect(shown.name).toBe(handWritten.name);
-    expect(shown.steps[2].text).toBe(handWritten.steps![2].text);
-    expect(shown.steps[2].imageCaption).toBe(handWritten.steps![2].imageCaption);
-    expect(shown.ingredients[1]).toMatchObject({ text: handWritten.ingredients![1].text, qty: 2 });
-    expect(shown.steps[9].text).toBe(handWritten.laminationDirective);
-    expect(shown.steps[10].section).toBe(UI_TEXT.pl.bakingOptions);
-    const [fridge, oven] = forkOf(shown).paths;
-    expect(fridge).toMatchObject({
-      label: UI_TEXT.pl.legacyBakingPaths[0],
-      text: handWritten.bakingOptions!.option1,
-    });
-    expect(oven.label).toBe(UI_TEXT.pl.legacyBakingPaths[1]);
-    expect([oven.text, ...oven.steps!]).toEqual(handWritten.bakingOptions!.option2);
-    // Peter's changed note keeps its (machine) translation; nothing is left to ask for.
-    expect(shown.notes).toBe('PL Will not work in an air fryer!');
-    expect(needsTranslation(restored)).toBe(false);
-    // Only the translation changes: no new version.
-    expect({ ...restored, translations: undefined }).toEqual({
-      ...machine,
-      translations: undefined,
-    });
-  });
-
-  it('runs once, and only on its owner’s phone', () => {
-    const restored = restoreWandasPolish(machine, peter)!;
-    // As it comes back from Firestore (maps may come back in another key order).
-    expect(restoreWandasPolish(JSON.parse(JSON.stringify(restored)) as Recipe, peter)).toBeNull();
-    expect(restoreWandasPolish(machine, { email: 'ola@example.com', name: 'Ola' })).toBeNull();
-    expect(restoreWandasPolish(machine, null)).toBeNull();
-    expect(restoreWandasPolish(WANDAS_CHEESE_BREAD, peter)).toBeNull();
   });
 });
 

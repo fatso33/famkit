@@ -34,7 +34,6 @@ import {
   translationFitsRecipe,
 } from '../utils/recipeTranslation';
 import { fnv1a, pieceHash } from '../utils/translationPieces';
-import { restoreWandasPolish } from '../utils/wandaPolish';
 
 export function getLocalizedRecipe(
   recipe: Recipe | null | undefined,
@@ -85,8 +84,6 @@ export function useRecipes(currentUser: CurrentUser | null) {
       // (e.g. Wanda's, whose hand-written Polish wasn't stamped yet). Its cloud version is coming.
       if (isFirebaseConfigured && !recipe.ownerEmail) continue;
       if (isDeleted(recipe)) continue;
-      // Wanda's hand-written Polish goes back first, so a translation can't overwrite it.
-      if (restoreWandasPolish(recipe, currentUser)) continue;
       if (!needsTranslation(recipe)) continue;
       const hash = sourceHash(recipe);
       const key = `${recipe.id}@${hash}@${fnv1a(pendingPieces(recipe).map(pieceHash).join())}`;
@@ -161,24 +158,7 @@ export function useRecipes(currentUser: CurrentUser | null) {
         translationInFlight.current = false;
         setTranslationScan((n) => n + 1);
       });
-  }, [recipes, translationScan, currentUser]);
-
-  // One-time repair: Wanda's hand-written Polish back (see utils/wandaPolish). A translation-only
-  // write, checked against the cloud's text; the cloud's update then reaches every phone.
-  const wandaRestoreTried = useRef(false);
-  useEffect(() => {
-    if (wandaRestoreTried.current || !isFirebaseConfigured) return;
-    let restored: Recipe | null = null;
-    for (const recipe of recipes) restored ??= restoreWandasPolish(recipe, currentUser);
-    if (!restored) return;
-    wandaRestoreTried.current = true;
-    const lang = sourceLanguageOf(restored);
-    saveTranslationToCloud(restored.id, lang, restored.translations![otherLanguage(lang)]!).catch(
-      (err: unknown) => {
-        console.warn("Could not restore Wanda's hand-written Polish (retries next launch):", err);
-      },
-    );
-  }, [recipes, currentUser]);
+  }, [recipes, translationScan]);
 
   // Back online: retry translations that failed while offline.
   useEffect(() => {
