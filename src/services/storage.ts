@@ -173,3 +173,42 @@ export function setStoredVaultSort(sort: VaultSort): void {
   if (typeof window === 'undefined') return;
   writeSetting(VAULT_SORT_KEY, formatVaultSort(sort));
 }
+
+// The fork path each recipe was last cooked on, per device: recipe id → fork step → path.
+const FORK_PATHS_KEY = 'family_kitchen_fork_paths';
+
+function readForkPaths(): Record<string, unknown> {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(FORK_PATHS_KEY) || '{}');
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+/** The paths last chosen on a recipe's forks, by the fork step's position. */
+export function getStoredPathChoices(recipeId: string): Record<number, number> {
+  if (typeof window === 'undefined') return {};
+  const own = readForkPaths()[recipeId];
+  if (typeof own !== 'object' || own === null) return {};
+  const choices: Record<number, number> = {};
+  for (const [step, path] of Object.entries(own)) {
+    if (/^\d+$/.test(step) && Number.isInteger(path) && (path as number) >= 0) {
+      choices[Number(step)] = path as number;
+    }
+  }
+  return choices;
+}
+
+export function setStoredPathChoices(recipeId: string, choices: Record<number, number>): void {
+  if (typeof window === 'undefined') return;
+  const all = readForkPaths();
+  all[recipeId] = choices;
+  try {
+    localStorage.setItem(FORK_PATHS_KEY, JSON.stringify(all));
+  } catch (e) {
+    console.warn('Could not remember the chosen fork path (storage full?):', e);
+  }
+}

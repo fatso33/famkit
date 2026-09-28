@@ -54,6 +54,13 @@ import { AppPage, MainPage } from './types/navigation';
 // otherwise play out in the middle of the page transition.
 const jumpTo = (top: number) => window.scrollTo({ top, behavior: 'instant' });
 
+/** The centre of an element on screen, where a page can open out of it. */
+const centreOf = (el: Element | null) => {
+  if (!el) return undefined;
+  const { left, top, width, height } = el.getBoundingClientRect();
+  return { x: left + width / 2, y: top + height / 2 };
+};
+
 interface NavigateOptions {
   /** False when the browser already animated it (the iOS back swipe). */
   animated?: boolean;
@@ -113,6 +120,8 @@ export default function App() {
   const [lastRecipeId, setLastRecipeId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
+  // Where the editor opens out of: the button that asked for it.
+  const [editorOrigin, setEditorOrigin] = useState<{ x: number; y: number } | undefined>();
   // An earlier version the author loaded into the editor, to restore on save.
   const [restoredVersion, setRestoredVersion] = useState<RecipeVersion | null>(null);
   // Switching versions remounts the editor, which shouldn't slide in again.
@@ -285,6 +294,8 @@ export default function App() {
 
   const openAddRecipe = () => {
     setEditingRecipe(null);
+    // It opens out of the menu button, where "Add recipe" was chosen.
+    setEditorOrigin(centreOf(document.getElementById('fabMenuBtn')));
     setIsAddModalOpen(true);
   };
 
@@ -367,8 +378,9 @@ export default function App() {
             isWakeLockSupported={isWakeLockSupported}
             onEditRecipe={
               canEditRecipe(selectedRecipe, currentUser, isFirebaseConfigured)
-                ? (rec) => {
+                ? (rec, origin) => {
                     setEditingRecipe(rec);
+                    setEditorOrigin(origin);
                     setIsAddModalOpen(true);
                   }
                 : undefined
@@ -434,6 +446,8 @@ export default function App() {
             setEditorReopened(true);
           }}
           animateIn={!editorReopened}
+          origin={editorOrigin}
+          onToast={(message, action) => showToast(message, action ? 'info' : 'success', action)}
           onDelete={editingRecipe ? () => handleDelete(editingRecipe.id) : undefined}
           language={language}
           onClose={closeEditor}

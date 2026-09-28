@@ -53,9 +53,12 @@ export function parseIngredientRow(
 ): ParsedIngredientRow {
   const rawText = ing.text || '';
   const bracketNotes: string[] = [];
+  // Rows from the current editor carry their note in its own field, and brackets are just text.
+  const ownNote = ing.note !== undefined;
 
   const extractBrackets = (str: string): string => {
     if (!str) return '';
+    if (ownNote) return str;
     return str.replace(/\(([^)]+)\)|\[([^\]]+)\]/g, (_match, p1, p2) => {
       const inner = (p1 || p2 || '').trim();
       if (inner && !bracketNotes.includes(inner)) {
@@ -138,6 +141,13 @@ export function parseIngredientRow(
 
     const separator = unitText && !['g', 'ml', 'kg', 'oz', 'lb'].includes(unitText) ? ' ' : '';
     amount = `${formattedQty}${separator}${unitText}${altString}${cleanSuffix}`.trim();
+  } else if (ownNote && ing.name !== undefined && rawText.startsWith(ing.name)) {
+    // Saved as "name - amount" with the name alongside, so a hyphen in the name stays put.
+    name = ing.name.trim();
+    amount = rawText
+      .slice(ing.name.length)
+      .replace(/^\s*-\s*/, '')
+      .trim();
   } else {
     const cleanText = extractBrackets(rawText);
     if (cleanText.includes(' - ')) {
@@ -167,10 +177,15 @@ export function parseIngredientRow(
     .trim();
   amount = extractBrackets(amount).trim();
 
+  const note = ing.note?.trim();
+  const substitute = ing.substitute?.trim();
   return {
     name,
-    notes: bracketNotes,
+    notes: ownNote ? (note ? [note] : []) : bracketNotes,
     amount,
     originalText: rawText,
+    substitute: substitute
+      ? { name: substitute, amount: (ing.substituteAmount ?? '').trim() }
+      : undefined,
   };
 }

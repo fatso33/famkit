@@ -6,6 +6,7 @@ import {
   canEditRecipe,
   isHeirloom,
   resolveAuthor,
+  shortName,
 } from '../utils/ownership';
 import { fitWithin } from '../utils/imageCompression';
 import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
@@ -77,5 +78,14 @@ describe('fitWithin', () => {
     expect(fitWithin(4000, 3000, 1000)).toEqual({ width: 1000, height: 750 });
     expect(fitWithin(3000, 4000, 1000)).toEqual({ width: 750, height: 1000 });
     expect(fitWithin(800, 600, 1000)).toEqual({ width: 800, height: 600 });
+  });
+});
+
+describe('shortName', () => {
+  it('shows a first name and last initial on the author switch', () => {
+    expect(shortName('Peter Gzowski')).toBe('Peter G.');
+    expect(shortName('  Ola Maria nowak ')).toBe('Ola N.');
+    expect(shortName('Wanda')).toBe('Wanda');
+    expect(shortName('ola@example.com')).toBe('ola@example.com');
   });
 });

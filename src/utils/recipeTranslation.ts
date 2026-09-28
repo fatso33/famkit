@@ -1,10 +1,12 @@
 import {
   BakingOptions,
+  ForkPath,
   Ingredient,
   Language,
   LocalizedRecipeContent,
   Recipe,
   Step,
+  StepFork,
 } from '../types/recipe';
 
 export const LANGUAGES: readonly Language[] = ['en', 'pl'];
@@ -49,14 +51,46 @@ export function translatableContent(recipe: Recipe): LocalizedRecipeContent {
       suffix: ing.suffix,
       renderUnit: ing.renderUnit,
       renderUnitPlural: ing.renderUnitPlural,
+      // Newer fields last, and missing on older rows, so their fingerprint doesn't change.
+      note: ing.note,
+      substitute: ing.substitute,
+      substituteAmount: ing.substituteAmount,
     })),
     steps: (recipe.steps || []).map((st) => ({
       num: st.num,
       text: st.text,
       notes: st.notes,
       imageCaption: st.imageCaption,
+      section: st.section,
+      substeps: st.substeps,
+      fork: st.fork && {
+        paths: st.fork.paths.map((path) => ({
+          label: path.label,
+          text: path.text,
+          steps: path.steps,
+        })),
+      },
     })),
     bakingOptions: recipe.bakingOptions,
+  };
+}
+
+// A translated list in the source's shape: one entry per source entry, the original where the
+// translation has none.
+const overlayList = (source?: string[], translated?: string[]) =>
+  source?.map((text, i) => translated?.[i] ?? text);
+
+function overlayFork(source: StepFork, translated?: StepFork): StepFork {
+  return {
+    paths: source.paths.map((path, i) => {
+      const t = translated?.paths[i];
+      return {
+        ...path,
+        label: t?.label ?? path.label,
+        text: t?.text ?? path.text,
+        steps: overlayList(path.steps, t?.steps),
+      };
+    }),
   };
 }
 
@@ -103,17 +137,38 @@ export function displayedLanguage(recipe: Recipe, viewerLanguage: Language): Lan
 }
 
 /**
- * Lays translated text over the recipe. Quantities, step numbers and photos always come from
- * the original, so a translation can't change amounts or drop step photos.
+ * Lays translated text over the recipe. Quantities, step numbers, photos and the method's shape
+ * (sections, unnumbered text, substeps, forks) always come from the original, so a translation
+ * can't change amounts, drop step photos or rearrange the steps.
  */
 export function overlayTranslation(recipe: Recipe, tr: LocalizedRecipeContent): Recipe {
   const ingredients: Ingredient[] = (recipe.ingredients || []).map((src, i) => {
     const t = tr.ingredients?.[i];
-    return t ? { ...t, qty: src.qty, altQty: src.altQty } : src;
+    return t
+      ? {
+          ...t,
+          qty: src.qty,
+          altQty: src.altQty,
+          note: t.note ?? src.note,
+          substitute: t.substitute ?? src.substitute,
+          substituteAmount: t.substituteAmount ?? src.substituteAmount,
+        }
+      : src;
   });
   const steps: Step[] = (recipe.steps || []).map((src, i) => {
     const t = tr.steps?.[i];
-    return t ? { ...t, num: src.num, hasImage: src.hasImage, imageSrc: src.imageSrc } : src;
+    return t
+      ? {
+          ...t,
+          num: src.num,
+          hasImage: src.hasImage,
+          imageSrc: src.imageSrc,
+          plain: src.plain,
+          section: src.section === undefined ? undefined : (t.section ?? src.section),
+          substeps: overlayList(src.substeps, t.substeps),
+          fork: src.fork && overlayFork(src.fork, t.fork),
+        }
+      : src;
   });
   return {
     ...recipe,
@@ -122,11 +177,13 @@ export function overlayTranslation(recipe: Recipe, tr: LocalizedRecipeContent): 
     yieldHeader: tr.yieldHeader || recipe.yieldHeader,
     tips: tr.tips !== undefined ? tr.tips : recipe.tips,
     notes: tr.notes !== undefined ? tr.notes : recipe.notes,
+    // The legacy blocks only where the recipe still has them: once the editor has made them
+    // steps, an older translation mustn't bring them back.
     laminationDirective:
-      tr.laminationDirective !== undefined ? tr.laminationDirective : recipe.laminationDirective,
+      recipe.laminationDirective && (tr.laminationDirective ?? recipe.laminationDirective),
     ingredients: tr.ingredients && tr.ingredients.length > 0 ? ingredients : recipe.ingredients,
     steps: tr.steps && tr.steps.length > 0 ? steps : recipe.steps,
-    bakingOptions: tr.bakingOptions || recipe.bakingOptions,
+    bakingOptions: recipe.bakingOptions && (tr.bakingOptions || recipe.bakingOptions),
   };
 }
 
@@ -202,6 +259,9 @@ export function resolveEdit(
       ...original,
       author: edited.author,
       authorMode: edited.authorMode,
+      // Not text to translate, so a change to these alone still saves.
+      category: edited.category,
+      manualMinutes: edited.manualMinutes,
       heroImage: edited.heroImage,
       steps: (original.steps || []).map((st, i) => ({
         ...st,
@@ -263,7 +323,40 @@ const INGREDIENT_TEXT_KEYS = [
   'renderUnitPlural',
   'altUnit',
   'suffix',
+  'note',
+  'substitute',
+  'substituteAmount',
 ] as const;
+
+const isStringList = (v: unknown): v is string[] =>
+  Array.isArray(v) && v.every((s) => typeof s === 'string');
+
+function parseFork(v: unknown): StepFork | undefined {
+  if (!isObject(v) || !Array.isArray(v.paths)) return undefined;
+  const paths = v.paths.filter(isObject).map((path) => {
+    const out: ForkPath = {
+      label: typeof path.label === 'string' ? path.label : '',
+      text: typeof path.text === 'string' ? path.text : '',
+    };
+    if (isStringList(path.steps)) out.steps = path.steps;
+    return out;
+  });
+  return paths.length > 0 ? { paths } : undefined;
+}
+
+/** A translated step's text fields (its shape always comes from the original). */
+function parseStep(st: Json, i: number): Step[] {
+  if (typeof st.text !== 'string') return [];
+  const step: Step = {
+    num: typeof st.num === 'number' ? st.num : i + 1,
+    text: st.text,
+    ...pickStrings(st, ['notes', 'imageCaption', 'section'] as const),
+  };
+  if (isStringList(st.substeps)) step.substeps = st.substeps;
+  const fork = parseFork(st.fork);
+  if (fork) step.fork = fork;
+  return [step];
+}
 
 /**
  * Validates a translation response. Keeps only known fields of the right type, and never
@@ -299,17 +392,7 @@ export function parseTranslationResponse(raw: unknown): ParsedTranslation {
   }
 
   if (Array.isArray(raw.steps)) {
-    content.steps = raw.steps.filter(isObject).flatMap((st, i): Step[] =>
-      typeof st.text === 'string'
-        ? [
-            {
-              num: typeof st.num === 'number' ? st.num : i + 1,
-              text: st.text,
-              ...pickStrings(st, ['notes', 'imageCaption'] as const),
-            },
-          ]
-        : [],
-    );
+    content.steps = raw.steps.filter(isObject).flatMap(parseStep);
   }
 
   const bakingOptions = parseBakingOptions(raw.bakingOptions);

@@ -9,15 +9,57 @@ export interface Ingredient {
   suffix?: string;
   renderUnit?: string;
   renderUnitPlural?: string;
+  /**
+   * The note shown under the name (e.g. "sifted"), typed in its own field. Rows saved by the
+   * current editor always have it (empty when there's none); older rows don't, and show the text
+   * in brackets instead.
+   */
+  note?: string;
+  /** A suggested stand-in (e.g. "Margarine"), and how much of it. */
+  substitute?: string;
+  substituteAmount?: string;
 }
 
 export interface Step {
+  /**
+   * Legacy: the number older app versions show. Numbers are worked out from the order now
+   * (utils/recipeMethod). Only the first numbered step's still counts: 0 there means the
+   * recipe numbers its steps from 0.
+   */
   num: number;
+  /** What to do. On a fork, the first path's text (older app versions show only this). */
   text: string;
   hasImage?: boolean;
   imageSrc?: string;
   imageCaption?: string;
   notes?: string;
+  /** Unnumbered text shown between the steps. */
+  plain?: boolean;
+  /** Up to three smaller steps, shown as a), b), c). */
+  substeps?: string[];
+  /**
+   * This step starts a new section with this heading. On the first step it renames the first
+   * section; later, an empty heading still starts a section.
+   */
+  section?: string;
+  /** The cook chooses between two or three ways of doing this step. */
+  fork?: StepFork;
+}
+
+/** A step with two or three paths. The first path's text is also the step's text. */
+export interface StepFork {
+  paths: ForkPath[];
+}
+
+export interface ForkPath {
+  /** The short name on the switch, e.g. "Oven". */
+  label: string;
+  /** What to do on this path. */
+  text: string;
+  /** Follows the first path's own steps, with its own text at the fork. */
+  sameAsFirst?: boolean;
+  /** Steps only this path has, numbered on from the fork. The recipe then carries on. */
+  steps?: string[];
 }
 
 /** Legacy: earlier versions used to be kept inside the recipe, without photos. */
@@ -107,9 +149,13 @@ export interface Recipe {
   cardDescription?: string;
   tips?: string;
   steps: Step[];
+  /** Legacy: the editor turns it into unnumbered text after the steps. */
   laminationDirective?: string;
+  /** Legacy: the editor turns it into a Baking section with a fork. */
   bakingOptions?: BakingOptions;
   notes?: string;
+  /** The recipe's total time in minutes, when the author set it; otherwise it's estimated. */
+  manualMinutes?: number;
   /** Language of the top-level text fields. Missing on older records, which are English. */
   sourceLanguage?: Language;
   translations?: RecipeTranslations;
@@ -155,4 +201,6 @@ export interface ParsedIngredientRow {
   notes: string[];
   amount: string;
   originalText: string;
+  /** The suggested stand-in, with its amount when given. */
+  substitute?: { name: string; amount: string };
 }

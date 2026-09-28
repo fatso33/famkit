@@ -1,4 +1,5 @@
 import { Recipe } from '../types/recipe';
+import { PathChoices, chosenPath, firstStepNumber, numberSteps, pathSteps } from './recipeMethod';
 
 export function extractTimeFromText(text: string): number {
   if (!text) return 0;
@@ -93,48 +94,76 @@ export function estimateActionDuration(text: string): number {
   return 2;
 }
 
-/** Estimated total time in minutes, rounded to the nearest 5. Format it with `t.estimatedTime`. */
-export function estimateRecipeMinutes(recipe: Partial<Recipe> | null | undefined): number {
+// A step's time: what it says, else a guess from what it asks for.
+const stepMinutes = (text: string, extra: string[] = []) => {
+  const explicit = [text, ...extra].reduce((sum, t) => sum + extractTimeFromText(t), 0);
+  return explicit > 0 ? explicit : estimateActionDuration(text);
+};
+
+/** Extra time for "repeat steps 3 to 8 two more times", or null when the text says no such thing. */
+function repeatMinutes(text: string, steps: { num: number; duration: number }[]): number | null {
+  const repeatMatch = text
+    .toLowerCase()
+    .match(/repeat\s+steps?\s+(\d+)\s*(?:to|-)\s*(\d+)\s*(one|two|three|\d+)?/i);
+  if (!repeatMatch) return null;
+  const startStep = parseInt(repeatMatch[1], 10);
+  const endStep = parseInt(repeatMatch[2], 10);
+  let times = 1;
+  const word = (repeatMatch[3] || '').toLowerCase();
+  if (word === 'two' || word === '2') times = 2;
+  else if (word === 'three' || word === '3') times = 3;
+  else if (parseInt(word, 10)) times = parseInt(word, 10);
+
+  const repeated = steps.filter((s) => s.num >= startStep && s.num <= endStep);
+  return repeated.reduce((sum, s) => sum + s.duration, 0) * times;
+}
+
+/**
+ * Estimated total time in minutes, rounded to the nearest 5. Format it with `t.estimatedTime`.
+ * A fork counts the path in `choices` (its first path by default).
+ */
+export function estimateRecipeMinutes(
+  recipe: Partial<Recipe> | null | undefined,
+  choices: PathChoices = {},
+): number {
   if (!recipe) return 30;
   let totalMinutes = 0;
 
-  // 1. Analyze each step
-  const stepAnalysis: { num: number; duration: number; text: string }[] = [];
-  if (recipe.steps && recipe.steps.length > 0) {
-    recipe.steps.forEach((step, index) => {
-      const stepText = typeof step === 'string' ? step : step.text || '';
-      const explicitTime = extractTimeFromText(stepText);
-      const actionTime = estimateActionDuration(stepText);
-      const duration = explicitTime > 0 ? explicitTime : actionTime;
-      const stepNum = typeof step === 'object' && step.num !== undefined ? step.num : index;
-      stepAnalysis.push({ num: stepNum, duration, text: stepText });
-      totalMinutes += duration;
-    });
+  // 1. Each numbered step, and the steps of the path each fork is on
+  const steps = recipe.steps ?? [];
+  const numbers = numberSteps(steps, firstStepNumber(steps), choices);
+  const stepAnalysis: { num: number; duration: number }[] = [];
+  const plainTexts: string[] = [];
+  steps.forEach((step, index) => {
+    const stepText = typeof step === 'string' ? step : step.text || '';
+    const num = numbers[index];
+    if (num === null) {
+      plainTexts.push(stepText);
+      return;
+    }
+    if (step.fork) {
+      const path = chosenPath(step.fork, choices[index]);
+      stepAnalysis.push({ num, duration: stepMinutes(step.fork.paths[path]?.text ?? stepText) });
+      pathSteps(step.fork, path).forEach((text, k) => {
+        stepAnalysis.push({ num: num + 1 + k, duration: stepMinutes(text) });
+      });
+      return;
+    }
+    stepAnalysis.push({ num, duration: stepMinutes(stepText, step.substeps) });
+  });
+  totalMinutes += stepAnalysis.reduce((sum, s) => sum + s.duration, 0);
+
+  // 2. Unnumbered text only adds what it says: a repeat of earlier steps, or a stated time
+  for (const text of plainTexts) {
+    totalMinutes += repeatMinutes(text, stepAnalysis) ?? extractTimeFromText(text);
   }
 
-  // 2. Analyze lamination directive or repetitive steps
+  // Legacy: the lamination directive
   const directive = recipe.laminationDirective || '';
   if (directive) {
-    const lowerDir = directive.toLowerCase();
-    const repeatMatch = lowerDir.match(
-      /repeat\s+steps?\s+(\d+)\s*(?:to|-)\s*(\d+)\s*(one|two|three|\d+)?/i,
-    );
-    if (repeatMatch) {
-      const startStep = parseInt(repeatMatch[1], 10);
-      const endStep = parseInt(repeatMatch[2], 10);
-      let times = 1;
-      const word = (repeatMatch[3] || '').toLowerCase();
-      if (word === 'two' || word === '2') times = 2;
-      else if (word === 'three' || word === '3') times = 3;
-      else if (parseInt(word, 10)) times = parseInt(word, 10);
-
-      const repeatedSteps = stepAnalysis.filter((s) => s.num >= startStep && s.num <= endStep);
-      const cycleTime = repeatedSteps.reduce((sum, s) => sum + s.duration, 0);
-      totalMinutes += cycleTime * times;
-    } else {
-      const dirExplicit = extractTimeFromText(directive);
-      totalMinutes += dirExplicit > 0 ? dirExplicit : estimateActionDuration(directive);
-    }
+    totalMinutes +=
+      repeatMinutes(directive, stepAnalysis) ??
+      (extractTimeFromText(directive) || estimateActionDuration(directive));
   }
 
   // 3. Analyze baking options / cook directions
@@ -168,6 +197,28 @@ export function estimateRecipeMinutes(recipe: Partial<Recipe> | null | undefined
   // 4. Round to the nearest 5 minutes
   if (totalMinutes <= 0) totalMinutes = 25;
   return Math.round(totalMinutes / 5) * 5;
+}
+
+/** The time the author set, when it's a usable number of minutes. */
+export function manualMinutesOf(recipe: Partial<Recipe> | null | undefined): number | null {
+  const minutes = recipe?.manualMinutes;
+  return typeof minutes === 'number' && Number.isFinite(minutes) && minutes > 0
+    ? Math.round(minutes)
+    : null;
+}
+
+/**
+ * The recipe's total time: the author's, or estimated from the steps (a fork counts the path in
+ * `choices`). `manual` tells which, so an estimate can be shown as approximate.
+ */
+export function recipeTime(
+  recipe: Partial<Recipe> | null | undefined,
+  choices: PathChoices = {},
+): { minutes: number; manual: boolean } {
+  const manual = manualMinutesOf(recipe);
+  return manual !== null
+    ? { minutes: manual, manual: true }
+    : { minutes: estimateRecipeMinutes(recipe, choices), manual: false };
 }
 
 export function capitalizeFirstLetter(text: string): string {

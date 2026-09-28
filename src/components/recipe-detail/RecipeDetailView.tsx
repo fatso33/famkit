@@ -2,7 +2,10 @@ import React, { useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { flushSync } from 'react-dom';
 import { Recipe, Language } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
-import { estimateRecipeMinutes, capitalizeFirstLetter } from '../../utils/timeEstimator';
+import { recipeTime, capitalizeFirstLetter } from '../../utils/timeEstimator';
+import { PathChoices } from '../../utils/recipeMethod';
+import { getStoredPathChoices, setStoredPathChoices } from '../../services/storage';
+import { NumberRoll } from '../common/NumberRoll';
 import { IngredientsTable } from './IngredientsTable';
 import { StepsList } from './StepsList';
 import { BakingOptionsView } from './BakingOptionsView';
@@ -26,7 +29,8 @@ interface RecipeDetailViewProps {
   isWakeLocked: boolean;
   onToggleWakeLock: () => void;
   isWakeLockSupported: boolean;
-  onEditRecipe?: (recipe: Recipe) => void;
+  /** `origin` is the Edit button's centre, where the editor opens out of. */
+  onEditRecipe?: (recipe: Recipe, origin?: { x: number; y: number }) => void;
   /** Once the recipe has (nearly) finished unrolling out of its photo. */
   onUnrolled: () => void;
   ref?: Ref<RecipePageHandle>;
@@ -51,6 +55,13 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   useImperativeHandle(ref, () => ({ rollUp }));
 
   const [scale, setScale] = useState(1);
+  // The path each fork is on, remembered per recipe on this phone.
+  const [choices, setChoices] = useState<PathChoices>(() => getStoredPathChoices(rawRecipe.id));
+  const choosePath = (step: number, path: number) => {
+    const next = { ...choices, [step]: path };
+    setChoices(next);
+    setStoredPathChoices(rawRecipe.id, next);
+  };
   // The step photo shown full screen. The step stays set after closing, so the photo has
   // its thumbnail to shrink back into.
   const [zoom, setZoom] = useState<{ src: string; step: number; open: boolean } | null>(null);
@@ -68,7 +79,9 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
     });
 
   const recipe = getLocalizedRecipe(rawRecipe, language) || rawRecipe;
-  const estimatedTime = t.estimatedTime(estimateRecipeMinutes(recipe));
+  // The time follows the path the cook is on, unless the author set it.
+  const time = recipeTime(recipe, choices);
+  const timeText = time.manual ? t.totalTime(time.minutes) : t.estimatedTime(time.minutes);
   const addedBy = addedByName(rawRecipe);
 
   const handleIncreaseScale = () => {
@@ -126,7 +139,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                   fontWeight: 600,
                 }}
               >
-                ⏱️ {estimatedTime}
+                ⏱️ <NumberRoll value={timeText} />
               </span>
 
               {onEditRecipe && (
@@ -134,7 +147,10 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                   <span aria-hidden="true">·</span>
                   <button
                     className="btn btn-meta-pill"
-                    onClick={() => onEditRecipe(rawRecipe)}
+                    onClick={(e) => {
+                      const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+                      onEditRecipe(rawRecipe, { x: left + width / 2, y: top + height / 2 });
+                    }}
                     title={t.editRecipe}
                   >
                     ✏️ {t.editRecipe}
@@ -192,6 +208,8 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
               {/* Steps Section */}
               <StepsList
                 steps={recipe.steps || []}
+                choices={choices}
+                onChoosePath={choosePath}
                 laminationDirective={recipe.laminationDirective}
                 // Only while the viewer is closed: the open viewer carries the morphing photo's name,
                 // and two elements sharing it would cancel the transition.

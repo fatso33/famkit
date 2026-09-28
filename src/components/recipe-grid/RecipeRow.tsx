@@ -2,7 +2,7 @@ import React from 'react';
 import { ChevronRight, Heart } from 'lucide-react';
 import { Recipe } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
-import { estimateRecipeMinutes } from '../../utils/timeEstimator';
+import { recipeTime } from '../../utils/timeEstimator';
 import { isHeirloom } from '../../utils/ownership';
 import { vaultItemKey } from '../../utils/viewTransition';
 import { recipePhoto } from '../../utils/vault';
@@ -70,9 +70,7 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
           )}
           <span className="vault-row-cook">{shown.author}</span>
           <span aria-hidden="true">·</span>
-          <span className="vault-row-time">
-            {t.estimatedTime(estimateRecipeMinutes(shown)).replace(/^~/, '')}
-          </span>
+          <span className="vault-row-time">{t.totalTime(recipeTime(shown).minutes)}</span>
         </span>
       </span>
       <ChevronRight className="vault-row-chevron" size="1.25em" aria-hidden="true" />

@@ -70,20 +70,22 @@ describe('deleting and restoring recipes', () => {
     );
     window.matchMedia = vi.fn().mockReturnValue({ matches: false });
     window.scrollTo = vi.fn();
-    window.confirm = vi.fn(() => true);
     render(<App />);
   });
 
-  function deletePierogi() {
+  // Asks first, in a sheet naming the recipe; confirm=false keeps it.
+  function deletePierogi(confirm = true) {
     fireEvent.click(screen.getByRole('button', { name: 'Pierogi' }));
     fireEvent.click(screen.getByRole('button', { name: /edit recipe/i }));
     fireEvent.click(screen.getByRole('button', { name: t.deleteRecipe }));
+    const ask = screen.getByRole('alertdialog', { name: t.deleteRecipe });
+    expect(ask).toHaveAccessibleDescription(t.confirmDeleteRecipe('Pierogi'));
+    fireEvent.click(within(ask).getByRole('button', { name: confirm ? t.deleteRecipe : t.cancel }));
   }
 
   it('hides a deleted recipe without erasing it, or making a new version', () => {
     deletePierogi();
 
-    expect(window.confirm).toHaveBeenCalledWith(t.confirmDeleteRecipe('Pierogi'));
     expect(screen.queryByRole('button', { name: 'Pierogi' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Babka' })).toBeInTheDocument();
     const pierogi = stored().find((r) => r.id === 'Pierogi');
@@ -92,8 +94,7 @@ describe('deleting and restoring recipes', () => {
   });
 
   it('keeps the recipe when the deletion is not confirmed', () => {
-    vi.mocked(window.confirm).mockReturnValueOnce(false);
-    deletePierogi();
+    deletePierogi(false);
     expect(stored().find((r) => r.id === 'Pierogi')).not.toHaveProperty('deletedAt');
   });
 

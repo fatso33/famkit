@@ -53,7 +53,7 @@ const editOpenRecipe = (lang: 'en' | 'pl', changes: Record<string, string>) => {
   for (const [from, to] of Object.entries(changes)) {
     fireEvent.change(screen.getByDisplayValue(from), { target: { value: to } });
   }
-  fireEvent.click(screen.getByRole('button', { name: UI_TEXT[lang].saveChanges }));
+  fireEvent.click(screen.getByRole('button', { name: UI_TEXT[lang].save }));
 };
 
 describe('background recipe translation', () => {

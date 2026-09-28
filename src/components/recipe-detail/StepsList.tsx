@@ -1,10 +1,23 @@
 import React from 'react';
-import { Step } from '../../types/recipe';
+import { Step, StepFork } from '../../types/recipe';
 import { capitalizeFirstLetter } from '../../utils/timeEstimator';
+import {
+  PathChoices,
+  chosenPath,
+  firstStepNumber,
+  methodSections,
+  numberSteps,
+} from '../../utils/recipeMethod';
 import { UiTranslations } from '../../i18n/translations';
+import { NumberRoll } from '../common/NumberRoll';
+import { ForkStep } from './ForkStep';
+import { StepExtras } from './StepExtras';
 
 interface StepsListProps {
   steps: Step[];
+  /** The path each fork is on. */
+  choices: PathChoices;
+  onChoosePath: (step: number, path: number) => void;
   laminationDirective?: string;
   /** The step whose photo is (or was last) full screen, to morph from and back into. */
   zoomSource?: number;
@@ -12,13 +25,22 @@ interface StepsListProps {
   t: UiTranslations;
 }
 
+const LETTERS = 'abc';
+
+/**
+ * The method, section by section. Numbers run on across sections and skip unnumbered text;
+ * after a fork they follow the path the cook is on.
+ */
 export const StepsList: React.FC<StepsListProps> = ({
   steps,
+  choices,
+  onChoosePath,
   laminationDirective,
   zoomSource,
   onZoomImage,
   t,
 }) => {
+  const numbers = numberSteps(steps, firstStepNumber(steps), choices);
   const laminationSentences = laminationDirective
     ? laminationDirective
         .split(/(?<=[.!?])\s+/)
@@ -29,52 +51,73 @@ export const StepsList: React.FC<StepsListProps> = ({
 
   return (
     <>
-      {/* Steps Section */}
-      <section>
-        <h2 className="section-heading">{t.prepSteps}</h2>
-        <div id="stepsContainer" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {steps.map((step, idx) => (
-            <div key={idx} className="step-card">
-              <div className="step-num">{step.num !== undefined ? step.num : idx + 1}</div>
-              <div className="step-content">
-                <p className="step-text">{capitalizeFirstLetter(step.text)}</p>
-
-                {step.notes && (
-                  <div className="step-note-pill">
-                    <span className="step-note-icon" aria-hidden="true">
-                      💡
-                    </span>
-                    <span>{capitalizeFirstLetter(step.notes)}</span>
+      {methodSections(steps).map((section, s) => (
+        <section key={section.start}>
+          <h2 className="section-heading">
+            {section.title || (s === 0 ? t.prepSteps : t.moreSteps)}
+          </h2>
+          <div className="steps-stack">
+            {section.steps.map((step, k) => {
+              const idx = section.start + k;
+              const extras = (
+                <StepExtras
+                  step={step}
+                  index={idx}
+                  isZoomSource={idx === zoomSource}
+                  onZoomImage={onZoomImage}
+                  t={t}
+                />
+              );
+              if (step.plain) {
+                return (
+                  <div key={idx} className="step-interlude">
+                    <p>{capitalizeFirstLetter(step.text)}</p>
+                    {extras}
                   </div>
-                )}
-
-                {step.hasImage && step.imageSrc && (
-                  <div
-                    className={`step-visual-frame clickable-zoom${idx === zoomSource ? ' is-zoom-source' : ''}`}
-                    title={t.viewStepPhoto}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => onZoomImage(step.imageSrc!, idx)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') onZoomImage(step.imageSrc!, idx);
-                    }}
+                );
+              }
+              const number = numbers[idx] ?? 0;
+              if (step.fork && step.fork.paths.length >= 2) {
+                return (
+                  <ForkStep
+                    key={idx}
+                    step={step as Step & { fork: StepFork }}
+                    number={number}
+                    path={chosenPath(step.fork, choices[idx])}
+                    onChoose={(path) => onChoosePath(idx, path)}
+                    t={t}
                   >
-                    <img
-                      className="step-visual-img"
-                      src={step.imageSrc}
-                      alt={step.imageCaption || t.stepPhotoAlt}
-                      loading="lazy"
-                    />
-                    <div className="zoom-badge-hint" aria-hidden="true" title={t.zoomIn}>
-                      🔍
-                    </div>
+                    {extras}
+                  </ForkStep>
+                );
+              }
+              return (
+                <div key={idx} className="step-card">
+                  <div className="step-num">
+                    <NumberRoll value={number} />
                   </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+                  <div className="step-content">
+                    <p className="step-text">{capitalizeFirstLetter(step.text)}</p>
+                    {step.substeps && step.substeps.length > 0 && (
+                      <ol className="substeps">
+                        {step.substeps.map((sub, j) => (
+                          <li key={j}>
+                            <span className="substep-letter" aria-hidden="true">
+                              {LETTERS[j]})
+                            </span>
+                            <span>{capitalizeFirstLetter(sub)}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                    {extras}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ))}
 
       {/* Lamination Directive: bullet points */}
       {laminationSentences.length > 0 && (

@@ -2,6 +2,7 @@ import React from 'react';
 import { Ingredient, Language } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
 import { parseIngredientRow } from '../../utils/fractions';
+import { ArrowLeftRight } from 'lucide-react';
 import { PortionScaler } from './PortionScaler';
 
 interface IngredientsTableProps {
@@ -70,6 +71,15 @@ export const IngredientsTable: React.FC<IngredientsTableProps> = ({
                       <span className="ingredient-name">{row.name}</span>
                       {row.notes.length > 0 && (
                         <span className="ingredient-bracket-note">({row.notes.join(', ')})</span>
+                      )}
+                      {row.substitute && (
+                        <span className="ingredient-substitute">
+                          <ArrowLeftRight size={14} aria-hidden="true" />
+                          <span>
+                            {t.orSubstitute(row.substitute.name)}
+                            {row.substitute.amount && ` · ${row.substitute.amount}`}
+                          </span>
+                        </span>
                       )}
                     </div>
                   </td>

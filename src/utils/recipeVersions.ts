@@ -117,7 +117,7 @@ export function recipeAtVersion(current: Recipe, version: RecipeVersion): Recipe
 }
 
 export type RestorableField =
-  'name' | 'author' | 'cardDescription' | 'yieldHeader' | 'heroImage' | 'tips' | 'notes';
+  'name' | 'author' | 'cardDescription' | 'yieldHeader' | 'heroImage' | 'tips' | 'notes' | 'time';
 
 /** What restoring a version would change, for highlighting in the edit form. */
 export interface RecipeChanges {
@@ -131,7 +131,31 @@ export interface RecipeChanges {
 const text = (s?: string) => (s ?? '').trim();
 
 const ingredientKey = (ing?: Ingredient) =>
-  ing ? JSON.stringify([text(ing.text), text(ing.name), ing.qty ?? null, text(ing.unit)]) : '';
+  ing
+    ? JSON.stringify([
+        text(ing.text),
+        text(ing.name),
+        ing.qty ?? null,
+        text(ing.unit),
+        text(ing.note),
+        text(ing.substitute),
+        text(ing.substituteAmount),
+      ])
+    : '';
+
+// The method's shape and wording besides a step's own text: sections, substeps and forks.
+const stepShape = (step: Step) =>
+  JSON.stringify([
+    Boolean(step.plain),
+    step.section === undefined ? null : text(step.section),
+    (step.substeps ?? []).map(text),
+    step.fork?.paths.map((p) => [
+      text(p.label),
+      text(p.text),
+      Boolean(p.sameAsFirst),
+      (p.steps ?? []).map(text),
+    ]) ?? null,
+  ]);
 
 function stepDiffers(restored: Step, current: Step | undefined, photos: boolean) {
   if (!current) return true;
@@ -139,6 +163,7 @@ function stepDiffers(restored: Step, current: Step | undefined, photos: boolean)
     text(restored.text) !== text(current.text) ||
     text(restored.notes) !== text(current.notes) ||
     text(restored.imageCaption) !== text(current.imageCaption) ||
+    stepShape(restored) !== stepShape(current) ||
     (photos && (restored.imageSrc ?? '') !== (current.imageSrc ?? ''))
   );
 }
@@ -164,6 +189,7 @@ export function diffRecipes(current: Recipe, restored: Recipe, comparePhotos: bo
   if (comparePhotos && restored.heroImage && restored.heroImage !== current.heroImage) {
     fields.add('heroImage');
   }
+  if ((restored.manualMinutes ?? null) !== (current.manualMinutes ?? null)) fields.add('time');
 
   const ingredients = new Set<number>();
   (restored.ingredients || []).forEach((ing, i) => {

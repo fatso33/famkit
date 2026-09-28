@@ -2,8 +2,9 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, renderHook, act } from '@testing-library/react';
 import { IngredientsTable } from '../components/recipe-detail/IngredientsTable';
 import { ImageZoomModal } from '../components/recipe-detail/ImageZoomModal';
-import { StepBuilder } from '../components/recipe-form/StepBuilder';
-import { IngredientBuilder } from '../components/recipe-form/IngredientBuilder';
+import { MethodEditor } from '../components/recipe-form/MethodEditor';
+import { IngredientEditor } from '../components/recipe-form/IngredientEditor';
+import { emptyRow, emptySection, emptyStep } from '../utils/recipeForm';
 import { AddRecipeModal } from '../components/recipe-form/AddRecipeModal';
 import { IOSInstallModal } from '../components/layout/IOSInstallModal';
 import { useLanguage } from '../hooks/useLanguage';
@@ -42,32 +43,43 @@ describe('screen-reader labels follow the selected language', () => {
   });
 
   it('labels step editor fields and controls in Polish', () => {
+    const step = { ...emptyStep('Wymieszaj'), tip: 'Na gładko', showTip: true };
     render(
-      <StepBuilder
-        steps={[{ id: 'a', text: 'Wymieszaj', notes: '', imageSrc: '', imageCaption: '' }]}
+      <MethodEditor
+        sections={[{ ...emptySection(), steps: [step] }]}
         onChange={noop}
+        numberFrom={1}
+        activeId={step.id}
+        onToast={noop}
         t={pl}
       />,
     );
 
-    expect(screen.getByText('Krok 1')).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: 'Opis kroku 1' })).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: /Wskazówka \/ Konsystencja/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Sposób przygotowania' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Opis kroku 1' })).toHaveValue('Wymieszaj');
+    expect(screen.getByRole('textbox', { name: 'Wskazówka do kroku 1' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Przesuń krok 1 w górę' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Narzędzia kroku 1' })).toBeInTheDocument();
   });
 
   it('labels ingredient rows in Polish', () => {
+    const row = { ...emptyRow(), name: 'Mąka', amount: '450g' };
     render(
-      <IngredientBuilder
-        rows={[{ id: 'r1', name: 'Mąka', amount: '450g' }]}
+      <IngredientEditor
+        rows={[row]}
         onChange={noop}
+        yieldHeader=""
+        onYieldChange={noop}
+        activeId={row.id}
+        onToast={noop}
         t={pl}
       />,
     );
 
-    expect(screen.getByRole('textbox', { name: 'Składnik 1' })).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: 'Ilość składnika 1' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Składnik 1' })).toHaveValue('Mąka');
+    expect(screen.getByRole('textbox', { name: 'Ilość składnika 1' })).toHaveValue('450g');
     expect(screen.getByRole('button', { name: 'Przesuń składnik w dół' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Narzędzia składnika 1' })).toBeInTheDocument();
   });
 });
 
@@ -79,7 +91,7 @@ describe('recipe editor', () => {
     for (const field of screen.getAllByRole('textbox')) {
       expect(field).toHaveAccessibleName();
     }
-    expect(screen.getByLabelText('Opis (opcjonalnie)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Opis')).toBeInTheDocument();
   });
 });
 

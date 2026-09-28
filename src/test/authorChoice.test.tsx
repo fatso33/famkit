@@ -37,8 +37,9 @@ function fillAndSave() {
   fireEvent.change(screen.getByLabelText(t.stepInstructionLabel(1)), {
     target: { value: 'Bake.' },
   });
-  fireEvent.click(screen.getByRole('radio', { name: t.recipeCategories.cakes }));
-  fireEvent.click(screen.getByRole('button', { name: t.saveToVault }));
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${t.categoryLabel}`) }));
+  fireEvent.click(screen.getByRole('option', { name: t.recipeCategories.cakes }));
+  fireEvent.click(screen.getByRole('button', { name: t.save }));
 }
 
 describe('recipe author choice', () => {
@@ -47,7 +48,8 @@ describe('recipe author choice', () => {
   it('credits the signed-in family member by default', () => {
     const onSave = renderForm(ola);
 
-    expect(screen.getByRole('radio', { name: t.authorMe })).toBeChecked();
+    // Shown by first name and initial, so the switch stays short.
+    expect(screen.getByRole('radio', { name: 'Ola N.' })).toBeChecked();
     expect(screen.getByText(t.authorShownAs('Ola Nowak'))).toBeInTheDocument();
     expect(screen.queryByLabelText(t.authorNameLabel)).not.toBeInTheDocument();
 
@@ -80,7 +82,7 @@ describe('recipe author choice', () => {
   it('asks for a name when nobody is signed in to credit', () => {
     renderForm(null);
 
-    expect(screen.queryByRole('radio', { name: t.authorMe })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: t.authorSomeoneElse })).not.toBeInTheDocument();
     expect(screen.getByLabelText(t.authorNameLabel)).toBeRequired();
   });
 });

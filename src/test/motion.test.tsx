@@ -88,7 +88,7 @@ describe('motion', () => {
     fireEvent.click(card('Babka')!);
     fireEvent.click(screen.getByRole('button', { name: /edit recipe/i }));
 
-    fireEvent.click(within(editor()!).getByRole('button', { name: t.cancel }));
+    fireEvent.click(within(editor()!).getByRole('button', { name: t.closeDialog }));
     expect(editor()).toBeInTheDocument();
 
     await finishExit();
@@ -138,7 +138,7 @@ describe('motion', () => {
     render(<App />);
     fireEvent.click(card('Babka')!);
     fireEvent.click(screen.getByRole('button', { name: /edit recipe/i }));
-    fireEvent.click(within(editor()!).getByRole('button', { name: t.cancel }));
+    fireEvent.click(within(editor()!).getByRole('button', { name: t.closeDialog }));
 
     await act(() => new Promise((resolve) => setTimeout(resolve, 1100)));
     expect(editor()).toBeNull();
@@ -153,7 +153,7 @@ describe('motion', () => {
       target: { value: 'Babka Wielkanocna' },
     });
 
-    fireEvent.click(within(editor()!).getByRole('button', { name: t.saveChanges }));
+    fireEvent.click(within(editor()!).getByRole('button', { name: t.save }));
     // Still the same editor, with what was saved in it, while it slides away.
     expect(within(editor()!).getByLabelText(t.recipeTitle)).toHaveValue('Babka Wielkanocna');
 

@@ -31,6 +31,16 @@ export function addedByName(recipe: Recipe): string | null {
   return recipe.ownerName.trim() === recipe.author.trim() ? null : recipe.ownerName;
 }
 
+/**
+ * A name as the author choice shows it: first name and last initial ("Peter G."). A single
+ * name, or an email standing in for one, stays as it is.
+ */
+export function shortName(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length < 2) return name.trim();
+  return `${words[0]} ${words.at(-1)!.charAt(0).toUpperCase()}.`;
+}
+
 /** The author to store for a save from the form. */
 export function resolveAuthor(mode: AuthorMode, typedAuthor: string, user: CurrentUser | null) {
   return mode === 'auto' && user ? user.name : typedAuthor.trim();

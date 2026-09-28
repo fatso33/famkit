@@ -2161,61 +2161,6 @@
         --card-photo-corners: calc(var(--radius-md) - 2px);
       }
 
-      /* The recipe form's category picker: chips that wrap, one radio each. */
-      .category-options {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.45rem;
-      }
-
-      .category-option {
-        position: relative;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        min-height: 44px;
-        padding: 0.35rem 0.85rem 0.35rem 0.7rem;
-        border: 1px solid var(--border-field);
-        border-radius: var(--radius-full);
-        background: var(--bg-surface);
-        color: var(--text-secondary);
-        font-size: 0.9375rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition:
-          background-color 0.2s ease,
-          border-color 0.2s ease,
-          color 0.2s ease;
-      }
-
-      .category-option svg {
-        color: var(--accent-gold);
-      }
-
-      /* Hidden but still focusable, so the browser can point at it when none is picked. */
-      .category-option input {
-        position: absolute;
-        inset: 0;
-        margin: 0;
-        opacity: 0;
-        pointer-events: none;
-      }
-
-      .category-option.is-active {
-        border-color: var(--accent);
-        background: var(--accent-subtle);
-        color: var(--accent);
-      }
-
-      .category-option.is-active svg {
-        color: var(--accent);
-      }
-
-      .category-option:has(input:focus-visible) {
-        outline: 3px solid var(--accent);
-        outline-offset: 2px;
-      }
-
       @keyframes vault-popover-in {
         from {
           opacity: 0;
@@ -2809,208 +2754,16 @@
         margin-bottom: 0.5rem;
       }
 
-      /* Modal Dialog */
-      .modal-overlay {
-        position: fixed;
-        inset: 0;
-        display: none;
-        place-items: center;
-        z-index: 100;
-        padding: 0;
-        overflow-y: auto;
-      }
-
-      @media (min-width: 640px) {
-        .modal-overlay {
-          padding: 1.5rem;
-        }
-      }
-
-      .modal-overlay.active {
-        display: grid;
-      }
-
-      /* The scrim is its own layer, so it can fade while the sheet slides. */
-      .modal-overlay::before {
-        content: '';
-        position: fixed;
-        inset: 0;
-        z-index: -1;
-        background: rgba(19, 18, 17, 0.65);
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
-        animation: fk-fade-in 0.32s ease both;
-      }
-
-      /* The editor rises from the bottom like a native sheet on phones, and settles in as a
-         dialog on larger screens. Closing reverses it (fk-exit-*, see useExitAnimation). */
-      .modal-sheet {
-        animation: fk-sheet-up 0.5s var(--ease-glide) both;
-      }
-      .modal-overlay.is-closing {
-        pointer-events: none;
-      }
-      .modal-overlay.is-closing::before {
-        animation: fk-exit-fade 0.3s ease both;
-      }
-      .modal-overlay.is-closing .modal-sheet {
-        animation: fk-exit-sheet-down 0.3s var(--ease-accelerate) both;
-      }
-      @media (min-width: 640px) {
-        .modal-sheet {
-          animation: fk-dialog-in 0.38s var(--ease-glide) both;
-        }
-        .modal-overlay.is-closing .modal-sheet {
-          animation: fk-exit-dialog 0.22s var(--ease-accelerate) both;
-        }
-      }
-      /* Reopening on another version swaps the form in place. */
-      .modal-overlay.is-instant:not(.is-closing)::before,
-      .modal-overlay.is-instant:not(.is-closing) .modal-sheet {
-        animation: none;
-      }
-
-      .modal-sheet {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-subtle);
-        width: 100%;
-        max-width: 100%;
-        height: 100dvh;
-        max-height: 100dvh;
-        border-radius: 0;
-        box-shadow: var(--shadow-lg);
-        display: flex;
-        flex-direction: column;
-        position: relative;
-        overflow: hidden;
-      }
-
-      @media (min-width: 640px) {
-        .modal-sheet {
-          max-width: 720px;
-          height: auto;
-          max-height: 90vh;
-          border-radius: var(--radius-lg);
-        }
-      }
-
-      .modal-header-sticky {
-        position: sticky;
-        top: 0;
-        z-index: 20;
-        background: var(--bg-surface);
-        border-bottom: 1px solid var(--border-subtle);
-        padding: 1rem 1.25rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 0.75rem;
-      }
-
-      .modal-body-scroll {
-        flex: 1;
-        overflow-y: auto;
-        padding: 1.25rem;
-        -webkit-overflow-scrolling: touch;
-      }
-
-      .modal-footer-sticky {
-        position: sticky;
-        bottom: 0;
-        z-index: 20;
-        background: var(--bg-surface);
-        border-top: 1px solid var(--border-subtle);
-        padding: 0.85rem 1.25rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 0.75rem;
-        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
-      }
-
-      .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.25rem;
-      }
-
-      .modal-title {
-        font-family: var(--font-serif);
-        font-size: 1.4rem;
-        font-weight: var(--weight-heading);
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        letter-spacing: -0.01em;
-      }
-
       .form-group {
         margin-bottom: 1.2rem;
       }
 
-      /* Author: "Me | Someone else" pill (same sliding thumb as the menu's EN | PL) */
+      /* Author: the signed-in cook or someone else (a .choice-pill), then the name if typed */
       fieldset.author-field {
         border: 0;
         padding: 0;
         min-width: 0;
       }
-
-      .author-choice {
-        position: relative;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        min-height: 44px;
-        padding: 3px;
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-full);
-        background: var(--menu-well);
-      }
-
-      .author-choice > label {
-        position: relative;
-        z-index: 1;
-        display: grid;
-        place-items: center;
-        padding: 0.35rem 0.75rem;
-        border-radius: var(--radius-full);
-        font-size: 0.88rem;
-        font-weight: 700;
-        text-align: center;
-        color: var(--text-muted);
-        cursor: pointer;
-        transition: color 0.25s ease;
-      }
-
-      .author-choice > label.is-active { color: var(--on-accent); }
-
-      /* The radios stay in the tab order and keyboard-operable; only their dots are hidden. */
-      .author-choice input {
-        position: absolute;
-        inset: 0;
-        margin: 0;
-        opacity: 0;
-        cursor: pointer;
-      }
-
-      .author-choice > label:has(input:focus-visible) {
-        outline: 2px solid var(--accent);
-        outline-offset: 2px;
-      }
-
-      .author-choice-thumb {
-        position: absolute;
-        top: 3px;
-        bottom: 3px;
-        left: 3px;
-        width: calc(50% - 3px);
-        border-radius: var(--radius-full);
-        background: var(--accent);
-        box-shadow: var(--shadow-sm);
-        transition: transform 0.38s cubic-bezier(0.34, 1.4, 0.64, 1);
-      }
-
-      .author-choice[data-value="custom"] .author-choice-thumb { transform: translateX(100%); }
 
       .author-hint {
         margin: 0.5rem 0.25rem 0;
@@ -3092,14 +2845,6 @@
         scroll-margin-top: 10rem;
       }
 
-      /* Rows sit close together: a tighter ring that doesn't reach the neighbours. */
-      .ingredient-builder-row.is-restored {
-        border-radius: var(--radius-sm);
-        box-shadow:
-          0 0 0 3px var(--bg-surface),
-          0 0 0 5px var(--accent);
-      }
-
       .restored-chip {
         position: absolute;
         top: calc(-6px - 0.6rem);
@@ -3130,81 +2875,6 @@
         margin-top: 1.5rem;
         padding-top: 1.25rem;
         border-top: 1px dashed var(--border-subtle);
-      }
-
-      /* Version history: a bottom sheet over the editor */
-      .version-sheet-layer {
-        position: fixed;
-        inset: 0;
-        z-index: 110;
-        display: flex;
-        align-items: flex-end;
-        justify-content: center;
-        background: var(--scrim);
-        animation: fk-fade-in 0.22s ease both;
-      }
-
-      .version-sheet {
-        width: 100%;
-        max-width: 32rem;
-        max-height: min(75dvh, 40rem);
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        padding: 0.5rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom));
-        background: var(--elev-menu);
-        border: 1px solid var(--border-subtle);
-        border-bottom: 0;
-        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-        box-shadow: var(--shadow-lg);
-        animation: version-sheet-in 0.42s var(--ease-glide) both;
-      }
-
-      .version-sheet:focus {
-        outline: none;
-      }
-
-      @keyframes version-sheet-in {
-        from { transform: translateY(100%); }
-        to { transform: translateY(0); }
-      }
-
-      /* Closing: the sheet drops away as the scrim clears. */
-      .version-sheet-layer.is-closing {
-        pointer-events: none;
-        animation: fk-exit-scrim 0.28s ease both;
-      }
-      .version-sheet-layer.is-closing .version-sheet {
-        animation: fk-exit-sheet-down 0.28s var(--ease-accelerate) both;
-      }
-
-      .version-sheet-grip {
-        width: 2.5rem;
-        height: 0.3rem;
-        margin: 0.25rem auto 0.5rem;
-        border-radius: var(--radius-full);
-        background: var(--border-strong);
-      }
-
-      .version-sheet-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        margin-bottom: 0.75rem;
-      }
-
-      .version-sheet-title {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-family: var(--font-serif);
-        font-size: 1.2rem;
-        font-weight: var(--weight-heading);
-        letter-spacing: -0.01em;
-      }
-
-      .version-sheet-title > svg {
-        color: var(--accent);
       }
 
       /* Timeline: a dot per version on a thin line */
@@ -3409,240 +3079,6 @@
         min-height: 80px;
       }
 
-      /* Image Picker & Thumbnail with Delete 'X' */
-      .image-picker-zone {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-      }
-
-      .image-preview-wrapper {
-        position: relative;
-        display: inline-block;
-        width: fit-content;
-      }
-
-      .image-preview-thumb {
-        width: 110px;
-        height: 110px;
-        border-radius: var(--radius-md);
-        object-fit: cover;
-        border: 2px solid var(--border-strong);
-        background: var(--bg-card);
-        box-shadow: var(--shadow-sm);
-        display: block;
-      }
-
-      .image-delete-badge {
-        position: absolute;
-        top: -8px;
-        right: -8px;
-        width: 26px;
-        height: 26px;
-        border-radius: var(--radius-full);
-        background: #dc2626;
-        color: #ffffff;
-        border: 2px solid var(--bg-surface);
-        display: grid;
-        place-items: center;
-        font-size: 0.75rem;
-        font-weight: 700;
-        line-height: 1;
-        cursor: pointer;
-        transition: transform 0.15s ease, background-color 0.15s ease;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-      }
-
-      /* Keeps the badge small over the photo but gives it a 44px tap area */
-      .image-delete-badge::before {
-        content: '';
-        position: absolute;
-        inset: -9px;
-      }
-
-      @media (hover: hover) {
-        .image-delete-badge:hover {
-          background: #b91c1c;
-          transform: scale(1.15);
-        }
-      }
-
-      .image-picker-actions {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 0.5rem;
-      }
-
-      .btn-camera-capture {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        padding: 0.4rem 0.75rem;
-        font-size: 0.875rem;
-        font-weight: 600;
-        border-radius: var(--radius-sm);
-        border: 1px solid var(--border-subtle);
-        background: var(--bg-card);
-        color: var(--text-primary);
-        cursor: pointer;
-        transition: background-color 0.15s, border-color 0.15s;
-        min-height: 44px;
-      }
-
-      @media (hover: hover) {
-        .btn-camera-capture:hover {
-          background: var(--bg-card-hover);
-          border-color: var(--accent);
-        }
-      }
-
-      /* Step Builder */
-      .step-builder-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-md);
-        padding: 1rem;
-        margin-bottom: 0.85rem;
-        position: relative;
-        transition: border-color 0.2s ease, box-shadow 0.2s ease;
-      }
-
-      .step-builder-card:focus-within {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 1px var(--accent-subtle);
-      }
-
-      .step-builder-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 0.75rem;
-      }
-
-      .step-builder-badge {
-        background: var(--accent);
-        color: var(--on-accent);
-        font-size: 0.8125rem;
-        font-weight: 700;
-        padding: 0.2rem 0.65rem;
-        border-radius: var(--radius-full);
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-      }
-
-      .step-builder-actions {
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-      }
-
-      .btn-step-action {
-        width: 44px;
-        height: 44px;
-        border-radius: var(--radius-sm);
-        border: 1px solid var(--border-subtle);
-        background: var(--bg-surface);
-        color: var(--text-secondary);
-        display: grid;
-        place-items: center;
-        font-size: 0.85rem;
-        cursor: pointer;
-        transition: all 0.15s;
-      }
-
-      @media (hover: hover) {
-        .btn-step-action:hover:not(:disabled) {
-          border-color: var(--accent);
-          color: var(--accent);
-          background: var(--accent-subtle);
-        }
-      }
-
-      .btn-step-action:disabled {
-        opacity: 0.35;
-        cursor: not-allowed;
-      }
-
-      @media (hover: hover) {
-        .btn-step-action.danger:hover:not(:disabled) {
-          border-color: #dc2626;
-          color: #dc2626;
-          background: #fee2e2;
-        }
-      }
-
-      .btn-add-step {
-        width: 100%;
-        padding: 0.75rem;
-        border: 2px dashed var(--border-strong);
-        border-radius: var(--radius-md);
-        background: transparent;
-        color: var(--accent);
-        font-size: 0.9rem;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.4rem;
-        margin-top: 0.5rem;
-      }
-
-      @media (hover: hover) {
-        .btn-add-step:hover {
-          background: var(--accent-subtle);
-          border-color: var(--accent);
-        }
-      }
-
-      /* Row-by-Row Ingredient Builder */
-      .ingredient-builder-row {
-        display: grid;
-        grid-template-columns: 1fr 140px 44px 44px;
-        gap: 0.45rem;
-        align-items: center;
-        margin-bottom: 0.45rem;
-      }
-
-      @media (max-width: 480px) {
-        .ingredient-builder-row {
-          grid-template-columns: 1fr 90px 44px 44px;
-          gap: 0.35rem;
-        }
-      }
-
-      .btn-row-action {
-        width: 44px;
-        height: 44px;
-        border-radius: var(--radius-sm);
-        border: 1px solid var(--border-subtle);
-        background: var(--bg-surface);
-        color: var(--text-secondary);
-        display: grid;
-        place-items: center;
-        font-size: 0.85rem;
-        cursor: pointer;
-        transition: all 0.15s;
-      }
-
-      @media (hover: hover) {
-        .btn-row-action:hover:not(:disabled) {
-          border-color: var(--accent);
-          color: var(--accent);
-        }
-      }
-
-      @media (hover: hover) {
-        .btn-row-action.danger:hover {
-          border-color: #dc2626;
-          color: #dc2626;
-          background: #fee2e2;
-        }
-      }
-
       /* Step Note Callout Pill in Recipe View */
       .step-note-pill {
         margin-top: 0.65rem;
@@ -3661,19 +3097,6 @@
       .step-note-icon {
         flex-shrink: 0;
         font-size: 0.95rem;
-      }
-
-      /* Version & Draft badges */
-      .draft-badge {
-        font-size: 0.75rem;
-        color: var(--accent-gold);
-        background: var(--accent-gold-subtle);
-        padding: 0.2rem 0.55rem;
-        border-radius: var(--radius-full);
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        font-weight: 600;
       }
 
       /* In-app Toast Notification */
@@ -4960,18 +4383,19 @@
         background: var(--menu-well);
       }
 
-      /* Raised keys (these steppers and the portion scaler): a lifted face with a defined edge.
+      /* Raised keys (these steppers, the portion scaler, the vault's and the editor's keys): a lifted face with a defined edge.
          At night the face is lighter than its tray; darker would read as a hole. Built from
          season tokens, so every palette gets them. */
       .fk-stepper,
       .scaler-control,
-      .vault-page {
+      .vault-page,
+      .editor-layer {
         --key-face: var(--bg-surface);
         --key-edge: color-mix(in srgb, var(--border-strong) 55%, var(--border-subtle));
         --key-lift: 0 1px 1px rgba(0, 0, 0, 0.04), 0 2px 5px -1px rgba(60, 35, 20, 0.16);
       }
 
-      [data-theme='dark'] :is(.fk-stepper, .scaler-control, .vault-page) {
+      [data-theme='dark'] :is(.fk-stepper, .scaler-control, .vault-page, .editor-layer) {
         --key-face: var(--menu-well-hover);
         --key-edge: var(--border-strong);
         --key-lift: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 2px 5px -1px rgba(0, 0, 0, 0.5);
@@ -5176,7 +4600,6 @@
         .fab-menu,
         .fab-menu-glyph > span,
         .fk-segmented-thumb,
-        .author-choice-thumb,
         .fk-switch-thumb,
         .fk-stepper button,
         .scaler-btn,
@@ -5188,21 +4611,2320 @@
         .restore-banner,
         .is-restored,
         .version-entry,
-        .version-sheet,
         .version-loading { animation: none; }
         /* Layers fade in and out instead of sliding (the fade still ends, so they unmount). */
-        .modal-overlay .modal-sheet,
         .ios-install-modal-overlay .ios-install-modal-card {
           animation: fk-fade-in 0.15s ease both;
         }
-        .modal-overlay.is-closing .modal-sheet,
-        .version-sheet-layer.is-closing .version-sheet,
         .ios-install-modal-overlay.is-closing .ios-install-modal-card {
           animation: fk-exit-fade 0.15s ease both;
         }
         /* The toast still fades (its fade-out end clears the text), but doesn't slide. */
         .app-toast,
         .app-toast.show { transform: translate(-50%, 0); }
+      }
+
+      /* ── The recipe editor ──
+         components/recipe-form/AddRecipeModal: a page laid out like the recipe it makes. It
+         opens as a circle out of the button that asked for it (--editor-origin-*, grown to
+         --editor-reach), then its fields rise in turn (--i). Cancelling folds it back into that
+         button; saving lets it sink away. Entrances fill backwards only, so nothing is left
+         holding a transform: that would trap the fixed popovers inside it. */
+      .editor-layer {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        overflow: hidden;
+        background: var(--bg-main);
+        color: var(--text-primary);
+        animation: editor-open 0.52s var(--ease-glide) backwards;
+      }
+
+      @keyframes editor-open {
+        from { clip-path: circle(1.75rem at var(--editor-origin-x) var(--editor-origin-y)); }
+        to { clip-path: circle(var(--editor-reach) at var(--editor-origin-x) var(--editor-origin-y)); }
+      }
+
+      .editor-rise {
+        animation: editor-rise 0.5s var(--ease-glide) calc(130ms + var(--i, 0) * 35ms) backwards;
+      }
+
+      @keyframes editor-rise {
+        from { opacity: 0; transform: translateY(1rem); }
+      }
+
+      /* Reopening on another version swaps the form in place. */
+      .editor-layer.is-instant:not(.is-closing),
+      .editor-layer.is-instant .editor-rise {
+        animation: none;
+      }
+
+      .editor-layer.is-closing {
+        pointer-events: none;
+      }
+
+      .editor-layer.is-closing[data-exit='cancel'] {
+        /* The menu's own fold-back curve: under way at once, settling into the button. */
+        animation: fk-exit-editor-clip 0.36s cubic-bezier(0.4, 0, 0.2, 1) both;
+      }
+
+      .editor-layer.is-closing[data-exit='save'] {
+        animation: fk-exit-editor-drop 0.32s var(--ease-accelerate) 0.08s both;
+      }
+
+      @keyframes fk-exit-editor-clip {
+        from { clip-path: circle(var(--editor-reach) at var(--editor-origin-x) var(--editor-origin-y)); }
+        80% { opacity: 1; }
+        to {
+          opacity: 0;
+          clip-path: circle(1.75rem at var(--editor-origin-x) var(--editor-origin-y));
+        }
+      }
+
+      @keyframes fk-exit-editor-drop {
+        to { opacity: 0; transform: translateY(2.5rem) scale(0.98); }
+      }
+
+      /* The form scrolls under the bar, which stays put. */
+      .editor-scroll {
+        position: absolute;
+        inset: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding-top: var(--editor-bar-height, 7rem);
+        scroll-padding-top: calc(var(--editor-bar-height, 7rem) + 1rem);
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .editor-body {
+        max-width: 44rem;
+        margin: 0 auto;
+        padding: 1.25rem 1.25rem calc(5rem + env(safe-area-inset-bottom));
+      }
+
+      .editor-body .restore-banner {
+        top: var(--editor-bar-height, 7rem);
+        margin: -1.25rem -1.25rem 1.5rem;
+      }
+
+      /* The restored ring's gap takes the editor's own background. */
+      .editor-layer .is-restored {
+        box-shadow:
+          0 0 0 6px var(--bg-main),
+          0 0 0 8px var(--accent),
+          0 0 22px 8px color-mix(in srgb, var(--accent) 22%, transparent);
+      }
+
+      /* ── The bar: Close, the title (and version), Save; Paste and Preview under them.
+         Each row has its own glass, so the tools can slide up under the title row as the form
+         scrolls down. The glass sits on ::before, since backdrop-filter on the row itself
+         would trap the version list's fixed tap catcher inside it. */
+      .editor-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 10;
+      }
+
+      .editor-bar-main,
+      .editor-bar-tools {
+        position: relative;
+      }
+
+      .editor-bar-main::before,
+      .editor-bar-tools::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: color-mix(in srgb, var(--bg-main) 86%, transparent);
+        backdrop-filter: blur(18px) saturate(1.5);
+        -webkit-backdrop-filter: blur(18px) saturate(1.5);
+        transition: box-shadow 0.25s ease;
+      }
+
+      .editor-bar-main {
+        z-index: 2;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 0.5rem;
+        padding: calc(0.5rem + env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right))
+          0.5rem max(0.75rem, env(safe-area-inset-left));
+      }
+
+      .editor-bar-tools {
+        z-index: 1;
+        display: flex;
+        gap: 0.5rem;
+        overflow-x: auto;
+        scrollbar-width: none;
+        padding: 0.15rem max(0.75rem, env(safe-area-inset-right)) 0.65rem
+          max(0.75rem, env(safe-area-inset-left));
+        transition:
+          transform 0.42s var(--ease-glide),
+          opacity 0.25s ease;
+      }
+
+      .editor-bar-tools::-webkit-scrollbar {
+        display: none;
+      }
+
+      .editor-bar.is-tucked .editor-bar-tools {
+        transform: translateY(-100%);
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* A hairline under whichever row is lowest, once the form has scrolled under it. */
+      .editor-bar.is-scrolled:not(.is-tucked) .editor-bar-tools::before,
+      .editor-bar.is-scrolled.is-tucked .editor-bar-main::before {
+        box-shadow:
+          0 1px 0 var(--border-subtle),
+          var(--shadow-md);
+      }
+
+      .editor-bar-close {
+        width: 44px;
+        height: 44px;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 1px solid var(--key-edge);
+        border-radius: var(--radius-full);
+        background: var(--key-face);
+        box-shadow: var(--key-lift);
+        color: var(--text-primary);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          transform 0.15s ease,
+          border-color 0.2s ease;
+      }
+
+      .editor-bar-close:active {
+        transform: scale(0.92);
+      }
+
+      /* Not positioned: the version list centres on the whole bar, not on this column. */
+      .editor-bar-heading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 0;
+        text-align: center;
+      }
+
+      .editor-bar-title {
+        max-width: 100%;
+        overflow: hidden;
+        font-family: var(--font-serif);
+        font-size: 1.125rem;
+        font-weight: var(--weight-heading);
+        line-height: 1.25;
+        letter-spacing: -0.01em;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+
+      .editor-bar-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        animation: fk-fade-in 0.3s ease both;
+      }
+
+      .editor-bar-status > svg {
+        color: var(--success);
+      }
+
+      /* "Version 3 ▾": opens the version list under it. */
+      .editor-version {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.15rem;
+        min-height: 1.75rem;
+        padding: 0.05rem 0.55rem 0.05rem 0.65rem;
+        border: 0;
+        border-radius: var(--radius-full);
+        background: transparent;
+        color: var(--accent);
+        font: inherit;
+        font-size: 0.8125rem;
+        font-weight: 700;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition: background-color 0.2s ease;
+      }
+
+      /* A 44px tap area around the small label. */
+      .editor-version::before {
+        content: '';
+        position: absolute;
+        inset: -0.5rem -0.25rem;
+      }
+
+      .editor-version[aria-expanded='true'] {
+        background: var(--accent-subtle);
+      }
+
+      .editor-version-chevron {
+        transition: rotate 0.35s var(--ease-glide);
+      }
+
+      .editor-version[aria-expanded='true'] .editor-version-chevron {
+        rotate: 180deg;
+      }
+
+      .editor-save {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        min-height: 44px;
+        padding: 0.5rem 1.1rem 0.5rem 0.85rem;
+        border: 0;
+        border-radius: var(--radius-full);
+        background: var(--accent);
+        color: var(--on-accent);
+        font: inherit;
+        font-size: 1rem;
+        font-weight: 700;
+        box-shadow: var(--fab-shadow);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          transform 0.3s var(--spring-soft),
+          background-color 0.2s ease;
+      }
+
+      .editor-save:active {
+        transform: scale(0.95);
+      }
+
+      /* Saving: the pill pops and its tick redraws as the page sinks. */
+      .editor-layer.is-closing[data-exit='save'] .editor-save {
+        animation: editor-save-pop 0.4s var(--spring-soft) both;
+      }
+
+      .editor-layer.is-closing[data-exit='save'] .editor-save-icon {
+        animation: editor-save-tick 0.3s var(--ease-glide) both;
+      }
+
+      @keyframes editor-save-pop {
+        40% { transform: scale(1.08); }
+        to { transform: none; }
+      }
+
+      @keyframes editor-save-tick {
+        from { opacity: 0; transform: scale(0.4) rotate(-20deg); }
+      }
+
+      /* Paste, Preview, Start over: raised chips (also the photo buttons). */
+      .editor-chip {
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        min-height: 44px;
+        padding: 0.45rem 0.95rem 0.45rem 0.8rem;
+        border: 1px solid var(--key-edge);
+        border-radius: var(--radius-full);
+        background: var(--key-face);
+        box-shadow: var(--key-lift);
+        color: var(--text-primary);
+        font: inherit;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        white-space: nowrap;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          transform 0.15s ease,
+          border-color 0.2s ease;
+      }
+
+      .editor-chip > svg {
+        color: var(--accent);
+      }
+
+      .editor-chip:active {
+        transform: scale(0.96);
+      }
+
+      @media (hover: hover) {
+        .editor-bar-close:hover,
+        .editor-chip:hover {
+          border-color: color-mix(in srgb, var(--accent) 50%, var(--key-edge));
+        }
+        .editor-version:hover {
+          background: var(--accent-subtle);
+        }
+        .editor-save:hover {
+          background: var(--accent-hover);
+        }
+      }
+
+      :is(.editor-bar-close, .editor-version, .editor-save, .editor-chip, .glass-chip, .icon-button,
+        .tool-strip-button, .step-move-button, .step-number-remove, .step-number-add, .time-key,
+        .ingredient-add, .method-add-step, .method-add-section, .fork-add-path, .fork-add-step,
+        .fork-remove-path, .fork-switch-option, .category-option,
+        .image-delete-badge):focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      /* ── The version list: a timeline dropping down from the version under the title. */
+      .version-menu-layer {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 3;
+        display: flex;
+        justify-content: center;
+        text-align: left;
+      }
+
+      .version-menu-catcher {
+        position: fixed;
+        inset: 0;
+      }
+
+      .version-menu {
+        position: relative;
+        flex: none;
+        width: min(24rem, calc(100vw - 2rem));
+        max-height: min(70dvh, 36rem);
+        margin-top: 0.6rem;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 0.9rem 0.9rem 0.5rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        background: var(--elev-menu);
+        box-shadow: var(--shadow-lg);
+        transform-origin: 50% 0;
+        animation: vault-popover-in 0.5s var(--spring-soft) both;
+      }
+
+      .version-menu:focus {
+        outline: none;
+      }
+
+      .version-menu-layer.is-closing .version-menu {
+        animation: fk-exit-popover 0.2s var(--ease-accelerate) both;
+      }
+
+      .version-menu-title {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        margin: 0 0.25rem 0.6rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+      }
+
+      .version-menu-title > svg {
+        color: var(--accent);
+      }
+
+      /* ── Shared field pieces ── */
+
+      /* A two-way choice with a sliding thumb (author, time mode, paste target, a path's
+         steps). The radios stay in the tab order; only their dots are hidden. */
+      .choice-pill {
+        position: relative;
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 1fr;
+        min-height: 48px;
+        padding: 3px;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-full);
+        background: var(--menu-well);
+      }
+
+      .choice-pill > label {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        place-items: center;
+        min-width: 0;
+        padding: 0.35rem 0.75rem;
+        border-radius: var(--radius-full);
+        font-size: 0.9375rem;
+        font-weight: 700;
+        line-height: 1.2;
+        text-align: center;
+        color: var(--text-secondary);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition: color 0.25s ease;
+      }
+
+      .choice-pill > label.is-active {
+        color: var(--on-accent);
+      }
+
+      .choice-pill input {
+        position: absolute;
+        inset: 0;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+
+      .choice-pill > label:has(input:focus-visible) {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .choice-pill-thumb {
+        position: absolute;
+        top: 3px;
+        bottom: 3px;
+        left: 3px;
+        width: calc(50% - 3px);
+        border-radius: var(--radius-full);
+        background: var(--accent);
+        box-shadow: var(--shadow-sm);
+        transition: transform 0.5s var(--spring-soft);
+      }
+
+      .choice-pill:is([data-value='other'], [data-value='own'], [data-value='set'],
+        [data-value='steps']) .choice-pill-thumb {
+        transform: translateX(100%);
+      }
+
+      .form-label-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 0.35rem;
+      }
+
+      .form-label-row > :is(.form-label, .callout-label) {
+        margin-bottom: 0;
+      }
+
+      .form-optional {
+        flex: none;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: var(--text-muted);
+      }
+
+      .form-label.is-small {
+        margin-bottom: 0.3rem;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+      }
+
+      .editor-title-input {
+        min-height: 56px;
+        font-family: var(--font-serif);
+        font-size: 1.5rem;
+        font-weight: var(--weight-heading);
+        letter-spacing: -0.01em;
+      }
+
+      /* A field one line tall that grows with its text (AutoGrowTextarea sizes it where
+         field-sizing isn't supported). */
+      textarea.form-control.is-growing {
+        min-height: 48px;
+        resize: none;
+        overflow: hidden;
+        field-sizing: content;
+      }
+
+      .field-error {
+        margin: 0.45rem 0.15rem 0;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: #b3261e;
+        animation: fk-rise-in 0.3s var(--ease-glide) both;
+      }
+
+      [data-theme='dark'] .field-error {
+        color: #f2b8b5;
+      }
+
+      .has-error :is(.form-control[aria-invalid='true'], .category-select-trigger) {
+        border-color: #b3261e;
+      }
+
+      [data-theme='dark'] .has-error :is(.form-control[aria-invalid='true'], .category-select-trigger) {
+        border-color: #f2b8b5;
+      }
+
+      /* A field with a small icon inside its left edge (a note, a swap, a tip). */
+      .field-with-icon {
+        position: relative;
+      }
+
+      .field-with-icon > .field-icon {
+        position: absolute;
+        top: 0.9rem;
+        left: 0.8rem;
+        z-index: 1;
+        color: var(--text-muted);
+        pointer-events: none;
+      }
+
+      .field-with-icon > .field-icon.is-gold {
+        color: var(--accent-gold);
+      }
+
+      .field-with-icon > .form-control {
+        padding-left: 2.5rem;
+      }
+
+      .icon-button {
+        position: relative;
+        flex: none;
+        width: 44px;
+        height: 44px;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 0;
+        border-radius: var(--radius-full);
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          background-color 0.2s ease,
+          color 0.2s ease,
+          transform 0.15s ease;
+      }
+
+      .icon-button:active {
+        transform: scale(0.9);
+      }
+
+      /* Smaller beside a field, with the same 44px tap area. */
+      .icon-button.is-small {
+        width: 2.25rem;
+        height: 2.25rem;
+        margin-top: 0.375rem;
+      }
+
+      .icon-button.is-small::before {
+        content: '';
+        position: absolute;
+        inset: -4px;
+      }
+
+      @media (hover: hover) {
+        .icon-button:hover {
+          background: var(--menu-well);
+          color: var(--text-primary);
+        }
+      }
+
+      /* Kitchen tip and crucial note, tinted as the recipe page shows them. */
+      .editor-callout {
+        padding: 0.85rem 1rem 1rem;
+        border-left: 3px solid var(--accent);
+        border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      }
+
+      .editor-callout .callout-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+
+      .editor-callout .form-control {
+        background: var(--bg-surface);
+      }
+
+      .editor-callout.is-tip {
+        border-left-color: var(--accent-gold);
+        background: var(--accent-gold-subtle);
+      }
+
+      .editor-callout.is-tip .callout-label {
+        color: var(--accent-gold);
+      }
+
+      .editor-callout.is-warn {
+        border-left-color: #d9383a;
+        background: #fdf2f2;
+      }
+
+      [data-theme='dark'] .editor-callout.is-warn {
+        background: #2a1515;
+      }
+
+      .editor-callout.is-warn .callout-label {
+        color: #b3261e;
+      }
+
+      [data-theme='dark'] .editor-callout.is-warn .callout-label {
+        color: #f2b8b5;
+      }
+
+      /* ── Photo, category, time ── */
+
+      /* The main photo, framed as the recipe page opens with it. */
+      .hero-photo-field {
+        position: relative;
+        display: grid;
+        place-items: center;
+        aspect-ratio: 16 / 10;
+        border: 2px dashed var(--border-strong);
+        border-radius: var(--hero-radius);
+        background: var(--bg-card);
+      }
+
+      .hero-photo-field.has-photo {
+        overflow: hidden;
+        border: 0;
+        box-shadow: var(--shadow-md);
+      }
+
+      .hero-photo-img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        animation: fk-fade-in 0.4s ease both;
+      }
+
+      .hero-photo-actions {
+        position: absolute;
+        right: 0.75rem;
+        bottom: 0.75rem;
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      /* Buttons over a photo: frosted dark glass reads over any picture, in either theme. */
+      .glass-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        min-height: 44px;
+        padding: 0.45rem 0.9rem 0.45rem 0.8rem;
+        border: 1px solid rgba(255, 255, 255, 0.24);
+        border-radius: var(--radius-full);
+        background: rgba(20, 16, 14, 0.48);
+        backdrop-filter: blur(12px) saturate(1.4);
+        -webkit-backdrop-filter: blur(12px) saturate(1.4);
+        color: #ffffff;
+        font: inherit;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          transform 0.15s ease,
+          background-color 0.2s ease;
+      }
+
+      .glass-chip:active {
+        transform: scale(0.95);
+      }
+
+      @media (hover: hover) {
+        .glass-chip:hover {
+          background: rgba(20, 16, 14, 0.62);
+        }
+      }
+
+      .hero-photo-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 1.25rem;
+        text-align: center;
+      }
+
+      .hero-photo-badge {
+        width: 3.5rem;
+        height: 3.5rem;
+        display: grid;
+        place-items: center;
+        border-radius: var(--radius-full);
+        background: var(--accent-subtle);
+        color: var(--accent);
+      }
+
+      .hero-photo-hint {
+        max-width: 22rem;
+        font-size: 0.9375rem;
+        line-height: 1.4;
+        color: var(--text-secondary);
+      }
+
+      .hero-photo-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.5rem;
+      }
+
+      /* Category: a field that drops down a two-column list, each with its icon. */
+      .category-select {
+        position: relative;
+      }
+
+      .category-select-trigger {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        text-align: left;
+        font-weight: 600;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .category-select-icon {
+        flex: none;
+        color: var(--accent-gold);
+      }
+
+      .category-select-value {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .category-select-trigger.is-empty .category-select-value {
+        font-weight: 500;
+        color: var(--text-muted);
+      }
+
+      .category-select-chevron {
+        flex: none;
+        color: var(--text-muted);
+        transition: rotate 0.35s var(--ease-glide);
+      }
+
+      .category-select.is-open .category-select-chevron {
+        rotate: 180deg;
+      }
+
+      .category-list-layer {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 5;
+      }
+
+      .category-list-catcher {
+        position: fixed;
+        inset: 0;
+      }
+
+      .category-list {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.4rem;
+        margin-top: 0.4rem;
+        padding: 0.5rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        background: var(--elev-menu);
+        box-shadow: var(--shadow-lg);
+        transform-origin: 50% 0;
+        animation: vault-popover-in 0.45s var(--spring-soft) both;
+      }
+
+      .category-list-layer.is-closing .category-list {
+        animation: fk-exit-popover 0.2s var(--ease-accelerate) both;
+      }
+
+      .category-option {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        min-width: 0;
+        min-height: 48px;
+        padding: 0.5rem 0.65rem;
+        border: 1px solid transparent;
+        border-radius: var(--radius-md);
+        background: var(--menu-well);
+        color: var(--text-secondary);
+        font: inherit;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        line-height: 1.2;
+        text-align: left;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        animation: vault-pop-item 0.4s var(--ease-glide) calc(40ms + var(--i, 0) * 16ms) both;
+        transition:
+          background-color 0.2s ease,
+          border-color 0.2s ease,
+          color 0.2s ease,
+          transform 0.15s ease;
+      }
+
+      .category-option:active {
+        transform: scale(0.97);
+      }
+
+      .category-option-icon {
+        flex: none;
+        color: var(--accent-gold);
+      }
+
+      .category-option-label {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .category-option-check {
+        flex: none;
+        animation: vault-chip-in 0.35s var(--spring-soft) both;
+      }
+
+      .category-option[aria-selected='true'] {
+        border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+        background: var(--accent-subtle);
+        color: var(--accent);
+      }
+
+      .category-option[aria-selected='true'] .category-option-icon {
+        color: var(--accent);
+      }
+
+      @media (hover: hover) {
+        .category-option:hover {
+          background: var(--menu-well-hover);
+        }
+        .category-option[aria-selected='true']:hover {
+          background: var(--accent-subtle);
+        }
+      }
+
+      /* Recipe time: the reading, Auto | Set, and in Set the hour and minute keys. */
+      .time-field-label {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+
+      .time-field-label > svg {
+        color: var(--accent);
+      }
+
+      .time-field-card {
+        padding: 0.85rem 1rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        background: var(--bg-surface);
+        transition: border-color 0.3s ease;
+      }
+
+      .time-field-card.is-set {
+        border-color: color-mix(in srgb, var(--accent) 40%, var(--border-subtle));
+      }
+
+      .time-field-top {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+
+      .time-field-reading {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        min-width: 0;
+      }
+
+      .time-field-value {
+        font-family: var(--font-serif);
+        font-size: 1.5rem;
+        font-weight: var(--weight-heading);
+        line-height: 1.15;
+        color: var(--accent);
+      }
+
+      .time-field-caption {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+
+      .time-field-mode {
+        flex: 0 1 11rem;
+        min-width: 9.5rem;
+      }
+
+      .time-field-keys {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+        gap: 0.75rem;
+        padding-top: 0.85rem;
+      }
+
+      .time-stepper {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.35rem;
+        padding: 0.25rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        background: var(--bg-card);
+      }
+
+      .time-stepper-value {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 0.2rem;
+        font-size: 1.125rem;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        overflow: hidden;
+      }
+
+      .time-stepper-value > span:last-child {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+
+      /* Raised keys, like the portion scaler's */
+      .time-key {
+        width: 44px;
+        height: 44px;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 1px solid var(--key-edge);
+        border-radius: 6px;
+        background: var(--key-face);
+        box-shadow: var(--key-lift);
+        color: var(--text-primary);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          border-color 0.15s ease,
+          scale 0.15s ease;
+      }
+
+      .time-key:active {
+        scale: 0.93;
+        box-shadow: none;
+      }
+
+      @media (hover: hover) {
+        .time-key:hover {
+          border-color: color-mix(in srgb, var(--accent) 50%, var(--key-edge));
+        }
+      }
+
+      /* ── Tools that open under a tapped row or step ── */
+
+      /* Slides its contents down open and up shut. The inner padding (taken back by the
+         margin) leaves room for focus rings inside the clip. */
+      .reveal {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 0.42s var(--ease-glide);
+      }
+
+      .reveal.is-open {
+        grid-template-rows: 1fr;
+      }
+
+      .reveal-inner {
+        min-height: 0;
+        overflow: hidden;
+        margin: -4px;
+        padding: 4px;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+
+      .reveal.is-open > .reveal-inner {
+        opacity: 1;
+        transition: opacity 0.3s ease 0.08s;
+      }
+
+      .tool-strip {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(0, 1fr);
+        gap: 0.25rem;
+        margin-top: 0.6rem;
+        padding: 0.3rem;
+        border-radius: var(--radius-md);
+        background: var(--menu-well);
+      }
+
+      .tool-strip-button {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.2rem;
+        min-width: 0;
+        min-height: 52px;
+        padding: 0.35rem 0.2rem;
+        border: 0;
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--text-secondary);
+        font: inherit;
+        font-size: 0.75rem;
+        font-weight: 600;
+        line-height: 1.15;
+        text-align: center;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          background-color 0.2s ease,
+          color 0.2s ease,
+          transform 0.15s ease;
+      }
+
+      .tool-strip-button > span {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+      }
+
+      .tool-strip-button .fork-icon {
+        width: 1.25rem;
+        height: 1.25rem;
+      }
+
+      .tool-strip-button:active:not(:disabled) {
+        transform: scale(0.94);
+      }
+
+      .tool-strip-button[aria-pressed='true'] {
+        background: var(--accent-subtle);
+        color: var(--accent);
+      }
+
+      .tool-strip-button.is-danger {
+        color: #b3261e;
+      }
+
+      [data-theme='dark'] .tool-strip-button.is-danger {
+        color: #f2b8b5;
+      }
+
+      .tool-strip-button:disabled,
+      .tool-strip-button[aria-disabled='true'] {
+        opacity: 0.4;
+        cursor: default;
+      }
+
+      .tool-strip-letter {
+        font-family: var(--font-serif);
+        font-size: 1.05rem;
+        font-weight: 700;
+        line-height: 1.25rem;
+      }
+
+      @media (hover: hover) {
+        .tool-strip-button:hover:not(:disabled) {
+          background: var(--menu-well-hover);
+        }
+        .tool-strip-button[aria-pressed='true']:hover {
+          background: var(--accent-subtle);
+        }
+      }
+
+      /* ── Ingredients: the recipe page's table, one editable row at a time ── */
+      .editor-panel {
+        margin-bottom: 1.5rem;
+        padding: 1.25rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        background: var(--bg-surface);
+        box-shadow: var(--shadow-sm);
+      }
+
+      @media (max-width: 480px) {
+        .editor-panel {
+          padding: 16px 12px;
+        }
+      }
+
+      .editor-panel-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+
+      .editor-count {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+
+      .yield-input {
+        font-weight: 600;
+        color: var(--accent);
+      }
+
+      .ingredient-editor .ingredient-table {
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+      }
+
+      .ingredient-table-head,
+      .ingredient-row-main {
+        display: grid;
+        grid-template-columns: minmax(0, 58fr) minmax(0, 42fr);
+        gap: 0.5rem;
+      }
+
+      .ingredient-table-head {
+        padding: 0.65rem 0.75rem;
+        border-bottom: 1px solid var(--border-subtle);
+        border-radius: calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px) 0 0;
+        background: var(--bg-card);
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+      }
+
+      .ingredient-rows {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .ingredient-row {
+        position: relative;
+        padding: 0.5rem 0.6rem;
+        border-bottom: 1px solid var(--border-subtle);
+        transition: background-color 0.25s ease;
+      }
+
+      /* The row being edited: a tint and an accent bar down its left edge. */
+      .ingredient-row::before {
+        content: '';
+        position: absolute;
+        top: 0.5rem;
+        bottom: 0.5rem;
+        left: 0;
+        width: 3px;
+        border-radius: 0 3px 3px 0;
+        background: var(--accent);
+        transform: scaleY(0);
+        transition: transform 0.4s var(--spring-soft);
+      }
+
+      .ingredient-row.is-active {
+        background: color-mix(in srgb, var(--accent-subtle) 55%, transparent);
+      }
+
+      .ingredient-row.is-active::before {
+        transform: none;
+      }
+
+      /* Rows sit close together: a ring inside the row that doesn't reach the neighbours. */
+      .editor-layer .ingredient-row.is-restored {
+        border-radius: 0;
+        box-shadow: inset 0 0 0 2px var(--accent);
+      }
+
+      .ingredient-row-main > .form-control {
+        min-width: 0;
+        padding-inline: 0.7rem;
+      }
+
+      .ingredient-extra {
+        margin-top: 0.45rem;
+        animation: fk-rise-in 0.3s var(--ease-glide) both;
+      }
+
+      .ingredient-add,
+      .method-add-step {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        width: 100%;
+        min-height: 48px;
+        padding: 0.5rem 1rem;
+        border: 0;
+        background: transparent;
+        color: var(--accent);
+        font: inherit;
+        font-size: 0.9375rem;
+        font-weight: 700;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          background-color 0.2s ease,
+          border-color 0.2s ease,
+          transform 0.15s ease;
+      }
+
+      .ingredient-add {
+        border-radius: 0 0 calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px);
+      }
+
+      .method-add-step {
+        margin-top: 0.75rem;
+        border: 1.5px dashed var(--border-strong);
+        border-radius: var(--radius-md);
+      }
+
+      .method-add-step:active {
+        transform: scale(0.98);
+      }
+
+      @media (hover: hover) {
+        .ingredient-add:hover,
+        .method-add-step:hover {
+          background: var(--accent-subtle);
+        }
+        .method-add-step:hover {
+          border-color: var(--accent);
+        }
+      }
+
+      /* ── Method: sections of steps, laid out like the recipe page's ── */
+      .method-editor {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .method-section-head {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        min-height: 48px;
+        margin-bottom: 0.5rem;
+      }
+
+      .method-section-title {
+        flex: 1;
+        min-width: 0;
+        margin: 0;
+      }
+
+      .method-section-input {
+        flex: 1;
+        min-width: 0;
+        font-family: var(--font-serif);
+        font-size: 1.25rem;
+        font-weight: var(--weight-heading);
+      }
+
+      .method-section-remove {
+        color: #b3261e;
+      }
+
+      [data-theme='dark'] .method-section-remove {
+        color: #f2b8b5;
+      }
+
+      .method-steps {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .step-editor {
+        position: relative;
+        display: grid;
+        grid-template-columns: 2.75rem minmax(0, 1fr);
+        column-gap: 0.5rem;
+        padding: 0.75rem 0.85rem 0.75rem 0.5rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        background: var(--bg-surface);
+        box-shadow: var(--shadow-sm);
+        transition:
+          border-color 0.25s ease,
+          box-shadow 0.3s ease,
+          background-color 0.25s ease;
+      }
+
+      .step-editor.is-active {
+        border-color: color-mix(in srgb, var(--accent) 55%, var(--border-subtle));
+        box-shadow:
+          0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent),
+          var(--shadow-md);
+      }
+
+      /* Unnumbered text between steps: no card, just a dashed outline to edit it in. */
+      .step-editor.is-plain {
+        border-style: dashed;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .step-editor-rail {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.4rem;
+        padding-top: 0.45rem;
+      }
+
+      .step-editor-number {
+        position: relative;
+        width: 2rem;
+        height: 2rem;
+        display: grid;
+        place-items: center;
+      }
+
+      .step-editor .step-num {
+        width: 2rem;
+        height: 2rem;
+        margin: 0;
+        font-size: 0.9375rem;
+        overflow: hidden;
+      }
+
+      /* The small × on the number's corner that makes the step unnumbered text. */
+      .step-number-remove {
+        position: absolute;
+        top: -0.4rem;
+        right: -0.5rem;
+        width: 1.25rem;
+        height: 1.25rem;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 2px solid var(--bg-surface);
+        border-radius: var(--radius-full);
+        background: var(--text-secondary);
+        color: var(--bg-surface);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transform: scale(0);
+        transition:
+          transform 0.4s var(--spring-soft),
+          background-color 0.2s ease;
+      }
+
+      .step-number-remove::before {
+        content: '';
+        position: absolute;
+        inset: -12px;
+      }
+
+      .step-editor.is-active .step-number-remove {
+        transform: none;
+      }
+
+      .step-number-add {
+        position: relative;
+        width: 2rem;
+        height: 2rem;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 1.5px dashed var(--border-strong);
+        border-radius: var(--radius-full);
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          border-color 0.2s ease,
+          color 0.2s ease;
+      }
+
+      .step-number-add::before {
+        content: '';
+        position: absolute;
+        inset: -6px;
+      }
+
+      .step-editor-fork {
+        width: 1.4rem;
+        height: 1.4rem;
+        color: var(--accent-gold);
+      }
+
+      .step-editor-move .reveal-inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.35rem;
+      }
+
+      .step-move-button {
+        width: 2.75rem;
+        height: 2.75rem;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 1px solid var(--key-edge);
+        border-radius: var(--radius-sm);
+        background: var(--key-face);
+        box-shadow: var(--key-lift);
+        color: var(--text-secondary);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          transform 0.15s ease,
+          opacity 0.2s ease;
+      }
+
+      .step-move-button:active:not(:disabled) {
+        transform: scale(0.92);
+        box-shadow: none;
+      }
+
+      .step-move-button:disabled {
+        opacity: 0.35;
+        cursor: default;
+      }
+
+      @media (hover: hover) {
+        .step-number-remove:hover {
+          background: #b3261e;
+        }
+        .step-number-add:hover {
+          border-color: var(--accent);
+          color: var(--accent);
+        }
+        .step-move-button:hover:not(:disabled) {
+          border-color: color-mix(in srgb, var(--accent) 50%, var(--key-edge));
+        }
+      }
+
+      .step-editor-body {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-width: 0;
+      }
+
+      .step-editor-tools {
+        grid-column: 1 / -1;
+      }
+
+      .step-plain-tag {
+        align-self: flex-start;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+      }
+
+      .substep-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .substep-row {
+        display: grid;
+        grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+        align-items: start;
+        gap: 0.35rem;
+        animation: fk-rise-in 0.3s var(--ease-glide) both;
+      }
+
+      .substep-row > .substep-letter {
+        padding-top: 0.75rem;
+        text-align: right;
+        font-weight: 700;
+        color: var(--accent);
+      }
+
+      .step-tip-field > .form-control {
+        background: var(--accent-gold-subtle);
+      }
+
+      .step-tip-field,
+      .step-photo-field {
+        animation: fk-rise-in 0.3s var(--ease-glide) both;
+      }
+
+      .step-photo-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .step-photo-caption {
+        font-size: 1rem;
+      }
+
+      /* A step's photo: a thumbnail with a × to remove it, or buttons to add one. */
+      .image-picker-zone {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .image-preview-wrapper {
+        position: relative;
+        width: fit-content;
+      }
+
+      .image-preview-thumb {
+        display: block;
+        width: 7.5rem;
+        height: 7.5rem;
+        object-fit: cover;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        background: var(--bg-card);
+        box-shadow: var(--shadow-sm);
+        animation: fk-fade-in 0.3s ease both;
+      }
+
+      .image-delete-badge {
+        position: absolute;
+        top: -0.5rem;
+        right: -0.5rem;
+        width: 1.75rem;
+        height: 1.75rem;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 2px solid var(--bg-surface);
+        border-radius: var(--radius-full);
+        background: var(--text-primary);
+        color: var(--bg-surface);
+        box-shadow: var(--shadow-md);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          transform 0.3s var(--spring-soft),
+          background-color 0.2s ease;
+      }
+
+      .image-delete-badge::before {
+        content: '';
+        position: absolute;
+        inset: -8px;
+      }
+
+      .image-delete-badge:active {
+        transform: scale(0.9);
+      }
+
+      @media (hover: hover) {
+        .image-delete-badge:hover {
+          background: #b3261e;
+        }
+      }
+
+      .image-picker-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .method-add-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.2rem;
+        width: 100%;
+        padding: 0.9rem 1rem;
+        border: 1.5px dashed var(--border-strong);
+        border-radius: var(--radius-lg);
+        background: transparent;
+        font: inherit;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          background-color 0.2s ease,
+          border-color 0.2s ease,
+          transform 0.15s ease;
+      }
+
+      .method-add-section:active {
+        transform: scale(0.98);
+      }
+
+      .method-add-section-title {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--accent);
+      }
+
+      .method-add-section-hint {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+      }
+
+      @media (hover: hover) {
+        .method-add-section:hover {
+          border-color: var(--accent);
+          background: var(--accent-subtle);
+        }
+      }
+
+      /* ── Forks: a step done one of two or three ways ── */
+      .fork-editor {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .fork-editor-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .fork-editor-bar > .fork-switch {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .fork-add-path {
+        flex: none;
+        width: 44px;
+        height: 44px;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 1.5px dashed var(--border-strong);
+        border-radius: var(--radius-full);
+        background: transparent;
+        color: var(--accent);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        animation: vault-chip-in 0.4s var(--spring-soft) both;
+        transition:
+          border-color 0.2s ease,
+          background-color 0.2s ease;
+      }
+
+      .fork-path {
+        display: flex;
+        flex-direction: column;
+        padding: 0.85rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        background: var(--bg-card);
+      }
+
+      .fork-path .form-control {
+        background: var(--bg-surface);
+      }
+
+      .fork-path > .form-label.is-small {
+        margin-top: 0.75rem;
+      }
+
+      .fork-path-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent-gold);
+      }
+
+      .fork-path-kicker > .fork-icon {
+        width: 1.25rem;
+        height: 1.25rem;
+      }
+
+      .fork-path-then {
+        min-width: 0;
+        margin: 0.75rem 0 0;
+        padding: 0;
+        border: 0;
+      }
+
+      .fork-path-steps {
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+        margin: 0.75rem 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .fork-path-step {
+        display: grid;
+        grid-template-columns: 1.75rem minmax(0, 1fr) auto;
+        align-items: start;
+        gap: 0.4rem;
+        animation: fk-rise-in 0.3s var(--ease-glide) both;
+      }
+
+      .fork-path-number {
+        width: 1.6rem;
+        height: 1.6rem;
+        display: grid;
+        place-items: center;
+        margin-top: 0.7rem;
+        overflow: hidden;
+        border-radius: var(--radius-full);
+        background: var(--accent-subtle);
+        color: var(--accent);
+        font-size: 0.8125rem;
+        font-weight: 700;
+      }
+
+      .fork-add-step,
+      .fork-remove-path {
+        align-self: flex-start;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        min-height: 44px;
+        margin-top: 0.5rem;
+        padding: 0.4rem 0.85rem;
+        border: 0;
+        border-radius: var(--radius-full);
+        background: transparent;
+        color: var(--accent);
+        font: inherit;
+        font-size: 0.9375rem;
+        font-weight: 700;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition: background-color 0.2s ease;
+      }
+
+      .fork-remove-path {
+        border: 1px solid color-mix(in srgb, #b3261e 35%, transparent);
+        color: #b3261e;
+        font-size: 0.875rem;
+      }
+
+      [data-theme='dark'] .fork-remove-path {
+        border-color: color-mix(in srgb, #f2b8b5 35%, transparent);
+        color: #f2b8b5;
+      }
+
+      .fork-path-foot {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        margin: 0.75rem 0 0;
+        padding-top: 0.65rem;
+        border-top: 1px dashed var(--border-strong);
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+      }
+
+      .fork-path-foot > svg {
+        flex: none;
+        color: var(--accent-gold);
+      }
+
+      @media (hover: hover) {
+        .fork-add-path:hover {
+          border-color: var(--accent);
+          background: var(--accent-subtle);
+        }
+        .fork-add-step:hover {
+          background: var(--accent-subtle);
+        }
+        .fork-remove-path:hover {
+          background: color-mix(in srgb, #b3261e 8%, transparent);
+        }
+      }
+
+      /* The fork switch (recipe page and editor): a thumb slides to the chosen path, whose
+         arrow draws its branch out. */
+      .fork-switch {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(var(--paths, 2), minmax(0, 1fr));
+        min-height: 48px;
+        padding: 3px;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        background: var(--menu-well);
+      }
+
+      .fork-switch-thumb {
+        position: absolute;
+        top: 3px;
+        bottom: 3px;
+        left: 3px;
+        width: calc((100% - 6px) / var(--paths, 2));
+        border-radius: calc(var(--radius-lg) - 3px);
+        background: var(--accent);
+        box-shadow: var(--shadow-sm);
+        transition: transform 0.55s var(--spring-soft);
+      }
+
+      .fork-switch-option {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        min-width: 0;
+        min-height: 42px;
+        padding: 0.3rem 0.5rem;
+        border: 0;
+        border-radius: calc(var(--radius-lg) - 3px);
+        background: transparent;
+        color: var(--text-secondary);
+        font: inherit;
+        font-size: 0.9375rem;
+        font-weight: 700;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition: color 0.25s ease;
+      }
+
+      .fork-switch-option.is-on {
+        color: var(--on-accent);
+      }
+
+      .fork-switch-option > .fork-icon {
+        flex: none;
+        width: 1.2rem;
+        height: 1.2rem;
+      }
+
+      /* A long name wraps onto a second line rather than being cut short. */
+      .fork-switch-label {
+        display: -webkit-box;
+        min-width: 0;
+        overflow: hidden;
+        overflow-wrap: break-word;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-height: 1.15;
+        text-align: left;
+      }
+
+      /* In the editor the switch shares its row with the add-path key: each path's arrow sits
+         over its name, giving the name the option's whole width. */
+      .fork-editor-bar .fork-switch-option {
+        flex-direction: column;
+        gap: 0.15rem;
+        padding: 0.35rem 0.3rem;
+        font-size: 0.8125rem;
+      }
+
+      .fork-editor-bar .fork-switch-label {
+        text-align: center;
+      }
+
+      .fork-switch.is-large {
+        min-height: 52px;
+        margin-bottom: 0.75rem;
+      }
+
+      .fork-switch.is-large .fork-switch-option {
+        min-height: 46px;
+        font-size: 1rem;
+      }
+
+      .fork-icon {
+        display: block;
+        overflow: visible;
+      }
+
+      .fork-icon-branch {
+        opacity: 0.3;
+        transition: opacity 0.3s ease;
+      }
+
+      .fork-icon-branch.is-lit {
+        opacity: 1;
+      }
+
+      /* On a path the cook could switch to, its branch shows in the accent colour. */
+      .fork-switch-option:not(.is-on) .fork-icon-branch.is-lit {
+        color: var(--accent);
+      }
+
+      .fork-icon-head {
+        transform-box: fill-box;
+        transform-origin: 50% 0;
+      }
+
+      /* Chosen: the stem draws up, then the path's branch, then its arrowhead pops on. */
+      .fork-switch-option.is-on .fork-icon-stem {
+        stroke-dasharray: 1;
+        animation: fork-draw 0.24s ease-out both;
+      }
+
+      .fork-switch-option.is-on .is-lit .fork-icon-line {
+        stroke-dasharray: 1;
+        animation: fork-draw 0.34s var(--ease-glide) 0.16s both;
+      }
+
+      .fork-switch-option.is-on .is-lit .fork-icon-head {
+        animation: fork-head-pop 0.5s var(--spring-soft) 0.4s both;
+      }
+
+      @keyframes fork-draw {
+        from { stroke-dashoffset: 1; opacity: 0; }
+        1% { opacity: 1; }
+        to { stroke-dashoffset: 0; opacity: 1; }
+      }
+
+      @keyframes fork-head-pop {
+        from { transform: scale(0); opacity: 0; }
+      }
+
+      /* ── The recipe page's method: sections, text between steps, substeps, forks ── */
+      .steps-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .step-interlude {
+        padding: 0.35rem 0 0.35rem 1rem;
+        border-left: 3px solid var(--accent-gold);
+        font-size: 1.0625rem;
+        line-height: 1.6;
+        color: var(--text-secondary);
+      }
+
+      .substeps {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        margin: 0.5rem 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .substeps > li {
+        display: flex;
+        gap: 0.5rem;
+        font-size: 1.0625rem;
+        line-height: 1.55;
+      }
+
+      .substeps .substep-letter {
+        flex: none;
+        font-weight: 700;
+        color: var(--accent);
+      }
+
+      .fork-step-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+        margin: 0.75rem 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .fork-step-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.6rem;
+      }
+
+      .step-num.is-small {
+        width: 22px;
+        height: 22px;
+        margin-top: 0.3rem;
+        font-size: 0.8125rem;
+      }
+
+      .step-num {
+        overflow: hidden;
+      }
+
+      .ingredient-substitute {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        line-height: 1.3;
+        color: var(--accent-gold);
+      }
+
+      .ingredient-substitute > svg {
+        flex: none;
+      }
+
+      .number-roll {
+        display: inline-block;
+      }
+
+      /* ── Sheets over the editor: paste, and confirmations ── */
+      .editor-sheet-layer {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        background: var(--scrim);
+        animation: fk-fade-in 0.22s ease both;
+      }
+
+      .editor-sheet {
+        width: 100%;
+        max-width: 32rem;
+        max-height: 88dvh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 0.5rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom));
+        border: 1px solid var(--border-subtle);
+        border-bottom: 0;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+        background: var(--elev-menu);
+        box-shadow: var(--shadow-lg);
+        animation: fk-sheet-up 0.42s var(--ease-glide) both;
+      }
+
+      .editor-sheet-layer.is-closing {
+        pointer-events: none;
+        animation: fk-exit-scrim 0.28s ease both;
+      }
+
+      .editor-sheet-layer.is-closing .editor-sheet {
+        animation: fk-exit-sheet-down 0.28s var(--ease-accelerate) both;
+      }
+
+      /* A dialog in the middle on larger screens. */
+      @media (min-width: 640px) {
+        .editor-sheet-layer {
+          align-items: center;
+          padding: 1.5rem;
+        }
+        .editor-sheet {
+          border-bottom: 1px solid var(--border-subtle);
+          border-radius: var(--radius-xl);
+          padding-bottom: 1.25rem;
+          animation: fk-dialog-in 0.38s var(--ease-glide) both;
+        }
+        .editor-sheet-layer.is-closing .editor-sheet {
+          animation: fk-exit-dialog 0.22s var(--ease-accelerate) both;
+        }
+        .editor-sheet-grip {
+          visibility: hidden;
+        }
+      }
+
+      .editor-sheet-grip {
+        width: 2.5rem;
+        height: 0.3rem;
+        margin: 0.25rem auto 0.75rem;
+        border-radius: var(--radius-full);
+        background: var(--border-strong);
+      }
+
+      .editor-sheet-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+        font-family: var(--font-serif);
+        font-size: 1.3rem;
+        font-weight: var(--weight-heading);
+        letter-spacing: -0.01em;
+      }
+
+      .editor-sheet-title > svg {
+        color: var(--accent);
+      }
+
+      .editor-sheet-choice {
+        min-width: 0;
+        margin: 0 0 1rem;
+        padding: 0;
+        border: 0;
+      }
+
+      textarea.editor-sheet-text {
+        min-height: 9rem;
+      }
+
+      .editor-sheet-help {
+        margin: 0.5rem 0.15rem 1.25rem;
+        font-size: 0.875rem;
+        line-height: 1.45;
+        color: var(--text-muted);
+      }
+
+      .editor-sheet-message {
+        margin: 0 0 1.5rem;
+        font-size: 1.0625rem;
+        line-height: 1.5;
+        color: var(--text-secondary);
+      }
+
+      .editor-sheet-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+      }
+
+      .editor-sheet-actions > .btn {
+        min-height: 48px;
+        border-radius: var(--radius-full);
+        font-size: 1rem;
+        white-space: normal;
+      }
+
+      .editor-sheet-actions > .btn:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+
+      .btn-danger {
+        border-color: #b3261e;
+        background: #b3261e;
+        color: #ffffff;
+      }
+
+      @media (hover: hover) {
+        .btn-danger:hover {
+          border-color: #8c1d18;
+          background: #8c1d18;
+        }
+      }
+
+      /* ── Preview: the recipe page as the family will see it, over the editor ── */
+      .editor-preview {
+        position: fixed;
+        inset: 0;
+        z-index: 30;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        background: var(--bg-main);
+        animation: editor-preview-in 0.46s var(--ease-glide) backwards;
+      }
+
+      @keyframes editor-preview-in {
+        from { opacity: 0; transform: translateY(2rem); }
+      }
+
+      .editor-preview.is-closing {
+        pointer-events: none;
+        animation: fk-exit-editor-preview 0.26s var(--ease-accelerate) both;
+      }
+
+      @keyframes fk-exit-editor-preview {
+        to { opacity: 0; transform: translateY(1.5rem); }
+      }
+
+      /* The back button, in glass where the menu button sits on a recipe page. */
+      .editor-preview-back {
+        position: fixed;
+        right: calc(1.25rem - 0.375rem + env(safe-area-inset-right));
+        bottom: calc(1.25rem - 0.375rem + env(safe-area-inset-bottom));
+        z-index: 2;
+        padding: 0.375rem;
+        border: 1px solid var(--border-strong);
+        border-radius: var(--radius-full);
+        background: color-mix(in srgb, var(--bg-card) 90%, transparent);
+        backdrop-filter: blur(16px) saturate(1.4);
+        -webkit-backdrop-filter: blur(16px) saturate(1.4);
+        animation: editor-back-in 0.7s var(--spring-soft) 0.12s backwards;
+      }
+
+      .editor-preview-back .fab-back-arrow {
+        animation: fab-arrow-in 0.5s var(--ease-glide) 0.28s backwards;
+      }
+
+      @keyframes editor-back-in {
+        from { opacity: 0; scale: 0.4; }
+        30% { opacity: 1; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .editor-layer,
+        .editor-preview {
+          animation: fk-fade-in 0.15s ease both;
+        }
+        .editor-layer.is-closing[data-exit],
+        .editor-preview.is-closing {
+          animation: fk-exit-fade 0.15s ease both;
+        }
+        .editor-sheet,
+        .editor-sheet-layer.is-closing .editor-sheet,
+        .version-menu,
+        .version-menu-layer.is-closing .version-menu,
+        .category-list,
+        .category-list-layer.is-closing .category-list {
+          animation: fk-fade-in 0.15s ease both;
+        }
+        .editor-sheet-layer.is-closing .editor-sheet,
+        .version-menu-layer.is-closing .version-menu,
+        .category-list-layer.is-closing .category-list {
+          animation-name: fk-exit-fade;
+        }
+        .editor-rise,
+        .editor-bar-status,
+        .editor-preview-back,
+        .editor-preview-back .fab-back-arrow,
+        .editor-layer.is-closing .editor-save,
+        .editor-layer.is-closing .editor-save-icon,
+        .category-option,
+        .category-option-check,
+        .fork-add-path,
+        .field-error,
+        .hero-photo-img,
+        .image-preview-thumb,
+        .ingredient-extra,
+        .substep-row,
+        .fork-path-step,
+        .step-tip-field,
+        .step-photo-field,
+        .fork-switch-option .fork-icon * {
+          animation: none;
+        }
+        .editor-bar-tools,
+        .choice-pill-thumb,
+        .fork-switch-thumb,
+        .reveal,
+        .reveal-inner,
+        .ingredient-row::before,
+        .step-number-remove,
+        .editor-version-chevron,
+        .category-select-chevron {
+          transition: none;
+        }
       }
 
       /* ── Sign-in splash ──

@@ -1,0 +1,57 @@
+import React from 'react';
+import { Step } from '../../types/recipe';
+import { capitalizeFirstLetter } from '../../utils/timeEstimator';
+import { UiTranslations } from '../../i18n/translations';
+
+interface StepExtrasProps {
+  step: Step;
+  /** The step's place in the recipe, which the photo viewer is opened with. */
+  index: number;
+  /** Whether this step's photo is the one the viewer grows from and shrinks back into. */
+  isZoomSource: boolean;
+  onZoomImage: (src: string, step: number) => void;
+  t: UiTranslations;
+}
+
+/** A step's tip and photo, under its text. */
+export const StepExtras: React.FC<StepExtrasProps> = ({
+  step,
+  index,
+  isZoomSource,
+  onZoomImage,
+  t,
+}) => (
+  <>
+    {step.notes && (
+      <div className="step-note-pill">
+        <span className="step-note-icon" aria-hidden="true">
+          💡
+        </span>
+        <span>{capitalizeFirstLetter(step.notes)}</span>
+      </div>
+    )}
+
+    {step.hasImage && step.imageSrc && (
+      <div
+        className={`step-visual-frame clickable-zoom${isZoomSource ? ' is-zoom-source' : ''}`}
+        title={t.viewStepPhoto}
+        role="button"
+        tabIndex={0}
+        onClick={() => onZoomImage(step.imageSrc!, index)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') onZoomImage(step.imageSrc!, index);
+        }}
+      >
+        <img
+          className="step-visual-img"
+          src={step.imageSrc}
+          alt={step.imageCaption || t.stepPhotoAlt}
+          loading="lazy"
+        />
+        <div className="zoom-badge-hint" aria-hidden="true" title={t.zoomIn}>
+          🔍
+        </div>
+      </div>
+    )}
+  </>
+);

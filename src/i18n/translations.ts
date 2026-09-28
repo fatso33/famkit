@@ -9,6 +9,23 @@ function plPlural(n: number, one: string, few: string, many: string): string {
   return lastDigit >= 2 && lastDigit <= 4 && (lastTwo < 12 || lastTwo > 14) ? few : many;
 }
 
+/** "2 hrs 10 mins", from a number of minutes. */
+function durationEn(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  const hrs = `${hours} ${hours === 1 ? 'hr' : 'hrs'}`;
+  if (hours === 0) return `${mins} mins`;
+  return mins === 0 ? hrs : `${hrs} ${mins} mins`;
+}
+
+/** "2 godz. 10 min", from a number of minutes. */
+function durationPl(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours === 0) return `${mins} min`;
+  return mins === 0 ? `${hours} godz.` : `${hours} godz. ${mins} min`;
+}
+
 export interface UiTranslations {
   vaultTitle: string;
   vaultSubtitle: string;
@@ -69,38 +86,24 @@ export interface UiTranslations {
   themeToggle: string;
   textScaling: string;
   addRecipe: string;
-  saveToVault: string;
   cancel: string;
   recipeTitle: string;
   authorLabel: string;
-  authorMe: string;
   authorSomeoneElse: string;
   authorShownAs: (name: string) => string;
   authorNameLabel: string;
   yieldHeader: string;
   heroPhoto: string;
-  photoOptionalHelp: string;
-  ingredientsHelp: string;
-  stepsHelp: string;
-  tipsOptional: string;
-  notesOptional: string;
   editRecipe: string;
-  editRecipeTitle: (version: number) => string;
-  clearDraft: string;
   draftRestored: string;
   confirmClearDraft: string;
   addStep: string;
   removeStep: string;
-  stepNotesLabel: string;
-  stepPhoto: string;
   takePhoto: string;
   uploadPhoto: string;
   removePhoto: string;
   addIngredient: string;
   removeIngredient: string;
-  quickPaste: string;
-  quickPasteTitle: string;
-  quickPasteApply: string;
   // Version history (only the recipe's author sees these, in the editor)
   versionHistory: string;
   versionLabel: (version: number) => string;
@@ -135,7 +138,6 @@ export interface UiTranslations {
   /** Formats a duration already rounded to 5 minutes, e.g. "~2 hrs 25 mins". */
   estimatedTime: (minutes: number) => string;
   shareText: (name: string, author: string) => string;
-  saveChanges: string;
   // Screen-reader labels, tooltips and image descriptions
   logoAlt: string;
   languageToggle: string;
@@ -163,13 +165,112 @@ export interface UiTranslations {
   ingredientAmountLabel: (n: number) => string;
   moveIngredientUp: string;
   moveIngredientDown: string;
-  stepLabel: (n: number) => string;
   stepInstructionLabel: (n: number) => string;
   moveStepUp: (n: number) => string;
   moveStepDown: (n: number) => string;
   photoCaptionLabel: string;
-  draftRestoredTooltip: string;
-  descriptionOptional: string;
+  descriptionLabel: string;
+  // The recipe editor
+  editorTitleNew: string;
+  editorTitleEdit: string;
+  save: string;
+  draftSaved: string;
+  paste: string;
+  preview: string;
+  backToEditing: string;
+  startOver: string;
+  /** Tag beside an optional field's label. */
+  optional: string;
+  photoHint: string;
+  replacePhoto: string;
+  remove: string;
+  chooseCategory: string;
+  recipeTime: string;
+  timeAuto: string;
+  timeSet: string;
+  timeWorkedOut: string;
+  timeSetByYou: string;
+  hoursShort: string;
+  minutesShort: string;
+  hourMore: string;
+  hourLess: string;
+  minutesMore: string;
+  minutesLess: string;
+  /** A total time the author set, e.g. "2 hrs 10 mins" (no "about"). */
+  totalTime: (minutes: number) => string;
+  moveUp: string;
+  moveDown: string;
+  note: string;
+  swap: string;
+  ingredientNoteLabel: (n: number) => string;
+  substituteLabel: (n: number) => string;
+  substituteAmountLabel: (n: number) => string;
+  /** The tools strip under a tapped row or step, for screen readers. */
+  ingredientTools: (n: number) => string;
+  stepTools: (n: number) => string;
+  textTools: string;
+  ingredientRemoved: string;
+  /** A substitute on the recipe page: "or Margarine". */
+  orSubstitute: (name: string) => string;
+  moreSteps: string;
+  renameSection: string;
+  sectionName: string;
+  done: string;
+  removeSection: string;
+  sectionRemoved: string;
+  addSection: string;
+  addSectionHint: string;
+  textBetweenSteps: string;
+  removeStepNumber: string;
+  numberThisStep: string;
+  substep: string;
+  substepsFull: string;
+  substepLabel: (letter: string) => string;
+  removeSubstep: string;
+  tip: string;
+  stepTipLabel: (n: number) => string;
+  photo: string;
+  fork: string;
+  stepRemoved: string;
+  photoRemoved: string;
+  forkRemoved: string;
+  // Forks: a step done one of two or three ways
+  pathsAtStep: string;
+  pathLetter: (i: number) => string;
+  pathName: string;
+  pathText: string;
+  pathThen: string;
+  sameStepsAsFirst: string;
+  ownSteps: string;
+  addPathStep: string;
+  pathStepLabel: (n: number) => string;
+  removePathStep: string;
+  pathCarriesOn: string;
+  pathFollowsFirst: string;
+  addPath: string;
+  removePath: string;
+  chooseOne: string;
+  /** Names for an older recipe's two baking options, when they become a fork. */
+  legacyBakingPaths: readonly [string, string];
+  // Pasting, confirming and checking before a save
+  pasteTitle: string;
+  pasteInto: string;
+  stepsHeading: string;
+  pasteHelpIngredients: string;
+  pasteHelpSteps: string;
+  pasteTextLabel: string;
+  pasteAdd: string;
+  pastedIngredients: (n: number) => string;
+  pastedSteps: (n: number) => string;
+  discardTitle: string;
+  discardBody: string;
+  discard: string;
+  keepEditing: string;
+  titleRequired: string;
+  authorRequired: string;
+  categoryRequired: string;
+  ingredientsRequired: string;
+  stepsRequired: string;
   // Sign-in splash
   welcomeTo: string;
   welcomeKitchen: string;
@@ -293,38 +394,24 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     themeToggle: 'Toggle Theme',
     textScaling: 'Text size',
     addRecipe: 'Add Family Recipe',
-    saveToVault: 'Save to Vault',
     cancel: 'Cancel',
-    recipeTitle: 'Recipe Title *',
-    authorLabel: 'Author',
-    authorMe: 'Me',
+    recipeTitle: 'Recipe name',
+    authorLabel: 'Recipe by',
     authorSomeoneElse: 'Someone else',
     authorShownAs: (name: string) => `Shown as ${name}`,
     authorNameLabel: 'Whose recipe is it?',
-    yieldHeader: 'Yield Header *',
-    heroPhoto: 'Hero Photo',
-    photoOptionalHelp: 'Or leave blank to use an artisan kitchen placeholder photo.',
-    ingredientsHelp: 'Ingredients (One per line) *',
-    stepsHelp: 'Steps (One per line) *',
-    tipsOptional: 'Tips (Optional)',
-    notesOptional: 'Crucial Notes / Warnings (Optional)',
+    yieldHeader: 'Yield',
+    heroPhoto: 'Photo',
     editRecipe: 'Edit Recipe',
-    editRecipeTitle: (version: number) => `Edit Recipe (v${version})`,
-    clearDraft: 'Clear Draft',
     draftRestored: 'Draft restored',
-    confirmClearDraft: 'Are you sure you want to clear your saved draft?',
-    addStep: '+ Add Step',
+    confirmClearDraft: 'Start over? The saved draft will be cleared.',
+    addStep: 'Add step',
     removeStep: 'Remove step',
-    stepNotesLabel: 'Step Note / Consistency Cue (Optional)',
-    stepPhoto: 'Step Photo (Optional)',
-    takePhoto: 'Take Photo',
-    uploadPhoto: 'Upload Photo',
+    takePhoto: 'Take photo',
+    uploadPhoto: 'Choose photo',
     removePhoto: 'Remove photo',
-    addIngredient: '+ Add Ingredient',
+    addIngredient: 'Add ingredient',
     removeIngredient: 'Remove ingredient',
-    quickPaste: 'Bulk Paste',
-    quickPasteTitle: 'Paste Ingredients List',
-    quickPasteApply: 'Insert Ingredients',
     versionHistory: 'Version history',
     versionLabel: (version: number) => `Version ${version}`,
     currentVersion: 'Current',
@@ -336,7 +423,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     nextChange: 'Next change',
     keepCurrent: 'Keep current',
     restoredChip: 'Restored',
-    changeNoteLabel: 'What changed? (optional)',
+    changeNoteLabel: 'What changed?',
     restoredNote: (version: number) => `Restored version ${version}`,
     deleteRecipe: 'Delete recipe',
     confirmDeleteRecipe: (name: string) =>
@@ -354,15 +441,8 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     addedBy: (name: string) => `Added by ${name}`,
     emptyVault: 'No recipes yet. Add the first one from the menu.',
     emptyFilter: 'No recipes here yet.',
-    estimatedTime: (minutes: number) => {
-      const hours = Math.floor(minutes / 60);
-      const mins = minutes % 60;
-      const hrs = `${hours} ${hours === 1 ? 'hr' : 'hrs'}`;
-      if (hours === 0) return `~${mins} mins`;
-      return mins === 0 ? `~${hrs}` : `~${hrs} ${mins} mins`;
-    },
+    estimatedTime: (minutes: number) => `~${durationEn(minutes)}`,
     shareText: (name: string, author: string) => `${name} by ${author} - Heirloom Family Recipe`,
-    saveChanges: 'Save Changes',
     logoAlt: 'Family Kitchen logo',
     languageToggle: 'Toggle language: English / Polish',
     decreaseTextSize: 'Decrease text size',
@@ -389,13 +469,104 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     ingredientAmountLabel: (n: number) => `Amount for ingredient ${n}`,
     moveIngredientUp: 'Move ingredient up',
     moveIngredientDown: 'Move ingredient down',
-    stepLabel: (n: number) => `Step ${n}`,
     stepInstructionLabel: (n: number) => `Instruction for step ${n}`,
     moveStepUp: (n: number) => `Move step ${n} up`,
     moveStepDown: (n: number) => `Move step ${n} down`,
-    photoCaptionLabel: 'Photo caption (optional)',
-    draftRestoredTooltip: 'Restored from previous session',
-    descriptionOptional: 'Description (Optional)',
+    photoCaptionLabel: 'Photo caption',
+    descriptionLabel: 'Description',
+    editorTitleNew: 'New recipe',
+    editorTitleEdit: 'Edit recipe',
+    save: 'Save',
+    draftSaved: 'Draft saved',
+    paste: 'Paste',
+    preview: 'Preview',
+    backToEditing: 'Back to editing',
+    startOver: 'Start over',
+    optional: 'optional',
+    photoHint: 'The picture the family sees first',
+    replacePhoto: 'Replace',
+    remove: 'Remove',
+    chooseCategory: 'Choose a category',
+    recipeTime: 'Recipe time',
+    timeAuto: 'Auto',
+    timeSet: 'Set',
+    timeWorkedOut: 'Worked out from the steps',
+    timeSetByYou: 'Set by you',
+    hoursShort: 'h',
+    minutesShort: 'min',
+    hourMore: 'One hour more',
+    hourLess: 'One hour less',
+    minutesMore: 'Five minutes more',
+    minutesLess: 'Five minutes less',
+    totalTime: (minutes: number) => durationEn(minutes),
+    moveUp: 'Up',
+    moveDown: 'Down',
+    note: 'Note',
+    swap: 'Swap',
+    ingredientNoteLabel: (n: number) => `Note for ingredient ${n}`,
+    substituteLabel: (n: number) => `Swap for ingredient ${n}`,
+    substituteAmountLabel: (n: number) => `Amount of the swap for ingredient ${n}`,
+    ingredientTools: (n: number) => `Tools for ingredient ${n}`,
+    stepTools: (n: number) => `Tools for step ${n}`,
+    textTools: 'Tools for the text between steps',
+    ingredientRemoved: 'Ingredient removed',
+    orSubstitute: (name: string) => `or ${name}`,
+    moreSteps: 'More steps',
+    renameSection: 'Rename section',
+    sectionName: 'Section name',
+    done: 'Done',
+    removeSection: 'Remove section',
+    sectionRemoved: 'Section removed',
+    addSection: 'Add a section',
+    addSectionHint: 'Baking, icing, filling…',
+    textBetweenSteps: 'Text between steps',
+    removeStepNumber: 'Remove the step number',
+    numberThisStep: 'Number this step',
+    substep: 'Substep',
+    substepsFull: '3 at most',
+    substepLabel: (letter: string) => `Substep ${letter})`,
+    removeSubstep: 'Remove substep',
+    tip: 'Tip',
+    stepTipLabel: (n: number) => `Tip for step ${n}`,
+    photo: 'Photo',
+    fork: 'Fork',
+    stepRemoved: 'Step removed',
+    photoRemoved: 'Photo removed',
+    forkRemoved: 'Paths joined into one step',
+    pathsAtStep: 'Ways to do this step',
+    pathLetter: (i: number) => `Path ${'ABC'[i] ?? i + 1}`,
+    pathName: 'Name on the switch',
+    pathText: 'What to do',
+    pathThen: 'Then',
+    sameStepsAsFirst: 'Same steps as A',
+    ownSteps: 'Its own steps',
+    addPathStep: 'Add a step to this path',
+    pathStepLabel: (n: number) => `Step ${n} on this path`,
+    removePathStep: 'Remove this step',
+    pathCarriesOn: 'Then the recipe carries on below',
+    pathFollowsFirst: "Follows path A's steps, then the recipe carries on below",
+    addPath: 'Add a third path',
+    removePath: 'Remove this path',
+    chooseOne: 'Choose one',
+    legacyBakingPaths: ['Refrigerator Rest', 'Dutch Oven Bake'],
+    pasteTitle: 'Paste a recipe',
+    pasteInto: 'Add to',
+    stepsHeading: 'Steps',
+    pasteHelpIngredients: 'One ingredient per line, like “Flour - 300 g”.',
+    pasteHelpSteps: 'One step per line. Numbers at the start of a line are left out.',
+    pasteTextLabel: 'Text to paste',
+    pasteAdd: 'Add',
+    pastedIngredients: (n: number) => `${n} ingredient${n === 1 ? '' : 's'} added`,
+    pastedSteps: (n: number) => `${n} step${n === 1 ? '' : 's'} added`,
+    discardTitle: 'Discard your changes?',
+    discardBody: "Closing now loses what you've changed since you opened the recipe.",
+    discard: 'Discard',
+    keepEditing: 'Keep editing',
+    titleRequired: 'Add a name to save the recipe',
+    authorRequired: 'Add whose recipe it is',
+    categoryRequired: 'Choose a category',
+    ingredientsRequired: 'Add at least one ingredient',
+    stepsRequired: 'Add at least one step',
     welcomeTo: 'Welcome to',
     welcomeKitchen: 'Family Kitchen',
     connectWithGoogle: 'Connect with Google',
@@ -521,38 +692,24 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     themeToggle: 'Zmień motyw',
     textScaling: 'Rozmiar tekstu',
     addRecipe: 'Dodaj przepis rodzinny',
-    saveToVault: 'Zapisz w skarbcu',
     cancel: 'Anuluj',
-    recipeTitle: 'Tytuł przepisu *',
-    authorLabel: 'Autor',
-    authorMe: 'Ja',
+    recipeTitle: 'Nazwa przepisu',
+    authorLabel: 'Autor przepisu',
     authorSomeoneElse: 'Ktoś inny',
     authorShownAs: (name: string) => `Widoczne jako: ${name}`,
     authorNameLabel: 'Czyj to przepis?',
-    yieldHeader: 'Porcja wyjściowa *',
-    heroPhoto: 'Zdjęcie główne',
-    photoOptionalHelp: 'Pozostaw puste, aby użyć domyślnego zdjęcia rzemieślniczego.',
-    ingredientsHelp: 'Składniki (jeden w każdym wierszu) *',
-    stepsHelp: 'Kroki przygotowania (jeden w każdym wierszu) *',
-    tipsOptional: 'Wskazówki (opcjonalnie)',
-    notesOptional: 'Ważne uwagi i ostrzeżenia (opcjonalnie)',
+    yieldHeader: 'Wydajność',
+    heroPhoto: 'Zdjęcie',
     editRecipe: 'Edytuj przepis',
-    editRecipeTitle: (version: number) => `Edytuj przepis (v${version})`,
-    clearDraft: 'Wyczyść wersję roboczą',
-    draftRestored: 'Przywrócono wersję roboczą',
-    confirmClearDraft: 'Czy na pewno chcesz usunąć zapisaną wersję roboczą?',
-    addStep: '+ Dodaj krok',
+    draftRestored: 'Przywrócono szkic',
+    confirmClearDraft: 'Zacząć od nowa? Zapisany szkic zostanie usunięty.',
+    addStep: 'Dodaj krok',
     removeStep: 'Usuń krok',
-    stepNotesLabel: 'Wskazówka / Konsystencja dla kroku (opcjonalnie)',
-    stepPhoto: 'Zdjęcie dla tego kroku (opcjonalnie)',
     takePhoto: 'Zrób zdjęcie',
-    uploadPhoto: 'Wgraj zdjęcie',
+    uploadPhoto: 'Wybierz zdjęcie',
     removePhoto: 'Usuń zdjęcie',
-    addIngredient: '+ Dodaj składnik',
+    addIngredient: 'Dodaj składnik',
     removeIngredient: 'Usuń składnik',
-    quickPaste: 'Wklej listę',
-    quickPasteTitle: 'Wklej listę składników',
-    quickPasteApply: 'Wstaw składniki',
     versionHistory: 'Historia wersji',
     versionLabel: (version: number) => `Wersja ${version}`,
     currentVersion: 'Aktualna',
@@ -565,7 +722,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     nextChange: 'Następna zmiana',
     keepCurrent: 'Zostaw aktualną',
     restoredChip: 'Przywrócone',
-    changeNoteLabel: 'Co się zmieniło? (opcjonalnie)',
+    changeNoteLabel: 'Co się zmieniło?',
     restoredNote: (version: number) => `Przywrócono wersję ${version}`,
     deleteRecipe: 'Usuń przepis',
     confirmDeleteRecipe: (name: string) =>
@@ -584,15 +741,9 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     addedBy: (name: string) => `Dodane przez: ${name}`,
     emptyVault: 'Nie ma jeszcze żadnych przepisów. Dodaj pierwszy z menu.',
     emptyFilter: 'Nie ma tu jeszcze przepisów.',
-    estimatedTime: (minutes: number) => {
-      const hours = Math.floor(minutes / 60);
-      const mins = minutes % 60;
-      if (hours === 0) return `~${mins} min`;
-      return mins === 0 ? `~${hours} godz.` : `~${hours} godz. ${mins} min`;
-    },
+    estimatedTime: (minutes: number) => `~${durationPl(minutes)}`,
     shareText: (name: string, author: string) =>
       `${name} (${author}) – rodzinny przepis z tradycją`,
-    saveChanges: 'Zapisz zmiany',
     logoAlt: 'Logo Family Kitchen',
     languageToggle: 'Zmień język: angielski / polski',
     decreaseTextSize: 'Zmniejsz tekst',
@@ -619,13 +770,105 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     ingredientAmountLabel: (n: number) => `Ilość składnika ${n}`,
     moveIngredientUp: 'Przesuń składnik w górę',
     moveIngredientDown: 'Przesuń składnik w dół',
-    stepLabel: (n: number) => `Krok ${n}`,
     stepInstructionLabel: (n: number) => `Opis kroku ${n}`,
     moveStepUp: (n: number) => `Przesuń krok ${n} w górę`,
     moveStepDown: (n: number) => `Przesuń krok ${n} w dół`,
-    photoCaptionLabel: 'Podpis zdjęcia (opcjonalnie)',
-    draftRestoredTooltip: 'Przywrócono z poprzedniej sesji',
-    descriptionOptional: 'Opis (opcjonalnie)',
+    photoCaptionLabel: 'Podpis zdjęcia',
+    descriptionLabel: 'Opis',
+    editorTitleNew: 'Nowy przepis',
+    editorTitleEdit: 'Edytuj przepis',
+    save: 'Zapisz',
+    draftSaved: 'Szkic zapisany',
+    paste: 'Wklej',
+    preview: 'Podgląd',
+    backToEditing: 'Wróć do edycji',
+    startOver: 'Zacznij od nowa',
+    optional: 'opcjonalnie',
+    photoHint: 'To zdjęcie rodzina zobaczy jako pierwsze',
+    replacePhoto: 'Zmień',
+    remove: 'Usuń',
+    chooseCategory: 'Wybierz kategorię',
+    recipeTime: 'Czas przygotowania',
+    timeAuto: 'Auto',
+    timeSet: 'Ustaw',
+    timeWorkedOut: 'Obliczony na podstawie kroków',
+    timeSetByYou: 'Ustawiony przez Ciebie',
+    hoursShort: 'godz.',
+    minutesShort: 'min',
+    hourMore: 'Godzina więcej',
+    hourLess: 'Godzina mniej',
+    minutesMore: 'Pięć minut więcej',
+    minutesLess: 'Pięć minut mniej',
+    totalTime: (minutes: number) => durationPl(minutes),
+    moveUp: 'W górę',
+    moveDown: 'W dół',
+    note: 'Notatka',
+    swap: 'Zamiennik',
+    ingredientNoteLabel: (n: number) => `Notatka do składnika ${n}`,
+    substituteLabel: (n: number) => `Zamiennik składnika ${n}`,
+    substituteAmountLabel: (n: number) => `Ilość zamiennika składnika ${n}`,
+    ingredientTools: (n: number) => `Narzędzia składnika ${n}`,
+    stepTools: (n: number) => `Narzędzia kroku ${n}`,
+    textTools: 'Narzędzia tekstu między krokami',
+    ingredientRemoved: 'Usunięto składnik',
+    orSubstitute: (name: string) => `lub ${name}`,
+    moreSteps: 'Dalsze kroki',
+    renameSection: 'Zmień nazwę sekcji',
+    sectionName: 'Nazwa sekcji',
+    done: 'Gotowe',
+    removeSection: 'Usuń sekcję',
+    sectionRemoved: 'Usunięto sekcję',
+    addSection: 'Dodaj sekcję',
+    addSectionHint: 'Pieczenie, lukier, nadzienie…',
+    textBetweenSteps: 'Tekst między krokami',
+    removeStepNumber: 'Usuń numer kroku',
+    numberThisStep: 'Ponumeruj ten krok',
+    substep: 'Podpunkt',
+    substepsFull: 'Najwyżej 3',
+    substepLabel: (letter: string) => `Podpunkt ${letter})`,
+    removeSubstep: 'Usuń podpunkt',
+    tip: 'Wskazówka',
+    stepTipLabel: (n: number) => `Wskazówka do kroku ${n}`,
+    photo: 'Zdjęcie',
+    fork: 'Warianty',
+    stepRemoved: 'Usunięto krok',
+    photoRemoved: 'Usunięto zdjęcie',
+    forkRemoved: 'Warianty połączone w jeden krok',
+    pathsAtStep: 'Sposoby wykonania tego kroku',
+    pathLetter: (i: number) => `Wariant ${'ABC'[i] ?? i + 1}`,
+    pathName: 'Nazwa na przełączniku',
+    pathText: 'Co zrobić',
+    pathThen: 'Potem',
+    sameStepsAsFirst: 'Te same kroki co A',
+    ownSteps: 'Własne kroki',
+    addPathStep: 'Dodaj krok do tego wariantu',
+    pathStepLabel: (n: number) => `Krok ${n} w tym wariancie`,
+    removePathStep: 'Usuń ten krok',
+    pathCarriesOn: 'Potem przepis przechodzi do kolejnych kroków',
+    pathFollowsFirst: 'Idzie krokami wariantu A, a potem przepis przechodzi do kolejnych kroków',
+    addPath: 'Dodaj trzeci wariant',
+    removePath: 'Usuń ten wariant',
+    chooseOne: 'Wybierz wariant',
+    legacyBakingPaths: ['Odpoczynek w lodówce', 'Pieczenie w garnku żeliwnym'],
+    pasteTitle: 'Wklej przepis',
+    pasteInto: 'Dodaj do',
+    stepsHeading: 'Kroki',
+    pasteHelpIngredients: 'Jeden składnik w każdej linii, np. „Mąka - 300 g”.',
+    pasteHelpSteps: 'Jeden krok w każdej linii. Numery na początku linii zostaną pominięte.',
+    pasteTextLabel: 'Tekst do wklejenia',
+    pasteAdd: 'Dodaj',
+    pastedIngredients: (n: number) =>
+      `Dodano ${n} ${plPlural(n, 'składnik', 'składniki', 'składników')}`,
+    pastedSteps: (n: number) => `Dodano ${n} ${plPlural(n, 'krok', 'kroki', 'kroków')}`,
+    discardTitle: 'Odrzucić zmiany?',
+    discardBody: 'Jeśli zamkniesz teraz, stracisz zmiany wprowadzone od otwarcia przepisu.',
+    discard: 'Odrzuć',
+    keepEditing: 'Edytuj dalej',
+    titleRequired: 'Dodaj nazwę, aby zapisać przepis',
+    authorRequired: 'Wpisz, czyj to przepis',
+    categoryRequired: 'Wybierz kategorię',
+    ingredientsRequired: 'Dodaj co najmniej jeden składnik',
+    stepsRequired: 'Dodaj co najmniej jeden krok',
     welcomeTo: 'Witamy w',
     welcomeKitchen: 'Rodzinnej Kuchni',
     connectWithGoogle: 'Połącz przez Google',

@@ -7,7 +7,7 @@ import {
   VaultSortKey,
 } from '../types/recipe';
 import { isHeirloom } from './ownership';
-import { estimateRecipeMinutes } from './timeEstimator';
+import { recipeTime } from './timeEstimator';
 
 /** Every category, in the order the filter lists them. */
 export const RECIPE_CATEGORIES: readonly RecipeCategory[] = [
@@ -152,7 +152,7 @@ export function sortEntries(entries: VaultEntry[], sort: VaultSort, lang: Langua
   const byName = (a: VaultEntry, b: VaultEntry) => collator.compare(a.shown.name, b.shown.name);
   const minutes = new Map<VaultEntry, number>();
   if (sort.by === 'time') {
-    for (const entry of entries) minutes.set(entry, estimateRecipeMinutes(entry.shown));
+    for (const entry of entries) minutes.set(entry, recipeTime(entry.shown).minutes);
   }
   const rank = (entry: VaultEntry) => RECIPE_CATEGORIES.indexOf(categoryOf(entry.recipe));
   const isOther = (entry: VaultEntry) => (categoryOf(entry.recipe) === 'other' ? 1 : 0);

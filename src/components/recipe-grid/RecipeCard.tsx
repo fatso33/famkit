@@ -1,7 +1,7 @@
 import React from 'react';
 import { Recipe, Language } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
-import { estimateRecipeMinutes } from '../../utils/timeEstimator';
+import { recipeTime } from '../../utils/timeEstimator';
 import { getLocalizedRecipe } from '../../hooks/useRecipes';
 import { isHeirloom } from '../../utils/ownership';
 import { vaultItemKey } from '../../utils/viewTransition';
@@ -28,7 +28,8 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
   t,
 }) => {
   const recipe = getLocalizedRecipe(rawRecipe, language) || rawRecipe;
-  const estimatedTime = t.estimatedTime(estimateRecipeMinutes(recipe));
+  const time = recipeTime(recipe);
+  const estimatedTime = time.manual ? t.totalTime(time.minutes) : t.estimatedTime(time.minutes);
 
   const badgeText = isHeirloom(rawRecipe) ? t.heirloomBadge : t.familyBadge;
   const photo = recipePhoto(recipe);

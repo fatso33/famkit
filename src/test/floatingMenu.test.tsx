@@ -64,7 +64,7 @@ describe('floating menu', () => {
     fireEvent.click(within(menu).getByRole('button', { name: t.addRecipe }));
     finishClosing();
 
-    expect(screen.getByRole('dialog', { name: new RegExp(t.addRecipe) })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: t.editorTitleNew })).toBeInTheDocument();
   });
 
   it('switches to the Makes page and swaps the page action', () => {

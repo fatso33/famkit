@@ -34,7 +34,10 @@ const babka: Recipe = {
 
 const heading = () => screen.getByRole('heading', { level: 1 });
 const photo = () => screen.queryByRole('dialog', { name: t.photoZoomDialog });
-const editor = () => screen.queryByRole('dialog', { name: /edit recipe|add family recipe/i });
+const editor = () =>
+  screen.queryByRole('dialog', {
+    name: new RegExp(`${t.editorTitleEdit}|${t.editorTitleNew}`, 'i'),
+  });
 /** How many entries the app holds above the main page's. */
 const depth = () => (window.history.state as { famkitDepth?: number } | null)?.famkitDepth ?? 0;
 
@@ -162,8 +165,13 @@ describe('back gesture', () => {
     await settle();
     expect(screen.getByLabelText(t.recipeTitle)).toHaveValue('Babka Wielkanocna');
 
-    // Closing the editor hands the gesture back to the recipe page.
+    // Closing the editor (its changes discarded) hands the gesture back to the recipe page.
     fireEvent.click(within(editor()!).getByRole('button', { name: t.closeDialog }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog', { name: t.discardTitle })).getByRole('button', {
+        name: t.discard,
+      }),
+    );
     await historyAt(1);
     await swipeBack();
     expect(heading()).toHaveTextContent(t.vaultTitle);

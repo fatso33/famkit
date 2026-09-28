@@ -126,3 +126,33 @@ describe('parseIngredientRow', () => {
     expect(parsed.amount).toBe('450g');
   });
 });
+
+describe('parseIngredientRow with a note and a substitute', () => {
+  it('shows the note from its own field, leaving brackets in the text as they are', () => {
+    const row = parseIngredientRow({
+      text: 'Chilli (dried) - 2 pods',
+      name: 'Chilli (dried)',
+      note: 'or fresh',
+    });
+    expect(row).toMatchObject({ name: 'Chilli (dried)', amount: '2 pods', notes: ['or fresh'] });
+    expect(parseIngredientRow({ text: 'Salt - 1 tsp', name: 'Salt', note: '' }).notes).toEqual([]);
+  });
+
+  it('still reads notes from brackets on older rows', () => {
+    expect(parseIngredientRow({ text: 'Water (very warm) - 1 cup' }).notes).toEqual(['very warm']);
+  });
+
+  it('carries a substitute and its amount, and none when it is blank', () => {
+    const row = parseIngredientRow({
+      text: 'Butter - 100g',
+      name: 'Butter',
+      note: '',
+      substitute: ' Margarine ',
+      substituteAmount: '90g',
+    });
+    expect(row.substitute).toEqual({ name: 'Margarine', amount: '90g' });
+    expect(
+      parseIngredientRow({ text: 'Butter - 100g', substitute: '  ' }).substitute,
+    ).toBeUndefined();
+  });
+});

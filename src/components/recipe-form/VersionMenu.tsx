@@ -6,7 +6,7 @@ import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { useExitAnimation } from '../../hooks/useExitAnimation';
 import { formatVersionDate } from '../../utils/recipeVersions';
 
-interface VersionHistorySheetProps {
+interface VersionMenuProps {
   current: { version: number; savedAt: number; note?: string };
   /** Earlier versions, newest first. */
   versions: VersionSummary[];
@@ -19,8 +19,11 @@ interface VersionHistorySheetProps {
   t: UiTranslations;
 }
 
-// A timeline of the recipe's versions, opened over the editor. Mount only while open.
-export const VersionHistorySheet: React.FC<VersionHistorySheetProps> = ({
+/**
+ * The recipe's versions as a timeline, dropping down from the version under the editor's title.
+ * Mount only while open. A tap outside or Escape closes it.
+ */
+export const VersionMenu: React.FC<VersionMenuProps> = ({
   current,
   versions,
   shownId,
@@ -32,19 +35,19 @@ export const VersionHistorySheet: React.FC<VersionHistorySheetProps> = ({
   const { ref: layerRef, isClosing, requestClose } = useExitAnimation<HTMLDivElement>(onClose);
   const backdropProps = useDialogDismiss(requestClose);
   const titleId = useId();
-  const sheetRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
-  // Move focus into the sheet; the editor gets it back when the sheet closes.
+  // Focus moves into the list; the version button gets it back when the list closes.
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
-    sheetRef.current?.focus({ preventScroll: true });
+    panelRef.current?.focus({ preventScroll: true });
     return () => opener?.focus({ preventScroll: true });
   }, []);
 
   const pick = (id: string) => {
     setLoadingId(id);
-    // Usually the editor reopens on that version, unmounting this sheet. Picking the version
+    // Usually the editor reopens on that version, unmounting this list. Picking the version
     // already shown changes nothing, so close explicitly.
     void onPick(id).then((loaded) => {
       if (loaded) requestClose();
@@ -53,35 +56,19 @@ export const VersionHistorySheet: React.FC<VersionHistorySheetProps> = ({
   };
 
   return (
-    // Backdrop click is a mouse shortcut; keyboard users close with Escape (useDialogDismiss).
-    <div
-      ref={layerRef}
-      className={`version-sheet-layer${isClosing ? ' is-closing' : ''}`}
-      {...backdropProps}
-    >
+    <div ref={layerRef} className={`version-menu-layer${isClosing ? ' is-closing' : ''}`}>
+      <div className="version-menu-catcher" aria-hidden="true" {...backdropProps} />
       <div
-        ref={sheetRef}
-        className="version-sheet"
+        ref={panelRef}
+        className="version-menu"
         role="dialog"
-        aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
       >
-        <div className="version-sheet-grip" aria-hidden="true" />
-        <div className="version-sheet-header">
-          <h3 id={titleId} className="version-sheet-title">
-            <History size="1.05em" strokeWidth={2} aria-hidden="true" />
-            {t.versionHistory}
-          </h3>
-          <button
-            type="button"
-            className="btn btn-icon"
-            aria-label={t.closeDialog}
-            onClick={requestClose}
-          >
-            ✕
-          </button>
-        </div>
+        <h3 id={titleId} className="version-menu-title">
+          <History size="1.05em" strokeWidth={2} aria-hidden="true" />
+          {t.versionHistory}
+        </h3>
 
         <ol className="version-timeline">
           <li className="version-entry is-current">
@@ -96,10 +83,14 @@ export const VersionHistorySheet: React.FC<VersionHistorySheetProps> = ({
             </div>
           </li>
 
-          {versions.map((v) => {
+          {versions.map((v, i) => {
             const isLoading = loadingId === v.id;
             return (
-              <li key={v.id} className={`version-entry${v.id === shownId ? ' is-shown' : ''}`}>
+              <li
+                key={v.id}
+                className={`version-entry${v.id === shownId ? ' is-shown' : ''}`}
+                style={{ '--i': i + 1 } as React.CSSProperties}
+              >
                 <span className="version-dot" aria-hidden="true" />
                 <button
                   type="button"

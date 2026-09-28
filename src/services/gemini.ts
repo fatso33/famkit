@@ -35,7 +35,10 @@ Crucial Culinary Guidelines:
    - "renderUnitPlural": the form used for larger amounts; for Polish the genitive plural (e.g. "łyżeczek" / "teaspoons")
    - "altUnit": translated alternative unit (e.g. "ml")
    - "suffix": translated suffix (e.g. " posiekanych" / " chopped")
-6. For each step, in the same order: "text", plus "notes" and "imageCaption" when present.
+   - "note", "substitute" and "substituteAmount": translated, when present (a note like "sifted" / "przesiana", a stand-in ingredient and its amount)
+6. For each step, in the same order: "text", plus "notes", "imageCaption" and "section" (a heading) when present.
+   - "substeps": translate each one, keeping the same number and order.
+   - "fork": the step's alternative paths. For each path, in the same order, translate "label" (a short name), "text" and every entry of "steps", keeping their number and order.
 7. Return ONLY valid JSON matching the schema.
 
 Recipe:
@@ -77,6 +80,9 @@ export async function translateRecipe(recipe: Recipe): Promise<ParsedTranslation
             renderUnitPlural: text,
             altUnit: text,
             suffix: text,
+            note: text,
+            substitute: text,
+            substituteAmount: text,
           },
           optionalProperties: [
             'name',
@@ -86,6 +92,9 @@ export async function translateRecipe(recipe: Recipe): Promise<ParsedTranslation
             'renderUnitPlural',
             'altUnit',
             'suffix',
+            'note',
+            'substitute',
+            'substituteAmount',
           ],
         }),
       }),
@@ -96,8 +105,20 @@ export async function translateRecipe(recipe: Recipe): Promise<ParsedTranslation
             text,
             notes: text,
             imageCaption: text,
+            section: text,
+            substeps: Schema.array({ items: text }),
+            fork: Schema.object({
+              properties: {
+                paths: Schema.array({
+                  items: Schema.object({
+                    properties: { label: text, text, steps: Schema.array({ items: text }) },
+                    optionalProperties: ['steps'],
+                  }),
+                }),
+              },
+            }),
           },
-          optionalProperties: ['notes', 'imageCaption'],
+          optionalProperties: ['notes', 'imageCaption', 'section', 'substeps', 'fork'],
         }),
       }),
       bakingOptions: Schema.object({

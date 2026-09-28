@@ -256,3 +256,97 @@ describe('parseTranslationResponse', () => {
     expect(() => parseTranslationResponse(raw)).toThrow();
   });
 });
+
+describe('the method, translated', () => {
+  const method: Recipe = {
+    ...recipe,
+    steps: [
+      { num: 1, text: 'Mix.', substeps: ['Sift.', 'Stir.'] },
+      { num: 0, text: 'Rest an hour.', plain: true },
+      {
+        num: 2,
+        text: 'Chill.',
+        section: 'Baking',
+        fork: {
+          paths: [
+            { label: 'Fridge', text: 'Chill.', steps: ['Warm up.'] },
+            { label: 'Now', text: 'Bake.', sameAsFirst: true },
+          ],
+        },
+      },
+    ],
+  };
+
+  it('keeps sections, unnumbered text, substeps and forks from the original', () => {
+    const shown = overlayTranslation(method, {
+      steps: [
+        { num: 5, text: 'Wymieszaj.', substeps: ['Przesiej.'], plain: false } as never,
+        { num: 0, text: 'Odstaw na godzinę.' },
+        {
+          num: 7,
+          text: 'Schłodź.',
+          section: 'Pieczenie',
+          fork: { paths: [{ label: 'Lodówka', text: 'Schłodź.', steps: ['Ogrzej.'] }] },
+        },
+      ],
+    });
+    expect(shown.steps.map((s) => [s.num, s.plain, s.section])).toEqual([
+      [1, undefined, undefined],
+      [0, true, undefined],
+      [2, undefined, 'Pieczenie'],
+    ]);
+    // One entry per original substep, the original where the translation has none.
+    expect(shown.steps[0].substeps).toEqual(['Przesiej.', 'Stir.']);
+    const [fridge, now] = shown.steps[2].fork!.paths;
+    expect(fridge).toEqual({ label: 'Lodówka', text: 'Schłodź.', steps: ['Ogrzej.'] });
+    expect(now).toEqual({ label: 'Now', text: 'Bake.', sameAsFirst: true, steps: undefined });
+  });
+
+  it('sees a change to a path or substep as a text change', () => {
+    const renamed = structuredClone(method);
+    renamed.steps[2].fork!.paths[1].label = 'Straight away';
+    expect(sourceHash(renamed)).not.toBe(sourceHash(method));
+    const sub = structuredClone(method);
+    sub.steps[0].substeps![1] = 'Fold.';
+    expect(sourceHash(sub)).not.toBe(sourceHash(method));
+  });
+
+  it("keeps the fingerprint of recipes saved before these fields, so Wanda's Polish stays current", () => {
+    // As computed by the app before sections, forks, notes and substitutes existed.
+    expect(sourceHash(WANDAS_CHEESE_BREAD)).toBe('66a5d883');
+    expect(translationStatus(WANDAS_CHEESE_BREAD, 'pl')).toBe('fresh');
+  });
+});
+
+describe('resolveEdit, for an edit that changes no text', () => {
+  it('still saves a new category or time (they were dropped before)', () => {
+    const original = translated(recipe);
+    const edited: Recipe = { ...recipe, category: 'cakes', manualMinutes: 75 };
+    const saved = resolveEdit(original, edited, 'en', false);
+    expect(saved).toMatchObject({ category: 'cakes', manualMinutes: 75, name: 'Apple Pie' });
+    expect(saved.translations).toEqual(original.translations);
+  });
+});
+
+describe('a legacy translation over a recipe whose blocks are now steps', () => {
+  it("doesn't bring back the lamination directive or baking options", () => {
+    const converted: Recipe = {
+      ...recipe,
+      steps: [...recipe.steps, { num: 0, plain: true, text: 'Repeat steps 1 to 1.' }],
+    };
+    const shown = overlayTranslation(converted, {
+      ...polish,
+      laminationDirective: 'Powtórz kroki.',
+      bakingOptions: { option1: 'Piecz.' },
+    });
+    expect(shown.laminationDirective).toBeUndefined();
+    expect(shown.bakingOptions).toBeUndefined();
+    // A recipe that still has them shows them translated.
+    const legacy = overlayTranslation(
+      { ...recipe, laminationDirective: 'Repeat.', bakingOptions: { option1: 'Bake.' } },
+      { ...polish, laminationDirective: 'Powtórz kroki.', bakingOptions: { option1: 'Piecz.' } },
+    );
+    expect(legacy.laminationDirective).toBe('Powtórz kroki.');
+    expect(legacy.bakingOptions).toEqual({ option1: 'Piecz.' });
+  });
+});

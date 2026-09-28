@@ -34,11 +34,17 @@ function openEditor() {
   return screen.getByRole('dialog', { name: /edit recipe/i });
 }
 
+// The version under the editor's title, which drops down the list of versions.
+const VERSION_BUTTON = /^Version \d+$/;
+function openVersions(editor: HTMLElement) {
+  fireEvent.click(within(editor).getByRole('button', { name: VERSION_BUTTON }));
+}
+
 function renameTo(name: string, note: string) {
   const editor = openEditor();
   fireEvent.change(within(editor).getByLabelText(t.recipeTitle), { target: { value: name } });
   fireEvent.change(within(editor).getByLabelText(t.changeNoteLabel), { target: { value: note } });
-  fireEvent.click(within(editor).getByRole('button', { name: t.saveChanges }));
+  fireEvent.click(within(editor).getByRole('button', { name: t.save }));
 }
 
 describe('version history', () => {
@@ -65,7 +71,7 @@ describe('version history', () => {
     renameTo('Babka Wielkanocna', 'Easter name');
 
     const editor = openEditor();
-    fireEvent.click(within(editor).getByRole('button', { name: t.versionHistory }));
+    openVersions(editor);
     const sheet = screen.getByRole('dialog', { name: t.versionHistory });
     expect(within(sheet).getByText(t.currentVersion)).toBeInTheDocument();
     expect(within(sheet).getByText('Easter name')).toBeInTheDocument();
@@ -80,7 +86,7 @@ describe('version history', () => {
     expect(within(restoredEditor).getAllByText(t.restoredChip)).toHaveLength(1);
     expect(within(restoredEditor).getByLabelText(t.changeNoteLabel)).toHaveValue(t.restoredNote(1));
 
-    fireEvent.click(within(restoredEditor).getByRole('button', { name: t.saveChanges }));
+    fireEvent.click(within(restoredEditor).getByRole('button', { name: t.save }));
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Babka');
     expect(stored()).toMatchObject({ name: 'Babka', version: 3, changeNote: t.restoredNote(1) });
@@ -91,7 +97,7 @@ describe('version history', () => {
   it('goes back to the current version with "Keep current"', async () => {
     renameTo('Babka Wielkanocna', '');
     const editor = openEditor();
-    fireEvent.click(within(editor).getByRole('button', { name: t.versionHistory }));
+    openVersions(editor);
     fireEvent.click(screen.getByRole('button', { name: /version 1/i }));
     fireEvent.click(await screen.findByRole('button', { name: t.keepCurrent }));
 
@@ -102,11 +108,11 @@ describe('version history', () => {
   it('closes the version list when the version already shown is picked again', async () => {
     renameTo('Babka Wielkanocna', '');
     const editor = openEditor();
-    fireEvent.click(within(editor).getByRole('button', { name: t.versionHistory }));
+    openVersions(editor);
     fireEvent.click(screen.getByRole('button', { name: /version 1/i }));
     await screen.findByText(/^Version 1 from/);
 
-    fireEvent.click(screen.getByRole('button', { name: t.versionHistory }));
+    openVersions(screen.getByRole('dialog', { name: /edit recipe/i }));
     fireEvent.click(screen.getByRole('button', { name: /version 1/i }));
 
     await waitFor(() =>
@@ -117,7 +123,7 @@ describe('version history', () => {
   it('closes only the version list on Escape, leaving the editor open', () => {
     renameTo('Babka Wielkanocna', '');
     const editor = openEditor();
-    fireEvent.click(within(editor).getByRole('button', { name: t.versionHistory }));
+    openVersions(editor);
 
     fireEvent.keyDown(window, { key: 'Escape' });
 
@@ -127,8 +133,7 @@ describe('version history', () => {
 
   it('offers no history for a recipe that was never edited', () => {
     const editor = openEditor();
-    expect(
-      within(editor).queryByRole('button', { name: t.versionHistory }),
-    ).not.toBeInTheDocument();
+    expect(within(editor).getByText(t.versionLabel(1))).toBeInTheDocument();
+    expect(within(editor).queryByRole('button', { name: VERSION_BUTTON })).not.toBeInTheDocument();
   });
 });

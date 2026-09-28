@@ -4,6 +4,8 @@ import {
   estimateActionDuration,
   estimateRecipeMinutes,
   capitalizeFirstLetter,
+  manualMinutesOf,
+  recipeTime,
 } from '../utils/timeEstimator';
 import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 
@@ -55,5 +57,54 @@ describe('capitalizeFirstLetter', () => {
     expect(capitalizeFirstLetter('mix well. then add water and mix again.')).toBe(
       'Mix well. Then add water and mix again.',
     );
+  });
+});
+
+describe('recipe time with sections, forks and a time set by hand', () => {
+  const forked = {
+    steps: [
+      { num: 1, text: 'Mix.' },
+      {
+        num: 2,
+        text: 'Chill overnight.',
+        fork: {
+          paths: [
+            { label: 'Fridge', text: 'Chill overnight.' },
+            { label: 'Now', text: 'Bake for 40 minutes.', steps: ['Cool for 10 minutes.'] },
+          ],
+        },
+      },
+    ],
+  };
+
+  it('counts only the path the cook is on', () => {
+    // Mix (2) + overnight (480).
+    expect(estimateRecipeMinutes(forked)).toBe(480);
+    // Mix (2) + bake (40) + cool (10).
+    expect(estimateRecipeMinutes(forked, { 1: 1 })).toBe(50);
+  });
+
+  it('adds a repeat of earlier steps from unnumbered text, and nothing for other text', () => {
+    const steps = [
+      { num: 1, text: 'Knead for 10 minutes.' },
+      { num: 2, text: 'Rest for 20 minutes.' },
+    ];
+    expect(estimateRecipeMinutes({ steps })).toBe(30);
+    expect(
+      estimateRecipeMinutes({
+        steps: [...steps, { num: 0, plain: true, text: 'Repeat steps 1 to 2 two more times.' }],
+      }),
+    ).toBe(90);
+    expect(
+      estimateRecipeMinutes({ steps: [...steps, { num: 0, plain: true, text: 'Enjoy!' }] }),
+    ).toBe(30);
+  });
+
+  it("uses the author's own time over the estimate, when it's a real number of minutes", () => {
+    expect(recipeTime({ ...forked, manualMinutes: 95 })).toEqual({ minutes: 95, manual: true });
+    expect(recipeTime(forked, { 1: 1 })).toEqual({ minutes: 50, manual: false });
+    expect(manualMinutesOf({ manualMinutes: 0 })).toBeNull();
+    expect(manualMinutesOf({ manualMinutes: Number.NaN })).toBeNull();
+    expect(manualMinutesOf({ manualMinutes: '90' as unknown as number })).toBeNull();
   });
 });
