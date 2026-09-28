@@ -17,6 +17,7 @@ vi.mock('../services/gemini', () => ({
 
 const firestore = vi.hoisted(() => ({ push: (_recipes: Recipe[]) => {} }));
 vi.mock('../services/firestore', () => ({
+  hasCloud: true,
   subscribeToRecipes: (onUpdate: (recipes: Recipe[]) => void) => {
     firestore.push = onUpdate;
     return () => {};

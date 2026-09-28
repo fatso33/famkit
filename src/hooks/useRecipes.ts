@@ -11,6 +11,7 @@ import {
   saveRecipeToCloud,
   saveTranslationToCloud,
   fetchRecipeVersion,
+  hasCloud,
 } from '../services/firestore';
 import { hasLeftOutPhotos, keepLoadedPhotos } from '../utils/deviceCopy';
 import { legacyVersions, prepareEdit } from '../utils/recipeVersions';
@@ -151,7 +152,7 @@ export function useRecipes(currentUser: CurrentUser | null) {
           const next = prev.map((r) =>
             r.id === recipe.id ? applyTranslation(r, result, hash) : r,
           );
-          saveRecipes(next, { photosInCloud: isFirebaseConfigured });
+          saveRecipes(next, { photosInCloud: hasCloud });
           return next;
         });
         saveTranslationToCloud(recipe.id, lang, updated.translations![otherLanguage(lang)]!).catch(
@@ -202,7 +203,7 @@ export function useRecipes(currentUser: CurrentUser | null) {
       // Optimistic local update
       setRecipes((prev) => {
         const updated = [recipeWithId, ...prev];
-        saveRecipes(updated, { photosInCloud: isFirebaseConfigured });
+        saveRecipes(updated, { photosInCloud: hasCloud });
         return updated;
       });
 
@@ -235,7 +236,7 @@ export function useRecipes(currentUser: CurrentUser | null) {
 
     setRecipes((prev) => {
       const updated = prev.map((r) => (r.id === finalRecipe.id ? finalRecipe : r));
-      saveRecipes(updated, { photosInCloud: isFirebaseConfigured });
+      saveRecipes(updated, { photosInCloud: hasCloud });
       return updated;
     });
 
@@ -266,7 +267,7 @@ export function useRecipes(currentUser: CurrentUser | null) {
 
     setRecipes((prev) => {
       const next = prev.map((r) => (r.id === id ? updated : r));
-      saveRecipes(next, { photosInCloud: isFirebaseConfigured });
+      saveRecipes(next, { photosInCloud: hasCloud });
       return next;
     });
 

@@ -21,6 +21,12 @@ import { familyMemberName } from '../utils/ownership';
 import { parseRecipeVersion } from '../utils/recipeVersions';
 import { sourceHash } from '../utils/recipeTranslation';
 
+/**
+ * Whether the cloud keeps the vault (and every photo). Not when Firebase is off, nor when it is
+ * configured but failed to start: then this device's copy is the only one.
+ */
+export const hasCloud = isFirebaseConfigured && !!db;
+
 const RECIPES_COLLECTION = 'recipes';
 // The family list: family_members/{lowercase email}, kept in the Firebase console only.
 const FAMILY_MEMBERS_COLLECTION = 'family_members';
@@ -92,7 +98,7 @@ export async function saveRecipeToCloud(
   const existingIdx = local.findIndex((r) => r.id === recipe.id);
   const updatedLocal =
     existingIdx !== -1 ? local.map((r) => (r.id === recipe.id ? recipe : r)) : [recipe, ...local];
-  saveToLocalStorage(updatedLocal, { photosInCloud: isFirebaseConfigured && !!db });
+  saveToLocalStorage(updatedLocal, { photosInCloud: hasCloud });
 
   if (!isFirebaseConfigured || !db) {
     saveLocalVersions(recipe.id, newVersions);
