@@ -6,6 +6,7 @@ import { getLocalizedRecipe } from '../../hooks/useRecipes';
 import { isHeirloom } from '../../utils/ownership';
 import { vaultItemKey } from '../../utils/viewTransition';
 import { recipePhoto } from '../../utils/vault';
+import { photoPending } from '../../utils/deviceCopy';
 import { CategoryTile } from './CategoryTile';
 
 interface RecipeCardProps {
@@ -70,6 +71,8 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
             // Laid out uncropped while it morphs (utils/photoMorph).
             data-morph-photo={isMorphTarget ? '' : undefined}
           />
+        ) : photoPending(rawRecipe) ? (
+          <div className="photo-pending" />
         ) : (
           <CategoryTile recipe={rawRecipe} />
         )}

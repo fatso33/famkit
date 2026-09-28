@@ -110,6 +110,8 @@ export interface UiTranslations {
   currentVersion: string;
   versionLoading: string;
   versionLoadFailed: string;
+  /** A recipe's photos haven't reached this phone yet, so it can't be edited. */
+  photosStillLoading: string;
   restoredFrom: (version: number, date: string) => string;
   changesCount: (n: number) => string;
   noChanges: string;
@@ -424,6 +426,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     currentVersion: 'Current',
     versionLoading: 'Loading…',
     versionLoadFailed: "Couldn't load that version. Check your connection and try again.",
+    photosStillLoading: "This recipe's photos are still loading. Try again in a moment.",
     restoredFrom: (version: number, date: string) => `Version ${version} from ${date}`,
     changesCount: (n: number) => `${n} change${n === 1 ? '' : 's'} highlighted`,
     noChanges: 'Same as the current version',
@@ -730,6 +733,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     currentVersion: 'Aktualna',
     versionLoading: 'Wczytywanie…',
     versionLoadFailed: 'Nie udało się wczytać tej wersji. Sprawdź połączenie i spróbuj ponownie.',
+    photosStillLoading: 'Zdjęcia tego przepisu jeszcze się wczytują. Spróbuj ponownie za chwilę.',
     restoredFrom: (version: number, date: string) => `Wersja ${version} z ${date}`,
     changesCount: (n: number) =>
       `${n} ${plPlural(n, 'zaznaczona zmiana', 'zaznaczone zmiany', 'zaznaczonych zmian')}`,

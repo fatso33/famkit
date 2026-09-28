@@ -12,6 +12,7 @@ import {
   saveTranslationToCloud,
   fetchRecipeVersion,
 } from '../services/firestore';
+import { hasLeftOutPhotos, keepLoadedPhotos } from '../utils/deviceCopy';
 import { legacyVersions, prepareEdit } from '../utils/recipeVersions';
 import { isDeleted, withDeletedAt } from '../utils/recipeTrash';
 import type { CurrentUser } from './useCurrentUser';
@@ -42,6 +43,16 @@ export function getLocalizedRecipe(
   return recipe ? localizeRecipe(recipe, lang) : null;
 }
 
+/**
+ * Whether a save may replace this recipe. Not this device's copy without its photos: the save
+ * would write the recipe back without them. The full recipe arrives with the cloud's answer.
+ */
+function canSaveOver(existing: Recipe | undefined): boolean {
+  if (!existing || !hasLeftOutPhotos(existing)) return true;
+  console.warn(`Not saving recipe ${existing.id}: its photos haven't loaded on this device yet`);
+  return false;
+}
+
 /** The vault, kept in sync with Firestore. `currentUser` owns the recipes added here. */
 export function useRecipes(currentUser: CurrentUser | null) {
   const [recipes, setRecipes] = useState<Recipe[]>(getStoredRecipes);
@@ -63,7 +74,7 @@ export function useRecipes(currentUser: CurrentUser | null) {
   // Subscribe to real-time Cloud Firestore updates
   useEffect(() => {
     const unsubscribe = subscribeToRecipes((updatedRecipes) => {
-      setRecipes(updatedRecipes);
+      setRecipes((prev) => keepLoadedPhotos(prev, updatedRecipes));
     });
 
     return () => unsubscribe();
@@ -140,7 +151,7 @@ export function useRecipes(currentUser: CurrentUser | null) {
           const next = prev.map((r) =>
             r.id === recipe.id ? applyTranslation(r, result, hash) : r,
           );
-          saveRecipes(next);
+          saveRecipes(next, { photosInCloud: isFirebaseConfigured });
           return next;
         });
         saveTranslationToCloud(recipe.id, lang, updated.translations![otherLanguage(lang)]!).catch(
@@ -191,7 +202,7 @@ export function useRecipes(currentUser: CurrentUser | null) {
       // Optimistic local update
       setRecipes((prev) => {
         const updated = [recipeWithId, ...prev];
-        saveRecipes(updated);
+        saveRecipes(updated, { photosInCloud: isFirebaseConfigured });
         return updated;
       });
 
@@ -209,12 +220,14 @@ export function useRecipes(currentUser: CurrentUser | null) {
 
   /**
    * Saves an edit as a new version. The version it replaces is backed up whole, photos included,
-   * so the owner can restore it later. `note` is the optional "what changed".
+   * so the owner can restore it later. `note` is the optional "what changed". Returns null, saving
+   * nothing, while the recipe is this device's copy without its photos.
    */
-  const updateRecipe = useCallback((recipeUpdates: Recipe, note = ''): Recipe => {
+  const updateRecipe = useCallback((recipeUpdates: Recipe, note = ''): Recipe | null => {
+    const existing = latestRecipes.current.find((r) => r.id === recipeUpdates.id);
+    if (!canSaveOver(existing) || !canSaveOver(recipeUpdates)) return null;
     savedOnThisDevice.current.set(recipeUpdates.id, sourceHash(recipeUpdates));
 
-    const existing = latestRecipes.current.find((r) => r.id === recipeUpdates.id);
     const now = Date.now();
     const { recipe: finalRecipe, newVersions } = existing
       ? prepareEdit(existing, recipeUpdates, note, now)
@@ -222,7 +235,7 @@ export function useRecipes(currentUser: CurrentUser | null) {
 
     setRecipes((prev) => {
       const updated = prev.map((r) => (r.id === finalRecipe.id ? finalRecipe : r));
-      saveRecipes(updated);
+      saveRecipes(updated, { photosInCloud: isFirebaseConfigured });
       return updated;
     });
 
@@ -244,22 +257,23 @@ export function useRecipes(currentUser: CurrentUser | null) {
 
   /**
    * Deletes (`deleted`) or restores a recipe. Nothing is erased: the recipe is only marked, so it
-   * stays restorable. Not a content change, so no new version.
+   * stays restorable. Not a content change, so no new version. Returns whether it was done.
    */
-  const setRecipeDeleted = useCallback((id: string, deleted: boolean) => {
+  const setRecipeDeleted = useCallback((id: string, deleted: boolean): boolean => {
     const existing = latestRecipes.current.find((r) => r.id === id);
-    if (!existing) return;
+    if (!existing || !canSaveOver(existing)) return false;
     const updated = withDeletedAt(existing, deleted ? Date.now() : undefined);
 
     setRecipes((prev) => {
       const next = prev.map((r) => (r.id === id ? updated : r));
-      saveRecipes(next);
+      saveRecipes(next, { photosInCloud: isFirebaseConfigured });
       return next;
     });
 
     saveRecipeToCloud(updated).catch((err) => {
       console.warn(`Failed to sync recipe ${deleted ? 'deletion' : 'restore'} to cloud:`, err);
     });
+    return true;
   }, []);
 
   const deleteRecipe = useCallback((id: string) => setRecipeDeleted(id, true), [setRecipeDeleted]);

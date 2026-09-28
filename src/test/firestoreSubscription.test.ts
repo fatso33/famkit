@@ -183,6 +183,16 @@ describe('saving versions', () => {
     ]);
   });
 
+  it("refuses to save this device's copy of a recipe whose photos were left out", async () => {
+    const slim: Recipe = { ...babka, photosOmitted: { hero: true } };
+    localStorage.setItem('wandas_recipes', JSON.stringify([babka]));
+
+    await expect(saveRecipeToCloud(slim)).rejects.toThrow(/photos/);
+    await expect(saveRecipeToCloud(babka, [{ ...v1, recipe: slim }])).rejects.toThrow(/photos/);
+    expect(cloud.writes).toEqual([]);
+    expect(JSON.parse(localStorage.getItem('wandas_recipes')!)).toEqual([babka]);
+  });
+
   it('loads one version, and refuses a missing or malformed one', async () => {
     cloud.stored['recipes/babka/versions/v1-1000'] = v1;
     cloud.stored['recipes/babka/versions/broken'] = { ...v1, id: 'broken', recipe: 'nope' };

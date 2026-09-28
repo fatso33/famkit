@@ -174,6 +174,12 @@ export interface Recipe {
   updatedAt?: number;
   /** Set when the owner deleted it. Deleted recipes are hidden, never erased, and can be restored. */
   deletedAt?: number;
+  /**
+   * Only on this device's quick-start copy (utils/deviceCopy), never in the cloud: its photos
+   * were left out to fit, so it's shown until the full recipe arrives but never edited or saved.
+   * `hero`: whether the recipe's own photo was one of them.
+   */
+  photosOmitted?: { hero: boolean };
 }
 
 export type AuthorMode = 'auto' | 'custom';

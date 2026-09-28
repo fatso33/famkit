@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   getStoredRecipes,
   saveRecipes,
@@ -53,6 +53,80 @@ describe('storage service', () => {
     const stored = getStoredRecipes();
     expect(stored.length).toBe(2);
     expect(stored[1].name).toBe("Grandma's Apple Pie");
+  });
+
+  describe('when the photos outgrow this device', () => {
+    // About 5.2M characters of photos: more than a browser lets a site keep (about 5M).
+    const bigVault = (): Recipe[] =>
+      Array.from({ length: 40 }, (_, i) => ({
+        id: `r${i}`,
+        name: `Recipe ${String(i).padStart(2, '0')}`,
+        author: 'Raye',
+        category: 'mains',
+        heroImage: `data:image/jpeg;base64,${String(i % 10).repeat(130_000)}`,
+        yieldHeader: 'Serves 4:',
+        ingredients: [{ text: 'Flour - 2 cups' }],
+        steps: [{ num: 1, text: 'Mix.' }],
+        createdAt: 1000 + i,
+        updatedAt: 1000 + i,
+      }));
+
+    it('keeps every recipe, with photos for the newest, when the cloud has the rest', () => {
+      const vault = bigVault();
+      saveRecipes(vault, { photosInCloud: true });
+
+      const stored = getStoredRecipes();
+      expect(stored.map((r) => r.id)).toEqual(vault.map((r) => r.id));
+      const newest = stored.find((r) => r.id === 'r39')!;
+      expect(newest.heroImage).toBe(vault[39].heroImage);
+      expect(newest.photosOmitted).toBeUndefined();
+      const oldest = stored.find((r) => r.id === 'r0')!;
+      expect(oldest.heroImage).toBe('');
+      expect(oldest.photosOmitted).toEqual({ hero: true });
+    });
+
+    it('keeps photos for the recipes first in the order this device sorts the vault', () => {
+      setStoredVaultSort({ by: 'name', reversed: false });
+      saveRecipes(bigVault(), { photosInCloud: true });
+
+      const stored = getStoredRecipes();
+      expect(stored.find((r) => r.id === 'r0')!.photosOmitted).toBeUndefined();
+      expect(stored.find((r) => r.id === 'r39')!.photosOmitted).toEqual({ hero: true });
+    });
+
+    it('keeps just the words when little room is left, and nothing out of date when none is', () => {
+      const setItem = Storage.prototype.setItem;
+      let room = 100_000;
+      const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (
+        this: Storage,
+        key: string,
+        value: string,
+      ) {
+        if (value.length > room) throw new DOMException('Storage full', 'QuotaExceededError');
+        setItem.call(this, key, value);
+      });
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        saveRecipes(bigVault(), { photosInCloud: true });
+        const stored = getStoredRecipes();
+        expect(stored).toHaveLength(40);
+        expect(stored.every((r) => r.photosOmitted)).toBe(true);
+
+        room = 0;
+        saveRecipes(bigVault(), { photosInCloud: true });
+        expect(localStorage.getItem('wandas_recipes')).toBeNull();
+      } finally {
+        spy.mockRestore();
+        vi.mocked(console.warn).mockRestore();
+      }
+    });
+
+    it('never leaves photos out when this device is the only copy', () => {
+      const small = bigVault().slice(0, 2);
+      saveRecipes(small);
+      saveRecipes(bigVault());
+      expect(getStoredRecipes()).toEqual(small);
+    });
   });
 
   it('correctly persists language preferences', () => {

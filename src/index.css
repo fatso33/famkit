@@ -1047,6 +1047,14 @@
         transition: transform 0.35s ease;
       }
 
+      /* A photo still on its way (left out of this device's quick-start copy): the frame stays
+         empty, as for any photo loading, rather than showing the no-photo tile first. */
+      .photo-pending {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
       /* A recipe without a photo (CategoryTile): its category's icon on a lighter plate, with
          rings spreading out over tinted paper, all in the season's own colours. Sized by its
          frame (container units), so one tile serves a list row, a card and the recipe page. */

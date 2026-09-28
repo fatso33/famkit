@@ -1,7 +1,10 @@
 import { Recipe, RecipeVersion, Language, Theme, VaultSort, VaultView } from '../types/recipe';
+import { DEVICE_COPY_BUDGET, deviceCopyJson } from '../utils/deviceCopy';
 import { familyMemberName } from '../utils/ownership';
+import { localizeRecipe } from '../utils/recipeTranslation';
+import { isDeleted } from '../utils/recipeTrash';
 import { isSeasonPreference, SeasonPreference } from '../utils/season';
-import { DEFAULT_SORT, formatVaultSort, parseVaultSort } from '../utils/vault';
+import { DEFAULT_SORT, formatVaultSort, parseVaultSort, sortEntries } from '../utils/vault';
 
 const RECIPES_KEY = 'wandas_recipes';
 const THEME_KEY = 'wandas_theme';
@@ -72,12 +75,50 @@ export function getStoredRecipes(): Recipe[] {
   }
 }
 
-export function saveRecipes(recipes: Recipe[]): void {
+/** Ids of the vault's recipes in the order this device shows them, top first. */
+function shownOrder(recipes: Recipe[]): string[] {
+  const lang = getStoredLanguage();
+  const entries = recipes
+    .filter((recipe) => !isDeleted(recipe))
+    .map((recipe) => ({ recipe, shown: localizeRecipe(recipe, lang) }));
+  return sortEntries(entries, getStoredVaultSort(), lang).map((e) => e.recipe.id);
+}
+
+/**
+ * Keeps this device's copy of the vault, which the app starts from before the cloud answers.
+ * `photosInCloud`: the cloud keeps every photo, so photos that don't fit may be left out of this
+ * copy (marked, see utils/deviceCopy), the ones the vault shows first kept. Without it this copy
+ * is the only one, and is kept whole or not at all.
+ */
+export function saveRecipes(recipes: Recipe[], { photosInCloud = false } = {}): void {
   if (typeof window === 'undefined') return;
+  if (!photosInCloud) {
+    try {
+      localStorage.setItem(RECIPES_KEY, JSON.stringify(recipes));
+    } catch (e) {
+      console.warn('Could not keep the vault on this device (storage full?):', e);
+    }
+    return;
+  }
+
+  const attempts = [
+    () => deviceCopyJson(recipes, shownOrder(recipes), DEVICE_COPY_BUDGET),
+    // Something else took the room: just the words.
+    () => deviceCopyJson(recipes, [], 0),
+  ];
+  for (const json of attempts) {
+    try {
+      localStorage.setItem(RECIPES_KEY, json());
+      return;
+    } catch (e) {
+      console.warn('Could not keep the vault on this device, trying it smaller:', e);
+    }
+  }
+  // An out-of-date copy would hide the newest recipes, and could be edited over newer ones.
   try {
-    localStorage.setItem(RECIPES_KEY, JSON.stringify(recipes));
-  } catch (e) {
-    console.error('Failed to save recipes to localStorage:', e);
+    localStorage.removeItem(RECIPES_KEY);
+  } catch {
+    // Storage unavailable: nothing kept to go stale.
   }
 }
 

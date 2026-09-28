@@ -6,6 +6,7 @@ import { recipeTime } from '../../utils/timeEstimator';
 import { isHeirloom } from '../../utils/ownership';
 import { vaultItemKey } from '../../utils/viewTransition';
 import { recipePhoto } from '../../utils/vault';
+import { photoPending } from '../../utils/deviceCopy';
 import { CategoryTile } from './CategoryTile';
 
 interface RecipeRowProps {
@@ -51,6 +52,8 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
             loading={isMorphTarget ? 'eager' : 'lazy'}
             data-morph-photo={isMorphTarget ? '' : undefined}
           />
+        ) : photoPending(recipe) ? (
+          <span className="photo-pending" />
         ) : (
           <CategoryTile recipe={recipe} />
         )}

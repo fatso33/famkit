@@ -15,6 +15,7 @@ import { addedByName } from '../../utils/ownership';
 import { transitionView } from '../../utils/viewTransition';
 import { useUnroll } from '../../hooks/useUnroll';
 import { recipePhoto } from '../../utils/vault';
+import { photoPending } from '../../utils/deviceCopy';
 import { CategoryTile } from '../recipe-grid/CategoryTile';
 
 /** What App can ask of an open recipe page. */
@@ -104,6 +105,8 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
             src={recipePhoto(recipe)}
             alt={recipe.name}
           />
+        ) : photoPending(recipe) ? (
+          <div className="photo-pending" />
         ) : (
           <CategoryTile recipe={recipe} className="detail-hero-tile" />
         )}

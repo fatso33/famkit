@@ -12,6 +12,7 @@ import { useCurrentUser } from './hooks/useCurrentUser';
 import { useBackStep } from './hooks/useBackStep';
 import { isFirebaseConfigured } from './services/firebase';
 import { canEditRecipe } from './utils/ownership';
+import { hasLeftOutPhotos } from './utils/deviceCopy';
 import {
   editingLanguage,
   localizeRecipe,
@@ -178,8 +179,8 @@ export default function App() {
   };
 
   const handleRestore = (id: string) => {
-    restoreRecipe(id);
-    showToast(t.recipeRestored);
+    if (restoreRecipe(id)) showToast(t.recipeRestored);
+    else showToast(t.photosStillLoading, 'error');
   };
 
   const pickVersion = async (id: string): Promise<boolean> => {
@@ -379,6 +380,11 @@ export default function App() {
             onEditRecipe={
               canEditRecipe(selectedRecipe, currentUser, isFirebaseConfigured)
                 ? (rec, origin) => {
+                    // Editing a copy without its photos would save the recipe without them.
+                    if (hasLeftOutPhotos(rec)) {
+                      showToast(t.photosStillLoading, 'info');
+                      return;
+                    }
                     setEditingRecipe(rec);
                     setEditorOrigin(origin);
                     setIsAddModalOpen(true);
@@ -454,7 +460,10 @@ export default function App() {
           onSave={(recipeData, existingId, textChanged, changeNote) => {
             if (existingId && editBase) {
               const edited: Recipe = { ...recipeData, id: existingId };
-              updateRecipe(resolveEdit(editBase, edited, language, textChanged), changeNote);
+              const saved = hasLeftOutPhotos(editBase)
+                ? null
+                : updateRecipe(resolveEdit(editBase, edited, language, textChanged), changeNote);
+              if (!saved) showToast(t.photosStillLoading, 'error');
             } else {
               // Provisional: translation detects the real language and corrects this.
               addRecipe({ ...recipeData, sourceLanguage: language });

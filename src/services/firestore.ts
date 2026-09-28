@@ -16,6 +16,7 @@ import {
   saveLocalVersions,
   saveRecipes as saveToLocalStorage,
 } from './storage';
+import { hasLeftOutPhotos } from '../utils/deviceCopy';
 import { familyMemberName } from '../utils/ownership';
 import { parseRecipeVersion } from '../utils/recipeVersions';
 import { sourceHash } from '../utils/recipeTranslation';
@@ -61,7 +62,7 @@ export function subscribeToRecipes(
       cloudRecipes.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
 
       // Also mirror to localStorage for instantaneous offline boots
-      saveToLocalStorage(cloudRecipes);
+      saveToLocalStorage(cloudRecipes, { photosInCloud: true });
       onUpdate(cloudRecipes);
     },
     (error) => {
@@ -81,12 +82,17 @@ export async function saveRecipeToCloud(
   recipe: Recipe,
   newVersions: RecipeVersion[] = [],
 ): Promise<void> {
+  // This device's copy may have left photos out to fit: saving it would erase them everywhere.
+  if (hasLeftOutPhotos(recipe) || newVersions.some((v) => hasLeftOutPhotos(v.recipe))) {
+    throw new Error(`Refusing to save recipe ${recipe.id} from a copy without its photos`);
+  }
+
   // Always update local cache immediately
   const local = getStoredRecipes();
   const existingIdx = local.findIndex((r) => r.id === recipe.id);
   const updatedLocal =
     existingIdx !== -1 ? local.map((r) => (r.id === recipe.id ? recipe : r)) : [recipe, ...local];
-  saveToLocalStorage(updatedLocal);
+  saveToLocalStorage(updatedLocal, { photosInCloud: isFirebaseConfigured && !!db });
 
   if (!isFirebaseConfigured || !db) {
     saveLocalVersions(recipe.id, newVersions);
