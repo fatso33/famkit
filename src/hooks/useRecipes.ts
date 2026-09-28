@@ -1,6 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Recipe, RecipeVersion, Language } from '../types/recipe';
-import { getStoredRecipes, saveRecipes } from '../services/storage';
+import {
+  getStoredRecipes,
+  getTranslationFailures,
+  recordTranslationFailure,
+  saveRecipes,
+} from '../services/storage';
 import {
   subscribeToRecipes,
   saveRecipeToCloud,
@@ -10,17 +15,26 @@ import {
 import { legacyVersions, prepareEdit } from '../utils/recipeVersions';
 import { isDeleted, withDeletedAt } from '../utils/recipeTrash';
 import type { CurrentUser } from './useCurrentUser';
-import { isTranslationAvailable, translateRecipe } from '../services/gemini';
+import { isTranslationAvailable, translatePieces } from '../services/gemini';
 import { isFirebaseConfigured } from '../services/firebase';
 import {
+  PieceTranslation,
   TRANSLATION_GRACE_MS,
+  TranslationRejectedError,
   applyTranslation,
+  languageSettled,
   localizeRecipe,
   needsTranslation,
+  otherLanguage,
+  pendingPieces,
+  retryDelayMs,
   shouldTranslateNow,
   sourceHash,
+  sourceLanguageOf,
   translationFitsRecipe,
 } from '../utils/recipeTranslation';
+import { fnv1a, pieceHash } from '../utils/translationPieces';
+import { restoreWandasPolish } from '../utils/wandaPolish';
 
 export function getLocalizedRecipe(
   recipe: Recipe | null | undefined,
@@ -56,28 +70,35 @@ export function useRecipes(currentUser: CurrentUser | null) {
     return () => unsubscribe();
   }, []);
 
-  // Translates new and edited recipes into their other language, one at a time. Each recipe
-  // text is tried once per session; coming back online or reopening the app retries failures.
+  // Translates new and edited recipes into their other language, one at a time, and only the
+  // pieces that have no translation yet. Each request is tried once per session; coming back
+  // online or reopening the app retries lost connections, and an unusable answer waits longer.
   useEffect(() => {
     if (!isTranslationAvailable || translationInFlight.current) return;
 
     const now = Date.now();
+    const failures = getTranslationFailures();
     let nextCheckIn = Infinity;
-    let job: { recipe: Recipe; hash: string } | null = null;
+    let job: { recipe: Recipe; hash: string; key: string } | null = null;
     for (const recipe of recipes) {
       // Every synced recipe has an owner, so one without is a stale copy cached from before
       // (e.g. Wanda's, whose hand-written Polish wasn't stamped yet). Its cloud version is coming.
       if (isFirebaseConfigured && !recipe.ownerEmail) continue;
       if (isDeleted(recipe)) continue;
+      // Wanda's hand-written Polish goes back first, so a translation can't overwrite it.
+      if (restoreWandasPolish(recipe, currentUser)) continue;
       if (!needsTranslation(recipe)) continue;
       const hash = sourceHash(recipe);
-      if (triedKeys.current.has(`${recipe.id}@${hash}`)) continue;
+      const key = `${recipe.id}@${hash}@${fnv1a(pendingPieces(recipe).map(pieceHash).join())}`;
+      if (triedKeys.current.has(key)) continue;
+      const failure = failures[key];
+      if (failure && now - failure.at < retryDelayMs(failure.count)) continue;
       if (!shouldTranslateNow(recipe, now, savedOnThisDevice.current.get(recipe.id) === hash)) {
         const changedAt = recipe.updatedAt ?? recipe.createdAt ?? 0;
         nextCheckIn = Math.min(nextCheckIn, changedAt + TRANSLATION_GRACE_MS - now);
         continue;
       }
-      job = { recipe, hash };
+      job = { recipe, hash, key };
       break;
     }
 
@@ -91,46 +112,73 @@ export function useRecipes(currentUser: CurrentUser | null) {
       return () => window.clearTimeout(timer);
     }
 
-    const { recipe, hash } = job;
+    const { recipe, hash, key } = job;
     const savedHere = savedOnThisDevice.current.get(recipe.id) === hash;
-    triedKeys.current.add(`${recipe.id}@${hash}`);
+    triedKeys.current.add(key);
     translationInFlight.current = true;
 
-    translateRecipe(recipe)
+    // A settled recipe's language is known; a new one's is checked by the translator.
+    const language = languageSettled(recipe) ? sourceLanguageOf(recipe) : undefined;
+    const pieces = pendingPieces(recipe);
+    // Every piece already translated (e.g. steps only moved): rebuilt here, with no request.
+    const work: Promise<PieceTranslation> =
+      pieces.length > 0
+        ? translatePieces(recipe, pieces, language)
+        : Promise.resolve({ detectedLanguage: sourceLanguageOf(recipe), values: new Map() });
+
+    work
       .then((result) => {
-        if (!translationFitsRecipe(recipe, result)) {
-          console.warn(
-            `Discarded a translation of recipe ${recipe.id} that named the wrong language (showing the original)`,
+        if (!language && !translationFitsRecipe(recipe, result)) {
+          throw new TranslationRejectedError(
+            `A translation of recipe ${recipe.id} named the wrong language`,
           );
-          return;
         }
         // Edited or synced meanwhile: the new text gets its own translation.
         const current = latestRecipes.current.find((r) => r.id === recipe.id);
         if (!current || sourceHash(current) !== hash) return;
 
+        const updated = applyTranslation(current, result, hash);
+        const lang = sourceLanguageOf(updated);
         setRecipes((prev) => {
-          const updated = prev.map((r) =>
+          const next = prev.map((r) =>
             r.id === recipe.id ? applyTranslation(r, result, hash) : r,
           );
-          saveRecipes(updated);
-          return updated;
+          saveRecipes(next);
+          return next;
         });
-        saveTranslationToCloud(recipe.id, result.detectedLanguage, {
-          ...result.content,
-          sourceHash: hash,
-        }).catch((err) => {
-          console.warn('Failed to sync recipe translation to cloud (retained locally):', err);
-        });
+        saveTranslationToCloud(recipe.id, lang, updated.translations![otherLanguage(lang)]!).catch(
+          (err) => {
+            console.warn('Failed to sync recipe translation to cloud (retained locally):', err);
+          },
+        );
         if (savedHere) savedOnThisDevice.current.delete(recipe.id);
       })
       .catch((err: unknown) => {
+        if (err instanceof TranslationRejectedError) recordTranslationFailure(key, Date.now());
         console.warn('Recipe translation failed (showing the original):', err);
       })
       .finally(() => {
         translationInFlight.current = false;
         setTranslationScan((n) => n + 1);
       });
-  }, [recipes, translationScan]);
+  }, [recipes, translationScan, currentUser]);
+
+  // One-time repair: Wanda's hand-written Polish back (see utils/wandaPolish). A translation-only
+  // write, checked against the cloud's text; the cloud's update then reaches every phone.
+  const wandaRestoreTried = useRef(false);
+  useEffect(() => {
+    if (wandaRestoreTried.current || !isFirebaseConfigured) return;
+    let restored: Recipe | null = null;
+    for (const recipe of recipes) restored ??= restoreWandasPolish(recipe, currentUser);
+    if (!restored) return;
+    wandaRestoreTried.current = true;
+    const lang = sourceLanguageOf(restored);
+    saveTranslationToCloud(restored.id, lang, restored.translations![otherLanguage(lang)]!).catch(
+      (err: unknown) => {
+        console.warn("Could not restore Wanda's hand-written Polish (retries next launch):", err);
+      },
+    );
+  }, [recipes, currentUser]);
 
   // Back online: retry translations that failed while offline.
   useEffect(() => {

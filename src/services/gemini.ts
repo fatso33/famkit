@@ -1,142 +1,181 @@
-import { Recipe } from '../types/recipe';
+import { Language, Recipe } from '../types/recipe';
 import { app, isFirebaseConfigured } from './firebase';
 import {
-  ParsedTranslation,
-  parseTranslationResponse,
+  PieceRequest,
+  PieceTranslation,
+  TranslationRejectedError,
+  parsePieceResponse,
   translatableContent,
+  translationMemory,
 } from '../utils/recipeTranslation';
+import {
+  Piece,
+  TextKind,
+  buildTranslation,
+  pieceHash,
+  recipePieces,
+} from '../utils/translationPieces';
 
-const PRIMARY_MODEL = 'gemini-3.5-flash-lite';
-const FALLBACK_MODEL = 'gemini-3.8-flash';
+// Flash for natural, contextual wording; Flash-Lite (its own free quota) when Flash is busy or
+// over its limit. Both think a little: thinking is billed as output, and translation needs little.
+const PRIMARY_MODEL = 'gemini-3.8-flash';
+const FALLBACK_MODEL = 'gemini-3.5-flash-lite';
 
 /** Translation runs through Firebase AI Logic, so it needs the Firebase project. */
 export const isTranslationAvailable = isFirebaseConfigured;
 
-function buildPrompt(recipe: Recipe): string {
-  return `You are an expert bilingual culinary chef and baking translator for English and Polish.
-The recipe below is written in either English or Polish.
-First decide which one, and put "en" or "pl" in "detectedLanguage".
-Then translate the recipe into the OTHER language: English → authentic, idiomatic Polish, or Polish → natural, idiomatic English.
+const LANGUAGE_NAMES: Record<Language, string> = { en: 'English', pl: 'Polish' };
 
-Crucial Culinary Guidelines:
-1. "name": Recipe title in the target language.
-2. "cardDescription": A warm, appetizing 1-2 sentence summary for the recipe card, in the target language. If the recipe has none, write one.
-3. Translate culinary techniques naturally, never word for word:
-   - "sloppy dough" ↔ "luźne / rzadkie, klejące ciasto" (NOT "niechlujne ciasto")
-   - "Dutch oven" ↔ "garnek żeliwny" (NOT "holenderski piec")
-   - "lamination directive" ↔ "instrukcja składania ciasta"
-4. Keep exact numbers, measurements (e.g. 450g, 2 teaspoons / łyżeczki, 1.5 cups / szklanki or 375ml) and temperatures (450°F / 230°C).
-5. For each ingredient, in the same order:
-   - "name": ingredient name (e.g. "Mąka pszenna" / "All-purpose flour")
-   - "prefix": leading name before the quantity if formatted like "Mąka pszenna - "
-   - "text": the complete translated line
-   - "unit": translated unit (e.g. "g", "łyżeczki" / "teaspoons")
-   - "renderUnit": the form used for amounts up to and including 1 unit, and for Polish 2-4 (e.g. "łyżeczki" / "teaspoon")
-   - "renderUnitPlural": the form used for larger amounts; for Polish the genitive plural (e.g. "łyżeczek" / "teaspoons")
-   - "altUnit": translated alternative unit (e.g. "ml")
-   - "suffix": translated suffix (e.g. " posiekanych" / " chopped")
-   - "note", "substitute" and "substituteAmount": translated, when present (a note like "sifted" / "przesiana", a stand-in ingredient and its amount)
-6. For each step, in the same order: "text", plus "notes", "imageCaption" and "section" (a heading) when present.
-   - "substeps": translate each one, keeping the same number and order.
-   - "fork": the step's alternative paths. For each path, in the same order, translate "label" (a short name), "text" and every entry of "steps", keeping their number and order.
-7. Return ONLY valid JSON matching the schema.
+const KIND_NAMES: Record<TextKind, string> = {
+  title: 'recipe title',
+  description: 'short description for the recipe card',
+  yield: 'yield line, like "For 1 loaf:"',
+  tips: 'tips',
+  notes: 'notes',
+  step: 'step',
+  stepTip: 'tip for the step',
+  caption: 'photo caption',
+  heading: 'section heading (a few words)',
+  substep: 'part of a step',
+  pathLabel: 'name on a switch between ways of doing a step (1-3 words)',
+  pathText: 'step, done this way',
+  pathStep: 'step, done this way',
+};
 
-Recipe:
-${JSON.stringify(translatableContent(recipe), null, 2)}
+/** What's sent: each piece with a short id, the ids mapped back to the pieces. */
+function requestPieces(pieces: Piece[]) {
+  const requested: PieceRequest = new Map();
+  const texts: { id: string; kind: string; text: string }[] = [];
+  const ingredients: ({ id: string } & Record<string, string>)[] = [];
+  pieces.forEach((piece, i) => {
+    const id = `p${i + 1}`;
+    requested.set(id, piece);
+    if (piece.kind === 'ingredient') {
+      ingredients.push({ id, ...(piece.ingredient as Record<string, string>) });
+    } else {
+      texts.push({ id, kind: KIND_NAMES[piece.kind], text: piece.text });
+    }
+  });
+  return { requested, texts, ingredients };
+}
+
+// Translating only some pieces: the whole recipe is context, with its current translation so
+// new wording matches. Translating all of them: the pieces are the recipe.
+function promptContext(recipe: Recipe, pieces: Piece[], from?: string, to?: string): string {
+  const all = new Set(recipePieces(translatableContent(recipe)).map(pieceHash));
+  if (pieces.length >= all.size) return '';
+  let context = `\nThe whole recipe, for context:\n${JSON.stringify(translatableContent(recipe))}\n`;
+  const memory = translationMemory(recipe);
+  if (memory.size > 0 && from && to) {
+    const current = buildTranslation(translatableContent(recipe), (p) => memory.get(pieceHash(p)));
+    context +=
+      `\nIts current ${to} version. Keep the new pieces consistent with its wording (parts still in ${from} are the ones being translated now):\n` +
+      `${JSON.stringify(current.content)}\n`;
+  }
+  return context;
+}
+
+function buildPrompt(
+  recipe: Recipe,
+  pieces: Piece[],
+  texts: object[],
+  ingredients: object[],
+  language?: Language,
+): string {
+  const from = language && LANGUAGE_NAMES[language];
+  const to = language && LANGUAGE_NAMES[language === 'en' ? 'pl' : 'en'];
+  const languageRule = language
+    ? `The recipe is written in ${from}. Translate the pieces into ${to}, and put "${language}" in "detectedLanguage".`
+    : 'The recipe is written in English or Polish. Put the language it is written in ("en" or "pl") in "detectedLanguage", and translate the pieces into the other one.';
+  // The recipe page picks the Polish unit form by amount; English adds its own plural "s".
+  const unitRule =
+    language === 'pl'
+      ? ''
+      : ' When translating into Polish and a row has "unit", also give "renderUnit" (the form for amounts up to 1 and for 2-4, e.g. "łyżeczki") and "renderUnitPlural" (for 5 and more, e.g. "łyżeczek").';
+
+  return `You translate a family's recipes between English and Polish for their private cookbook. Write the way a skilled home cook writes in the target language: natural, warm and idiomatic, never word for word.
+
+${languageRule}
+
+Rules:
+1. Translate cooking terms the way cooks say them, e.g. "sloppy dough" = "luźne, klejące ciasto" (not "niechlujne ciasto"), "Dutch oven" = "garnek żeliwny" (not "holenderski piec").
+2. Keep every number, amount, temperature and time exactly as written (450g, 1.5, 450°F, 30 minutes). Don't convert units or add anything.
+3. Don't add, drop, merge or explain anything. Each piece says exactly what its original says.
+4. Keep people's names; a possessive takes the natural form ("Wanda's Cheese Bread" = "Chleb serowy Wandy").
+5. Instructions: in Polish, the informal imperative ("Dodaj", "Wymieszaj"); in English, the imperative ("Add", "Mix").
+6. Polish needs correct grammar and number agreement ("2 łyżeczki", "5 łyżeczek").
+7. Each piece has a "kind" saying what it is; word it to fit (a switch name stays very short, a heading is a heading).
+8. Ingredients: translate "text" (the whole line) and each other field given, returning the same fields. Keep the spacing and dashes of "prefix" and "suffix".${unitRule}
+9. Return every piece, with its id, and only valid JSON matching the schema.
+${promptContext(recipe, pieces, from, to)}
+Pieces to translate:
+${JSON.stringify({ texts, ingredients })}
 `;
 }
 
 /**
- * Detects whether the recipe is English or Polish and translates it into the other language.
- * The response is validated before it's returned; the caller decides what to do on failure.
+ * Translates the given pieces of the recipe (see utils/translationPieces). `language` is the
+ * recipe's language when it's settled; otherwise the model detects it. The response is
+ * validated before it's returned; the caller decides what to do on failure.
  */
-export async function translateRecipe(recipe: Recipe): Promise<ParsedTranslation> {
+export async function translatePieces(
+  recipe: Recipe,
+  pieces: Piece[],
+  language?: Language,
+): Promise<PieceTranslation> {
   if (!isTranslationAvailable || !app) {
     throw new Error('Translation is unavailable: Firebase is not configured.');
   }
 
   // Dynamic import keeps the AI SDK out of the initial bundle.
-  const { getAI, getGenerativeModel, GoogleAIBackend, Schema } = await import('firebase/ai');
+  const { getAI, getGenerativeModel, GoogleAIBackend, Schema, ThinkingLevel } =
+    await import('firebase/ai');
   const ai = getAI(app, { backend: new GoogleAIBackend() });
 
   const text = Schema.string();
+  const ingredientFields = [
+    'name',
+    'prefix',
+    'unit',
+    'renderUnit',
+    'renderUnitPlural',
+    'altUnit',
+    'suffix',
+    'note',
+    'substitute',
+    'substituteAmount',
+  ];
   const schema = Schema.object({
     properties: {
       detectedLanguage: Schema.enumString({ enum: ['en', 'pl'] }),
-      name: text,
-      cardDescription: text,
-      yieldHeader: text,
-      tips: text,
-      notes: text,
-      laminationDirective: text,
+      texts: Schema.array({
+        items: Schema.object({ properties: { id: text, text } }),
+      }),
       ingredients: Schema.array({
         items: Schema.object({
           properties: {
-            name: text,
-            prefix: text,
+            id: text,
             text,
-            unit: text,
-            renderUnit: text,
-            renderUnitPlural: text,
-            altUnit: text,
-            suffix: text,
-            note: text,
-            substitute: text,
-            substituteAmount: text,
+            ...Object.fromEntries(ingredientFields.map((field) => [field, text])),
           },
-          optionalProperties: [
-            'name',
-            'prefix',
-            'unit',
-            'renderUnit',
-            'renderUnitPlural',
-            'altUnit',
-            'suffix',
-            'note',
-            'substitute',
-            'substituteAmount',
-          ],
+          optionalProperties: ingredientFields,
         }),
-      }),
-      steps: Schema.array({
-        items: Schema.object({
-          properties: {
-            num: Schema.number(),
-            text,
-            notes: text,
-            imageCaption: text,
-            section: text,
-            substeps: Schema.array({ items: text }),
-            fork: Schema.object({
-              properties: {
-                paths: Schema.array({
-                  items: Schema.object({
-                    properties: { label: text, text, steps: Schema.array({ items: text }) },
-                    optionalProperties: ['steps'],
-                  }),
-                }),
-              },
-            }),
-          },
-          optionalProperties: ['notes', 'imageCaption', 'section', 'substeps', 'fork'],
-        }),
-      }),
-      bakingOptions: Schema.object({
-        properties: {
-          option1: text,
-          option2: Schema.array({ items: text }),
-        },
-        optionalProperties: ['option1', 'option2'],
       }),
     },
-    optionalProperties: ['yieldHeader', 'tips', 'notes', 'laminationDirective', 'bakingOptions'],
+    optionalProperties: ['texts', 'ingredients'],
   });
 
+  const { requested, texts, ingredients } = requestPieces(pieces);
+  const prompt = buildPrompt(recipe, pieces, texts, ingredients, language);
   const generate = (model: string) =>
     getGenerativeModel(ai, {
       model,
-      generationConfig: { responseMimeType: 'application/json', responseSchema: schema },
-    }).generateContent(buildPrompt(recipe));
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: schema,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      },
+    }).generateContent(prompt);
 
   let result;
   try {
@@ -146,5 +185,11 @@ export async function translateRecipe(recipe: Recipe): Promise<ParsedTranslation
     result = await generate(FALLBACK_MODEL);
   }
 
-  return parseTranslationResponse(JSON.parse(result.response.text()));
+  let raw: unknown;
+  try {
+    raw = JSON.parse(result.response.text());
+  } catch (err) {
+    throw new TranslationRejectedError('Translation response is not JSON', { cause: err });
+  }
+  return parsePieceResponse(raw, requested, language);
 }

@@ -16,6 +16,45 @@ const VAULT_SORT_KEY = 'family_kitchen_vault_sort';
 // Earlier recipe versions, only when there is no cloud (local dev). With Firebase they live in
 // Firestore, whose offline cache already covers them.
 const LOCAL_VERSIONS_KEY = 'family_kitchen_versions';
+// Translations the model got wrong on this device, so they wait before being asked for again.
+const TRANSLATION_FAILURES_KEY = 'family_kitchen_translation_failures';
+
+/** A translation request that came back unusable: how many times, and when last. */
+export interface TranslationFailure {
+  count: number;
+  at: number;
+}
+
+export function getTranslationFailures(): Record<string, TranslationFailure> {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(TRANSLATION_FAILURES_KEY) || '{}');
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
+    const failures: Record<string, TranslationFailure> = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      const f = value as Partial<TranslationFailure> | null;
+      if (typeof f?.count === 'number' && typeof f.at === 'number') {
+        failures[key] = { count: f.count, at: f.at };
+      }
+    }
+    return failures;
+  } catch {
+    return {};
+  }
+}
+
+/** Records a failure of this request (by its key), dropping records older than a week. */
+export function recordTranslationFailure(key: string, now: number): void {
+  const week = 7 * 24 * 60 * 60 * 1000;
+  const kept = Object.fromEntries(
+    Object.entries(getTranslationFailures()).filter(([, f]) => now - f.at < week),
+  );
+  kept[key] = { count: (kept[key]?.count ?? 0) + 1, at: now };
+  try {
+    localStorage.setItem(TRANSLATION_FAILURES_KEY, JSON.stringify(kept));
+  } catch (e) {
+    console.warn('Could not note a failed recipe translation on this device (storage full?):', e);
+  }
+}
 
 /** This device's copy of the vault. Every recipe was added by a family member; none is built in. */
 export function getStoredRecipes(): Recipe[] {

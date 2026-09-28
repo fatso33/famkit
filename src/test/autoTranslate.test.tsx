@@ -1,19 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import App from '../App';
-import { translateRecipe } from '../services/gemini';
+import { translatePieces } from '../services/gemini';
 import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 import { Recipe } from '../types/recipe';
 import { UI_TEXT } from '../i18n/translations';
 import { sourceHash } from '../utils/recipeTranslation';
+import { answerFrom, dictionaryTranslator } from './translator';
 
 // Firebase is off in tests, so recipes stay local; only the translation call is mocked.
 vi.mock('../services/gemini', () => ({
   isTranslationAvailable: true,
-  translateRecipe: vi.fn(),
+  translatePieces: vi.fn(),
 }));
 
-const translate = vi.mocked(translateRecipe);
+const translate = vi.mocked(translatePieces);
 const offline = () =>
   new Promise<never>((_, reject) => setTimeout(() => reject(new Error('offline')), 5));
 const settle = () => act(() => new Promise((r) => setTimeout(r, 50)));
@@ -45,6 +46,14 @@ const withPolish = (r: Recipe): Recipe => ({
   },
 });
 
+// What the stand-in translator knows, into Polish.
+const POLISH = {
+  'Aunt Ola Pierogi': 'Pierogi cioci Oli',
+  'For 1 batch:': 'Na 1 porcję:',
+  'Flour - 2 cups': { text: 'Mąka - 2 szklanki' },
+  'Mix.': 'Wymieszaj.',
+};
+
 const seed = (...recipes: Recipe[]) =>
   localStorage.setItem('wandas_recipes', JSON.stringify([WANDAS_CHEESE_BREAD, ...recipes]));
 
@@ -67,10 +76,7 @@ describe('background recipe translation', () => {
 
   it("translates an untranslated recipe once, and never sends Wanda's", async () => {
     seed(customRecipe);
-    translate.mockResolvedValue({
-      detectedLanguage: 'en',
-      content: { name: 'Pierogi cioci Oli', steps: [{ num: 1, text: 'Wymieszaj.' }] },
-    });
+    translate.mockImplementation(dictionaryTranslator(POLISH, 'en'));
     localStorage.setItem('wandas_language', 'pl');
     render(<App />);
     await settle();
@@ -85,7 +91,7 @@ describe('background recipe translation', () => {
     // original Polish, which once stored her English as "Polish" and her Polish as "English".
     const { translations, ...untranslated } = WANDAS_CHEESE_BREAD;
     localStorage.setItem('wandas_recipes', JSON.stringify([untranslated]));
-    translate.mockResolvedValue({ detectedLanguage: 'pl', content: translations!.pl! });
+    translate.mockResolvedValue(answerFrom(untranslated as Recipe, translations!.pl!, 'pl'));
     render(<App />);
     await settle();
 
@@ -94,6 +100,21 @@ describe('background recipe translation', () => {
     const stored = JSON.parse(localStorage.getItem('wandas_recipes')!) as Recipe[];
     expect(stored[0].sourceLanguage).not.toBe('pl');
     expect(stored[0].translations).toBeUndefined();
+  });
+
+  it('asks once more for only the pieces an answer left out', async () => {
+    seed(customRecipe);
+    const { 'Mix.': _left, ...allButStep } = POLISH;
+    translate
+      .mockImplementationOnce(dictionaryTranslator(allButStep, 'en'))
+      .mockImplementation(dictionaryTranslator({}, 'en'));
+    render(<App />);
+    await settle();
+
+    // The left-out step, alone, once; the model leaving it out again doesn't loop.
+    expect(translate).toHaveBeenCalledTimes(2);
+    expect(translate.mock.calls[1][1].map((p) => p.key)).toEqual(['steps:0:text']);
+    expect(translate.mock.calls[1][2]).toBe('en');
   });
 
   it('tries a failing translation once, then again when the phone comes back online', async () => {
@@ -112,7 +133,7 @@ describe('background recipe translation', () => {
 
   it('quietly re-translates a recipe after its text is edited', async () => {
     seed(withPolish(customRecipe));
-    translate.mockResolvedValue({ detectedLanguage: 'en', content: { name: 'Pierogi Oli' } });
+    translate.mockImplementation(dictionaryTranslator({ "Aunt Ola's Pierogi": 'Pierogi Oli' }));
     render(<App />);
     await settle();
     expect(translate).not.toHaveBeenCalled();
@@ -123,8 +144,17 @@ describe('background recipe translation', () => {
 
     expect(translate).toHaveBeenCalledTimes(1);
     expect(translate.mock.calls[0][0].name).toBe("Aunt Ola's Pierogi");
+    // Only the changed title is sent; the rest keeps its translation.
+    expect(translate.mock.calls[0][1]).toEqual([
+      { key: 'name', kind: 'title', text: "Aunt Ola's Pierogi" },
+    ]);
     const stored = JSON.parse(localStorage.getItem('wandas_recipes')!) as Recipe[];
-    expect(stored.find((r) => r.id === 'custom-1')!.translations?.pl?.name).toBe('Pierogi Oli');
+    const saved = stored.find((r) => r.id === 'custom-1')!;
+    expect(saved.translations?.pl).toMatchObject({
+      name: 'Pierogi Oli',
+      steps: [{ text: 'Wymieszaj.' }],
+      sourceHash: sourceHash(saved),
+    });
     // Neither the save nor the finished translation interrupts with a toast.
     expect(screen.getByRole('status').textContent).toBe('');
   });
@@ -145,6 +175,9 @@ describe('background recipe translation', () => {
     expect(sent.sourceLanguage).toBe('pl');
     expect(sent.name).toBe('Pierogi ruskie cioci Oli');
     expect(sent.steps[0].text).toBe('Wymieszaj.');
+    // Only the edited title needs English; the rest keeps its original English words.
+    expect(translate.mock.calls[0][1].map((p) => p.key)).toEqual(['name']);
+    expect(translate.mock.calls[0][2]).toBe('pl');
     // A failed background translation is logged, not shown; the reader still sees their edit.
     expect(screen.getByRole('status').textContent).toBe('');
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Pierogi ruskie cioci Oli');
@@ -174,10 +207,19 @@ describe('Polish recipe page', () => {
     localStorage.clear();
     localStorage.setItem('wandas_language', 'pl');
     const photo = 'data:image/png;base64,STEP';
-    const withPhoto = withPolish({
+    const withCaption = {
       ...customRecipe,
       steps: [{ num: 1, text: 'Mix.', hasImage: true, imageSrc: photo, imageCaption: 'Dough' }],
-    });
+    };
+    const withPhoto: Recipe = {
+      ...withCaption,
+      translations: {
+        pl: {
+          ...withPolish(withCaption).translations!.pl!,
+          steps: [{ num: 1, text: 'Wymieszaj.', imageCaption: 'Ciasto' }],
+        },
+      },
+    };
     seed(withPhoto);
     render(<App />);
 

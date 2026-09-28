@@ -1,10 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Recipe } from '../types/recipe';
+import { pendingPieces, resolveEdit, sourceHash } from '../utils/recipeTranslation';
+import { pieceHash } from '../utils/translationPieces';
 
-const { generateContent, firebaseState } = vi.hoisted(() => ({
-  generateContent: vi.fn(),
-  firebaseState: { configured: true },
-}));
+const { generateContent, getGenerativeModel, firebaseState } = vi.hoisted(() => {
+  const generateContent = vi.fn();
+  return {
+    generateContent,
+    getGenerativeModel: vi.fn(() => ({ generateContent })),
+    firebaseState: { configured: true },
+  };
+});
 
 vi.mock('../services/firebase', () => ({
   get app() {
@@ -21,7 +27,8 @@ vi.mock('firebase/ai', () => {
   return {
     getAI: vi.fn(() => ({})),
     GoogleAIBackend: vi.fn(),
-    getGenerativeModel: vi.fn(() => ({ generateContent })),
+    getGenerativeModel,
+    ThinkingLevel: { MINIMAL: 'MINIMAL', LOW: 'LOW', MEDIUM: 'MEDIUM', HIGH: 'HIGH' },
     Schema: {
       object: schema('object'),
       array: schema('array'),
@@ -33,6 +40,7 @@ vi.mock('firebase/ai', () => {
 });
 
 const reply = (json: unknown) => ({ response: { text: () => JSON.stringify(json) } });
+const promptSent = () => generateContent.mock.calls[0][0] as string;
 
 const testRecipe: Recipe = {
   id: 'test-recipe-1',
@@ -45,7 +53,12 @@ const testRecipe: Recipe = {
   steps: [{ num: 1, text: 'Pokrój jabłka.', hasImage: true, imageSrc: 'data:image/jpeg;base64,S' }],
 };
 
-describe('translateRecipe', () => {
+const load = async () => {
+  vi.resetModules();
+  return import('../services/gemini');
+};
+
+describe('translatePieces', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     firebaseState.configured = true;
@@ -53,49 +66,115 @@ describe('translateRecipe', () => {
 
   it('fails clearly when Firebase is not configured', async () => {
     firebaseState.configured = false;
-    vi.resetModules();
-    const { translateRecipe } = await import('../services/gemini');
-    await expect(translateRecipe(testRecipe)).rejects.toThrow(/Firebase is not configured/);
+    const { translatePieces } = await load();
+    await expect(translatePieces(testRecipe, pendingPieces(testRecipe))).rejects.toThrow(
+      /Firebase is not configured/,
+    );
   });
 
-  it('detects the language, translates, and never sends photos', async () => {
-    vi.resetModules();
-    const { translateRecipe } = await import('../services/gemini');
+  it('detects a new recipe’s language, translates every piece, and never sends photos', async () => {
+    const { translatePieces } = await load();
+    const pieces = pendingPieces(testRecipe);
     generateContent.mockResolvedValue(
       reply({
         detectedLanguage: 'pl',
-        name: "Grandma's Apple Pie",
-        ingredients: [{ text: 'Apples - 6 large' }],
-        steps: [{ num: 1, text: 'Slice the apples.' }],
+        texts: [
+          { id: 'p1', text: "Grandma's Apple Pie" },
+          { id: 'p2', text: 'Serves 8:' },
+          { id: 'p4', text: 'Slice the apples.' },
+        ],
+        ingredients: [{ id: 'p3', text: 'Apples - 6 large', unit: 'large', renderUnit: 'x' }],
       }),
     );
 
-    const result = await translateRecipe(testRecipe);
+    const result = await translatePieces(testRecipe, pieces);
 
     expect(result.detectedLanguage).toBe('pl');
-    expect(result.content.name).toBe("Grandma's Apple Pie");
-    const prompt = generateContent.mock.calls[0][0] as string;
-    expect(prompt).toContain('Szarlotka Babci');
-    expect(prompt).not.toContain('data:image');
+    expect(result.values.get(pieceHash(pieces[0]))).toBe("Grandma's Apple Pie");
+    // Into English: the Polish-only unit forms are dropped (English reads renderUnit as a plural).
+    expect(result.values.get(pieceHash(pieces[2]))).toEqual({
+      text: 'Apples - 6 large',
+      unit: 'large',
+    });
+    expect(promptSent()).toContain('Put the language it is written in');
+    expect(promptSent()).toContain('Szarlotka Babci');
+    expect(promptSent()).not.toContain('data:image');
+    // Every piece is asked for, so the recipe isn't sent twice as context.
+    expect(promptSent()).not.toContain('for context');
   });
 
-  it('falls back to the second model when the first fails', async () => {
-    vi.resetModules();
-    const { translateRecipe } = await import('../services/gemini');
+  it('asks for only the changed pieces, with the recipe and its current translation as context', async () => {
+    const { translatePieces } = await load();
+    const translated: Recipe = {
+      ...testRecipe,
+      sourceLanguage: 'pl',
+      translations: {
+        en: {
+          name: "Grandma's Apple Pie",
+          yieldHeader: 'Serves 8:',
+          ingredients: [{ text: 'Apples - 6 large' }],
+          steps: [{ num: 1, text: 'Slice the apples.' }],
+          sourceHash: sourceHash(testRecipe),
+        },
+      },
+    };
+    // Saved from the editor, which keeps the translation of every piece it didn't change.
+    const edited = resolveEdit(
+      translated,
+      { ...translated, name: 'Szarlotka Babci Zosi' },
+      'pl',
+      true,
+    );
+    const pieces = pendingPieces(edited);
+    expect(pieces.map((p) => p.key)).toEqual(['name']);
+    generateContent.mockResolvedValue(
+      reply({ detectedLanguage: 'en', texts: [{ id: 'p1', text: "Grandma Zosia's Apple Pie" }] }),
+    );
+
+    const result = await translatePieces(edited, pieces, 'pl');
+
+    // The recipe's settled language wins over the model's guess.
+    expect(result.detectedLanguage).toBe('pl');
+    expect([...result.values.values()]).toEqual(["Grandma Zosia's Apple Pie"]);
+    const prompt = promptSent();
+    expect(prompt).toContain('written in Polish. Translate the pieces into English');
+    expect(prompt).toContain('for context');
+    expect(prompt).toContain('Pokrój jabłka.');
+    expect(prompt).toContain('Slice the apples.');
+    expect(prompt).toContain('"id":"p1"');
+    expect(prompt).not.toContain('"id":"p2"');
+  });
+
+  it('uses Gemini 3.8 Flash thinking lightly, and falls back to Flash-Lite when it fails', async () => {
+    const { translatePieces } = await load();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     generateContent
       .mockRejectedValueOnce(new Error('overloaded'))
-      .mockResolvedValueOnce(reply({ detectedLanguage: 'en', name: 'Szarlotka' }));
+      .mockResolvedValueOnce(reply({ detectedLanguage: 'en', texts: [{ id: 'p1', text: 'Pie' }] }));
 
-    await expect(translateRecipe(testRecipe)).resolves.toMatchObject({ detectedLanguage: 'en' });
-    expect(generateContent).toHaveBeenCalledTimes(2);
+    await expect(translatePieces(testRecipe, pendingPieces(testRecipe))).resolves.toMatchObject({
+      detectedLanguage: 'en',
+    });
+    const models = getGenerativeModel.mock.calls.map((call) => (call as unknown[])[1]);
+    expect(models).toMatchObject([
+      {
+        model: 'gemini-3.8-flash',
+        generationConfig: { thinkingConfig: { thinkingLevel: 'LOW' } },
+      },
+      { model: 'gemini-3.5-flash-lite' },
+    ]);
   });
 
-  it('rejects a malformed response instead of storing it', async () => {
-    vi.resetModules();
-    const { translateRecipe } = await import('../services/gemini');
-    generateContent.mockResolvedValue(reply({ detectedLanguage: 'de', name: 'Apfelkuchen' }));
-
-    await expect(translateRecipe(testRecipe)).rejects.toThrow(/detectedLanguage/);
+  it.each([
+    ['an unknown language', reply({ detectedLanguage: 'de', texts: [{ id: 'p1', text: 'X' }] })],
+    ['nothing translated', reply({ detectedLanguage: 'pl', texts: [{ id: 'p9', text: 'X' }] })],
+    ['not JSON', { response: { text: () => 'Sorry, I cannot help' } }],
+  ])('rejects %s instead of storing it', async (_label, response) => {
+    const { translatePieces } = await load();
+    generateContent.mockResolvedValue(response);
+    await expect(translatePieces(testRecipe, pendingPieces(testRecipe))).rejects.toMatchObject({
+      // By name: the service is re-imported fresh, with its own copy of the class.
+      name: 'TranslationRejectedError',
+    });
   });
 });

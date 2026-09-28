@@ -108,6 +108,12 @@ export interface LocalizedRecipeContent {
   bakingOptions?: BakingOptions;
   /** Fingerprint of the source text this was translated from (see utils/recipeTranslation). */
   sourceHash?: string;
+  /**
+   * For each translated piece, by its key, the fingerprint of the words it translates (see
+   * utils/translationPieces). Lets an edit keep the translation of every piece it didn't change.
+   * Missing on translations made before pieces.
+   */
+  pieceSources?: Record<string, string>;
 }
 
 export interface RecipeTranslations {

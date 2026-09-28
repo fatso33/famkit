@@ -8,7 +8,8 @@ import {
   localizeRecipe,
   needsTranslation,
   overlayTranslation,
-  parseTranslationResponse,
+  parsePieceResponse,
+  pendingPieces,
   recipeForEditing,
   resolveEdit,
   shouldTranslateNow,
@@ -17,6 +18,8 @@ import {
   translationFitsRecipe,
   translationStatus,
 } from '../utils/recipeTranslation';
+import { Piece, pieceHash } from '../utils/translationPieces';
+import { answerFrom } from './translator';
 
 const PHOTO = 'data:image/jpeg;base64,AAAA';
 
@@ -34,6 +37,7 @@ const recipe: Recipe = {
 
 const polish = {
   name: 'Szarlotka',
+  yieldHeader: 'Na 8 porcji:',
   ingredients: [{ text: 'Jabłka - 6 dużych', qty: 60, unit: 'dużych' }],
   steps: [{ num: 9, text: 'Pokrój jabłka.' }],
 };
@@ -120,13 +124,16 @@ describe('applyTranslation', () => {
   it('stores the other language and the detected source, without a new version', () => {
     const provisional = { ...recipe, sourceLanguage: 'pl' as const, version: 3 };
     const hash = sourceHash(provisional);
-    const result = applyTranslation(
-      provisional,
-      { detectedLanguage: 'en', content: { name: 'Szarlotka' } },
-      hash,
-    );
+    const result = applyTranslation(provisional, answerFrom(recipe, polish, 'en'), hash);
     expect(result.sourceLanguage).toBe('en');
-    expect(result.translations?.pl).toEqual({ name: 'Szarlotka', sourceHash: hash });
+    expect(result.translations?.pl).toMatchObject({
+      name: 'Szarlotka',
+      yieldHeader: 'Na 8 porcji:',
+      ingredients: [{ text: 'Jabłka - 6 dużych', unit: 'dużych' }],
+      steps: [{ num: 1, text: 'Pokrój jabłka.' }],
+      sourceHash: hash,
+    });
+    expect(needsTranslation(result)).toBe(false);
     expect(result.version).toBe(3);
     expect(result.updatedAt).toBe(provisional.updatedAt);
   });
@@ -134,9 +141,7 @@ describe('applyTranslation', () => {
   it('ignores a translation of text that has changed since it was requested', () => {
     const hash = sourceHash(recipe);
     const edited = { ...recipe, name: 'Apple Tart' };
-    expect(applyTranslation(edited, { detectedLanguage: 'en', content: polish }, hash)).toBe(
-      edited,
-    );
+    expect(applyTranslation(edited, answerFrom(recipe, polish), hash)).toBe(edited);
   });
 });
 
@@ -144,25 +149,41 @@ describe('translationFitsRecipe', () => {
   const wandasPolish = WANDAS_CHEESE_BREAD.translations!.pl!;
 
   it("rejects Polish labelled as the English translation (how Wanda's languages got swapped)", () => {
-    const swapped = { detectedLanguage: 'pl' as const, content: wandasPolish };
+    const swapped = answerFrom(WANDAS_CHEESE_BREAD, wandasPolish, 'pl');
     expect(translationFitsRecipe(WANDAS_CHEESE_BREAD, swapped)).toBe(false);
-    const correct = { detectedLanguage: 'en' as const, content: wandasPolish };
+    const correct = answerFrom(WANDAS_CHEESE_BREAD, wandasPolish, 'en');
     expect(translationFitsRecipe(WANDAS_CHEESE_BREAD, correct)).toBe(true);
   });
 
   it('accepts a Polish recipe that was provisionally labelled English', () => {
     const typedInPolish: Recipe = { ...recipe, ...polish, sourceLanguage: 'en' };
     const english = translatableContent(recipe);
-    expect(translationFitsRecipe(typedInPolish, { detectedLanguage: 'pl', content: english })).toBe(
-      true,
-    );
-    expect(translationFitsRecipe(typedInPolish, { detectedLanguage: 'en', content: english })).toBe(
-      false,
-    );
+    const answer = (lang: 'en' | 'pl') => answerFrom(typedInPolish, english, lang);
+    expect(translationFitsRecipe(typedInPolish, answer('pl'))).toBe(true);
+    expect(translationFitsRecipe(typedInPolish, answer('en'))).toBe(false);
+  });
+
+  it('accepts Polish typed without Polish letters, added while the app was in English', () => {
+    const pierogi: Recipe = {
+      ...recipe,
+      name: 'Pierogi z serem',
+      yieldHeader: 'Na 4 osoby:',
+      ingredients: [{ text: 'Maka - 500g' }],
+      steps: [{ num: 1, text: 'Zagniec ciasto i odstaw na godzine.' }],
+      sourceLanguage: 'en',
+    };
+    const english = {
+      name: 'Cheese pierogi',
+      yieldHeader: 'Serves 4:',
+      ingredients: [{ text: 'Flour - 500g' }],
+      steps: [{ num: 1, text: 'Knead the dough and rest it for an hour.' }],
+    };
+    expect(translationFitsRecipe(pierogi, answerFrom(pierogi, english, 'pl'))).toBe(true);
+    expect(translationFitsRecipe(pierogi, answerFrom(pierogi, english, 'en'))).toBe(false);
   });
 
   it("won't relabel a recipe when the text gives no clue either way", () => {
-    const noClue = { detectedLanguage: 'en' as const, content: { name: 'Apple Pie' } };
+    const noClue = answerFrom(recipe, { name: 'Apple Pie' }, 'en');
     expect(translationFitsRecipe(recipe, noClue)).toBe(true);
     expect(translationFitsRecipe({ ...recipe, sourceLanguage: 'pl' }, noClue)).toBe(false);
   });
@@ -187,6 +208,28 @@ describe('resolveEdit', () => {
     expect(saved.name).toBe('Szarlotka Oli');
     expect(saved.translations?.pl).toBeUndefined();
     expect(needsTranslation(saved)).toBe(true);
+    // Only the edited title needs English; the rest keeps the original English words.
+    const [title] = pendingPieces(saved);
+    expect(pendingPieces(saved)).toEqual([title]);
+    const answer = {
+      detectedLanguage: 'pl' as const,
+      values: new Map([[pieceHash(title), "Ola's Apple Pie"]]),
+    };
+    const done = applyTranslation(saved, answer, sourceHash(saved));
+    expect(localizeRecipe(done, 'en')).toMatchObject({
+      name: "Ola's Apple Pie",
+      yieldHeader: 'Serves 8:',
+      ingredients: [{ text: 'Apples - 6 large', qty: 6 }],
+      steps: [{ text: 'Slice apples.' }],
+    });
+  });
+
+  it('stops showing a translation from before fingerprinting once the text is edited', () => {
+    const legacy = { ...recipe, translations: { pl: polish } };
+    expect(localizeRecipe(legacy, 'pl').name).toBe('Szarlotka');
+    const saved = resolveEdit(legacy, { ...recipe, name: 'Pear Pie' }, 'en', true);
+    expect(translationStatus(saved, 'pl')).toBe('stale');
+    expect(localizeRecipe(saved, 'pl').name).toBe('Pear Pie');
   });
 
   it('keeps the English original when only the photo changed', () => {
@@ -228,32 +271,78 @@ describe('resolveEdit', () => {
   });
 });
 
-describe('parseTranslationResponse', () => {
-  it('keeps known fields of the right type and drops the rest', () => {
-    const parsed = parseTranslationResponse({
-      detectedLanguage: 'pl',
-      name: 'Apple pie',
-      tips: 42,
-      ingredients: [{ text: 'Apples', qty: 6, onclick: 'x' }, { name: 'no text' }, 'junk'],
-      steps: [{ text: 'Slice.' }],
-      bakingOptions: { option1: 'Bake', option2: ['a', 1] },
-      extra: 'ignored',
-    });
-    expect(parsed.detectedLanguage).toBe('pl');
-    expect(parsed.content).toEqual({
-      name: 'Apple pie',
-      ingredients: [{ text: 'Apples' }],
-      steps: [{ num: 1, text: 'Slice.' }],
-      bakingOptions: { option1: 'Bake' },
-    });
+describe('parsePieceResponse', () => {
+  const title: Piece = { key: 'name', kind: 'title', text: 'Apple Pie' };
+  const flour: Piece = { key: 'ingredients:0', kind: 'ingredient', ingredient: { text: 'Flour' } };
+  const step: Piece = { key: 'steps:0:text', kind: 'step', text: 'Mix.' };
+  const requested = new Map<string, Piece>([
+    ['p1', title],
+    ['p2', flour],
+    ['p3', step],
+  ]);
+
+  it('keeps only asked-for pieces of the right kind, by id, and drops the rest', () => {
+    const parsed = parsePieceResponse(
+      {
+        detectedLanguage: 'en',
+        texts: [
+          { id: 'p1', text: 'Szarlotka' },
+          { id: 'p2', text: 'not an ingredient' },
+          { id: 'p9', text: 'never asked' },
+          { id: 'p3', text: 42 },
+          'junk',
+        ],
+        ingredients: [{ id: 'p2', text: 'Mąka', unit: 'g', onclick: 'x', renderUnit: 'gramy' }],
+        extra: 'ignored',
+      },
+      requested,
+    );
+    expect(parsed.detectedLanguage).toBe('en');
+    expect(parsed.values).toEqual(
+      new Map<string, unknown>([
+        [pieceHash(title), 'Szarlotka'],
+        [pieceHash(flour), { text: 'Mąka', unit: 'g', renderUnit: 'gramy' }],
+      ]),
+    );
+  });
+
+  it('keeps each piece in its place when another comes back malformed', () => {
+    // The old whole-recipe answer shifted every later step onto the wrong one.
+    const { translations: _t, ...recipe } = WANDAS_CHEESE_BREAD;
+    const pieces = pendingPieces(recipe);
+    const ids = new Map(pieces.map((p, i) => ['p' + (i + 1), p]));
+    const texts = pieces.flatMap((p, i) =>
+      p.kind === 'ingredient' ? [] : [{ id: 'p' + (i + 1), text: 'PL ' + p.text } as object],
+    );
+    const broken = pieces.findIndex(
+      (p) => p.kind !== 'ingredient' && p.text.startsWith('Add water'),
+    );
+    const withBroken = texts.map((t) =>
+      (t as { id: string }).id === 'p' + (broken + 1) ? { id: 'p' + (broken + 1), text: 42 } : t,
+    );
+    const parsed = parsePieceResponse({ detectedLanguage: 'en', texts: withBroken }, ids);
+    const done = applyTranslation(recipe, parsed, sourceHash(recipe));
+    const shown = localizeRecipe(done, 'pl');
+    expect(shown.steps[2].text).toBe(recipe.steps[2].text);
+    expect(shown.steps[3].text).toBe('PL ' + recipe.steps[3].text);
+    // The malformed step and the unanswered ingredients are asked for again.
+    expect(pendingPieces(done).map((p) => p.key)).toEqual([
+      ...recipe.ingredients.map((_, i) => 'ingredients:' + i),
+      'steps:2:text',
+    ]);
+  });
+
+  it('keeps the recipe’s settled language over the model’s guess', () => {
+    const raw = { detectedLanguage: 'pl', texts: [{ id: 'p1', text: 'Szarlotka' }] };
+    expect(parsePieceResponse(raw, requested, 'en').detectedLanguage).toBe('en');
   });
 
   it.each([
     ['not an object', 'text'],
-    ['an unknown language', { detectedLanguage: 'de', name: 'Kuchen' }],
-    ['no name', { detectedLanguage: 'en', name: ' ' }],
+    ['an unknown language', { detectedLanguage: 'de', texts: [{ id: 'p1', text: 'Kuchen' }] }],
+    ['nothing usable', { detectedLanguage: 'en', texts: [{ id: 'p1', text: ' ' }] }],
   ])('rejects %s', (_label, raw) => {
-    expect(() => parseTranslationResponse(raw)).toThrow();
+    expect(() => parsePieceResponse(raw, requested)).toThrow();
   });
 });
 
