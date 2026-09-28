@@ -2,9 +2,12 @@ import React, { useCallback, useId, useLayoutEffect, useRef, useState } from 're
 import {
   ArrowLeft,
   BookOpen,
+  ChevronRight,
+  ChevronUp,
   CookingPot,
   Moon,
   Settings,
+  SlidersHorizontal,
   Sun,
   type LucideIcon,
 } from 'lucide-react';
@@ -162,10 +165,13 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
   t,
 }) => {
   const backdropProps = useDialogDismiss(onClose);
-  const pagesLabelId = useId();
-  const prefsLabelId = useId();
+  const currentPageId = useId();
+  const prefsToggleId = useId();
+  const prefsDrawerId = useId();
   const darkLabelId = useId();
   const textLabelId = useId();
+  // Starts folded each time the menu opens, so the pages stay the first thing in reach.
+  const [prefsOpen, setPrefsOpen] = useState(false);
 
   const panelRef = useRef<HTMLDivElement | null>(null);
   // Stable callback ref, so focus moves to the current page once on open, not on every re-render.
@@ -175,7 +181,7 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
     unfurlReach(panel);
     panel.querySelector<HTMLElement>('[aria-current="page"]')?.focus({ preventScroll: true });
   }, []);
-  // The text size can change while it's open, so it furls up from its size now.
+  // The panel can grow while it's open (preferences, text size), so it furls up from its size now.
   useLayoutEffect(() => {
     if (isClosing && panelRef.current) unfurlReach(panelRef.current);
   }, [isClosing]);
@@ -185,14 +191,23 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
     onClose();
   };
 
+  const settingsPage = { id: 'settings' as const, label: t.settings, icon: Settings };
   const pages: { id: AppPage; label: string; icon: LucideIcon }[] = [
     { id: 'recipes', label: t.recipeVault, icon: BookOpen },
     { id: 'makes', label: t.makes, icon: CookingPot },
   ];
+  // Settings normally sits at the top of the preferences, but while it's the page you're on it
+  // takes the current page's place like any other.
+  const current = pages.find((p) => p.id === page) ?? settingsPage;
+  const otherPages = pages.filter((p) => p !== current);
+  const CurrentIcon = current.icon;
 
-  // Stagger order for the entrance animation.
-  let row = 0;
-  const stagger = () => ({ '--i': row++ }) as React.CSSProperties;
+  // The rows rise in from the bottom up, following the unfurl out of the menu button.
+  let row = 1 + otherPages.length + 1 + actions.length;
+  const stagger = () => ({ '--i': --row }) as React.CSSProperties;
+  // The preference rows unfold from the toggle upwards, so the nearest arrives first.
+  let fold = page === 'settings' ? 3 : 4;
+  const unfold = () => ({ '--j': --fold }) as React.CSSProperties;
 
   return (
     // Backdrop click is a mouse/touch shortcut; keyboard users close with Escape or the menu button.
@@ -223,125 +238,167 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
           if (isClosing && e.target === e.currentTarget) onClosed();
         }}
       >
-        <div className="fk-menu-brand fk-menu-row" style={stagger()}>
-          <img src="./apple-touch-icon.png" alt="" className="fk-menu-brand-icon" />
-          <span className="fk-menu-brand-title">Family Kitchen</span>
-        </div>
+        {/* One child in a column-reverse scroller: if it outgrows the screen, it stays pinned
+            to the menu button and the preferences scroll away upwards. */}
+        <div className="fk-menu-content">
+          <section className="fk-prefs" data-open={prefsOpen} aria-labelledby={prefsToggleId}>
+            <div id={prefsDrawerId} className="fk-prefs-drawer" inert={!prefsOpen}>
+              <div className="fk-prefs-clip">
+                <div className="fk-prefs-body">
+                  {page !== 'settings' && (
+                    <div className="fk-prefs-row fk-prefs-settings" style={unfold()}>
+                      <button type="button" className="fk-menu-item" onClick={() => go('settings')}>
+                        <span className="fk-menu-chip" aria-hidden="true">
+                          <Settings size="1.1em" strokeWidth={1.9} />
+                        </span>
+                        <span className="fk-menu-item-label">{t.settings}</span>
+                        <ChevronRight
+                          className="fk-menu-item-trail"
+                          size="1.1em"
+                          strokeWidth={2}
+                          aria-hidden="true"
+                        />
+                      </button>
+                    </div>
+                  )}
 
-        <nav className="fk-menu-section" aria-labelledby={pagesLabelId}>
-          <p id={pagesLabelId} className="fk-menu-eyebrow fk-menu-row" style={stagger()}>
-            {t.pages}
-          </p>
-          <ul className="fk-menu-list">
-            {pages.map(({ id: pageId, label, icon: Icon }) => (
-              <li key={pageId} className="fk-menu-row" style={stagger()}>
-                <button
-                  type="button"
-                  className="fk-menu-item"
-                  aria-current={page === pageId ? 'page' : undefined}
-                  onClick={() => go(pageId)}
-                >
-                  <span className="fk-menu-chip" aria-hidden="true">
-                    <Icon size="1.1em" strokeWidth={1.9} />
-                  </span>
-                  <span className="fk-menu-item-label">{label}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
+                  <div className="fk-pref-row fk-prefs-row" style={unfold()}>
+                    <span className="fk-pref-label">{t.language}</span>
+                    <button
+                      type="button"
+                      className="fk-segmented"
+                      data-value={language}
+                      aria-label={t.languageToggle}
+                      onClick={onToggleLanguage}
+                    >
+                      <span className="fk-segmented-thumb" aria-hidden="true" />
+                      <span className={language === 'en' ? 'is-active' : ''}>EN</span>
+                      <span className={language === 'pl' ? 'is-active' : ''}>PL</span>
+                    </button>
+                  </div>
 
-        <section className="fk-menu-section" aria-labelledby={prefsLabelId}>
-          <p id={prefsLabelId} className="fk-menu-eyebrow fk-menu-row" style={stagger()}>
-            {t.preferences}
-          </p>
+                  <div className="fk-pref-row fk-prefs-row" style={unfold()}>
+                    <span id={darkLabelId} className="fk-pref-label">
+                      {t.darkMode}
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      className="fk-switch"
+                      aria-checked={theme === 'dark'}
+                      aria-labelledby={darkLabelId}
+                      onClick={onToggleTheme}
+                    >
+                      <span className="fk-switch-thumb" aria-hidden="true">
+                        {theme === 'dark' ? <Moon size="0.85em" /> : <Sun size="0.85em" />}
+                      </span>
+                    </button>
+                  </div>
 
-          <div className="fk-pref-row fk-menu-row" style={stagger()}>
-            <span className="fk-pref-label">{t.language}</span>
-            <button
-              type="button"
-              className="fk-segmented"
-              data-value={language}
-              aria-label={t.languageToggle}
-              onClick={onToggleLanguage}
-            >
-              <span className="fk-segmented-thumb" aria-hidden="true" />
-              <span className={language === 'en' ? 'is-active' : ''}>EN</span>
-              <span className={language === 'pl' ? 'is-active' : ''}>PL</span>
-            </button>
-          </div>
-
-          <div className="fk-pref-row fk-menu-row" style={stagger()}>
-            <span id={darkLabelId} className="fk-pref-label">
-              {t.darkMode}
-            </span>
-            <button
-              type="button"
-              role="switch"
-              className="fk-switch"
-              aria-checked={theme === 'dark'}
-              aria-labelledby={darkLabelId}
-              onClick={onToggleTheme}
-            >
-              <span className="fk-switch-thumb" aria-hidden="true">
-                {theme === 'dark' ? <Moon size="0.85em" /> : <Sun size="0.85em" />}
-              </span>
-            </button>
-          </div>
-
-          <div className="fk-pref-row fk-menu-row" style={stagger()}>
-            <span id={textLabelId} className="fk-pref-label">
-              {t.textScaling}
-            </span>
-            <div className="fk-stepper" role="group" aria-labelledby={textLabelId}>
-              <button type="button" aria-label={t.decreaseTextSize} onClick={onDecreaseFont}>
-                A−
-              </button>
-              <span className="fk-stepper-value" aria-live="polite">
-                {fontPercent}%
-              </span>
-              <button type="button" aria-label={t.increaseTextSize} onClick={onIncreaseFont}>
-                A+
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <div className="fk-menu-section fk-menu-row" style={stagger()}>
-          <button
-            type="button"
-            className="fk-menu-item"
-            aria-current={page === 'settings' ? 'page' : undefined}
-            onClick={() => go('settings')}
-          >
-            <span className="fk-menu-chip" aria-hidden="true">
-              <Settings size="1.1em" strokeWidth={1.9} />
-            </span>
-            <span className="fk-menu-item-label">{t.settings}</span>
-          </button>
-        </div>
-
-        {actions.length > 0 && (
-          <div className="fk-menu-actions">
-            {actions.map(({ id: actionId, label, icon: Icon, onSelect }) => (
-              <div key={actionId} className="fk-menu-row" style={stagger()}>
-                <button
-                  type="button"
-                  className="fk-menu-action"
-                  onClick={() => {
-                    onClose();
-                    onSelect();
-                  }}
-                >
-                  <span className="fk-menu-chip" aria-hidden="true">
-                    <Icon size="1.1em" strokeWidth={2.2} />
-                  </span>
-                  <span className="fk-menu-item-label">{label}</span>
-                </button>
+                  <div className="fk-pref-row fk-prefs-row" style={unfold()}>
+                    <span id={textLabelId} className="fk-pref-label">
+                      {t.textScaling}
+                    </span>
+                    <div className="fk-stepper" role="group" aria-labelledby={textLabelId}>
+                      <button
+                        type="button"
+                        aria-label={t.decreaseTextSize}
+                        onClick={onDecreaseFont}
+                      >
+                        A−
+                      </button>
+                      <span className="fk-stepper-value" aria-live="polite">
+                        {fontPercent}%
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={t.increaseTextSize}
+                        onClick={onIncreaseFont}
+                      >
+                        A+
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+
+            <button
+              id={prefsToggleId}
+              type="button"
+              className="fk-menu-item fk-prefs-toggle fk-menu-row"
+              style={stagger()}
+              aria-expanded={prefsOpen}
+              aria-controls={prefsDrawerId}
+              onClick={() => setPrefsOpen((open) => !open)}
+            >
+              <span className="fk-menu-chip" aria-hidden="true">
+                <SlidersHorizontal size="1.1em" strokeWidth={1.9} />
+              </span>
+              <span className="fk-menu-item-label">{t.preferences}</span>
+              <ChevronUp
+                className="fk-menu-item-trail fk-prefs-chevron"
+                size="1.1em"
+                strokeWidth={2}
+                aria-hidden="true"
+              />
+            </button>
+          </section>
+
+          <nav className="fk-menu-pages" aria-label={t.pages}>
+            <ul className="fk-menu-list">
+              {otherPages.map(({ id: pageId, label, icon: Icon }) => (
+                <li key={pageId} className="fk-menu-row" style={stagger()}>
+                  <button type="button" className="fk-menu-item" onClick={() => go(pageId)}>
+                    <span className="fk-menu-chip" aria-hidden="true">
+                      <Icon size="1.1em" strokeWidth={1.9} />
+                    </span>
+                    <span className="fk-menu-item-label">{label}</span>
+                  </button>
+                </li>
+              ))}
+
+              {/* The page you're on, with what you can do on it hanging off it. */}
+              <li className="fk-menu-current">
+                <button
+                  id={currentPageId}
+                  type="button"
+                  className="fk-menu-item fk-menu-row"
+                  style={stagger()}
+                  aria-current="page"
+                  onClick={() => go(current.id)}
+                >
+                  <span className="fk-menu-chip" aria-hidden="true">
+                    <CurrentIcon size="1.1em" strokeWidth={1.9} />
+                  </span>
+                  <span className="fk-menu-item-label">{current.label}</span>
+                </button>
+
+                {actions.length > 0 && (
+                  <ul className="fk-menu-actions" aria-labelledby={currentPageId}>
+                    {actions.map(({ id: actionId, label, icon: Icon, onSelect }) => (
+                      <li key={actionId} className="fk-menu-row" style={stagger()}>
+                        <button
+                          type="button"
+                          className="fk-menu-action"
+                          onClick={() => {
+                            onClose();
+                            onSelect();
+                          }}
+                        >
+                          <span className="fk-menu-chip" aria-hidden="true">
+                            <Icon size="1.05em" strokeWidth={2.2} />
+                          </span>
+                          <span className="fk-menu-item-label">{label}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            </ul>
+          </nav>
+        </div>
       </div>
     </div>
   );

@@ -18,6 +18,13 @@ const openMenu = () => {
   return screen.getByRole('dialog', { name: t.menu });
 };
 
+/** Unfolds the preferences drawer, where the toggles and the Settings link live. */
+const openPreferences = (menu: HTMLElement) => {
+  const toggle = within(menu).getByRole('button', { name: t.preferences });
+  fireEvent.click(toggle);
+  expect(toggle).toHaveAttribute('aria-expanded', 'true');
+};
+
 /** jsdom runs no CSS animations, so finish the exit animation by hand. */
 const finishClosing = () => {
   const panel = document.querySelector('.fk-menu-panel');
@@ -79,7 +86,9 @@ describe('floating menu', () => {
 
   it('switches language without a toast, since the whole page changes', () => {
     render(<App />);
-    fireEvent.click(within(openMenu()).getByRole('button', { name: t.languageToggle }));
+    const menu = openMenu();
+    openPreferences(menu);
+    fireEvent.click(within(menu).getByRole('button', { name: t.languageToggle }));
 
     expect(screen.getByRole('heading', { name: UI_TEXT.pl.vaultTitle, level: 1 })).toBeVisible();
     expect(screen.getByRole('status').textContent).toBe('');
@@ -87,12 +96,71 @@ describe('floating menu', () => {
 
   it('opens the Settings page, which explains translation and asks for no API key', () => {
     render(<App />);
-    fireEvent.click(within(openMenu()).getByRole('button', { name: t.settings }));
+    const menu = openMenu();
+    openPreferences(menu);
+    fireEvent.click(within(menu).getByRole('button', { name: t.settings }));
     finishClosing();
 
     expect(screen.getByRole('heading', { name: t.settings, level: 1 })).toBeInTheDocument();
     expect(screen.getByText(t.translationInfo)).toBeInTheDocument();
     expect(screen.queryByRole('textbox')).toBeNull();
+  });
+
+  it('lists the current page last, holding its own actions', () => {
+    render(<App />);
+    const pages = within(openMenu()).getByRole('navigation', { name: t.pages });
+    const items = within(pages).getAllByRole('button');
+
+    expect(items.map((b) => b.textContent)).toEqual([t.makes, t.recipeVault, t.addRecipe]);
+    const current = within(pages).getByRole('button', { name: t.recipeVault });
+    expect(current).toHaveAttribute('aria-current', 'page');
+    expect(within(pages).getByRole('list', { name: t.recipeVault })).toContainElement(
+      within(pages).getByRole('button', { name: t.addRecipe }),
+    );
+  });
+
+  it('keeps the preferences folded until asked, above the pages', () => {
+    render(<App />);
+    const menu = openMenu();
+    const toggle = within(menu).getByRole('button', { name: t.preferences });
+    const drawer = document.getElementById(toggle.getAttribute('aria-controls') ?? '');
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(drawer).toHaveAttribute('inert');
+    expect(
+      toggle.compareDocumentPosition(within(menu).getByRole('navigation', { name: t.pages })),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+
+    openPreferences(menu);
+    expect(drawer).not.toHaveAttribute('inert');
+    // Settings leads the drawer, above the toggles.
+    const [first] = within(drawer!).getAllByRole('button');
+    expect(first).toHaveAccessibleName(t.settings);
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(drawer).toHaveAttribute('inert');
+  });
+
+  it('shows Settings as the current page while on it, not in the preferences', () => {
+    render(<App />);
+    let menu = openMenu();
+    openPreferences(menu);
+    fireEvent.click(within(menu).getByRole('button', { name: t.settings }));
+    finishClosing();
+
+    menu = openMenu();
+    const pages = within(menu).getByRole('navigation', { name: t.pages });
+    expect(
+      within(pages)
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual([t.recipeVault, t.makes, t.settings]);
+    expect(within(pages).getByRole('button', { name: t.settings })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(within(menu).getAllByRole('button', { name: t.settings })).toHaveLength(1);
   });
 
   it('closes on Escape and returns focus to the menu button', () => {

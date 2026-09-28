@@ -3345,6 +3345,10 @@
         max-height: calc(100dvh - 3.5rem - var(--fab-size) - env(safe-area-inset-bottom));
         overflow-y: auto;
         overscroll-behavior: contain;
+        /* Reversed, so an overflowing menu scrolls from its bottom: the current page stays by
+           the button while the preferences unfold (.fk-menu-content keeps reading order). */
+        display: flex;
+        flex-direction: column-reverse;
         padding: 0.75rem;
         background: var(--elev-menu);
         border: 1px solid var(--border-subtle);
@@ -3368,39 +3372,89 @@
         animation-delay: calc(70ms + var(--i, 0) * 22ms);
       }
 
-      .fk-menu-brand {
+      .fk-menu-content {
+        flex-shrink: 0;
         display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        padding: 0.35rem 0.5rem 0.75rem;
-        margin-bottom: 0.35rem;
+        flex-direction: column;
+      }
+
+      /* Preferences: a drawer that unfolds upwards out of its toggle, growing the panel's top */
+      .fk-prefs {
+        padding-bottom: 0.4rem;
+        margin-bottom: 0.4rem;
         border-bottom: 1px solid var(--border-subtle);
       }
 
-      .fk-menu-brand-icon {
-        width: 2rem;
-        height: 2rem;
-        border-radius: var(--radius-sm);
+      .fk-prefs-drawer {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
 
-      .fk-menu-brand-title {
-        font-family: var(--font-serif);
-        font-size: 1.15rem;
-        font-weight: var(--weight-heading);
-        letter-spacing: -0.01em;
+      .fk-prefs[data-open='true'] .fk-prefs-drawer {
+        grid-template-rows: 1fr;
+        transition: grid-template-rows 0.5s var(--ease-glide);
       }
 
-      .fk-menu-section {
-        padding: 0.35rem 0;
+      /* Clips the folded rows; the side overhang keeps focus rings whole. The rows sit on its
+         bottom edge, so the panel's top sweeps up over them, nearest the toggle first. */
+      .fk-prefs-clip {
+        min-height: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        margin-inline: -4px;
+        padding-inline: 4px;
       }
 
-      .fk-menu-eyebrow {
-        padding: 0.35rem 0.5rem 0.25rem;
-        font-size: 0.75rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
+      .fk-prefs-body {
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        padding: 4px 0 0.35rem;
+      }
+
+      .fk-prefs-settings {
+        padding-bottom: 0.35rem;
+        margin-bottom: 0.2rem;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+
+      /* Each row rises out of the toggle, the nearest first (--j counts up from the toggle). */
+      .fk-prefs-row {
+        opacity: 0;
+        transform: translateY(0.6rem) scale(0.97);
+        transform-origin: 50% 100%;
+        transition: opacity 0.22s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .fk-prefs[data-open='true'] .fk-prefs-row {
+        opacity: 1;
+        transform: none;
+        transition: opacity 0.32s ease, transform 0.5s var(--ease-glide);
+        transition-delay: calc(var(--j, 0) * 35ms);
+      }
+
+      .fk-menu-item-trail {
+        flex-shrink: 0;
+        margin-right: 0.25rem;
         color: var(--text-muted);
+      }
+
+      .fk-prefs-chevron {
+        transition: rotate 0.5s var(--ease-glide), color 0.2s ease;
+      }
+
+      .fk-prefs[data-open='true'] .fk-prefs-chevron {
+        rotate: 180deg;
+        color: var(--accent);
+      }
+
+      .fk-prefs[data-open='true'] .fk-prefs-toggle .fk-menu-chip {
+        background: var(--accent-subtle);
+        color: var(--accent);
       }
 
       .fk-menu-list {
@@ -3462,23 +3516,26 @@
         transition: background-color 0.18s ease, color 0.18s ease;
       }
 
-      .fk-menu-item[aria-current="page"] {
+      /* The page you're on: the lowest, nearest the thumb, on a tinted card that also holds
+         what you can do there */
+      .fk-menu-current {
+        margin-top: 0.3rem;
+        padding: 0.25rem;
+        border-radius: var(--radius-lg);
         background: var(--accent-subtle);
+      }
+
+      .fk-menu-current .fk-menu-item {
         color: var(--accent);
       }
 
-      .fk-menu-item[aria-current="page"] .fk-menu-chip {
+      .fk-menu-current .fk-menu-item .fk-menu-chip {
         background: var(--accent);
         color: var(--on-accent);
       }
 
-      .fk-menu-item[aria-current="page"]::after {
-        content: '';
-        width: 6px;
-        height: 6px;
-        margin-right: 0.35rem;
-        border-radius: 50%;
-        background: var(--accent);
+      .fk-menu-current :is(.fk-menu-item, .fk-menu-action):hover {
+        background: color-mix(in srgb, var(--accent) 9%, transparent);
       }
 
       /* Preference rows */
@@ -3622,29 +3679,54 @@
         font-variant-numeric: tabular-nums;
       }
 
-      /* Page-dependent actions, closest to the thumb */
+      /* The current page's actions hang off it, a thread running from its chip into each */
       .fk-menu-actions {
-        margin-top: 0.35rem;
-        padding-top: 0.6rem;
-        border-top: 1px solid var(--border-subtle);
+        list-style: none;
         display: flex;
         flex-direction: column;
         gap: 0.15rem;
+        padding-left: 2.25rem;
+      }
+
+      .fk-menu-actions > li {
+        position: relative;
+      }
+
+      /* From the page chip's centre (0.5rem padding + half its 2.25rem) to just short of the
+         action's chip. The first starts under the page chip; later ones pick up at the row
+         above, so the threads join into one trunk. The colour is opaque so overlaps don't show. */
+      .fk-menu-actions > li::before {
+        content: '';
+        position: absolute;
+        left: calc(1.625rem - 2.25rem - 1px);
+        top: calc(-50% - 0.15rem);
+        bottom: calc(50% - 1px);
+        width: 0.85rem;
+        border-left: 2px solid var(--menu-thread);
+        border-bottom: 2px solid var(--menu-thread);
+        border-bottom-left-radius: 0.65rem;
+        pointer-events: none;
+        --menu-thread: color-mix(in srgb, var(--accent) 38%, var(--accent-subtle));
+      }
+
+      .fk-menu-actions > li:first-child::before {
+        top: -0.2rem;
       }
 
       .fk-menu-action {
+        gap: 0.7rem;
         color: var(--accent);
         font-weight: 700;
       }
 
       .fk-menu-action .fk-menu-chip {
-        background: var(--accent);
-        color: var(--on-accent);
-        box-shadow: var(--fab-shadow);
-      }
-
-      .fk-menu-action:hover {
-        background: var(--accent-subtle);
+        width: 2rem;
+        height: 2rem;
+        background: var(--elev-menu);
+        color: var(--accent);
+        box-shadow:
+          inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, transparent),
+          var(--shadow-sm);
       }
 
       @keyframes fk-fade-in {
@@ -3748,7 +3830,10 @@
         .fab-menu-glyph > span,
         .fk-segmented-thumb,
         .author-choice-thumb,
-        .fk-switch-thumb { transition: none; }
+        .fk-switch-thumb,
+        .fk-prefs-chevron,
+        .fk-prefs-drawer,
+        .fk-prefs[data-open] :is(.fk-prefs-drawer, .fk-prefs-row) { transition: none; }
         .author-hint,
         .author-custom,
         .restore-banner,
