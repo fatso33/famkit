@@ -30,12 +30,16 @@ interface FakeAnimation {
   finish: () => Promise<void>;
 }
 
+/** Every animation the current test played, so afterEach can finish the ones it left running. */
+let started: FakeAnimation[] = [];
+
 /**
  * jsdom has no Web Animations. This stands in for a browser playing them: each animation
  * finishes only when the test says so.
  */
 function playAnimations() {
   const played: FakeAnimation[] = [];
+  started = played;
   Element.prototype.animate = vi.fn(function (
     this: Element,
     keyframes: Keyframe[],
@@ -82,7 +86,12 @@ describe('a recipe unrolling out of its photo', () => {
     window.scrollTo = vi.fn();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Finish what the test left running while the app is still mounted. A roll-up left running
+    // would otherwise leave the recipe (its safety timeout) after the test, even after jsdom
+    // has been torn down.
+    for (const animation of started) await animation.finish();
+    started = [];
     Reflect.deleteProperty(Element.prototype, 'animate');
   });
 
