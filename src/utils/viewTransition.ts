@@ -46,15 +46,22 @@ export function transitionView(
   if (morph) root.dataset.morph = morph;
   else delete root.dataset.morph;
 
-  // The recipe photo morphs uncropped at both ends (see utils/photoMorph).
+  // The recipe photo morphs uncropped at both ends (see utils/photoMorph). When both ends are
+  // laid out whole, only the sharper snapshot needs to fly (data-morph-whole, index.css).
   const uncrop = morph === 'recipe' && canNestMorphs();
-  const restore: (() => void)[] = uncrop ? [uncropMorphPhotos()] : [];
+  const from = uncrop ? uncropMorphPhotos() : null;
+  const restore: (() => void)[] = from ? [from.undo] : [];
+  delete root.dataset.morphWhole;
   const vault = motion === 'vault';
   const before = vault ? nameVaultItems(relayout) : null;
   if (before) restore.push(before.clear);
   const transition = document.startViewTransition(() => {
     flushSync(update);
-    if (uncrop) restore.push(uncropMorphPhotos());
+    if (from) {
+      const to = uncropMorphPhotos();
+      restore.push(to.undo);
+      if (from.laidOut && to.laidOut) root.dataset.morphWhole = '';
+    }
     if (before) restore.push(nameVaultItems(relayout, before.keys).clear);
   });
   current = transition;
@@ -65,6 +72,7 @@ export function transitionView(
     current = null;
     delete root.dataset.nav;
     delete root.dataset.morph;
+    delete root.dataset.morphWhole;
   };
   void transition.finished.then(cleanUp, cleanUp);
 }

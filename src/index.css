@@ -605,6 +605,19 @@
         :root[data-nav]::view-transition-image-pair(recipe-photo) {
           animation: none;
         }
+        /* Both ends are the same whole photo, so only the sharper snapshot flies: the hero's,
+           both ways. A list row's thumbnail blown up to the hero's size would smear, then
+           cross-fade to sharp part way, which reads as the photo resizing before it moves. */
+        :root[data-morph-whole][data-nav='forward']::view-transition-old(recipe-photo),
+        :root[data-morph-whole][data-nav='back']::view-transition-new(recipe-photo) {
+          animation: none;
+          opacity: 0;
+        }
+        :root[data-morph-whole][data-nav='forward']::view-transition-new(recipe-photo),
+        :root[data-morph-whole][data-nav='back']::view-transition-old(recipe-photo) {
+          animation: none;
+          opacity: 1;
+        }
         :root[data-nav='forward']::view-transition-group-children(recipe-frame) {
           animation: vt-clip-to-hero var(--morph-duration) var(--ease-glide) both;
         }
@@ -1848,6 +1861,8 @@
       }
 
       .vault-row-photo {
+        /* The photo's frame when it's laid out uncropped for the morph (utils/photoMorph). */
+        position: relative;
         flex: none;
         width: 4rem;
         height: 4rem;

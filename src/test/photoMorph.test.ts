@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { coverBox, parseObjectPosition } from '../utils/photoMorph';
+import { describe, it, expect, afterEach } from 'vitest';
+import { coverBox, parseObjectPosition, uncropMorphPhotos } from '../utils/photoMorph';
 
 describe('coverBox', () => {
   it('fills a wider frame edge to edge, cropping top and bottom around the alignment', () => {
@@ -47,5 +47,33 @@ describe('parseObjectPosition', () => {
   it('counts anything else as centred', () => {
     expect(parseObjectPosition('')).toEqual({ x: 0.5, y: 0.5 });
     expect(parseObjectPosition('12px 4px')).toEqual({ x: 0.5, y: 0.5 });
+  });
+});
+
+describe('uncropMorphPhotos', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  // A list row's photo frame wasn't positioned, so the uncropped photo was placed against the
+  // row instead: shifted by the row's padding and unclipped, the morph started from a jump.
+  it('makes the frame hold the photo it lays out, and lets go of it after', () => {
+    const frame = document.createElement('span');
+    frame.getBoundingClientRect = () => ({ width: 64, height: 64 }) as DOMRect;
+    const img = document.createElement('img');
+    img.dataset.morphPhoto = '';
+    Object.defineProperty(img, 'naturalWidth', { value: 800 });
+    Object.defineProperty(img, 'naturalHeight', { value: 600 });
+    frame.appendChild(img);
+    document.body.appendChild(frame);
+
+    const { laidOut, undo } = uncropMorphPhotos();
+    expect(laidOut).toBe(1);
+    expect(img.style.position).toBe('absolute');
+    expect(frame.style.position).toBe('relative');
+
+    undo();
+    expect(img.style.position).toBe('');
+    expect(frame.style.position).toBe('');
   });
 });

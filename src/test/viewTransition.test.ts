@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { transitionTheme, transitionView, vaultItemKey } from '../utils/viewTransition';
 
 const root = document.documentElement;
@@ -247,5 +247,60 @@ describe('vault transitions', () => {
     const card = item('babka');
     transitionView(() => {}, { motion: 'vault', relayout: true });
     expect(card.style.getPropertyValue('view-transition-class')).toBe('vault-item');
+  });
+});
+
+describe('recipe photo morph', () => {
+  beforeEach(() => {
+    // jsdom can't nest morphs; the browsers this path is for can.
+    vi.stubGlobal('CSS', { supports: () => true });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    Reflect.deleteProperty(document, 'startViewTransition');
+    document.body.innerHTML = '';
+    delete root.dataset.nav;
+    delete root.dataset.morph;
+  });
+
+  /** A photo in its frame, as a list row or the recipe's hero lays it out. */
+  const framedPhoto = (loaded: boolean) => {
+    const frame = document.createElement('div');
+    frame.getBoundingClientRect = () => ({ width: 56, height: 56 }) as DOMRect;
+    const img = document.createElement('img');
+    img.dataset.morphPhoto = '';
+    Object.defineProperty(img, 'naturalWidth', { value: loaded ? 800 : 0 });
+    Object.defineProperty(img, 'naturalHeight', { value: loaded ? 600 : 0 });
+    frame.appendChild(img);
+    document.body.appendChild(frame);
+    return frame;
+  };
+
+  const open = (heroLoaded: boolean) => {
+    const row = framedPhoto(true);
+    transitionView(
+      () => {
+        row.remove();
+        framedPhoto(heroLoaded);
+      },
+      { motion: 'forward', morph: 'recipe' },
+    );
+  };
+
+  // A list row's thumbnail blown up to the hero's size smears, then sharpens part way.
+  it('flies only the sharper snapshot when both ends are the whole photo', async () => {
+    const { finish } = fakeViewTransitions();
+    open(true);
+    expect(root.dataset.morphWhole).toBe('');
+
+    finish(0);
+    await settle();
+    expect(root.dataset.morphWhole).toBeUndefined();
+  });
+
+  it('keeps the cross-fade while the hero photo is still loading', () => {
+    fakeViewTransitions();
+    open(false);
+    expect(root.dataset.morphWhole).toBeUndefined();
   });
 });

@@ -54,14 +54,24 @@ const LAID_OUT = ['position', 'left', 'top', 'width', 'height', 'max-width', 'ob
 
 /**
  * Lays out each loaded photo marked data-morph-photo uncropped in its frame, for the browser to
- * snapshot. It looks exactly as before. Returns a function that puts them back.
+ * snapshot. It looks exactly as before. Returns how many it laid out (a photo still loading is
+ * left as it is) and a function that puts them back.
  */
-export function uncropMorphPhotos(): () => void {
+export function uncropMorphPhotos(): { laidOut: number; undo: () => void } {
   const photos = [...document.querySelectorAll<HTMLImageElement>('img[data-morph-photo]')];
   const done: HTMLImageElement[] = [];
+  const heldFrames: HTMLElement[] = [];
   for (const img of photos) {
-    const frame = img.parentElement?.getBoundingClientRect();
-    if (!frame || !img.naturalWidth || !img.naturalHeight || !frame.width) continue;
+    const holder = img.parentElement;
+    const frame = holder?.getBoundingClientRect();
+    if (!holder || !frame || !img.naturalWidth || !img.naturalHeight || !frame.width) continue;
+    // The photo is placed against its frame, so the frame must hold it: placed against some
+    // ancestor instead, it would sit shifted and unclipped, and the morph would start with a jump.
+    const position = getComputedStyle(holder).position;
+    if (!position || position === 'static') {
+      holder.style.position = 'relative';
+      heldFrames.push(holder);
+    }
     const box = coverBox(
       frame,
       { width: img.naturalWidth, height: img.naturalHeight },
@@ -78,7 +88,9 @@ export function uncropMorphPhotos(): () => void {
     });
     done.push(img);
   }
-  return () => {
+  const undo = () => {
     for (const img of done) for (const property of LAID_OUT) img.style.removeProperty(property);
+    for (const holder of heldFrames) holder.style.removeProperty('position');
   };
+  return { laidOut: done.length, undo };
 }
