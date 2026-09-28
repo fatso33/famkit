@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { transitionTheme, transitionView } from '../utils/viewTransition';
+import { transitionTheme, transitionView, vaultItemKey } from '../utils/viewTransition';
 
 const root = document.documentElement;
 
@@ -153,5 +153,99 @@ describe('transitionTheme', () => {
     finish(1);
     await settle();
     expect(root.dataset.themeSwap).toBeUndefined();
+  });
+});
+
+describe('vault transitions', () => {
+  afterEach(() => {
+    Reflect.deleteProperty(document, 'startViewTransition');
+    document.body.innerHTML = '';
+    delete root.dataset.nav;
+  });
+
+  const item = (id: string) => {
+    const card = document.createElement('div');
+    card.dataset.vaultItem = vaultItemKey(id);
+    card.innerHTML = '<div data-vault-photo></div><h3 data-vault-name>x</h3>';
+    document.body.appendChild(card);
+    return card;
+  };
+
+  const namesDuring = (card: HTMLElement, relayout: boolean) => {
+    let during: string[] = [];
+    transitionView(
+      () => {
+        during = [card, ...card.children].map((el) =>
+          (el as HTMLElement).style.getPropertyValue('view-transition-name'),
+        );
+      },
+      { motion: 'vault', relayout },
+    );
+    return during;
+  };
+
+  it('names each recipe, its photo and its name when the layout changes, and clears them after', async () => {
+    const { finish } = fakeViewTransitions();
+    const card = item('recipe 1/ż');
+    const during = namesDuring(card, true);
+    expect(during).toEqual([
+      'vault-item-recipe_1__',
+      'vault-photo-recipe_1__',
+      'vault-name-recipe_1__',
+    ]);
+    expect(root.dataset.nav).toBe('vault');
+
+    finish(0);
+    await settle();
+    expect(card.style.getPropertyValue('view-transition-name')).toBe('');
+    expect(card.children[0].getAttribute('style') ?? '').toBe('');
+    expect(root.dataset.nav).toBeUndefined();
+  });
+
+  // A filter or sort keeps every card's shape, so each glides whole: a third of the
+  // animations, which kept the glide from dropping frames on a slow phone.
+  it('names only the recipe itself when it is re-filtered or re-sorted', async () => {
+    const { finish } = fakeViewTransitions();
+    const card = item('babka');
+    expect(namesDuring(card, false)).toEqual(['vault-item-babka', '', '']);
+
+    finish(0);
+    await settle();
+    expect(card.style.getPropertyValue('view-transition-name')).toBe('');
+  });
+
+  it('lets a recipe that stays glide as it is, while one that arrives fades in', () => {
+    fakeViewTransitions();
+    const card = item('babka');
+    let arriving = card;
+    transitionView(() => (arriving = item('zurek')), { motion: 'vault' });
+    // The new view's names, as the transition runs. Kept: no cross-fade (index.css).
+    const kind = (el: HTMLElement) => el.style.getPropertyValue('view-transition-class');
+    expect(kind(card)).toBe('vault-item vault-kept');
+    expect(kind(arriving)).toBe('vault-item');
+  });
+
+  // A second change before the first has finished: the first one's clean-up must not strip the
+  // names the second has just given, or its recipes jump instead of gliding.
+  it("keeps a newer vault change's names when the one it interrupts ends", async () => {
+    const { finish } = fakeViewTransitions();
+    const card = item('babka');
+    transitionView(() => {}, { motion: 'vault' });
+    transitionView(() => {}, { motion: 'vault' });
+
+    finish(0);
+    await settle();
+    expect(card.style.getPropertyValue('view-transition-name')).toBe('vault-item-babka');
+
+    finish(1);
+    await settle();
+    expect(card.style.getPropertyValue('view-transition-name')).toBe('');
+  });
+
+  it('cross-fades every recipe when the layout changes, as each one changes shape', () => {
+    fakeViewTransitions();
+    const card = item('babka');
+    transitionView(() => {}, { motion: 'vault', relayout: true });
+    expect(card.style.getPropertyValue('view-transition-class')).toBe('vault-item');
   });
 });

@@ -91,4 +91,10 @@ describe('self-hosted fonts', () => {
       expect(uncovered(UI_TEXT[lang].welcomeTo, serif, 'italic'), lang).toEqual([]);
     }
   });
+
+  it("has every letter of the vault's italic kicker in the italic subset", () => {
+    for (const lang of ['en', 'pl'] as const) {
+      expect(uncovered(UI_TEXT[lang].vaultKicker, serif, 'italic'), lang).toEqual([]);
+    }
+  });
 });

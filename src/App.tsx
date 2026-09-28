@@ -20,6 +20,13 @@ import {
 } from './utils/recipeTranslation';
 import { diffRecipes, recipeAtVersion, versionSummaries } from './utils/recipeVersions';
 import { restorableRecipes } from './utils/recipeTrash';
+import { NO_FILTER } from './utils/vault';
+import {
+  getStoredVaultSort,
+  getStoredVaultView,
+  setStoredVaultSort,
+  setStoredVaultView,
+} from './services/storage';
 import {
   isOnScreen,
   transitionTheme,
@@ -40,7 +47,7 @@ import { IOSInstallModal } from './components/layout/IOSInstallModal';
 import { MakesView } from './components/makes/MakesView';
 import { SettingsView } from './components/settings/SettingsView';
 import { Toast } from './components/common/Toast';
-import { FilterType, Recipe, RecipeVersion } from './types/recipe';
+import { Recipe, RecipeVersion, VaultFilter, VaultSort, VaultView } from './types/recipe';
 import { AppPage, MainPage } from './types/navigation';
 
 // Page changes jump straight to their scroll position: html's smooth scrolling would
@@ -94,7 +101,13 @@ export default function App() {
   const [mainPage, setMainPage] = useState<MainPage>('recipes');
   // The vault's filter and each main page's scroll survive a visit to a sub-page, so going
   // back returns to the same spot (and a recipe's photo can shrink back into its card).
-  const [vaultFilter, setVaultFilter] = useState<FilterType>('all');
+  const [vaultFilter, setVaultFilter] = useState<VaultFilter>(NO_FILTER);
+  // How the vault is ordered and laid out is this person's preference, kept on the device.
+  const [vaultSort, setVaultSort] = useState<VaultSort>(getStoredVaultSort);
+  const [vaultView, setVaultView] = useState<VaultView>(getStoredVaultView);
+  // The vault's banner plays its entrance when the vault arrives, not when a recipe or
+  // Settings slides back to reveal it.
+  const [vaultEntrance, setVaultEntrance] = useState(true);
   const mainScroll = useRef<Record<MainPage, number>>({ recipes: 0, makes: 0 });
   // The recipe last opened from the vault: its card is where the photo morphs to and from.
   const [lastRecipeId, setLastRecipeId] = useState<string | null>(null);
@@ -212,6 +225,7 @@ export default function App() {
       () => {
         alongside?.();
         setBackShown(false);
+        setVaultEntrance(!goingBack && !morphsBack);
         setPage(target);
         if (target !== 'settings') setMainPage(target);
         setSelectedRecipeId(null);
@@ -220,6 +234,20 @@ export default function App() {
       { motion, morph: morphsBack ? 'recipe' : undefined, animated },
     );
   };
+
+  const changeVaultSort = (sort: VaultSort) => {
+    setVaultSort(sort);
+    setStoredVaultSort(sort);
+  };
+  const changeVaultView = (view: VaultView) => {
+    setVaultView(view);
+    setStoredVaultView(view);
+  };
+  // The photo morph reads the layout from here (index.css): a list row's photo has its own
+  // corners, and the recipe's photo flies back into it after the vault has been unmounted.
+  useEffect(() => {
+    document.documentElement.dataset.vaultView = vaultView;
+  }, [vaultView]);
 
   const latestNavigateTo = useRef(navigateTo);
   const onRecipePage = useRef(false);
@@ -355,6 +383,11 @@ export default function App() {
             language={language}
             filter={vaultFilter}
             onFilterChange={setVaultFilter}
+            sort={vaultSort}
+            onSortChange={changeVaultSort}
+            view={vaultView}
+            onViewChange={changeVaultView}
+            animateIn={vaultEntrance}
             morphRecipeId={lastRecipeId}
             onSelectRecipe={handleSelectRecipe}
             banner={

@@ -90,7 +90,9 @@ describe('floating menu', () => {
     openPreferences(menu);
     fireEvent.click(within(menu).getByRole('button', { name: t.languageToggle }));
 
-    expect(screen.getByRole('heading', { name: UI_TEXT.pl.vaultTitle, level: 1 })).toBeVisible();
+    const pl = UI_TEXT.pl;
+    const plHeading = `${pl.vaultKicker} ${pl.vaultTitle}`;
+    expect(screen.getByRole('heading', { name: plHeading, level: 1 })).toBeVisible();
     expect(screen.getByRole('status').textContent).toBe('');
   });
 
@@ -208,6 +210,7 @@ describe('floating menu', () => {
     finishClosing();
 
     fireEvent.click(screen.getByRole('button', { name: t.backToRecipes }));
-    expect(screen.getByRole('heading', { name: t.vaultTitle, level: 1 })).toBeInTheDocument();
+    const heading = `${t.vaultKicker} ${t.vaultTitle}`;
+    expect(screen.getByRole('heading', { name: heading, level: 1 })).toBeInTheDocument();
   });
 });

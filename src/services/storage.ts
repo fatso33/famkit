@@ -1,5 +1,6 @@
-import { Recipe, RecipeVersion, Language, Theme } from '../types/recipe';
+import { Recipe, RecipeVersion, Language, Theme, VaultSort, VaultView } from '../types/recipe';
 import { isSeasonPreference, SeasonPreference } from '../utils/season';
+import { isVaultSort, VAULT_SORTS } from '../utils/vault';
 
 const RECIPES_KEY = 'wandas_recipes';
 const THEME_KEY = 'wandas_theme';
@@ -8,6 +9,9 @@ const FONT_SCALE_KEY = 'wandas_font_scale';
 const SEASON_KEY = 'wandas_season';
 const LEGACY_API_KEY_STORAGE = 'wandas_gemini_api_key';
 const INSTALL_DISMISSED_KEY = 'family_kitchen_install_dismissed';
+// How this person likes the vault laid out and ordered, kept per device.
+const VAULT_VIEW_KEY = 'family_kitchen_vault_view';
+const VAULT_SORT_KEY = 'family_kitchen_vault_sort';
 // Earlier recipe versions, only when there is no cloud (local dev). With Firebase they live in
 // Firestore, whose offline cache already covers them.
 const LOCAL_VERSIONS_KEY = 'family_kitchen_versions';
@@ -132,4 +136,41 @@ export function isInstallBannerDismissed(): boolean {
 export function dismissInstallBanner(): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(INSTALL_DISMISSED_KEY, 'true');
+}
+
+function readSetting(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeSetting(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    console.warn(`Could not remember the vault setting ${key} on this device:`, e);
+  }
+}
+
+export function getStoredVaultView(): VaultView {
+  if (typeof window === 'undefined') return 'cards';
+  return readSetting(VAULT_VIEW_KEY) === 'list' ? 'list' : 'cards';
+}
+
+export function setStoredVaultView(view: VaultView): void {
+  if (typeof window === 'undefined') return;
+  writeSetting(VAULT_VIEW_KEY, view);
+}
+
+export function getStoredVaultSort(): VaultSort {
+  if (typeof window === 'undefined') return VAULT_SORTS[0];
+  const value = readSetting(VAULT_SORT_KEY);
+  return isVaultSort(value) ? value : VAULT_SORTS[0];
+}
+
+export function setStoredVaultSort(sort: VaultSort): void {
+  if (typeof window === 'undefined') return;
+  writeSetting(VAULT_SORT_KEY, sort);
 }

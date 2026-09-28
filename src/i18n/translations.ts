@@ -1,4 +1,4 @@
-import { Language } from '../types/recipe';
+import { Language, RecipeCategory, VaultSort } from '../types/recipe';
 import type { Season } from '../utils/season';
 
 /** Polish noun form for a count: 1 składnik, 2–4 (and 22–24, …) składniki, else składników. */
@@ -10,12 +10,29 @@ function plPlural(n: number, one: string, few: string, many: string): string {
 }
 
 export interface UiTranslations {
+  /** The vault's heading reads "{vaultKicker} {vaultTitle}"; the pinned bar shows the title. */
+  vaultKicker: string;
   vaultTitle: string;
   vaultSubtitle: string;
+  vaultCaption: (recipes: number, cooks: number) => string;
   allRecipes: string;
-  breads: string;
-  heirlooms: string;
-  recent: string;
+  recipeCategories: Record<RecipeCategory, string>;
+  categoryLabel: string;
+  vaultSorts: Record<VaultSort, string>;
+  openSearch: string;
+  searchPlaceholder: string;
+  closeSearch: string;
+  filterRecipes: string;
+  sortRecipes: string;
+  sortBy: string;
+  heirloomsOnly: string;
+  removeFilter: (label: string) => string;
+  recipeLayout: string;
+  layoutCards: string;
+  layoutList: string;
+  recipesShown: (n: number) => string;
+  noMatches: string;
+  showAllRecipes: string;
   heirloomBadge: string;
   familyBadge: string;
   viewRecipe: string;
@@ -193,13 +210,47 @@ export interface UiTranslations {
 
 export const UI_TEXT: Record<Language, UiTranslations> = {
   en: {
-    vaultTitle: 'Family Recipe Vault',
+    vaultKicker: 'The Family',
+    vaultTitle: 'Recipe Vault',
     vaultSubtitle:
       'Heirloom family recipes crafted with precision, love, and time-honored tradition.',
-    allRecipes: 'All Recipes',
-    breads: 'Artisan Breads',
-    heirlooms: 'Heirlooms',
-    recent: 'Recent Additions',
+    vaultCaption: (recipes: number, cooks: number) =>
+      `${recipes} recipe${recipes === 1 ? '' : 's'} from ${cooks} cook${cooks === 1 ? '' : 's'}`,
+    allRecipes: 'All recipes',
+    recipeCategories: {
+      breakfast: 'Breakfast',
+      soups: 'Soups',
+      mains: 'Mains',
+      sides: 'Sides & salads',
+      breads: 'Breads & baking',
+      cakes: 'Cakes & desserts',
+      preserves: 'Preserves',
+      drinks: 'Drinks',
+      other: 'Other',
+    },
+    categoryLabel: 'Category',
+    vaultSorts: {
+      newest: 'Newest first',
+      az: 'A to Z',
+      quickest: 'Quickest first',
+      updated: 'Recently changed',
+      cook: 'By cook',
+      category: 'By category',
+    },
+    openSearch: 'Search recipes',
+    searchPlaceholder: 'Recipes, cooks, ingredients…',
+    closeSearch: 'Close search',
+    filterRecipes: 'Filter recipes',
+    sortRecipes: 'Sort recipes',
+    sortBy: 'Sort by',
+    heirloomsOnly: 'Heirlooms only',
+    removeFilter: (label: string) => `Remove filter: ${label}`,
+    recipeLayout: 'Recipe layout',
+    layoutCards: 'Cards',
+    layoutList: 'List',
+    recipesShown: (n: number) => `${n} recipe${n === 1 ? '' : 's'}`,
+    noMatches: 'No recipes match that.',
+    showAllRecipes: 'Show all recipes',
     heirloomBadge: 'Heirloom',
     familyBadge: 'Family Recipe',
     viewRecipe: 'View Recipe →',
@@ -380,12 +431,46 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     recaptchaNoticeEnd: ' apply.',
   },
   pl: {
-    vaultTitle: 'Skarbiec Przepisów Rodzinnych',
+    vaultKicker: 'Rodzinny',
+    vaultTitle: 'Skarbiec przepisów',
     vaultSubtitle: 'Dziedzictwo kulinarnych sekretów przekazywane z pokolenia na pokolenie.',
+    vaultCaption: (recipes: number, cooks: number) =>
+      `${recipes} ${plPlural(recipes, 'przepis', 'przepisy', 'przepisów')} od ${cooks} ${cooks === 1 ? 'osoby' : 'osób'}`,
     allRecipes: 'Wszystkie przepisy',
-    breads: 'Chleby rzemieślnicze',
-    heirlooms: 'Z tradycją',
-    recent: 'Nowe przepisy',
+    recipeCategories: {
+      breakfast: 'Śniadania',
+      soups: 'Zupy',
+      mains: 'Dania główne',
+      sides: 'Dodatki i sałatki',
+      breads: 'Pieczywo i wypieki',
+      cakes: 'Ciasta i desery',
+      preserves: 'Przetwory',
+      drinks: 'Napoje',
+      other: 'Inne',
+    },
+    categoryLabel: 'Kategoria',
+    vaultSorts: {
+      newest: 'Najnowsze',
+      az: 'Alfabetycznie',
+      quickest: 'Najszybsze',
+      updated: 'Ostatnio zmienione',
+      cook: 'Według autora',
+      category: 'Według kategorii',
+    },
+    openSearch: 'Szukaj przepisów',
+    searchPlaceholder: 'Przepisy, autorzy, składniki…',
+    closeSearch: 'Zamknij wyszukiwanie',
+    filterRecipes: 'Filtruj przepisy',
+    sortRecipes: 'Sortuj przepisy',
+    sortBy: 'Sortuj',
+    heirloomsOnly: 'Tylko z tradycją',
+    removeFilter: (label: string) => `Usuń filtr: ${label}`,
+    recipeLayout: 'Układ przepisów',
+    layoutCards: 'Karty',
+    layoutList: 'Lista',
+    recipesShown: (n: number) => `${n} ${plPlural(n, 'przepis', 'przepisy', 'przepisów')}`,
+    noMatches: 'Żaden przepis tu nie pasuje.',
+    showAllRecipes: 'Pokaż wszystkie przepisy',
     heirloomBadge: 'Przepis z tradycją',
     familyBadge: 'Przepis Rodzinny',
     viewRecipe: 'Zobacz przepis →',

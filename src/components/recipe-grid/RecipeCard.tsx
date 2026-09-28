@@ -4,12 +4,16 @@ import { UiTranslations } from '../../i18n/translations';
 import { estimateRecipeMinutes } from '../../utils/timeEstimator';
 import { getLocalizedRecipe } from '../../hooks/useRecipes';
 import { isHeirloom } from '../../utils/ownership';
+import { vaultItemKey } from '../../utils/viewTransition';
+import { FALLBACK_RECIPE_PHOTO } from '../../utils/vault';
 
 interface RecipeCardProps {
   recipe: Recipe;
   language: Language;
   /** Its photo morphs into the recipe's hero photo and back (see transitionView). */
   isMorphTarget?: boolean;
+  /** Its place in the vault's entrance, when the page is arriving (see VaultHeader). */
+  enterIndex?: number;
   onSelect: (id: string) => void;
   t: UiTranslations;
 }
@@ -18,14 +22,12 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
   recipe: rawRecipe,
   language,
   isMorphTarget = false,
+  enterIndex,
   onSelect,
   t,
 }) => {
   const recipe = getLocalizedRecipe(rawRecipe, language) || rawRecipe;
   const estimatedTime = t.estimatedTime(estimateRecipeMinutes(recipe));
-
-  const fallbackImage =
-    'https://images.unsplash.com/photo-1589367920969-ab8e050bbb04?auto=format&fit=crop&w=1200&q=80';
 
   const badgeText = isHeirloom(rawRecipe) ? t.heirloomBadge : t.familyBadge;
   const ingCountText = t.ingredientsCount(recipe.ingredients ? recipe.ingredients.length : 0);
@@ -39,7 +41,11 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
 
   return (
     <div
-      className={`recipe-card${isMorphTarget ? ' is-morph-target' : ''}`}
+      className={`recipe-card vault-item${isMorphTarget ? ' is-morph-target' : ''}`}
+      data-vault-item={vaultItemKey(rawRecipe.id)}
+      style={
+        enterIndex === undefined ? undefined : ({ '--enter-i': enterIndex } as React.CSSProperties)
+      }
       role="button"
       tabIndex={0}
       aria-label={recipe.name}
@@ -51,9 +57,9 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
         }
       }}
     >
-      <div className="card-media">
+      <div className="card-media" data-vault-photo="">
         <img
-          src={recipe.heroImage || fallbackImage}
+          src={recipe.heroImage || FALLBACK_RECIPE_PHOTO}
           alt={recipe.name}
           // The photo coming back from the recipe must be ready to land in its card.
           loading={isMorphTarget ? 'eager' : 'lazy'}
@@ -63,7 +69,9 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
         <div className="card-badge">{badgeText}</div>
       </div>
       <div className="card-body">
-        <h3 className="card-title">{recipe.name}</h3>
+        <h3 className="card-title" data-vault-name="">
+          {recipe.name}
+        </h3>
         <div className="card-meta">
           <span>{t.byAuthor(recipe.author)}</span>
           <span aria-hidden="true">·</span>

@@ -72,7 +72,8 @@ function playAnimations() {
 }
 
 const backButton = () => screen.queryByRole('button', { name: t.backToRecipes });
-const vaultHeading = () => screen.queryByRole('heading', { name: t.vaultTitle, level: 1 });
+const vaultHeading = () =>
+  screen.queryByRole('heading', { name: `${t.vaultKicker} ${t.vaultTitle}`, level: 1 });
 
 describe('a recipe unrolling out of its photo', () => {
   beforeEach(() => {

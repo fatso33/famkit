@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, History, RotateCcw, Trash2 } from 'lucide-react';
-import { Recipe, Ingredient, Step, AuthorMode, Language, VersionSummary } from '../../types/recipe';
+import {
+  Recipe,
+  Ingredient,
+  Step,
+  AuthorMode,
+  Language,
+  RecipeCategory,
+  VersionSummary,
+} from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
 import { ImagePickerWithPreview } from './ImagePickerWithPreview';
 import { IngredientBuilder, IngredientRowState } from './IngredientBuilder';
@@ -12,6 +20,8 @@ import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { authorModeOf, resolveAuthor } from '../../utils/ownership';
 import { formatVersionDate, RecipeChanges, RestorableField } from '../../utils/recipeVersions';
 import { VersionHistorySheet } from './VersionHistorySheet';
+import { CATEGORY_ICONS } from '../recipe-grid/vaultIcons';
+import { RECIPE_CATEGORIES, isRecipeCategory } from '../../utils/vault';
 
 const DRAFT_STORAGE_KEY = 'family_kitchen_recipe_draft';
 
@@ -28,6 +38,8 @@ interface FormState {
   authorMode: AuthorMode;
   /** The typed name, used when the recipe is someone else's. */
   author: string;
+  /** Empty until picked: a new recipe, or an older one saved before categories. */
+  category: RecipeCategory | '';
   cardDescription: string;
   yieldHeader: string;
   heroImage: string;
@@ -42,6 +54,7 @@ const EMPTY_FORM: FormState = {
   title: '',
   authorMode: 'auto',
   author: '',
+  category: '',
   cardDescription: '',
   yieldHeader: 'For 1 loaf:',
   heroImage: '',
@@ -60,6 +73,7 @@ function loadInitialForm(initialRecipe?: Recipe | null): FormState {
       title: initialRecipe.name || '',
       authorMode,
       author: authorMode === 'custom' ? initialRecipe.author || '' : '',
+      category: isRecipeCategory(initialRecipe.category) ? initialRecipe.category : '',
       cardDescription: initialRecipe.cardDescription || '',
       yieldHeader: initialRecipe.yieldHeader || EMPTY_FORM.yieldHeader,
       heroImage: initialRecipe.heroImage || '',
@@ -108,6 +122,7 @@ function loadInitialForm(initialRecipe?: Recipe | null): FormState {
         // Drafts from before the author choice only have a typed name.
         authorMode: parsed.authorMode ?? (parsed.author ? 'custom' : 'auto'),
         author: parsed.author || '',
+        category: isRecipeCategory(parsed.category) ? parsed.category : '',
         cardDescription: parsed.cardDescription || '',
         yieldHeader: parsed.yieldHeader || EMPTY_FORM.yieldHeader,
         heroImage: parsed.heroImage || '',
@@ -224,6 +239,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   // With nobody signed in there is no "me" to credit, so the author is always typed.
   const authorMode: AuthorMode = currentUser ? chosenAuthorMode : 'custom';
   const [author, setAuthor] = useState(initial.author);
+  const [category, setCategory] = useState<RecipeCategory | ''>(initial.category);
   const [cardDescription, setCardDescription] = useState(initial.cardDescription);
   const [yieldHeader, setYieldHeader] = useState(initial.yieldHeader);
   const [heroImage, setHeroImage] = useState<string>(initial.heroImage);
@@ -239,6 +255,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
     setTitle(EMPTY_FORM.title);
     setAuthorMode(EMPTY_FORM.authorMode);
     setAuthor(EMPTY_FORM.author);
+    setCategory(EMPTY_FORM.category);
     setCardDescription(EMPTY_FORM.cardDescription);
     setYieldHeader(EMPTY_FORM.yieldHeader);
     setHeroImage(EMPTY_FORM.heroImage);
@@ -278,6 +295,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
       title,
       authorMode,
       author,
+      category,
       cardDescription,
       yieldHeader,
       heroImage,
@@ -297,6 +315,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
     title,
     authorMode,
     author,
+    category,
     cardDescription,
     yieldHeader,
     heroImage,
@@ -355,7 +374,8 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
       name: title.trim(),
       author: resolveAuthor(authorMode, author, currentUser),
       authorMode,
-      category: initialRecipe?.category || 'family',
+      // The form requires a pick; an older record keeps what it had until one is made.
+      category: category || initialRecipe?.category || 'other',
       heroImage: heroImage || fallbackImage,
       yieldHeader: yieldHeader.trim() || 'For 1 loaf:',
       baseYield: initialRecipe?.baseYield ?? 1,
@@ -537,6 +557,34 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
                   />
                 </div>
               )}
+            </fieldset>
+
+            {/* Category: what the vault's filter sorts it under. A new recipe must have one; an
+                older one without can still be edited, and stays under Other until it gets one. */}
+            <fieldset className="form-group category-field">
+              <legend className="form-label">{t.categoryLabel}</legend>
+              <div className="category-options">
+                {RECIPE_CATEGORIES.map((option) => {
+                  const Icon = CATEGORY_ICONS[option];
+                  return (
+                    <label
+                      key={option}
+                      className={`category-option${category === option ? ' is-active' : ''}`}
+                    >
+                      <input
+                        type="radio"
+                        name="recipeCategory"
+                        value={option}
+                        required={!isEditMode}
+                        checked={category === option}
+                        onChange={() => setCategory(option)}
+                      />
+                      <Icon size="1.15em" strokeWidth={2} aria-hidden="true" />
+                      <span>{t.recipeCategories[option]}</span>
+                    </label>
+                  );
+                })}
+              </div>
             </fieldset>
 
             {/* Description */}

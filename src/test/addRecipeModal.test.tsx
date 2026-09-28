@@ -6,6 +6,8 @@ import { Recipe } from '../types/recipe';
 
 const t = UI_TEXT.en;
 const noop = vi.fn();
+// The category options, by their label.
+const reverse = Object.fromEntries(Object.values(t.recipeCategories).map((label) => [label, true]));
 
 const recipe: Recipe = {
   id: 'custom-1',
@@ -68,6 +70,49 @@ describe('AddRecipeModal initial form', () => {
     expect(JSON.parse(localStorage.getItem('family_kitchen_recipe_draft')!).title).toBe(
       'Quick Babka',
     );
+  });
+
+  it('asks a new recipe for its category, and saves the one picked', () => {
+    const onSave = vi.fn();
+    render(<AddRecipeModal onClose={noop} onSave={onSave} t={t} />);
+    const soups = screen.getByRole('radio', { name: t.recipeCategories.soups });
+    expect(soups).toBeRequired();
+
+    fireEvent.change(screen.getByLabelText(t.recipeTitle), { target: { value: 'Żurek' } });
+    // Nobody is signed in here, so the author is typed.
+    fireEvent.change(screen.getByLabelText(t.authorNameLabel), { target: { value: 'Kasia' } });
+    fireEvent.change(screen.getByLabelText(t.ingredientNameLabel(1)), {
+      target: { value: 'Sourdough starter' },
+    });
+    fireEvent.change(screen.getByLabelText(t.stepInstructionLabel(1)), {
+      target: { value: 'Simmer.' },
+    });
+    fireEvent.click(soups);
+    fireEvent.click(screen.getByRole('button', { name: t.saveToVault }));
+    expect(onSave.mock.calls[0][0]).toMatchObject({ category: 'soups' });
+  });
+
+  it('opens an older recipe without a category unpicked, and saves it unchanged', () => {
+    const onSave = vi.fn();
+    render(<AddRecipeModal initialRecipe={recipe} onClose={noop} onSave={onSave} t={t} />);
+    for (const radio of screen.getAllByRole('radio', { name: (n) => n in reverse })) {
+      expect(radio).not.toBeChecked();
+      expect(radio).not.toBeRequired();
+    }
+    fireEvent.click(screen.getByRole('button', { name: /save/i }));
+    expect(onSave.mock.calls[0][0]).toMatchObject({ category: 'family' });
+  });
+
+  it('opens a recipe on its category', () => {
+    render(
+      <AddRecipeModal
+        initialRecipe={{ ...recipe, category: 'mains' }}
+        onClose={noop}
+        onSave={noop}
+        t={t}
+      />,
+    );
+    expect(screen.getByRole('radio', { name: t.recipeCategories.mains })).toBeChecked();
   });
 
   it('ignores drafts when editing and starts empty when creating without one', () => {

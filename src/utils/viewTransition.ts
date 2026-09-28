@@ -7,8 +7,9 @@ import { canNestMorphs, uncropMorphPhotos } from './photoMorph';
  * - back: out of one, sliding back to the left
  * - fade: between main pages, or pages at the same depth
  * - zoom: a photo opening over the page, or closing
+ * - vault: the vault's recipes re-filtered, re-sorted or re-laid out, gliding to their new places
  */
-export type NavMotion = 'forward' | 'back' | 'fade' | 'zoom';
+export type NavMotion = 'forward' | 'back' | 'fade' | 'zoom' | 'vault';
 
 /**
  * A photo that morphs between its old and new place: a recipe card's photo and the
@@ -21,6 +22,8 @@ interface Options {
   morph?: Morph;
   /** False when the browser already animated it (the iOS back swipe draws its own). */
   animated?: boolean;
+  /** The vault switches between cards and list, so recipes change shape as they glide. */
+  relayout?: boolean;
 }
 
 let current: ViewTransition | null = null;
@@ -30,7 +33,10 @@ let current: ViewTransition | null = null;
  * one; elsewhere the change simply happens. The update is flushed synchronously so the
  * browser snapshots the new view, not a half-rendered one.
  */
-export function transitionView(update: () => void, { motion, morph, animated = true }: Options) {
+export function transitionView(
+  update: () => void,
+  { motion, morph, animated = true, relayout = false }: Options,
+) {
   if (!animated || !document.startViewTransition) {
     update();
     return;
@@ -43,9 +49,13 @@ export function transitionView(update: () => void, { motion, morph, animated = t
   // The recipe photo morphs uncropped at both ends (see utils/photoMorph).
   const uncrop = morph === 'recipe' && canNestMorphs();
   const restore: (() => void)[] = uncrop ? [uncropMorphPhotos()] : [];
+  const vault = motion === 'vault';
+  const before = vault ? nameVaultItems(relayout) : null;
+  if (before) restore.push(before.clear);
   const transition = document.startViewTransition(() => {
     flushSync(update);
     if (uncrop) restore.push(uncropMorphPhotos());
+    if (before) restore.push(nameVaultItems(relayout, before.keys).clear);
   });
   current = transition;
   const cleanUp = () => {
@@ -147,4 +157,66 @@ export function isOnScreen(el: Element | null): boolean {
   if (!el) return false;
   const rect = el.getBoundingClientRect();
   return rect.bottom > 0 && rect.top < window.innerHeight && rect.width > 0;
+}
+
+/** The parts of a vault recipe that glide on their own when the vault changes (index.css). */
+const VAULT_PARTS = [
+  ['item', null],
+  ['photo', '[data-vault-photo]'],
+  ['name', '[data-vault-name]'],
+] as const;
+
+/** Which naming pass last named each part, so an older pass never clears a newer one's names. */
+const vaultNamer = new WeakMap<HTMLElement, object>();
+
+/**
+ * Names the vault's recipes on or near the screen for a view transition, so each glides from
+ * where it was to where it lands: to a new place in the order, or from a card into a list row.
+ * Only a change of layout also names each photo and name, so a card's photo shrinks into its
+ * row's; a filter or sort keeps every recipe's shape, so each glides whole, with a third of the
+ * animations. The rest fade with the page, which keeps a large vault cheap to snapshot.
+ *
+ * Called again after the change with the recipes named before it (`keys`): on a filter or sort,
+ * those that were there already look the same at both ends, so they are marked vault-kept and
+ * glide as they are, with nothing to cross-fade. Returns the recipes named and a function that
+ * removes the names again, except where a later change has named a part since: a change that
+ * interrupts another names the same elements before the first one's clean-up runs.
+ */
+export function nameVaultItems(
+  relayout: boolean,
+  before?: ReadonlySet<string>,
+): { keys: Set<string>; clear: () => void } {
+  const keys = new Set<string>();
+  const named: HTMLElement[] = [];
+  const pass = {};
+  const margin = window.innerHeight * 0.25;
+  for (const item of document.querySelectorAll<HTMLElement>('[data-vault-item]')) {
+    const { top, bottom } = item.getBoundingClientRect();
+    const key = item.dataset.vaultItem;
+    if (!key || bottom < -margin || top > window.innerHeight + margin) continue;
+    keys.add(key);
+    const kept = !relayout && before?.has(key) ? ' vault-kept' : '';
+    for (const [part, selector] of relayout ? VAULT_PARTS : VAULT_PARTS.slice(0, 1)) {
+      const el = selector ? item.querySelector<HTMLElement>(selector) : item;
+      if (!el) continue;
+      el.style.setProperty('view-transition-name', `vault-${part}-${key}`);
+      el.style.setProperty('view-transition-class', `vault-${part}${kept}`);
+      vaultNamer.set(el, pass);
+      named.push(el);
+    }
+  }
+  const clear = () => {
+    for (const el of named) {
+      if (vaultNamer.get(el) !== pass) continue;
+      vaultNamer.delete(el);
+      el.style.removeProperty('view-transition-name');
+      el.style.removeProperty('view-transition-class');
+    }
+  };
+  return { keys, clear };
+}
+
+/** A recipe id as a view transition name can carry it. */
+export function vaultItemKey(id: string): string {
+  return id.replace(/[^\w-]/g, '_');
 }

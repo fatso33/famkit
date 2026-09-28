@@ -37,6 +37,7 @@ function fillAndSave() {
   fireEvent.change(screen.getByLabelText(t.stepInstructionLabel(1)), {
     target: { value: 'Bake.' },
   });
+  fireEvent.click(screen.getByRole('radio', { name: t.recipeCategories.cakes }));
   fireEvent.click(screen.getByRole('button', { name: t.saveToVault }));
 }
 
@@ -79,7 +80,7 @@ describe('recipe author choice', () => {
   it('asks for a name when nobody is signed in to credit', () => {
     renderForm(null);
 
-    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: t.authorMe })).not.toBeInTheDocument();
     expect(screen.getByLabelText(t.authorNameLabel)).toBeRequired();
   });
 });

@@ -9,6 +9,10 @@ import {
   getStoredFontScale,
   setStoredFontScale,
   clearLegacyApiKey,
+  getStoredVaultSort,
+  setStoredVaultSort,
+  getStoredVaultView,
+  setStoredVaultView,
 } from '../services/storage';
 import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 import { Recipe } from '../types/recipe';
@@ -73,6 +77,19 @@ describe('storage service', () => {
 
     setStoredFontScale(0.2); // Below min 0.85
     expect(getStoredFontScale()).toBe(0.85);
+  });
+
+  it("keeps the vault's sort and layout, falling back to newest first as cards", () => {
+    expect(getStoredVaultSort()).toBe('newest');
+    expect(getStoredVaultView()).toBe('cards');
+
+    setStoredVaultSort('cook');
+    setStoredVaultView('list');
+    expect(getStoredVaultSort()).toBe('cook');
+    expect(getStoredVaultView()).toBe('list');
+
+    localStorage.setItem('family_kitchen_vault_sort', 'by-colour');
+    expect(getStoredVaultSort()).toBe('newest');
   });
 
   it('clears a Gemini API key left over from the old Settings field', () => {

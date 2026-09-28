@@ -88,7 +88,11 @@ export interface Recipe {
   ownerEmail?: string;
   /** Their Google name when they added it, shown as "added by" on someone else's recipe. */
   ownerName?: string;
-  category: 'breads' | 'heirloom' | 'family' | string;
+  /**
+   * A RecipeCategory. Older records hold 'family' or 'heirloom', which the vault files under
+   * 'other' until the owner picks a category (utils/vault).
+   */
+  category: RecipeCategory | string;
   version?: number;
   /** The author's optional note on what the current version changed. */
   changeNote?: string;
@@ -118,7 +122,23 @@ export interface Recipe {
 export type AuthorMode = 'auto' | 'custom';
 export type Language = 'en' | 'pl';
 export type Theme = 'light' | 'dark';
-export type FilterType = 'all' | 'breads' | 'heirloom' | 'recent';
+/** What a recipe is, for filtering the vault. The order is the order the filter lists them in. */
+export type RecipeCategory =
+  'breakfast' | 'soups' | 'mains' | 'sides' | 'breads' | 'cakes' | 'preserves' | 'drinks' | 'other';
+
+/** How the vault orders its recipes. */
+export type VaultSort = 'newest' | 'az' | 'quickest' | 'updated' | 'cook' | 'category';
+
+/** How the vault lays its recipes out: photo cards, or a compact list. */
+export type VaultView = 'cards' | 'list';
+
+/** Which recipes the vault shows. */
+export interface VaultFilter {
+  category: RecipeCategory | 'all';
+  heirloomsOnly: boolean;
+  /** Search text, matched against names, cooks and ingredients. */
+  query: string;
+}
 
 export interface ParsedIngredientRow {
   name: string;

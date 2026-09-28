@@ -86,7 +86,7 @@ describe('back gesture', () => {
     expect(heading()).toHaveTextContent('Babka');
 
     await swipeBack();
-    expect(heading()).toHaveTextContent(t.vaultTitle);
+    expect(heading()).toHaveTextContent(`${t.vaultKicker} ${t.vaultTitle}`);
   });
 
   it('leaves the app from Makes, since it is a main page', async () => {
@@ -114,7 +114,7 @@ describe('back gesture', () => {
     openMenuItem(t.settings);
 
     await swipeBack();
-    expect(heading()).toHaveTextContent(t.vaultTitle);
+    expect(heading()).toHaveTextContent(`${t.vaultKicker} ${t.vaultTitle}`);
   });
 
   it('closes a photo first, then goes back to the vault', async () => {
@@ -129,7 +129,7 @@ describe('back gesture', () => {
     expect(heading()).toHaveTextContent('Babka');
 
     await swipeBack();
-    expect(heading()).toHaveTextContent(t.vaultTitle);
+    expect(heading()).toHaveTextContent(`${t.vaultKicker} ${t.vaultTitle}`);
   });
 
   it("drops its history entries when the app's own buttons close things", async () => {
@@ -166,7 +166,7 @@ describe('back gesture', () => {
     fireEvent.click(within(editor()!).getByRole('button', { name: t.closeDialog }));
     await historyAt(1);
     await swipeBack();
-    expect(heading()).toHaveTextContent(t.vaultTitle);
+    expect(heading()).toHaveTextContent(`${t.vaultKicker} ${t.vaultTitle}`);
   });
 
   it('keeps a new recipe draft open when going back from the vault', async () => {

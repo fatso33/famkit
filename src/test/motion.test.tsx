@@ -63,7 +63,13 @@ describe('motion', () => {
 
   it("returns to the vault's filter and scroll position after a recipe", () => {
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: t.breads }));
+    fireEvent.click(screen.getByRole('button', { name: t.filterRecipes }));
+    const filter = screen.getByRole('dialog', { name: t.filterRecipes });
+    fireEvent.click(
+      within(filter).getByRole('button', {
+        name: (name) => name.startsWith(t.recipeCategories.breads),
+      }),
+    );
     expect(card('Pierogi')).toBeNull();
 
     Object.defineProperty(window, 'scrollY', { value: 640, configurable: true });
