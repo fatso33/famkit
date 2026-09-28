@@ -839,9 +839,11 @@
         justify-content: center;
       }
 
-      .image-modal-btn:hover {
-        background: rgba(255, 255, 255, 0.25);
-        border-color: rgba(255, 255, 255, 0.4);
+      @media (hover: hover) {
+        .image-modal-btn:hover {
+          background: rgba(255, 255, 255, 0.25);
+          border-color: rgba(255, 255, 255, 0.4);
+        }
       }
 
       .image-modal-content {
@@ -880,9 +882,11 @@
         transition: transform 0.18s ease, box-shadow 0.18s ease;
       }
 
-      .step-visual-frame.clickable-zoom:hover {
-        transform: scale(1.008);
-        box-shadow: var(--shadow-md);
+      @media (hover: hover) {
+        .step-visual-frame.clickable-zoom:hover {
+          transform: scale(1.008);
+          box-shadow: var(--shadow-md);
+        }
       }
 
       .zoom-badge-hint {
@@ -924,9 +928,11 @@
         min-height: 44px;
       }
 
-      .btn:hover {
-        background: var(--bg-card);
-        border-color: var(--border-strong);
+      @media (hover: hover) {
+        .btn:hover {
+          background: var(--bg-card);
+          border-color: var(--border-strong);
+        }
       }
 
       .btn-primary {
@@ -935,9 +941,11 @@
         border-color: var(--accent);
       }
 
-      .btn-primary:hover {
-        background: var(--accent-hover);
-        border-color: var(--accent-hover);
+      @media (hover: hover) {
+        .btn-primary:hover {
+          background: var(--accent-hover);
+          border-color: var(--accent-hover);
+        }
       }
 
       .btn-icon {
@@ -1005,11 +1013,17 @@
         color: inherit;
       }
 
-      .recipe-card:hover,
       .recipe-card:focus-visible {
         transform: translateY(-4px);
         box-shadow: var(--shadow-md);
         border-color: var(--border-strong);
+      }
+      @media (hover: hover) {
+        .recipe-card:hover {
+          transform: translateY(-4px);
+          box-shadow: var(--shadow-md);
+          border-color: var(--border-strong);
+        }
       }
 
       .recipe-card:focus-visible {
@@ -2279,8 +2293,10 @@
         -webkit-tap-highlight-color: transparent;
       }
 
-      .scaler-btn:hover {
-        border-color: color-mix(in srgb, var(--accent) 50%, var(--key-edge));
+      @media (hover: hover) {
+        .scaler-btn:hover {
+          border-color: color-mix(in srgb, var(--accent) 50%, var(--key-edge));
+        }
       }
 
       .scaler-btn:active {
@@ -2356,8 +2372,10 @@
         transition: background-color 0.15s ease;
       }
 
-      .ingredient-table tbody tr:hover {
-        background-color: var(--bg-card);
+      @media (hover: hover) {
+        .ingredient-table tbody tr:hover {
+          background-color: var(--bg-card);
+        }
       }
 
       /* Fixed px spacing on phones so large text keeps its room instead of growing the padding too. */
@@ -3048,8 +3066,10 @@
         transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
       }
 
-      button.version-card:hover:not(:disabled) {
-        background: var(--menu-well-hover);
+      @media (hover: hover) {
+        button.version-card:hover:not(:disabled) {
+          background: var(--menu-well-hover);
+        }
       }
 
       button.version-card:active:not(:disabled) {
@@ -3158,8 +3178,10 @@
         opacity: 1;
       }
 
-      .form-control:hover:not(:focus) {
-        border-color: var(--text-muted);
+      @media (hover: hover) {
+        .form-control:hover:not(:focus) {
+          border-color: var(--text-muted);
+        }
       }
 
       .form-control:focus {
@@ -3225,9 +3247,11 @@
         inset: -9px;
       }
 
-      .image-delete-badge:hover {
-        background: #b91c1c;
-        transform: scale(1.15);
+      @media (hover: hover) {
+        .image-delete-badge:hover {
+          background: #b91c1c;
+          transform: scale(1.15);
+        }
       }
 
       .image-picker-actions {
@@ -3253,9 +3277,11 @@
         min-height: 44px;
       }
 
-      .btn-camera-capture:hover {
-        background: var(--bg-card-hover);
-        border-color: var(--accent);
+      @media (hover: hover) {
+        .btn-camera-capture:hover {
+          background: var(--bg-card-hover);
+          border-color: var(--accent);
+        }
       }
 
       /* Step Builder */
@@ -3313,10 +3339,12 @@
         transition: all 0.15s;
       }
 
-      .btn-step-action:hover:not(:disabled) {
-        border-color: var(--accent);
-        color: var(--accent);
-        background: var(--accent-subtle);
+      @media (hover: hover) {
+        .btn-step-action:hover:not(:disabled) {
+          border-color: var(--accent);
+          color: var(--accent);
+          background: var(--accent-subtle);
+        }
       }
 
       .btn-step-action:disabled {
@@ -3324,10 +3352,12 @@
         cursor: not-allowed;
       }
 
-      .btn-step-action.danger:hover:not(:disabled) {
-        border-color: #dc2626;
-        color: #dc2626;
-        background: #fee2e2;
+      @media (hover: hover) {
+        .btn-step-action.danger:hover:not(:disabled) {
+          border-color: #dc2626;
+          color: #dc2626;
+          background: #fee2e2;
+        }
       }
 
       .btn-add-step {
@@ -3348,9 +3378,11 @@
         margin-top: 0.5rem;
       }
 
-      .btn-add-step:hover {
-        background: var(--accent-subtle);
-        border-color: var(--accent);
+      @media (hover: hover) {
+        .btn-add-step:hover {
+          background: var(--accent-subtle);
+          border-color: var(--accent);
+        }
       }
 
       /* Row-by-Row Ingredient Builder */
@@ -3383,15 +3415,19 @@
         transition: all 0.15s;
       }
 
-      .btn-row-action:hover:not(:disabled) {
-        border-color: var(--accent);
-        color: var(--accent);
+      @media (hover: hover) {
+        .btn-row-action:hover:not(:disabled) {
+          border-color: var(--accent);
+          color: var(--accent);
+        }
       }
 
-      .btn-row-action.danger:hover {
-        border-color: #dc2626;
-        color: #dc2626;
-        background: #fee2e2;
+      @media (hover: hover) {
+        .btn-row-action.danger:hover {
+          border-color: #dc2626;
+          color: #dc2626;
+          background: #fee2e2;
+        }
       }
 
       /* Step Note Callout Pill in Recipe View */
@@ -3554,9 +3590,11 @@
         transition: background-color 0.15s ease;
       }
 
-      .ios-modal-close:hover {
-        background: var(--bg-card);
-        color: var(--text-primary);
+      @media (hover: hover) {
+        .ios-modal-close:hover {
+          background: var(--bg-card);
+          color: var(--text-primary);
+        }
       }
 
       .ios-modal-body {
@@ -3689,9 +3727,11 @@
         transition: background-color 0.15s ease, color 0.15s ease;
       }
 
-      .install-card-close:hover {
-        background: var(--bg-card-hover);
-        color: var(--text-primary);
+      @media (hover: hover) {
+        .install-card-close:hover {
+          background: var(--bg-card-hover);
+          color: var(--text-primary);
+        }
       }
 
       /* Empty state (Makes) */
@@ -4035,8 +4075,10 @@
         transition: background-color 0.15s ease;
       }
 
-      .trash-toggle:hover {
-        background: var(--menu-well-hover);
+      @media (hover: hover) {
+        .trash-toggle:hover {
+          background: var(--menu-well-hover);
+        }
       }
 
       .trash-toggle:focus-visible {
@@ -4144,8 +4186,10 @@
         border-color: color-mix(in srgb, #f2b8b5 35%, transparent);
       }
 
-      .btn-danger-quiet:hover {
-        background: color-mix(in srgb, #b3261e 8%, transparent);
+      @media (hover: hover) {
+        .btn-danger-quiet:hover {
+          background: color-mix(in srgb, #b3261e 8%, transparent);
+        }
       }
 
       /* Toast with an action (Undo) takes taps */
@@ -4244,7 +4288,9 @@
           transform 0.3s var(--spring-soft);
       }
 
-      .fab-back:hover { background: var(--bg-card-hover); }
+      @media (hover: hover) {
+        .fab-back:hover { background: var(--bg-card-hover); }
+      }
       .fab-back:active { transform: scale(0.92); }
 
       .fab-back:focus-visible {
@@ -4317,7 +4363,9 @@
           transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
 
-      .fab-menu:hover { background: var(--accent-hover); }
+      @media (hover: hover) {
+        .fab-menu:hover { background: var(--accent-hover); }
+      }
       .fab-menu:active { transform: scale(0.94); }
 
       .fab-menu:focus-visible {
@@ -4526,9 +4574,11 @@
         transition: background-color 0.18s ease, color 0.18s ease;
       }
 
-      .fk-menu-item:hover,
-      .fk-menu-action:hover {
-        background: var(--menu-well);
+      @media (hover: hover) {
+        .fk-menu-item:hover,
+        .fk-menu-action:hover {
+          background: var(--menu-well);
+        }
       }
 
       .fk-menu-item:focus-visible,
@@ -4575,8 +4625,10 @@
         color: var(--on-accent);
       }
 
-      .fk-menu-current :is(.fk-menu-item, .fk-menu-action):hover {
-        background: color-mix(in srgb, var(--accent) 9%, transparent);
+      @media (hover: hover) {
+        .fk-menu-current :is(.fk-menu-item, .fk-menu-action):hover {
+          background: color-mix(in srgb, var(--accent) 9%, transparent);
+        }
       }
 
       /* Preference rows */
@@ -4743,8 +4795,10 @@
         transition: border-color 0.15s ease, box-shadow 0.15s ease;
       }
 
-      .fk-stepper button:hover::before {
-        border-color: color-mix(in srgb, var(--accent) 50%, var(--key-edge));
+      @media (hover: hover) {
+        .fk-stepper button:hover::before {
+          border-color: color-mix(in srgb, var(--accent) 50%, var(--key-edge));
+        }
       }
 
       .fk-stepper button:active { scale: 0.92; }
