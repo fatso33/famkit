@@ -89,7 +89,8 @@ describe('parseIngredientRow', () => {
     expect(amountAt(0.75)).toBe('1 ½ łyżeczki');
     expect(amountAt(2)).toBe('4 łyżeczki');
     expect(amountAt(2.5)).toBe('5 łyżeczek');
-    expect(amountAt(6)).toBe('12 łyżeczek');
+    // 12 teaspoons read better as tablespoons.
+    expect(amountAt(6)).toBe('4 łyżki');
     expect(amountAt(11)).toBe('22 łyżeczki');
   });
 

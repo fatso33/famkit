@@ -10,13 +10,19 @@ import { polishUnit } from './polish';
  * Results read like a cook would write them: spoons and cups land on kitchen fractions, grams
  * on whole numbers, units move up or down when that reads better (6 tsp → 2 Tbsp,
  * 1500 g → 1.5 kg), and a count of whole things never becomes "1 ½" (it becomes "1–2").
+ * `stored` gives the forms an older row kept for its own unit, for units the app doesn't know.
  */
-export function scaleAmountText(text: string, ratio: number, lang: Language = 'en'): string {
+export function scaleAmountText(
+  text: string,
+  ratio: number,
+  lang: Language = 'en',
+  stored: StoredUnitForms = {},
+): string {
   if (ratio === 1 || !text) return text;
   const first = findAmount(text, 0);
   if (!first) return text;
 
-  const lead = scaled(first, ratio, lang);
+  const lead = scaled(first, ratio, lang, stored);
   let out = text.slice(0, first.start) + lead.text;
   let pos = first.end;
   // Equivalents given alongside: "400 g/14oz", "1 cup (250 ml)", "1.5 cups or 375ml".
@@ -30,11 +36,11 @@ export function scaleAmountText(text: string, ratio: number, lang: Language = 'e
       : null;
     if (size) {
       const end = next.end + size[0].length;
-      out += text.slice(pos, end - size[1].length) + inflect(size[1], lead.shown, lang);
+      out += text.slice(pos, end - size[1].length) + inflect(size[1], lead.shown, lang, stored);
       pos = end;
       break;
     }
-    out += text.slice(pos, next.start) + scaled(next, ratio, lang).text;
+    out += text.slice(pos, next.start) + scaled(next, ratio, lang, stored).text;
     pos = next.end;
   }
   return out + text.slice(pos);
@@ -215,9 +221,24 @@ const EN_SINGULARS = Object.fromEntries(Object.entries(EN_PLURALS).map(([s, p]) 
 const matchCase = (word: string, like: string) =>
   /^\p{Lu}/u.test(like) ? word[0].toUpperCase() + word.slice(1) : word;
 
-function inflect(unit: string, shown: number, lang: Language): string {
+/**
+ * The forms an older row stored for its unit: `unit` for one, `renderUnit` for more (in Polish,
+ * up to 4) and `renderUnitPlural` for 5 and up in Polish.
+ */
+export interface StoredUnitForms {
+  unit?: string;
+  renderUnit?: string;
+  renderUnitPlural?: string;
+}
+
+function inflect(unit: string, shown: number, lang: Language, stored: StoredUnitForms): string {
   if (!unit) return unit;
-  if (lang === 'pl') return polishUnit(shown, unit);
+  // Only the row's own unit has stored forms, not an equivalent or a tidier unit.
+  const own = [stored.unit, stored.renderUnit, stored.renderUnitPlural].includes(unit)
+    ? stored
+    : {};
+  if (lang === 'pl') return polishUnit(shown, unit, own);
+  if (own.renderUnit) return shown > 1 ? own.renderUnit : (own.unit ?? unit);
   const lower = unit.toLowerCase();
   const plural = shown > 1;
   const word = plural ? EN_PLURALS[lower] : EN_SINGULARS[lower];
@@ -225,7 +246,8 @@ function inflect(unit: string, shown: number, lang: Language): string {
 }
 
 // Moves to the unit that reads better once scaled: 6 tsp → 2 Tbsp, 4 Tbsp → ¼ cup,
-// ¼ cup halved → 2 Tbsp, 1500 g → 1.5 kg, 0.5 kg → 500 g. Only to amounts a cook can measure.
+// ¼ cup halved → 2 Tbsp, 1500 g → 1.5 kg (1125 ml stays), 0.5 kg → 500 g. Only to amounts a
+// cook can measure.
 function tidyUnit(value: number, unit: string, lang: Language): { value: number; unit: string } {
   const { family } = unitInfo(unit);
   const lower = unit.toLowerCase();
@@ -258,10 +280,12 @@ function tidyUnit(value: number, unit: string, lang: Language): { value: number;
         return { value: value * 16, unit: spoon('tbsp') };
       break;
     case 'g':
-      if (value >= 1000 && lower === 'g') return { value: value / 1000, unit: 'kg' };
+      if (value >= 1000 && lower === 'g' && isStep(value, 10))
+        return { value: value / 1000, unit: 'kg' };
       break;
     case 'ml':
-      if (value >= 1000) return { value: value / 1000, unit: lang === 'pl' ? 'l' : 'L' };
+      if (value >= 1000 && isStep(value, 10))
+        return { value: value / 1000, unit: lang === 'pl' ? 'l' : 'L' };
       break;
     case 'kg':
       if (value < 1) return { value: value * 1000, unit: 'g' };
@@ -327,7 +351,12 @@ function write(value: number, style: Style, kind: Kind, lang: Language): string 
 const shownValue = (text: string): number => readNumber(text).value;
 
 /** The amount scaled, and the number shown (for the words that follow it). */
-function scaled(a: Amount, ratio: number, lang: Language): { text: string; shown: number } {
+function scaled(
+  a: Amount,
+  ratio: number,
+  lang: Language,
+  stored: StoredUnitForms,
+): { text: string; shown: number } {
   const low = readNumber(a.low);
   const high = a.high === undefined ? undefined : readNumber(a.high);
   const kind = unitInfo(a.unit).kind;
@@ -346,7 +375,7 @@ function scaled(a: Amount, ratio: number, lang: Language): { text: string; shown
     const loText = write(lo, low.style, kind, lang);
     const shown = shownValue(hiText);
     return {
-      text: `${loText}${a.join}${hiText}${a.space}${inflect(a.unit, shown, lang)}`,
+      text: `${loText}${a.join}${hiText}${a.space}${inflect(a.unit, shown, lang, stored)}`,
       shown,
     };
   }
@@ -356,7 +385,7 @@ function scaled(a: Amount, ratio: number, lang: Language): { text: string; shown
     // 3 eggs halved: "1–2 eggs", not "1 ½ eggs".
     const hi = Math.ceil(value);
     return {
-      text: `${Math.floor(value)}–${hi}${a.space}${inflect(a.unit, hi, lang)}`,
+      text: `${Math.floor(value)}–${hi}${a.space}${inflect(a.unit, hi, lang, stored)}`,
       shown: hi,
     };
   }
@@ -365,5 +394,5 @@ function scaled(a: Amount, ratio: number, lang: Language): { text: string; shown
   const text = write(tidy.value, low.style, tidyKind, lang);
   const shown = shownValue(text);
   // A new unit after a bare number ("400g" → "1.2kg") keeps the typed spacing.
-  return { text: `${text}${a.space}${inflect(tidy.unit, shown, lang)}`, shown };
+  return { text: `${text}${a.space}${inflect(tidy.unit, shown, lang, stored)}`, shown };
 }

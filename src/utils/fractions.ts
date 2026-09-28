@@ -108,7 +108,8 @@ export function parseIngredientRow(
       name = lang === 'pl' ? 'Składnik' : 'Ingredient';
     }
 
-    const currentQty = Number(ing.qty) * scaleRatio;
+    // Written out as the recipe gives it; scaling happens below, the same as for typed amounts.
+    const currentQty = Number(ing.qty);
     const formattedQty = formatFraction(currentQty);
 
     let unitText = ing.unit || '';
@@ -133,7 +134,7 @@ export function parseIngredientRow(
 
     let altString = '';
     if (ing.altQty) {
-      const currentAlt = Math.round(Number(ing.altQty) * scaleRatio);
+      const currentAlt = Math.round(Number(ing.altQty));
       altString =
         lang === 'pl'
           ? ` lub ${currentAlt}${ing.altUnit || 'ml'}`
@@ -177,8 +178,9 @@ export function parseIngredientRow(
     .replace(/[-–—:]\s*$/, '')
     .trim();
   amount = extractBrackets(amount).trim();
-  // Amounts typed as text (the current editor, translations) scale as the cook wrote them.
-  if (!hasQty) amount = scaleAmountText(amount, scaleRatio, lang);
+  // Every amount scales from the way it reads, so older rows with a quantity field get the
+  // same rounding and tidier units as amounts typed in the current editor.
+  amount = scaleAmountText(amount, scaleRatio, lang, hasQty ? ing : {});
 
   const note = ing.note?.trim();
   const substitute = ing.substitute?.trim();

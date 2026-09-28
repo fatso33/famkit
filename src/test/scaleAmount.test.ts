@@ -80,6 +80,7 @@ describe('scaleAmountText', () => {
     expect(x('1 Tbsp', 0.5)).toBe('1 ½ tsp');
     expect(x('1 kg / 2 lb', 0.5)).toBe('500 g / 1 lb');
     expect(x('600 ml', 2)).toBe('1.2 L');
+    expect(x('375ml', 3)).toBe('1125ml');
   });
 
   it('keeps whole things whole', () => {

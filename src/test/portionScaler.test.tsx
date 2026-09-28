@@ -4,6 +4,7 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import { IngredientsTable } from '../components/recipe-detail/IngredientsTable';
 import { UI_TEXT } from '../i18n/translations';
 import { Ingredient, Language } from '../types/recipe';
+import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 
 // Rows as the current editor saves them: the amount is text, with no quantity field.
 const mapoTofu: Ingredient[] = [
@@ -88,5 +89,51 @@ describe('portion scaler', () => {
     fireEvent.click(more);
     fireEvent.click(more);
     expect(amounts()).toEqual(['10 łyżek', '5 ząbków']);
+  });
+
+  it("scales Wanda's rows the same way, from the amounts her recipe gives", () => {
+    render(<Scaled ingredients={WANDAS_CHEESE_BREAD.ingredients} yieldHeader="For 1 loaf:" />);
+    const more = screen.getByRole('button', { name: t.increasePortion });
+    expect(amounts()).toEqual([
+      '450g',
+      '2 teaspoons',
+      '1 ½ teaspoons',
+      '1 ½ cups or 375ml',
+      '250g',
+      '½ cup crushed',
+    ]);
+    fireEvent.click(more);
+    expect(amounts()).toEqual([
+      '900g',
+      '4 teaspoons',
+      '1 tablespoon',
+      '3 cups or 750ml',
+      '500g',
+      '1 cup crushed',
+    ]);
+    fireEvent.click(more);
+    expect(amounts()).toEqual([
+      '1.35kg',
+      '2 tablespoons',
+      '1 ½ tablespoons',
+      '4 ½ cups or 1125ml',
+      '750g',
+      '1 ½ cups crushed',
+    ]);
+    expect(document.getElementById('yieldHeaderDisplay')).toHaveTextContent('For 1 loaf:×3');
+  });
+
+  it("scales Wanda's Polish rows with Polish units", () => {
+    const pl = WANDAS_CHEESE_BREAD.translations!.pl!.ingredients!;
+    render(<Scaled ingredients={pl} yieldHeader="Na 1 bochenek:" language="pl" />);
+    fireEvent.click(screen.getByRole('button', { name: UI_TEXT.pl.increasePortion }));
+    expect(amounts()).toEqual([
+      '900g',
+      '4 łyżeczki',
+      '1 łyżka',
+      '3 szklanki lub 750ml',
+      '500g',
+      '1 szklanka posiekanych',
+    ]);
   });
 });
