@@ -1,4 +1,5 @@
 import { Ingredient, Language, ParsedIngredientRow } from '../types/recipe';
+import { polishUnit } from './polish';
 
 /**
  * Formats a decimal number into an authentic culinary fraction.
@@ -110,11 +111,9 @@ export function parseIngredientRow(
 
     let unitText = ing.unit || '';
     if (lang === 'pl') {
-      if (currentQty > 1 && ing.renderUnitPlural) {
-        unitText = ing.renderUnitPlural;
-      } else if (ing.renderUnit) {
-        unitText = ing.renderUnit;
-      }
+      // Decline for the amount as shown, so 2.01 read as "2" takes the form for 2.
+      const shownQty = /^\d+$/.test(formattedQty) ? Number(formattedQty) : currentQty;
+      unitText = polishUnit(shownQty, unitText, ing);
     } else {
       if (ing.renderUnit) {
         unitText = currentQty <= 1 ? ing.unit || '' : ing.renderUnit;

@@ -79,14 +79,53 @@ describe('parseIngredientRow', () => {
       renderUnitPlural: 'łyżeczek',
     };
 
-    // 1x scale: 2 łyżeczek
     const parsed1x = parseIngredientRow(ing, 1, 'pl');
     expect(parsed1x.name).toBe('Drożdże');
-    expect(parsed1x.amount).toBe('2 łyżeczek');
+    expect(parsed1x.amount).toBe('2 łyżeczki');
 
-    // 0.5x scale: 1 łyżeczki
-    const parsedHalf = parseIngredientRow(ing, 0.5, 'pl');
-    expect(parsedHalf.amount).toBe('1 łyżeczki');
+    const amountAt = (scale: number) => parseIngredientRow(ing, scale, 'pl').amount;
+    expect(amountAt(0.5)).toBe('1 łyżeczka');
+    expect(amountAt(0.25)).toBe('½ łyżeczki');
+    expect(amountAt(0.75)).toBe('1 ½ łyżeczki');
+    expect(amountAt(2)).toBe('4 łyżeczki');
+    expect(amountAt(2.5)).toBe('5 łyżeczek');
+    expect(amountAt(6)).toBe('12 łyżeczek');
+    expect(amountAt(11)).toBe('22 łyżeczki');
+  });
+
+  it('reads Polish cups in every form, including a Polish original with no stored forms', () => {
+    const cup: Ingredient = {
+      text: 'Papryczki jalapeño - 0.5 szklanki posiekanych',
+      qty: 0.5,
+      unit: 'szklanki',
+      prefix: 'Papryczki jalapeño - ',
+      suffix: ' posiekanych',
+    };
+    const amountAt = (scale: number) => parseIngredientRow(cup, scale, 'pl').amount;
+    expect(amountAt(1)).toBe('½ szklanki posiekanych');
+    expect(amountAt(2)).toBe('1 szklanka posiekanych');
+    expect(amountAt(6)).toBe('3 szklanki posiekanych');
+    expect(amountAt(10)).toBe('5 szklanek posiekanych');
+  });
+
+  it('keeps the stored Polish forms for a unit it does not know', () => {
+    const ing: Ingredient = {
+      text: 'Bazylia - 2 doniczki',
+      qty: 2,
+      unit: 'doniczki',
+      prefix: 'Bazylia - ',
+      renderUnit: 'doniczki',
+      renderUnitPlural: 'doniczek',
+    };
+    expect(parseIngredientRow(ing, 1, 'pl').amount).toBe('2 doniczki');
+    expect(parseIngredientRow(ing, 3, 'pl').amount).toBe('6 doniczek');
+  });
+
+  it('leaves English units as they were', () => {
+    const tsp: Ingredient = { text: 'Yeast - 2 teaspoons', qty: 2, unit: 'teaspoons' };
+    expect(parseIngredientRow(tsp, 1, 'en').amount).toBe('2 teaspoons');
+    expect(parseIngredientRow(tsp, 0.5, 'en').amount).toBe('1 teaspoon');
+    expect(parseIngredientRow(tsp, 0.25, 'en').amount).toBe('½ teaspoon');
   });
 
   it('falls back to string parsing for raw user input', () => {

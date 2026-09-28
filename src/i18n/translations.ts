@@ -1,13 +1,6 @@
 import { Language, RecipeCategory, VaultSortKey } from '../types/recipe';
+import { plPlural } from '../utils/polish';
 import type { Season } from '../utils/season';
-
-/** Polish noun form for a count: 1 składnik, 2–4 (and 22–24, …) składniki, else składników. */
-function plPlural(n: number, one: string, few: string, many: string): string {
-  if (n === 1) return one;
-  const lastDigit = n % 10;
-  const lastTwo = n % 100;
-  return lastDigit >= 2 && lastDigit <= 4 && (lastTwo < 12 || lastTwo > 14) ? few : many;
-}
 
 /** "2 hrs 10 mins", from a number of minutes. */
 function durationEn(minutes: number): string {
