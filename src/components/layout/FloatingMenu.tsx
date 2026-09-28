@@ -2,7 +2,6 @@ import React, { useCallback, useId, useLayoutEffect, useRef, useState } from 're
 import {
   ArrowLeft,
   BookOpen,
-  ChevronRight,
   ChevronUp,
   CookingPot,
   Moon,
@@ -205,9 +204,9 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
   // The rows rise in from the bottom up, following the unfurl out of the menu button.
   let row = 1 + otherPages.length + 1 + actions.length;
   const stagger = () => ({ '--i': --row }) as React.CSSProperties;
-  // The preference rows unfold from the toggle upwards, so the nearest arrives first.
-  let fold = page === 'settings' ? 3 : 4;
-  const unfold = () => ({ '--j': --fold }) as React.CSSProperties;
+  // The preference rows slide up out from behind their toggle, the top one leading.
+  let fold = 0;
+  const unfold = () => ({ '--j': fold++ }) as React.CSSProperties;
 
   return (
     // Backdrop click is a mouse/touch shortcut; keyboard users close with Escape or the menu button.
@@ -252,12 +251,6 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
                           <Settings size="1.1em" strokeWidth={1.9} />
                         </span>
                         <span className="fk-menu-item-label">{t.settings}</span>
-                        <ChevronRight
-                          className="fk-menu-item-trail"
-                          size="1.1em"
-                          strokeWidth={2}
-                          aria-hidden="true"
-                        />
                       </button>
                     </div>
                   )}

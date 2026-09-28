@@ -1225,23 +1225,30 @@
         border: 1px solid var(--border-subtle);
       }
 
+      /* Raised keys, like the text size steppers' (see .fk-stepper) */
       .scaler-btn {
         width: 44px;
         height: 44px;
-        border: none;
-        border: none;
-        background: var(--bg-surface);
-        border-radius: 4px;
+        border: 1px solid var(--key-edge);
+        background: var(--key-face);
+        box-shadow: var(--key-lift);
+        border-radius: 6px;
         color: var(--text-primary);
         font-weight: 700;
         cursor: pointer;
         display: grid;
         place-items: center;
-        transition: background 0.15s;
+        transition: background-color 0.15s ease, border-color 0.15s ease, scale 0.15s ease;
+        -webkit-tap-highlight-color: transparent;
       }
 
       .scaler-btn:hover {
-        background: var(--border-strong);
+        border-color: color-mix(in srgb, var(--accent) 50%, var(--key-edge));
+      }
+
+      .scaler-btn:active {
+        scale: 0.93;
+        box-shadow: none;
       }
 
       .scaler-display {
@@ -3396,14 +3403,11 @@
         transition: grid-template-rows 0.5s var(--ease-glide);
       }
 
-      /* Clips the folded rows; the side overhang keeps focus rings whole. The rows sit on its
-         bottom edge, so the panel's top sweeps up over them, nearest the toggle first. */
+      /* Clips the folded rows; the side overhang keeps focus rings whole. The rows hang from the
+         drawer's top edge, so they ride up with it, sliding out from behind the toggle. */
       .fk-prefs-clip {
         min-height: 0;
         overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-end;
         margin-inline: -4px;
         padding-inline: 4px;
       }
@@ -3422,11 +3426,11 @@
         border-bottom: 1px solid var(--border-subtle);
       }
 
-      /* Each row rises out of the toggle, the nearest first (--j counts up from the toggle). */
+      /* Each row trails the rising edge a touch and settles into place, the leading (top) row
+         first (--j counts down the drawer), so every row only ever moves upwards. */
       .fk-prefs-row {
         opacity: 0;
-        transform: translateY(0.6rem) scale(0.97);
-        transform-origin: 50% 100%;
+        transform: translateY(0.4rem);
         transition: opacity 0.22s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
 
@@ -3434,7 +3438,7 @@
         opacity: 1;
         transform: none;
         transition: opacity 0.32s ease, transform 0.5s var(--ease-glide);
-        transition-delay: calc(var(--j, 0) * 35ms);
+        transition-delay: calc(var(--j, 0) * 30ms);
       }
 
       .fk-menu-item-trail {
@@ -3645,7 +3649,7 @@
         color: var(--accent);
       }
 
-      /* Text size stepper */
+      /* Text size stepper: A− and A+ are raised keys set into the pill, so they read as buttons */
       .fk-stepper {
         display: inline-flex;
         align-items: center;
@@ -3654,9 +3658,28 @@
         background: var(--menu-well);
       }
 
+      /* Raised keys (these steppers and the portion scaler): a lifted face with a defined edge.
+         At night the face is lighter than its tray; darker would read as a hole. Built from
+         season tokens, so every palette gets them. */
+      .fk-stepper,
+      .scaler-control {
+        --key-face: var(--bg-surface);
+        --key-edge: color-mix(in srgb, var(--border-strong) 55%, var(--border-subtle));
+        --key-lift: 0 1px 1px rgba(0, 0, 0, 0.04), 0 2px 5px -1px rgba(60, 35, 20, 0.16);
+      }
+
+      [data-theme='dark'] :is(.fk-stepper, .scaler-control) {
+        --key-face: var(--menu-well-hover);
+        --key-edge: var(--border-strong);
+        --key-lift: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 2px 5px -1px rgba(0, 0, 0, 0.5);
+      }
+
       .fk-stepper button {
+        position: relative;
+        isolation: isolate;
         min-width: 44px;
         min-height: 44px;
+        padding: 0 0.6rem;
         border: none;
         border-radius: var(--radius-full);
         background: transparent;
@@ -3665,10 +3688,29 @@
         font-size: 0.8125rem;
         font-weight: 700;
         cursor: pointer;
-        transition: background-color 0.15s ease;
+        transition: scale 0.15s ease;
+        -webkit-tap-highlight-color: transparent;
       }
 
-      .fk-stepper button:hover { background: var(--menu-well-hover); }
+      /* The key's face sits inside the 44px tap area, clear of the pill's edge. */
+      .fk-stepper button::before {
+        content: '';
+        position: absolute;
+        inset: 4px;
+        z-index: -1;
+        border: 1px solid var(--key-edge);
+        border-radius: inherit;
+        background: var(--key-face);
+        box-shadow: var(--key-lift);
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      .fk-stepper button:hover::before {
+        border-color: color-mix(in srgb, var(--accent) 50%, var(--key-edge));
+      }
+
+      .fk-stepper button:active { scale: 0.92; }
+      .fk-stepper button:active::before { box-shadow: none; }
 
       .fk-stepper-value {
         min-width: 3rem;
@@ -3831,6 +3873,8 @@
         .fk-segmented-thumb,
         .author-choice-thumb,
         .fk-switch-thumb,
+        .fk-stepper button,
+        .scaler-btn,
         .fk-prefs-chevron,
         .fk-prefs-drawer,
         .fk-prefs[data-open] :is(.fk-prefs-drawer, .fk-prefs-row) { transition: none; }
