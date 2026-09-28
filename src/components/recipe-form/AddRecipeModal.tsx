@@ -18,6 +18,7 @@ import {
   formText,
   formToRecipe,
   hasContent,
+  ingredientRowsOnly,
   methodToSteps,
   pastedIngredients,
   pastedSteps,
@@ -204,7 +205,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
     if (authorMode === 'custom' && !form.author.trim()) errors.author = t.authorRequired;
     // An older recipe saved before categories can still be edited; it stays under Other.
     if (!isEditMode && !form.category) errors.category = t.categoryRequired;
-    if (!form.ingredientRows.some((r) => r.name.trim() || r.amount.trim())) {
+    if (!ingredientRowsOnly(form.ingredientRows).some((r) => r.name.trim() || r.amount.trim())) {
       errors.ingredients = t.ingredientsRequired;
     }
     if (methodToSteps(form.sections, form.numberFrom).length === 0) errors.steps = t.stepsRequired;

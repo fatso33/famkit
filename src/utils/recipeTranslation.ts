@@ -68,6 +68,7 @@ export function translatableContent(recipe: Recipe): LocalizedRecipeContent {
       note: ing.note,
       substitute: ing.substitute,
       substituteAmount: ing.substituteAmount,
+      section: ing.section,
     })),
     steps: (recipe.steps || []).map((st) => ({
       num: st.num,
@@ -226,6 +227,7 @@ export function overlayTranslation(recipe: Recipe, tr: LocalizedRecipeContent): 
           note: t.note ?? src.note,
           substitute: t.substitute ?? src.substitute,
           substituteAmount: t.substituteAmount ?? src.substituteAmount,
+          section: src.section === undefined ? undefined : (t.section ?? src.section),
         }
       : src;
   });

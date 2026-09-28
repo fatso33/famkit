@@ -2534,6 +2534,26 @@
         .ingredient-table tbody tr:hover {
           background-color: var(--bg-card);
         }
+        .ingredient-table tbody tr.ingredient-group-row:hover {
+          background-color: transparent;
+        }
+      }
+
+      /* A heading over part of the list ("For the sauce"), opening its own group of rows. */
+      .ingredient-table th.ingredient-group-heading {
+        padding-top: 1rem;
+        padding-bottom: 0.45rem;
+        font-family: var(--font-serif);
+        font-size: 1.0625rem;
+        font-weight: var(--weight-heading);
+        letter-spacing: normal;
+        text-transform: none;
+        color: var(--accent);
+        background: transparent;
+      }
+
+      .ingredient-table tbody + tbody tr:first-child > * {
+        border-top: 1px solid var(--border-subtle);
       }
 
       /* Fixed px spacing on phones so large text keeps its room instead of growing the padding too. */
@@ -2678,6 +2698,14 @@
         line-height: 1.6;
         color: var(--text-primary);
         font-weight: var(--weight-body);
+      }
+
+      /* Line breaks typed into a step, tip or note show as typed. */
+      .step-text,
+      .step-interlude > p,
+      #tipsText,
+      #notesText {
+        white-space: pre-line;
       }
 
       .directive-bullet-list,
@@ -5891,6 +5919,31 @@
 
       .ingredient-add {
         border-radius: 0 0 calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px);
+      }
+
+      /* Add ingredient, with the quieter Add heading under it (stacked, so large text still fits). */
+      .ingredient-add-bar .ingredient-add:first-child {
+        border-radius: 0;
+      }
+
+      .ingredient-add-bar .ingredient-add-heading {
+        border-top: 1px solid var(--border-subtle);
+        color: var(--text-secondary);
+        font-weight: 600;
+      }
+
+      /* A heading row in the editor: its words in the heading face, like on the recipe page. */
+      .ingredient-heading-row {
+        background: var(--bg-card);
+      }
+
+      .ingredient-heading-input {
+        min-height: 44px;
+        padding-inline: 0.7rem;
+        font-family: var(--font-serif);
+        font-size: 1.0625rem;
+        font-weight: var(--weight-heading);
+        color: var(--accent);
       }
 
       .method-add-step {

@@ -36,6 +36,11 @@ interface RowText {
 
 export interface IngredientRowState extends RowText {
   id: string;
+  /**
+   * A heading over the rows below it (its words are in `name`), not an ingredient. It's saved
+   * as the `section` of the next ingredient.
+   */
+  heading?: boolean;
   /** Whether the note field is open (it can be while still empty). */
   showNote: boolean;
   showSubstitute: boolean;
@@ -128,6 +133,16 @@ export const emptyRow = (): IngredientRowState => ({
   substituteAmount: '',
   showSubstitute: false,
 });
+
+export const headingRow = (name = ''): IngredientRowState => ({
+  ...emptyRow(),
+  id: newId('head'),
+  heading: true,
+  name,
+});
+
+/** The ingredient rows (not headings). */
+export const ingredientRowsOnly = (rows: IngredientRowState[]) => rows.filter((r) => !r.heading);
 
 export const textItem = (text = ''): TextItem => ({ id: newId('txt'), text });
 
@@ -328,7 +343,8 @@ export function formFromRecipe(recipe: Recipe, labels: LegacyLabels): FormState 
     author: authorMode === 'custom' ? recipe.author || '' : '',
     category: isRecipeCategory(recipe.category) ? recipe.category : '',
     cardDescription: recipe.cardDescription || '',
-    yieldHeader: recipe.yieldHeader || DEFAULT_YIELD,
+    // A recipe saved without a yield keeps none; older records missing the field get the default.
+    yieldHeader: recipe.yieldHeader ?? DEFAULT_YIELD,
     // An older recipe saved with a stock photo in place of its own starts with none.
     heroImage: recipePhoto(recipe),
     tips: recipe.tips || '',
@@ -339,7 +355,10 @@ export function formFromRecipe(recipe: Recipe, labels: LegacyLabels): FormState 
         : null,
     ingredientRows:
       recipe.ingredients?.length > 0
-        ? recipe.ingredients.map((ing, i) => rowFromIngredient(ing, i))
+        ? recipe.ingredients.flatMap((ing, i) => {
+            const row = rowFromIngredient(ing, i);
+            return ing.section?.trim() ? [headingRow(ing.section.trim()), row] : [row];
+          })
         : [emptyRow()],
     sections,
     numberFrom: firstStepNumber(steps),
@@ -361,6 +380,7 @@ const texts = (v: unknown, max = Infinity): TextItem[] =>
     .map((t) => textItem(t));
 
 function draftRow(raw: Json): IngredientRowState {
+  if (raw.heading === true) return headingRow(str(raw.name));
   const row: IngredientRowState = {
     ...emptyRow(),
     name: str(raw.name),
@@ -415,7 +435,7 @@ export function formFromDraft(raw: unknown): FormState | null {
         : 'auto';
   form.category = isRecipeCategory(raw.category) ? raw.category : '';
   form.cardDescription = str(raw.cardDescription);
-  form.yieldHeader = str(raw.yieldHeader) || DEFAULT_YIELD;
+  form.yieldHeader = typeof raw.yieldHeader === 'string' ? raw.yieldHeader : DEFAULT_YIELD;
   form.heroImage = recipePhoto({ heroImage: str(raw.heroImage) });
   form.tips = str(raw.tips);
   form.notes = str(raw.notes);
@@ -456,8 +476,12 @@ const sameText = (a: RowText, b: RowText) =>
 /** The row as stored, or null when it's empty. */
 export function rowToIngredient(row: IngredientRowState): Ingredient | null {
   const shown = rowText(row);
-  if (!shown.name && !shown.amount) return null;
-  if (row.source && sameText(shown, row.source.shown)) return row.source.ingredient;
+  if (row.heading || (!shown.name && !shown.amount)) return null;
+  if (row.source && sameText(shown, row.source.shown)) {
+    // Its heading is set from the rows above it (rowsToIngredients).
+    const { section: _section, ...ingredient } = row.source.ingredient;
+    return ingredient;
+  }
   const ingredient: Ingredient = {
     text:
       shown.name && shown.amount ? `${shown.name} - ${shown.amount}` : shown.name || shown.amount,
@@ -469,6 +493,26 @@ export function rowToIngredient(row: IngredientRowState): Ingredient | null {
     if (shown.substituteAmount) ingredient.substituteAmount = shown.substituteAmount;
   }
   return ingredient;
+}
+
+/**
+ * The ingredients as stored: empty rows dropped, and each heading kept as the `section` of the
+ * ingredient under it. A heading with no ingredient under it is dropped.
+ */
+export function rowsToIngredients(rows: IngredientRowState[]): Ingredient[] {
+  const ingredients: Ingredient[] = [];
+  let heading = '';
+  for (const row of rows) {
+    if (row.heading) {
+      heading = row.name.trim();
+      continue;
+    }
+    const ingredient = rowToIngredient(row);
+    if (!ingredient) continue;
+    ingredients.push(heading ? { ...ingredient, section: heading } : ingredient);
+    heading = '';
+  }
+  return ingredients;
 }
 
 /** The step as stored (its number comes later), or null when there's nothing in it. */
@@ -552,11 +596,9 @@ export function formToRecipe(form: FormState) {
     name: form.title.trim(),
     category: form.category,
     heroImage: form.heroImage,
-    yieldHeader: form.yieldHeader.trim() || DEFAULT_YIELD,
+    yieldHeader: form.yieldHeader.trim(),
     cardDescription: form.cardDescription.trim() || undefined,
-    ingredients: form.ingredientRows
-      .map(rowToIngredient)
-      .filter((i): i is Ingredient => i !== null),
+    ingredients: rowsToIngredients(form.ingredientRows),
     tips: form.tips.trim() || undefined,
     notes: form.notes.trim() || undefined,
     steps: methodToSteps(form.sections, form.numberFrom),
@@ -579,7 +621,9 @@ export function formText(form: FormState): string {
     recipe.yieldHeader,
     recipe.tips ?? '',
     recipe.notes ?? '',
-    form.ingredientRows.map(rowText).filter((r) => r.name || r.amount),
+    form.ingredientRows
+      .map((row) => (row.heading ? { heading: row.name.trim() } : rowText(row)))
+      .filter((r) => ('heading' in r ? r.heading : r.name || r.amount)),
     recipe.steps.map(({ hasImage: _h, imageSrc: _s, num: _n, ...text }) => text),
   ]);
 }

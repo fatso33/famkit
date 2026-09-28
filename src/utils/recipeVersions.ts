@@ -140,6 +140,7 @@ const ingredientKey = (ing?: Ingredient) =>
         text(ing.note),
         text(ing.substitute),
         text(ing.substituteAmount),
+        ing.section === undefined ? null : text(ing.section),
       ])
     : '';
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { Ingredient, Language } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
 import { parseIngredientRow } from '../../utils/fractions';
+import { ingredientGroups } from '../../utils/recipeMethod';
 import { ArrowLeftRight } from 'lucide-react';
 import { PortionScaler } from './PortionScaler';
 
@@ -10,7 +11,8 @@ interface IngredientsTableProps {
   scale: number;
   onIncreaseScale: () => void;
   onDecreaseScale: () => void;
-  yieldHeader: string;
+  /** Empty: the recipe gives no yield, so none is shown. Missing on some older records. */
+  yieldHeader?: string;
   language: Language;
   t: UiTranslations;
 }
@@ -24,7 +26,7 @@ export const IngredientsTable: React.FC<IngredientsTableProps> = ({
   language,
   t,
 }) => {
-  const yieldDisplay = scale === 1 ? yieldHeader || t.for1Loaf : t.forNLoaves(scale);
+  const yieldDisplay = scale === 1 ? (yieldHeader ?? t.for1Loaf) : t.forNLoaves(scale);
 
   return (
     <aside className="ingredients-panel">
@@ -39,9 +41,11 @@ export const IngredientsTable: React.FC<IngredientsTableProps> = ({
       </div>
 
       {/* Verbatim Yield Header */}
-      <span className="yield-text" id="yieldHeaderDisplay">
-        {yieldDisplay}
-      </span>
+      {yieldDisplay && (
+        <span className="yield-text" id="yieldHeaderDisplay">
+          {yieldDisplay}
+        </span>
+      )}
 
       {/* Modern 2-Column Ingredients Table */}
       <div className="ingredient-table-wrapper">
@@ -61,35 +65,45 @@ export const IngredientsTable: React.FC<IngredientsTableProps> = ({
               </th>
             </tr>
           </thead>
-          <tbody id="ingredientTableBody">
-            {ingredients.map((ing, idx) => {
-              const row = parseIngredientRow(ing, scale, language);
-              return (
-                <tr key={idx}>
-                  <td className="td-ingredient">
-                    <div className="ingredient-name-col">
-                      <span className="ingredient-name">{row.name}</span>
-                      {row.notes.length > 0 && (
-                        <span className="ingredient-bracket-note">({row.notes.join(', ')})</span>
-                      )}
-                      {row.substitute && (
-                        <span className="ingredient-substitute">
-                          <ArrowLeftRight size={14} aria-hidden="true" />
-                          <span>
-                            {t.orSubstitute(row.substitute.name)}
-                            {row.substitute.amount && ` · ${row.substitute.amount}`}
-                          </span>
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="td-amount">
-                    <span className="ingredient-amount-col">{row.amount}</span>
-                  </td>
+          {ingredientGroups(ingredients).map((group, g) => (
+            // Each heading starts its own group of rows (Ingredient.section).
+            <tbody key={g} id={g === 0 ? 'ingredientTableBody' : undefined}>
+              {group.heading && (
+                <tr className="ingredient-group-row">
+                  <th scope="rowgroup" colSpan={2} className="ingredient-group-heading">
+                    {group.heading}
+                  </th>
                 </tr>
-              );
-            })}
-          </tbody>
+              )}
+              {group.rows.map(({ ing, idx }) => {
+                const row = parseIngredientRow(ing, scale, language);
+                return (
+                  <tr key={idx}>
+                    <td className="td-ingredient">
+                      <div className="ingredient-name-col">
+                        <span className="ingredient-name">{row.name}</span>
+                        {row.notes.length > 0 && (
+                          <span className="ingredient-bracket-note">({row.notes.join(', ')})</span>
+                        )}
+                        {row.substitute && (
+                          <span className="ingredient-substitute">
+                            <ArrowLeftRight size={14} aria-hidden="true" />
+                            <span>
+                              {t.orSubstitute(row.substitute.name)}
+                              {row.substitute.amount && ` · ${row.substitute.amount}`}
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="td-amount">
+                      <span className="ingredient-amount-col">{row.amount}</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          ))}
         </table>
       </div>
     </aside>

@@ -123,6 +123,7 @@ export function recipePieces(content: LocalizedRecipeContent): Piece[] {
   }
 
   (content.ingredients ?? []).forEach((ing, i) => {
+    text(`ingredients:${i}:section`, 'heading', ing.section);
     if (hasWords(ing.text) || hasWords(ing.name)) {
       pieces.push({
         key: `ingredients:${i}`,
@@ -205,14 +206,17 @@ export function buildTranslation(
   }
 
   if (source.ingredients) {
-    content.ingredients = source.ingredients.map((ing, i) => {
+    content.ingredients = source.ingredients.map((ing, i): Ingredient => {
+      const section = optional(`ingredients:${i}:section`, 'heading', ing.section);
+      const withSection = (row: IngredientWords): Ingredient =>
+        section === undefined ? row : { ...row, section };
       const words = ingredientWords(ing);
-      if (!hasWords(words.text) && !hasWords(words.name)) return words;
+      if (!hasWords(words.text) && !hasWords(words.name)) return withSection(words);
       const piece: Piece = { key: `ingredients:${i}`, kind: 'ingredient', ingredient: words };
       const found = lookup(piece);
-      if (found === undefined || typeof found === 'string') return words;
+      if (found === undefined || typeof found === 'string') return withSection(words);
       pieceSources[piece.key] = pieceHash(piece);
-      return ingredientWords(found);
+      return withSection(ingredientWords(found));
     });
   }
 

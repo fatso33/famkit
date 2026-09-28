@@ -1,4 +1,4 @@
-import { Step, StepFork } from '../types/recipe';
+import { Ingredient, Step, StepFork } from '../types/recipe';
 
 /**
  * The method's shape, shared by the recipe page and the editor: sections, step numbers and
@@ -27,6 +27,25 @@ export function methodSections(steps: Step[]): MethodSection[] {
     }
   });
   return sections;
+}
+
+/** A run of ingredient rows under one heading, each with its place in the recipe's list. */
+export interface IngredientGroup {
+  /** Empty for the rows before the first heading. */
+  heading: string;
+  rows: { ing: Ingredient; idx: number }[];
+}
+
+/** The ingredients grouped by the headings they start. A blank heading doesn't start one. */
+export function ingredientGroups(ingredients: Ingredient[]): IngredientGroup[] {
+  const groups: IngredientGroup[] = [];
+  ingredients.forEach((ing, idx) => {
+    const heading = (ing.section ?? '').trim();
+    const current = groups.at(-1);
+    if (!current || heading) groups.push({ heading, rows: [{ ing, idx }] });
+    else current.rows.push({ ing, idx });
+  });
+  return groups;
 }
 
 /** What numbering needs to know about a step, in the recipe or in the editor. */

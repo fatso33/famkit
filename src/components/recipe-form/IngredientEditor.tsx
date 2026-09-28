@@ -1,7 +1,15 @@
 import React, { useRef } from 'react';
-import { ArrowDown, ArrowLeftRight, ArrowUp, NotebookPen, Plus, Trash2 } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowLeftRight,
+  ArrowUp,
+  Heading,
+  NotebookPen,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { UiTranslations } from '../../i18n/translations';
-import { IngredientRowState, emptyRow } from '../../utils/recipeForm';
+import { IngredientRowState, emptyRow, headingRow } from '../../utils/recipeForm';
 import { collapseAway, useListMotion } from '../../hooks/useListMotion';
 import { Reveal } from '../common/Reveal';
 import { AutoGrowTextarea } from '../common/AutoGrowTextarea';
@@ -55,8 +63,7 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
         ?.focus(),
     );
 
-  const addRow = (after?: string) => {
-    const row = emptyRow();
+  const addRow = (after?: string, row = emptyRow()) => {
     motion.willAdd(row.id);
     onChange((current) => {
       const at = after ? current.findIndex((r) => r.id === after) + 1 : current.length;
@@ -77,7 +84,7 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
     });
   };
 
-  const remove = (id: string, el: HTMLElement | null) => {
+  const remove = (id: string, el: HTMLElement | null, heading = false) => {
     void collapseAway(el).then(() => {
       let removed: { row: IngredientRowState; at: number } | null = null;
       onChange((current) => {
@@ -86,7 +93,7 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
         removed = { row: current[at], at };
         return current.filter((r) => r.id !== id);
       });
-      onToast(t.ingredientRemoved, {
+      onToast(heading ? t.ingredientHeadingRemoved : t.ingredientRemoved, {
         label: t.undo,
         onAction: () => {
           if (!removed) return;
@@ -98,13 +105,43 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
     });
   };
 
+  // Ingredients are numbered for screen readers without counting the headings between them.
+  const numbers = new Map<string, number>();
+  for (const row of rows) if (!row.heading) numbers.set(row.id, numbers.size + 1);
+  const ingredientCount = numbers.size;
+
+  const moveTools = (row: IngredientRowState, index: number) => (
+    <>
+      <button
+        type="button"
+        className="tool-strip-button"
+        aria-label={row.heading ? t.moveUp : t.moveIngredientUp}
+        disabled={index === 0}
+        onClick={() => move(row.id, -1)}
+      >
+        <ArrowUp size="1.25rem" aria-hidden="true" />
+        <span aria-hidden="true">{t.moveUp}</span>
+      </button>
+      <button
+        type="button"
+        className="tool-strip-button"
+        aria-label={row.heading ? t.moveDown : t.moveIngredientDown}
+        disabled={index === rows.length - 1}
+        onClick={() => move(row.id, 1)}
+      >
+        <ArrowDown size="1.25rem" aria-hidden="true" />
+        <span aria-hidden="true">{t.moveDown}</span>
+      </button>
+    </>
+  );
+
   return (
     <section className="editor-panel ingredient-editor" aria-labelledby="ingredientsHeading">
       <div className="editor-panel-head">
         <h3 className="panel-title" id="ingredientsHeading">
           {t.ingredients}
         </h3>
-        <span className="editor-count">{t.ingredientsCount(rows.length)}</span>
+        <span className="editor-count">{t.ingredientsCount(ingredientCount)}</span>
       </div>
 
       <div className={`form-group${restoredYield ? ' is-restored' : ''}`}>
@@ -129,9 +166,51 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
         </div>
         <ol ref={list} className="ingredient-rows">
           {rows.map((row, index) => {
-            const n = index + 1;
-            const restored = row.origin !== undefined && restoredRows?.has(row.origin);
             const active = row.id === activeId;
+            if (row.heading) {
+              return (
+                <li
+                  key={row.id}
+                  data-motion-id={row.id}
+                  data-item-id={row.id}
+                  className={`ingredient-row ingredient-heading-row${active ? ' is-active' : ''}`}
+                >
+                  <input
+                    className="form-control ingredient-heading-input"
+                    type="text"
+                    data-field="name"
+                    aria-label={t.ingredientHeadingLabel}
+                    placeholder={t.ingredientHeadingPlaceholder}
+                    autoComplete="off"
+                    enterKeyHint="next"
+                    value={row.name}
+                    onChange={(e) => update(row.id, { name: e.target.value })}
+                    onKeyDown={(e) => {
+                      // Enter goes on to the first ingredient under the heading.
+                      if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
+                      e.preventDefault();
+                      addRow(row.id);
+                    }}
+                  />
+                  <Reveal open={active} className="item-tools">
+                    <div className="tool-strip" role="group" aria-label={t.ingredientHeadingTools}>
+                      {moveTools(row, index)}
+                      <button
+                        type="button"
+                        className="tool-strip-button is-danger"
+                        aria-label={t.removeIngredientHeading}
+                        onClick={(e) => remove(row.id, e.currentTarget.closest('li'), true)}
+                      >
+                        <Trash2 size="1.25rem" aria-hidden="true" />
+                        <span aria-hidden="true">{t.remove}</span>
+                      </button>
+                    </div>
+                  </Reveal>
+                </li>
+              );
+            }
+            const n = numbers.get(row.id) ?? index + 1;
+            const restored = row.origin !== undefined && restoredRows?.has(row.origin);
             return (
               <li
                 key={row.id}
@@ -219,26 +298,7 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
 
                 <Reveal open={active} className="item-tools">
                   <div className="tool-strip" role="group" aria-label={t.ingredientTools(n)}>
-                    <button
-                      type="button"
-                      className="tool-strip-button"
-                      aria-label={t.moveIngredientUp}
-                      disabled={index === 0}
-                      onClick={() => move(row.id, -1)}
-                    >
-                      <ArrowUp size="1.25rem" aria-hidden="true" />
-                      <span aria-hidden="true">{t.moveUp}</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="tool-strip-button"
-                      aria-label={t.moveIngredientDown}
-                      disabled={index === rows.length - 1}
-                      onClick={() => move(row.id, 1)}
-                    >
-                      <ArrowDown size="1.25rem" aria-hidden="true" />
-                      <span aria-hidden="true">{t.moveDown}</span>
-                    </button>
+                    {moveTools(row, index)}
                     <button
                       type="button"
                       className="tool-strip-button"
@@ -278,10 +338,20 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
             );
           })}
         </ol>
-        <button type="button" className="ingredient-add" onClick={() => addRow()}>
-          <Plus size="1.2em" aria-hidden="true" />
-          {t.addIngredient}
-        </button>
+        <div className="ingredient-add-bar">
+          <button type="button" className="ingredient-add" onClick={() => addRow()}>
+            <Plus size="1.2em" aria-hidden="true" />
+            {t.addIngredient}
+          </button>
+          <button
+            type="button"
+            className="ingredient-add ingredient-add-heading"
+            onClick={() => addRow(undefined, headingRow())}
+          >
+            <Heading size="1.1em" aria-hidden="true" />
+            {t.addIngredientHeading}
+          </button>
+        </div>
       </div>
       {error && (
         <p className="field-error" role="alert">

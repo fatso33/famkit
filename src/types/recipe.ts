@@ -18,6 +18,11 @@ export interface Ingredient {
   /** A suggested stand-in (e.g. "Margarine"), and how much of it. */
   substitute?: string;
   substituteAmount?: string;
+  /**
+   * This row starts a new part of the list, under this heading (e.g. "For the sauce"). Rows
+   * before the first heading have none. Older app versions ignore it and show one list.
+   */
+  section?: string;
 }
 
 export interface Step {

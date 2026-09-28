@@ -97,6 +97,13 @@ export interface UiTranslations {
   removePhoto: string;
   addIngredient: string;
   removeIngredient: string;
+  /** A heading over part of the ingredient list, e.g. "For the sauce". */
+  addIngredientHeading: string;
+  ingredientHeadingLabel: string;
+  ingredientHeadingPlaceholder: string;
+  ingredientHeadingTools: string;
+  removeIngredientHeading: string;
+  ingredientHeadingRemoved: string;
   // Version history (only the recipe's author sees these, in the editor)
   versionHistory: string;
   versionLabel: (version: number) => string;
@@ -406,6 +413,12 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     removePhoto: 'Remove photo',
     addIngredient: 'Add ingredient',
     removeIngredient: 'Remove ingredient',
+    addIngredientHeading: 'Add heading',
+    ingredientHeadingLabel: 'Ingredient heading',
+    ingredientHeadingPlaceholder: 'e.g. For the sauce',
+    ingredientHeadingTools: 'Tools for the heading',
+    removeIngredientHeading: 'Remove heading',
+    ingredientHeadingRemoved: 'Heading removed',
     versionHistory: 'Version history',
     versionLabel: (version: number) => `Version ${version}`,
     currentVersion: 'Current',
@@ -706,6 +719,12 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     removePhoto: 'Usuń zdjęcie',
     addIngredient: 'Dodaj składnik',
     removeIngredient: 'Usuń składnik',
+    addIngredientHeading: 'Dodaj nagłówek',
+    ingredientHeadingLabel: 'Nagłówek składników',
+    ingredientHeadingPlaceholder: 'np. Na sos',
+    ingredientHeadingTools: 'Narzędzia nagłówka',
+    removeIngredientHeading: 'Usuń nagłówek',
+    ingredientHeadingRemoved: 'Usunięto nagłówek',
     versionHistory: 'Historia wersji',
     versionLabel: (version: number) => `Wersja ${version}`,
     currentVersion: 'Aktualna',
