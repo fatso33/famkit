@@ -1,13 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { Recipe } from '../types/recipe';
 import {
+  DEFAULT_SORT,
   NO_FILTER,
   categoryCounts,
   categoryOf,
   filterEntries,
   findMatch,
   foldText,
+  formatVaultSort,
   groupEntries,
+  parseVaultSort,
+  recipePhoto,
   sortEntries,
   vaultCounts,
   type VaultEntry,
@@ -129,39 +133,76 @@ describe('vault sort', () => {
       }),
     ),
   ];
-  const sorted = (sort: Parameters<typeof sortEntries>[1], lang: 'en' | 'pl' = 'pl') =>
-    names(sortEntries(entries, sort, lang));
+  type Key = (typeof DEFAULT_SORT)['by'];
+  const sorted = (by: Key, reversed = false, lang: 'en' | 'pl' = 'pl') =>
+    names(sortEntries(entries, { by, reversed }, lang));
 
-  it('puts the newest first by default', () => {
-    expect(sorted('newest')).toEqual(['Babka', 'Zapiekanka', 'Żurek']);
+  it('puts the newest first by default, and the oldest first turned round', () => {
+    expect(names(sortEntries(entries, DEFAULT_SORT, 'pl'))).toEqual([
+      'Babka',
+      'Zapiekanka',
+      'Żurek',
+    ]);
+    expect(sorted('added', true)).toEqual(['Żurek', 'Zapiekanka', 'Babka']);
   });
 
-  it('sorts A to Z in the viewer’s alphabet (Polish Ż after Z)', () => {
-    expect(sorted('az')).toEqual(['Babka', 'Zapiekanka', 'Żurek']);
+  it('sorts by name in the viewer’s alphabet (Polish Ż after Z), either way', () => {
+    expect(sorted('name')).toEqual(['Babka', 'Zapiekanka', 'Żurek']);
+    expect(sorted('name', true)).toEqual(['Żurek', 'Zapiekanka', 'Babka']);
   });
 
-  it('sorts by the estimated time, quickest first', () => {
-    expect(sorted('quickest')).toEqual(['Zapiekanka', 'Babka', 'Żurek']);
+  it('sorts by the estimated time, quickest or longest first', () => {
+    expect(sorted('time')).toEqual(['Zapiekanka', 'Babka', 'Żurek']);
+    expect(sorted('time', true)).toEqual(['Żurek', 'Babka', 'Zapiekanka']);
   });
 
   it('puts the most recently changed first, counting a new recipe as changed when added', () => {
-    expect(sorted('updated')).toEqual(['Żurek', 'Babka', 'Zapiekanka']);
+    expect(sorted('changed')).toEqual(['Żurek', 'Babka', 'Zapiekanka']);
+    expect(sorted('changed', true)).toEqual(['Zapiekanka', 'Babka', 'Żurek']);
   });
 
-  it('groups by cook, however their name was typed, and by category in the filter’s order', () => {
-    const byCook = groupEntries(sortEntries(entries, 'cook', 'pl'), 'cook');
-    expect(byCook.map((g) => [g.key, names(g.entries)])).toEqual([
+  it('groups by cook, however their name was typed, keeping each cook’s recipes A to Z', () => {
+    const byCook = (reversed: boolean) =>
+      groupEntries(sortEntries(entries, { by: 'cook', reversed }, 'pl'), 'cook').map((g) => [
+        g.key,
+        names(g.entries),
+      ]);
+    expect(byCook(false)).toEqual([
       ['Kasia', ['Zapiekanka', 'Żurek']],
       ['Zosia', ['Babka']],
     ]);
-    const byCategory = groupEntries(sortEntries(entries, 'category', 'pl'), 'category');
-    expect(byCategory.map((g) => g.key)).toEqual(['soups', 'mains', 'cakes']);
+    expect(byCook(true)).toEqual([
+      ['Zosia', ['Babka']],
+      ['Kasia', ['Zapiekanka', 'Żurek']],
+    ]);
+  });
+
+  it('groups by category in the filter’s order, either way, with Other always last', () => {
+    const withOther = [...entries, entry(recipe('d', { name: 'Kisiel', category: 'family' }))];
+    const byCategory = (reversed: boolean) =>
+      groupEntries(sortEntries(withOther, { by: 'category', reversed }, 'pl'), 'category').map(
+        (g) => g.key,
+      );
+    expect(byCategory(false)).toEqual(['soups', 'mains', 'cakes', 'other']);
+    expect(byCategory(true)).toEqual(['cakes', 'mains', 'soups', 'other']);
   });
 
   it('has no headings for the other sorts', () => {
-    expect(groupEntries(sortEntries(entries, 'az', 'pl'), 'az')).toEqual([
-      { key: '', entries: sortEntries(entries, 'az', 'pl') },
-    ]);
+    const byName = sortEntries(entries, { by: 'name', reversed: false }, 'pl');
+    expect(groupEntries(byName, 'name')).toEqual([{ key: '', entries: byName }]);
+  });
+
+  it('keeps a sort on the device as text, reading the first version’s sorts too', () => {
+    expect(formatVaultSort(DEFAULT_SORT)).toBe('added');
+    expect(formatVaultSort({ by: 'time', reversed: true })).toBe('time:reversed');
+    expect(parseVaultSort('time:reversed')).toEqual({ by: 'time', reversed: true });
+    expect(parseVaultSort('az')).toEqual({ by: 'name', reversed: false });
+    expect(parseVaultSort('quickest')).toEqual({ by: 'time', reversed: false });
+    expect(parseVaultSort('updated')).toEqual({ by: 'changed', reversed: false });
+    expect(parseVaultSort('cook')).toEqual({ by: 'cook', reversed: false });
+    expect(parseVaultSort('by-colour')).toBeNull();
+    expect(parseVaultSort('name:sideways')).toBeNull();
+    expect(parseVaultSort(null)).toBeNull();
   });
 });
 
@@ -182,8 +223,32 @@ describe('vault counts', () => {
     const noCook = recipe('b', { author: undefined as unknown as string });
     const entries = [entry(recipe('a', { author: 'Kasia' })), entry(noCook)];
     expect(vaultCounts([noCook, recipe('a')])).toEqual({ recipes: 2, cooks: 1 });
-    const byCook = sortEntries(entries, 'cook', 'en');
+    const byCook = sortEntries(entries, { by: 'cook', reversed: false }, 'en');
     expect(names(byCook)).toEqual(['b', 'a']);
     expect(groupEntries(byCook, 'cook').map((g) => g.key)).toEqual(['', 'Kasia']);
+  });
+});
+
+describe('recipe photos', () => {
+  it('counts no photo, and the stock photos older versions saved in its place, as none', () => {
+    expect(recipePhoto({ heroImage: 'data:image/jpeg;base64,AAAA' })).toBe(
+      'data:image/jpeg;base64,AAAA',
+    );
+    expect(recipePhoto({ heroImage: '' })).toBe('');
+    expect(recipePhoto({} as Pick<Recipe, 'heroImage'>)).toBe('');
+    // Cloud records aren't checked on the way in: a broken photo field mustn't take the vault down.
+    expect(recipePhoto({ heroImage: 42 } as unknown as Pick<Recipe, 'heroImage'>)).toBe('');
+    expect(
+      recipePhoto({
+        heroImage:
+          'https://images.unsplash.com/photo-1549931319-a545dcf3bc73?auto=format&fit=crop&w=1200&q=80',
+      }),
+    ).toBe('');
+    expect(
+      recipePhoto({
+        heroImage:
+          'https://images.unsplash.com/photo-1589367920969-ab8e050bbb04?auto=format&fit=crop&w=1200&q=80',
+      }),
+    ).toBe('');
   });
 });

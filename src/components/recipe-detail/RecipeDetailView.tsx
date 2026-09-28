@@ -11,6 +11,8 @@ import { getLocalizedRecipe } from '../../hooks/useRecipes';
 import { addedByName } from '../../utils/ownership';
 import { transitionView } from '../../utils/viewTransition';
 import { useUnroll } from '../../hooks/useUnroll';
+import { recipePhoto } from '../../utils/vault';
+import { CategoryTile } from '../recipe-grid/CategoryTile';
 
 /** What App can ask of an open recipe page. */
 export interface RecipePageHandle {
@@ -81,16 +83,17 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
     <article id="viewDetail" className="recipe-detail active">
       {/* Hero Photo */}
       <div ref={heroRef} className="detail-hero-frame">
-        <img
-          id="detailHeroImg"
-          className="detail-hero-img"
-          data-morph-photo=""
-          src={
-            recipe.heroImage ||
-            'https://images.unsplash.com/photo-1589367920969-ab8e050bbb04?auto=format&fit=crop&w=1200&q=80'
-          }
-          alt={recipe.name}
-        />
+        {recipePhoto(recipe) ? (
+          <img
+            id="detailHeroImg"
+            className="detail-hero-img"
+            data-morph-photo=""
+            src={recipePhoto(recipe)}
+            alt={recipe.name}
+          />
+        ) : (
+          <CategoryTile recipe={recipe} className="detail-hero-tile" />
+        )}
       </div>
 
       {/* The recipe unrolls down out of the photo (hooks/useUnroll). */}

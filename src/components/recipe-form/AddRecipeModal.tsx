@@ -21,7 +21,7 @@ import { authorModeOf, resolveAuthor } from '../../utils/ownership';
 import { formatVersionDate, RecipeChanges, RestorableField } from '../../utils/recipeVersions';
 import { VersionHistorySheet } from './VersionHistorySheet';
 import { CATEGORY_ICONS } from '../recipe-grid/vaultIcons';
-import { RECIPE_CATEGORIES, isRecipeCategory } from '../../utils/vault';
+import { RECIPE_CATEGORIES, isRecipeCategory, recipePhoto } from '../../utils/vault';
 
 const DRAFT_STORAGE_KEY = 'family_kitchen_recipe_draft';
 
@@ -76,7 +76,8 @@ function loadInitialForm(initialRecipe?: Recipe | null): FormState {
       category: isRecipeCategory(initialRecipe.category) ? initialRecipe.category : '',
       cardDescription: initialRecipe.cardDescription || '',
       yieldHeader: initialRecipe.yieldHeader || EMPTY_FORM.yieldHeader,
-      heroImage: initialRecipe.heroImage || '',
+      // An older recipe saved with a stock photo in place of its own starts with none.
+      heroImage: recipePhoto(initialRecipe),
       tips: initialRecipe.tips || '',
       notes: initialRecipe.notes || '',
       ingredientRows:
@@ -125,7 +126,7 @@ function loadInitialForm(initialRecipe?: Recipe | null): FormState {
         category: isRecipeCategory(parsed.category) ? parsed.category : '',
         cardDescription: parsed.cardDescription || '',
         yieldHeader: parsed.yieldHeader || EMPTY_FORM.yieldHeader,
-        heroImage: parsed.heroImage || '',
+        heroImage: recipePhoto(parsed),
         tips: parsed.tips || '',
         notes: parsed.notes || '',
         ingredientRows:
@@ -367,16 +368,14 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
         imageCaption: s.imageCaption?.trim() || undefined,
       }));
 
-    const fallbackImage =
-      'https://images.unsplash.com/photo-1549931319-a545dcf3bc73?auto=format&fit=crop&w=1200&q=80';
-
     const recipeData: Omit<Recipe, 'id' | 'createdAt'> = {
       name: title.trim(),
       author: resolveAuthor(authorMode, author, currentUser),
       authorMode,
       // The form requires a pick; an older record keeps what it had until one is made.
       category: category || initialRecipe?.category || 'other',
-      heroImage: heroImage || fallbackImage,
+      // None picked: the vault shows the category's tile (CategoryTile).
+      heroImage,
       yieldHeader: yieldHeader.trim() || 'For 1 loaf:',
       baseYield: initialRecipe?.baseYield ?? 1,
       cardDescription: cardDescription.trim() || undefined,

@@ -6,8 +6,8 @@
          see OFL-*.txt): one file per script covers every weight, and Fraunces tunes its own
          detail to the size it's set at. Google's standard subsets stop short of the Number
          Forms block, so ⅓ ⅔ ⅛ ⅜ ⅝ ⅞ come from their own 2 KB file (½ ¼ ¾ are in the latin
-         one). The italic holds only the letters of the splash's "Welcome to" / "Witamy w" and
-         the vault's "The Family" / "Rodzinny". fonts.test.ts checks both. */
+         one). The italic holds only the splash's "Welcome to" and "Witamy w". fonts.test.ts
+         checks both. */
       @font-face {
         font-family: 'Fraunces';
         font-style: normal;
@@ -30,7 +30,7 @@
         font-weight: 500 700;
         font-display: swap;
         src: url('./assets/fonts/fraunces-italic-subset.woff2') format('woff2');
-        unicode-range: U+0046, U+0052, U+0054, U+0057, U+0061, U+0063-0065, U+0068-0069, U+006C-006F, U+0074, U+0077, U+0079-007A;
+        unicode-range: U+0057, U+0061, U+0063, U+0065, U+0069, U+006C-006D, U+006F, U+0074, U+0077, U+0079;
       }
       @font-face {
         font-family: 'Source Sans 3';
@@ -518,9 +518,9 @@
 
       /* Morphs: a recipe card's photo grows into the recipe's hero photo (and shrinks back),
          and a step photo grows into the full-screen viewer (and back into its step). */
-      :root[data-morph='recipe'] .recipe-card.is-morph-target .card-media img,
-      :root[data-morph='recipe'] .vault-row.is-morph-target .vault-row-photo img,
-      :root[data-morph='recipe'] .detail-hero-img {
+      :root[data-morph='recipe'] .recipe-card.is-morph-target .card-media > :is(img, .category-tile),
+      :root[data-morph='recipe'] .vault-row.is-morph-target .vault-row-photo > :is(img, .category-tile),
+      :root[data-morph='recipe'] :is(.detail-hero-img, .detail-hero-tile) {
         view-transition-name: recipe-photo;
       }
       :root[data-morph='photo'] .step-visual-frame.is-zoom-source .step-visual-img,
@@ -574,9 +574,9 @@
         :root[data-morph='recipe'] .detail-hero-frame {
           view-transition-name: recipe-frame;
         }
-        :root[data-morph='recipe'] .recipe-card.is-morph-target .card-media img,
-        :root[data-morph='recipe'] .vault-row.is-morph-target .vault-row-photo img,
-        :root[data-morph='recipe'] .detail-hero-img {
+        :root[data-morph='recipe'] .recipe-card.is-morph-target .card-media > :is(img, .category-tile),
+        :root[data-morph='recipe'] .vault-row.is-morph-target .vault-row-photo > :is(img, .category-tile),
+        :root[data-morph='recipe'] :is(.detail-hero-img, .detail-hero-tile) {
           view-transition-group: nearest;
         }
         /* The card's badge fades where it is rather than riding under the photo. */
@@ -1047,6 +1047,50 @@
         transition: transform 0.35s ease;
       }
 
+      /* A recipe without a photo (CategoryTile): its category's icon on a lighter plate, with
+         rings spreading out over tinted paper, all in the season's own colours. Sized by its
+         frame (container units), so one tile serves a list row, a card and the recipe page. */
+      .category-tile {
+        --tile-rim: color-mix(in srgb, var(--accent) 26%, transparent);
+        --tile-ring: color-mix(in srgb, var(--accent) 14%, transparent);
+        --tile-ring-far: color-mix(in srgb, var(--accent) 8%, transparent);
+        --tile-plate: color-mix(in srgb, var(--bg-surface) 70%, transparent);
+        --tile-plate-edge: color-mix(in srgb, var(--bg-surface) 38%, transparent);
+        container-type: size;
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        color: var(--accent);
+        background:
+          radial-gradient(
+            circle,
+            var(--tile-plate) 0 12cqmin,
+            var(--tile-plate-edge) 25cqmin,
+            var(--tile-rim) 25cqmin calc(25cqmin + 1.5px),
+            transparent calc(25cqmin + 1.5px) calc(37cqmin - 0.6px),
+            var(--tile-ring) calc(37cqmin - 0.6px) calc(37cqmin + 0.6px),
+            transparent calc(37cqmin + 0.6px) calc(51cqmin - 0.5px),
+            var(--tile-ring-far) calc(51cqmin - 0.5px) calc(51cqmin + 0.5px),
+            transparent calc(51cqmin + 0.5px)
+          ),
+          radial-gradient(
+            ellipse 110% 80% at 50% 30%,
+            color-mix(in srgb, var(--bg-surface) 22%, transparent),
+            transparent 70%
+          ),
+          color-mix(in srgb, var(--accent) 13%, var(--bg-card));
+      }
+
+      .category-tile-icon {
+        position: relative;
+        width: max(1.6rem, 28cqmin);
+        height: max(1.6rem, 28cqmin);
+        filter: drop-shadow(0 1px 0 color-mix(in srgb, var(--bg-surface) 70%, transparent));
+      }
+
       /* Only where hover is real: a tap on a phone would leave the photo zoomed, and the morph
          would start from the zoomed photo, a visible jump. */
       @media (hover: hover) {
@@ -1118,13 +1162,14 @@
       }
 
       /* ── The vault ──
-         The banner ("The Family / Recipe Vault", the splash's heart flourish, a count), then
-         the bar holding the toolbar. The bar is sticky, --vault-bar-title below the top, with
-         that space above it drawn by the bar itself: once it pins (VaultHeader sets
-         data-condensed), its background fades in and a small title rises into the space. As the
-         page scrolls the banner sinks and fades, driven by the scroll itself where the browser
-         can (animation-timeline), so it tracks the finger with no script. Only transform,
-         opacity, filter and stroke-dashoffset animate. */
+         The banner ("Recipe Vault", the splash's heart flourish, a count), then the bar holding
+         the toolbar. The bar is sticky, --vault-bar-title below the top, with that space above
+         it drawn by the bar itself: once it pins (VaultHeader sets data-condensed), its
+         background fades in and a small title rises into the space. As the page scrolls the
+         banner sinks and fades, driven by the scroll itself where the browser can
+         (animation-timeline), so it tracks the finger with no script. Pinned and scrolling down,
+         the toolbar rolls up under the title (data-tucked) and a small flourish appears there.
+         Only transform, opacity, filter and stroke-dashoffset animate. */
       .vault-page {
         --vault-bar-title: 3rem;
         --vault-key: max(44px, 2.75rem);
@@ -1142,11 +1187,6 @@
         align-items: center;
         gap: 0.08em;
         font-weight: inherit;
-      }
-
-      .vault-kicker {
-        font: italic 500 1.55rem/1.15 var(--font-serif);
-        color: var(--accent);
       }
 
       .vault-title {
@@ -1197,6 +1237,45 @@
         color: var(--text-muted);
       }
 
+      /* The banner's flourish and count draw in only at the very top of the page: they fold
+         away as it leaves (data-away), and wait until the banner has fully slid back. */
+      .vault-flourish .vault-flourish-line {
+        stroke-dashoffset: 0;
+        transition: stroke-dashoffset 0.9s cubic-bezier(0.5, 0.05, 0.25, 1) 0.14s;
+      }
+      .vault-flourish .vault-flourish-heart {
+        transition:
+          transform 0.6s var(--spring-soft) 0.04s,
+          opacity 0.25s ease 0.04s;
+      }
+      .vault-caption {
+        transition:
+          opacity 0.5s ease 0.4s,
+          transform 0.6s var(--ease-glide) 0.4s;
+      }
+      .vault-masthead[data-away] .vault-flourish .vault-flourish-line {
+        stroke-dashoffset: 1;
+        transition: stroke-dashoffset 0.3s ease-in;
+      }
+      .vault-masthead[data-away] .vault-flourish .vault-flourish-heart {
+        transform: scale(0);
+        opacity: 0;
+        transition:
+          transform 0.25s ease-in,
+          opacity 0.2s ease-in;
+      }
+      .vault-masthead[data-away] .vault-caption {
+        opacity: 0;
+        transform: translateY(0.35rem);
+        transition:
+          opacity 0.2s ease,
+          transform 0.2s ease;
+      }
+      .vault-masthead:not([data-ready])
+        :is(.vault-flourish-line, .vault-flourish-heart, .vault-caption) {
+        transition: none;
+      }
+
       .vault-bar {
         position: sticky;
         top: var(--vault-bar-title);
@@ -1216,15 +1295,43 @@
         background: var(--bg-main);
         box-shadow: 0 1px 0 var(--border-subtle), var(--shadow-md);
         opacity: 0;
-        transition: opacity 0.3s ease;
+        transition:
+          opacity 0.3s ease,
+          transform 0.5s var(--ease-glide);
       }
 
       .vault-bar[data-condensed]::before {
         opacity: 1;
       }
 
+      /* Tucked, the background's bottom edge rises to the title's (by the toolbar's height),
+         and the toolbar rides up with it, under the title's own opaque strip. */
+      .vault-bar[data-tucked]::before {
+        transform: translateY(calc(-100% + var(--vault-bar-title)));
+        transition:
+          opacity 0.3s ease,
+          transform 0.42s var(--ease-glide);
+      }
+
+      .vault-bar-tools {
+        position: relative;
+        transition:
+          transform 0.5s var(--ease-glide),
+          opacity 0.3s ease 0.05s;
+      }
+
+      .vault-bar[data-tucked] .vault-bar-tools {
+        transform: translateY(-100%);
+        opacity: 0;
+        pointer-events: none;
+        transition:
+          transform 0.42s var(--ease-glide),
+          opacity 0.25s ease 0.12s;
+      }
+
       .vault-bar-title {
         position: absolute;
+        z-index: 1;
         inset: auto 0 100%;
         height: var(--vault-bar-title);
         display: grid;
@@ -1232,7 +1339,21 @@
         pointer-events: none;
       }
 
-      .vault-bar-title > span {
+      .vault-bar-title::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: var(--bg-main);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      .vault-bar[data-condensed] .vault-bar-title::before {
+        opacity: 1;
+      }
+
+      .vault-bar-name {
         font: var(--weight-heading) 1.3rem/1 var(--font-serif);
         letter-spacing: -0.01em;
         color: var(--text-primary);
@@ -1245,7 +1366,7 @@
           filter 0.18s ease;
       }
 
-      .vault-bar[data-condensed] .vault-bar-title > span {
+      .vault-bar[data-condensed] .vault-bar-name {
         opacity: 1;
         transform: none;
         filter: none;
@@ -1255,10 +1376,56 @@
           filter 0.4s ease 0.06s;
       }
 
+      /* Tucked: the name steps up a little to make room for a small flourish under it. */
+      .vault-bar[data-condensed][data-tucked] .vault-bar-name {
+        transform: translateY(-0.3rem);
+        transition: transform 0.5s var(--ease-glide);
+      }
+
+      .vault-bar-flourish {
+        position: absolute;
+        left: 50%;
+        bottom: 0.45rem;
+        width: 4.25rem;
+        height: auto;
+        margin-left: -2.125rem;
+        overflow: visible;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+
+      .vault-bar-flourish .vault-flourish-line {
+        stroke-width: 2.6;
+        stroke-dashoffset: 1;
+        transition: stroke-dashoffset 0.2s ease-in;
+      }
+
+      .vault-bar-flourish .vault-flourish-heart {
+        transform: scale(0);
+        transition: transform 0.2s ease-in;
+      }
+
+      .vault-bar[data-tucked] .vault-bar-flourish {
+        opacity: 1;
+        transition: opacity 0.2s ease 0.1s;
+      }
+
+      .vault-bar[data-tucked] .vault-bar-flourish .vault-flourish-line {
+        stroke-dashoffset: 0;
+        transition: stroke-dashoffset 0.7s cubic-bezier(0.5, 0.05, 0.25, 1) 0.22s;
+      }
+
+      .vault-bar[data-tucked] .vault-bar-flourish .vault-flourish-heart {
+        transform: none;
+        transition: transform 0.55s var(--spring-soft) 0.14s;
+      }
+
       /* Until VaultHeader has read the scroll, the bar takes its state without animating. */
+      .vault-bar:not([data-ready]),
+      .vault-bar:not([data-ready]) *,
       .vault-bar:not([data-ready])::before,
-      .vault-bar:not([data-ready]) .vault-bar-title > span {
-        transition: none;
+      .vault-bar:not([data-ready]) ::before {
+        transition: none !important;
       }
 
       .vault-tools-block {
@@ -1324,10 +1491,12 @@
         transform: scale(1);
       }
 
-      /* Search: a key that grows across the row into a field, as the other tools step aside. */
+      /* Search: a key at the right end that grows leftward across the row into a field, as the
+         other tools step aside. The key rides the field's growing left edge, ending where a
+         search field's magnifier sits. */
       .vault-search {
         position: absolute;
-        inset: 0 auto 0 0;
+        inset: 0 0 0 auto;
         z-index: 2;
         width: var(--vault-key);
         display: flex;
@@ -1416,7 +1585,7 @@
         align-items: center;
         justify-content: flex-end;
         gap: 0.5rem;
-        padding-left: calc(var(--vault-key) + 0.5rem);
+        padding-right: calc(var(--vault-key) + 0.5rem);
         transition:
           opacity 0.3s ease 0.1s,
           transform 0.5s var(--ease-glide) 0.05s;
@@ -1424,16 +1593,18 @@
 
       .vault-toolbar.is-searching .vault-tools {
         opacity: 0;
-        transform: translateX(1.25rem);
+        transform: translateX(-1.25rem);
         transition:
           opacity 0.18s ease,
           transform 0.45s var(--ease-glide);
       }
 
-      /* Cards or list: two buttons in a tray, with a raised thumb that springs between them. */
+      /* Cards or list: two buttons in a tray, with a raised thumb that springs between them. It
+         holds the row's left end. */
       .vault-layout {
         position: relative;
         flex: none;
+        margin-right: auto;
         display: flex;
         padding: 3px;
         border: 1px solid var(--border-subtle);
@@ -1701,15 +1872,56 @@
         color: var(--text-muted);
       }
 
-      .vault-option-check {
-        flex: none;
-        margin-left: auto;
+.vault-option-text {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.05rem;
+        line-height: 1.2;
+      }
+
+      .vault-option-order {
+        font-size: 0.8125rem;
+        font-weight: 450;
+        color: var(--text-muted);
+        transition: color 0.2s ease;
+      }
+
+      /* A new order slides in (the caption is keyed on its text). */
+      .vault-option[aria-pressed='true'] .vault-option-order {
         color: var(--accent);
+        animation: vault-order-in 0.4s var(--ease-glide) both;
+      }
+
+      @keyframes vault-order-in {
+        from {
+          opacity: 0;
+          transform: translateY(0.35rem);
+          filter: blur(2px);
+        }
+      }
+
+      /* The chosen sort's arrow, in a small round key: tap the row again and it turns over. */
+      .vault-option-flip {
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 2rem;
+        height: 2rem;
+        border-radius: var(--radius-full);
+        color: var(--accent);
+        background: var(--accent-subtle);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
         opacity: 0;
         transform: scale(0.4);
         transition:
           opacity 0.2s ease,
           transform 0.5s var(--spring-soft);
+      }
+
+      .vault-option-arrow {
+        transition: transform 0.55s var(--spring-soft);
       }
 
       .vault-option[aria-pressed='true'] {
@@ -1720,12 +1932,16 @@
         color: var(--accent);
       }
 
-      .vault-option[aria-pressed='true'] .vault-option-check {
+      .vault-option[aria-pressed='true'] .vault-option-flip {
         opacity: 1;
         transform: none;
       }
 
-      :is(.vault-choice, .vault-option, .vault-switch-row):focus-visible {
+      .vault-option.is-reversed .vault-option-arrow {
+        transform: rotate(180deg);
+      }
+
+            :is(.vault-choice, .vault-option, .vault-switch-row):focus-visible {
         outline: 3px solid var(--accent);
         outline-offset: 1px;
       }
@@ -2050,12 +2266,9 @@
       }
 
       @media (prefers-reduced-motion: no-preference) {
-        /* Arriving: the kicker, then the title word by word coming into focus (as on the
-           splash), the flourish drawing out from its heart, the count, the tools, and the
+        /* Arriving: the title word by word coming into focus (as on the splash), the flourish
+           drawing out from its heart, the count, the tools, and the
            first recipes rising into place. */
-        .vault-masthead.is-entering .vault-kicker {
-          animation: fk-splash-rise 0.8s var(--ease-decelerate) both;
-        }
         .vault-masthead.is-entering .vault-word {
           animation: fk-splash-unblur 1s var(--ease-decelerate) calc(0.1s + var(--i, 0) * 0.11s)
             both;
@@ -2072,9 +2285,9 @@
         .vault-page.is-entering :is(.vault-search, .vault-tools > *) {
           animation: vault-key-in 0.6s var(--ease-glide) 0.5s both;
         }
-        .vault-page.is-entering .vault-tools > :nth-child(1) { animation-delay: 0.56s; }
-        .vault-page.is-entering .vault-tools > :nth-child(2) { animation-delay: 0.62s; }
-        .vault-page.is-entering .vault-tools > :nth-child(3) { animation-delay: 0.68s; }
+        .vault-page.is-entering .vault-tools > :nth-child(2) { animation-delay: 0.56s; }
+        .vault-page.is-entering .vault-tools > :nth-child(3) { animation-delay: 0.62s; }
+        .vault-page.is-entering .vault-search { animation-delay: 0.68s; }
         .vault-page.is-entering .vault-item {
           animation: vault-item-in 0.85s var(--ease-glide) calc(0.55s + var(--enter-i, 0) * 70ms)
             both;

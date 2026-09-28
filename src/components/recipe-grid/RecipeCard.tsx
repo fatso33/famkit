@@ -5,7 +5,8 @@ import { estimateRecipeMinutes } from '../../utils/timeEstimator';
 import { getLocalizedRecipe } from '../../hooks/useRecipes';
 import { isHeirloom } from '../../utils/ownership';
 import { vaultItemKey } from '../../utils/viewTransition';
-import { FALLBACK_RECIPE_PHOTO } from '../../utils/vault';
+import { recipePhoto } from '../../utils/vault';
+import { CategoryTile } from './CategoryTile';
 
 interface RecipeCardProps {
   recipe: Recipe;
@@ -30,6 +31,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
   const estimatedTime = t.estimatedTime(estimateRecipeMinutes(recipe));
 
   const badgeText = isHeirloom(rawRecipe) ? t.heirloomBadge : t.familyBadge;
+  const photo = recipePhoto(recipe);
   const ingCountText = t.ingredientsCount(recipe.ingredients ? recipe.ingredients.length : 0);
 
   const defaultDesc =
@@ -58,14 +60,18 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
       }}
     >
       <div className="card-media" data-vault-photo="">
-        <img
-          src={recipe.heroImage || FALLBACK_RECIPE_PHOTO}
-          alt={recipe.name}
-          // The photo coming back from the recipe must be ready to land in its card.
-          loading={isMorphTarget ? 'eager' : 'lazy'}
-          // Laid out uncropped while it morphs (utils/photoMorph).
-          data-morph-photo={isMorphTarget ? '' : undefined}
-        />
+        {photo ? (
+          <img
+            src={photo}
+            alt={recipe.name}
+            // The photo coming back from the recipe must be ready to land in its card.
+            loading={isMorphTarget ? 'eager' : 'lazy'}
+            // Laid out uncropped while it morphs (utils/photoMorph).
+            data-morph-photo={isMorphTarget ? '' : undefined}
+          />
+        ) : (
+          <CategoryTile recipe={rawRecipe} />
+        )}
         <div className="card-badge">{badgeText}</div>
       </div>
       <div className="card-body">

@@ -1,4 +1,4 @@
-import { Language, RecipeCategory, VaultSort } from '../types/recipe';
+import { Language, RecipeCategory, VaultSortKey } from '../types/recipe';
 import type { Season } from '../utils/season';
 
 /** Polish noun form for a count: 1 składnik, 2–4 (and 22–24, …) składniki, else składników. */
@@ -10,15 +10,15 @@ function plPlural(n: number, one: string, few: string, many: string): string {
 }
 
 export interface UiTranslations {
-  /** The vault's heading reads "{vaultKicker} {vaultTitle}"; the pinned bar shows the title. */
-  vaultKicker: string;
   vaultTitle: string;
   vaultSubtitle: string;
   vaultCaption: (recipes: number, cooks: number) => string;
   allRecipes: string;
   recipeCategories: Record<RecipeCategory, string>;
   categoryLabel: string;
-  vaultSorts: Record<VaultSort, string>;
+  vaultSorts: Record<VaultSortKey, string>;
+  /** Each sort's two directions: its natural order, then turned round. */
+  vaultSortOrders: Record<VaultSortKey, readonly [string, string]>;
   openSearch: string;
   searchPlaceholder: string;
   closeSearch: string;
@@ -210,7 +210,6 @@ export interface UiTranslations {
 
 export const UI_TEXT: Record<Language, UiTranslations> = {
   en: {
-    vaultKicker: 'The Family',
     vaultTitle: 'Recipe Vault',
     vaultSubtitle:
       'Heirloom family recipes crafted with precision, love, and time-honored tradition.',
@@ -230,12 +229,20 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     },
     categoryLabel: 'Category',
     vaultSorts: {
-      newest: 'Newest first',
-      az: 'A to Z',
-      quickest: 'Quickest first',
-      updated: 'Recently changed',
-      cook: 'By cook',
-      category: 'By category',
+      added: 'Date added',
+      time: 'Cooking time',
+      name: 'Name',
+      changed: 'Last changed',
+      cook: 'Cook',
+      category: 'Category',
+    },
+    vaultSortOrders: {
+      added: ['Newest first', 'Oldest first'],
+      time: ['Quickest first', 'Longest first'],
+      name: ['A to Z', 'Z to A'],
+      changed: ['Most recent first', 'Least recent first'],
+      cook: ['A to Z', 'Z to A'],
+      category: ['Breakfast to drinks', 'Drinks to breakfast'],
     },
     openSearch: 'Search recipes',
     searchPlaceholder: 'Recipes, cooks, ingredients…',
@@ -431,7 +438,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     recaptchaNoticeEnd: ' apply.',
   },
   pl: {
-    vaultKicker: 'Rodzinny',
     vaultTitle: 'Skarbiec przepisów',
     vaultSubtitle: 'Dziedzictwo kulinarnych sekretów przekazywane z pokolenia na pokolenie.',
     vaultCaption: (recipes: number, cooks: number) =>
@@ -450,19 +456,27 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     },
     categoryLabel: 'Kategoria',
     vaultSorts: {
-      newest: 'Najnowsze',
-      az: 'Alfabetycznie',
-      quickest: 'Najszybsze',
-      updated: 'Ostatnio zmienione',
-      cook: 'Według autora',
-      category: 'Według kategorii',
+      added: 'Data dodania',
+      time: 'Czas przygotowania',
+      name: 'Nazwa',
+      changed: 'Ostatnia zmiana',
+      cook: 'Autor',
+      category: 'Kategoria',
+    },
+    vaultSortOrders: {
+      added: ['Najpierw najnowsze', 'Najpierw najstarsze'],
+      time: ['Najpierw najszybsze', 'Najpierw najdłuższe'],
+      name: ['Od A do Z', 'Od Z do A'],
+      changed: ['Najpierw ostatnio zmienione', 'Najpierw najdawniej zmienione'],
+      cook: ['Od A do Z', 'Od Z do A'],
+      category: ['Od śniadań do napojów', 'Od napojów do śniadań'],
     },
     openSearch: 'Szukaj przepisów',
     searchPlaceholder: 'Przepisy, autorzy, składniki…',
     closeSearch: 'Zamknij wyszukiwanie',
     filterRecipes: 'Filtruj przepisy',
     sortRecipes: 'Sortuj przepisy',
-    sortBy: 'Sortuj',
+    sortBy: 'Sortuj według',
     heirloomsOnly: 'Tylko z tradycją',
     removeFilter: (label: string) => `Usuń filtr: ${label}`,
     recipeLayout: 'Układ przepisów',

@@ -73,7 +73,7 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
     shown: getLocalizedRecipe(recipe, language) ?? recipe,
   }));
   const shown = sortEntries(filterEntries(entries, filter), sort, language);
-  const groups = groupEntries(shown, sort);
+  const groups = groupEntries(shown, sort.by);
 
   /**
    * With the bar pinned, a changed vault starts from its top, just under the bar. The pinned bar
@@ -114,7 +114,7 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
   const groupHeading = (key: string) =>
     key && (
       <h2 className="vault-group-heading">
-        {sort === 'category' && isRecipeCategory(key) ? t.recipeCategories[key] : key}
+        {sort.by === 'category' && isRecipeCategory(key) ? t.recipeCategories[key] : key}
       </h2>
     );
 

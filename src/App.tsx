@@ -216,7 +216,7 @@ export default function App() {
       morph &&
       target === 'recipes' &&
       !!selectedRecipe &&
-      isOnScreen(document.querySelector('.detail-hero-img'));
+      isOnScreen(document.querySelector('.detail-hero-img, .detail-hero-tile'));
     const motion: NavMotion = morphsBack
       ? 'back'
       : (motionOverride ?? (toDepth > fromDepth ? 'forward' : goingBack ? 'back' : 'fade'));

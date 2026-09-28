@@ -5,6 +5,7 @@ import { isAppCheckEnabled } from '../../services/firebase';
 import { Language, Recipe } from '../../types/recipe';
 import { getLocalizedRecipe } from '../../hooks/useRecipes';
 import { timeAgo } from '../../utils/recipeTrash';
+import { recipePhoto } from '../../utils/vault';
 import { Season, SeasonPreference } from '../../utils/season';
 import { SeasonIcon, SeasonPicker } from './SeasonPicker';
 
@@ -113,8 +114,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   const recipe = getLocalizedRecipe(raw, language) ?? raw;
                   return (
                     <li key={raw.id} className="trash-item">
-                      {recipe.heroImage ? (
-                        <img className="trash-thumb" src={recipe.heroImage} alt="" />
+                      {recipePhoto(recipe) ? (
+                        <img className="trash-thumb" src={recipePhoto(recipe)} alt="" />
                       ) : (
                         <span className="trash-thumb" aria-hidden="true" />
                       )}

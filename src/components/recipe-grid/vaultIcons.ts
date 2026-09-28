@@ -1,8 +1,9 @@
 import {
-  ArrowDownAZ,
   CakeSlice,
+  CalendarPlus,
+  CaseSensitive,
+  ChefHat,
   Cherry,
-  Clock,
   EggFried,
   Ellipsis,
   GlassWater,
@@ -10,13 +11,12 @@ import {
   Salad,
   Shapes,
   Soup,
-  Sparkles,
-  User,
+  Timer,
   UtensilsCrossed,
   Wheat,
   type LucideIcon,
 } from 'lucide-react';
-import { RecipeCategory, VaultSort } from '../../types/recipe';
+import { RecipeCategory, VaultSortKey } from '../../types/recipe';
 
 /** Each category's icon, in the filter, its chip and the recipe form. */
 export const CATEGORY_ICONS: Record<RecipeCategory, LucideIcon> = {
@@ -31,11 +31,11 @@ export const CATEGORY_ICONS: Record<RecipeCategory, LucideIcon> = {
   other: Ellipsis,
 };
 
-export const SORT_ICONS: Record<VaultSort, LucideIcon> = {
-  newest: Sparkles,
-  az: ArrowDownAZ,
-  quickest: Clock,
-  updated: History,
-  cook: User,
+export const SORT_ICONS: Record<VaultSortKey, LucideIcon> = {
+  added: CalendarPlus,
+  time: Timer,
+  name: CaseSensitive,
+  changed: History,
+  cook: ChefHat,
   category: Shapes,
 };

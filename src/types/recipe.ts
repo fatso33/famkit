@@ -126,8 +126,18 @@ export type Theme = 'light' | 'dark';
 export type RecipeCategory =
   'breakfast' | 'soups' | 'mains' | 'sides' | 'breads' | 'cakes' | 'preserves' | 'drinks' | 'other';
 
-/** How the vault orders its recipes. */
-export type VaultSort = 'newest' | 'az' | 'quickest' | 'updated' | 'cook' | 'category';
+/** What the vault orders its recipes by. */
+export type VaultSortKey = 'added' | 'time' | 'name' | 'changed' | 'cook' | 'category';
+
+/**
+ * How the vault orders its recipes: by what, and whether the other way round from that key's
+ * natural order (newest, quickest, A to Z, most recently changed, cooks A to Z, the filter's
+ * category order).
+ */
+export interface VaultSort {
+  by: VaultSortKey;
+  reversed: boolean;
+}
 
 /** How the vault lays its recipes out: photo cards, or a compact list. */
 export type VaultView = 'cards' | 'list';

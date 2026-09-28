@@ -53,7 +53,7 @@ const openMenu = (name: string) => {
 };
 
 const choice = (menu: HTMLElement, label: string) =>
-  within(menu).getByRole('button', { name: (name) => name.startsWith(label) });
+  within(menu).getByRole('button', { name: (name) => name.startsWith(`${label} `) });
 
 describe('the vault toolbar', () => {
   beforeEach(() => {
@@ -70,9 +70,7 @@ describe('the vault toolbar', () => {
 
   it('counts the recipes and cooks under the title', () => {
     render(<App />);
-    expect(
-      screen.getByRole('heading', { name: `${t.vaultKicker} ${t.vaultTitle}`, level: 1 }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t.vaultTitle, level: 1 })).toBeInTheDocument();
     expect(screen.getByText(t.vaultCaption(3, 3))).toBeInTheDocument();
   });
 
@@ -138,12 +136,40 @@ describe('the vault toolbar', () => {
     expect(shownRecipes()).toEqual(['Sunday Żurek', 'Easter Babka', 'Plum Kompot']);
 
     const menu = openMenu(t.sortRecipes);
-    fireEvent.click(choice(menu, t.vaultSorts.az));
+    fireEvent.click(choice(menu, t.vaultSorts.name));
     expect(shownRecipes()).toEqual(['Easter Babka', 'Plum Kompot', 'Sunday Żurek']);
 
     unmount();
     render(<App />);
     expect(shownRecipes()).toEqual(['Easter Babka', 'Plum Kompot', 'Sunday Żurek']);
+  });
+
+  it('turns the chosen sort round when it is tapped again, saying which way it now runs', () => {
+    const { unmount } = render(<App />);
+    const [aToZ, zToA] = t.vaultSortOrders.name;
+    fireEvent.click(choice(openMenu(t.sortRecipes), t.vaultSorts.name));
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    const menu = openMenu(t.sortRecipes);
+    const byName = choice(menu, t.vaultSorts.name);
+    expect(byName).toHaveAttribute('aria-pressed', 'true');
+    expect(byName).toHaveAccessibleName(`${t.vaultSorts.name} ${aToZ}`);
+    fireEvent.click(byName);
+    expect(byName).toHaveAccessibleName(`${t.vaultSorts.name} ${zToA}`);
+    expect(shownRecipes()).toEqual(['Sunday Żurek', 'Plum Kompot', 'Easter Babka']);
+
+    // Another sort starts the natural way round.
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    const time = choice(openMenu(t.sortRecipes), t.vaultSorts.time);
+    expect(time).toHaveAccessibleName(`${t.vaultSorts.time} ${t.vaultSortOrders.time[0]}`);
+
+    unmount();
+    render(<App />);
+    expect(shownRecipes()).toEqual(['Sunday Żurek', 'Plum Kompot', 'Easter Babka']);
   });
 
   it('heads each cook’s recipes with their name when sorted by cook', () => {

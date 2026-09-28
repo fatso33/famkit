@@ -1,6 +1,6 @@
 import { Recipe, RecipeVersion, Language, Theme, VaultSort, VaultView } from '../types/recipe';
 import { isSeasonPreference, SeasonPreference } from '../utils/season';
-import { isVaultSort, VAULT_SORTS } from '../utils/vault';
+import { DEFAULT_SORT, formatVaultSort, parseVaultSort } from '../utils/vault';
 
 const RECIPES_KEY = 'wandas_recipes';
 const THEME_KEY = 'wandas_theme';
@@ -165,12 +165,11 @@ export function setStoredVaultView(view: VaultView): void {
 }
 
 export function getStoredVaultSort(): VaultSort {
-  if (typeof window === 'undefined') return VAULT_SORTS[0];
-  const value = readSetting(VAULT_SORT_KEY);
-  return isVaultSort(value) ? value : VAULT_SORTS[0];
+  if (typeof window === 'undefined') return DEFAULT_SORT;
+  return parseVaultSort(readSetting(VAULT_SORT_KEY)) ?? DEFAULT_SORT;
 }
 
 export function setStoredVaultSort(sort: VaultSort): void {
   if (typeof window === 'undefined') return;
-  writeSetting(VAULT_SORT_KEY, sort);
+  writeSetting(VAULT_SORT_KEY, formatVaultSort(sort));
 }

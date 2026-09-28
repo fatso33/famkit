@@ -5,7 +5,8 @@ import { UiTranslations } from '../../i18n/translations';
 import { estimateRecipeMinutes } from '../../utils/timeEstimator';
 import { isHeirloom } from '../../utils/ownership';
 import { vaultItemKey } from '../../utils/viewTransition';
-import { FALLBACK_RECIPE_PHOTO } from '../../utils/vault';
+import { recipePhoto } from '../../utils/vault';
+import { CategoryTile } from './CategoryTile';
 
 interface RecipeRowProps {
   recipe: Recipe;
@@ -29,6 +30,7 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
   t,
 }) => {
   const heirloom = isHeirloom(recipe);
+  const photo = recipePhoto(shown);
   return (
     <button
       type="button"
@@ -42,12 +44,16 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
       onClick={() => onSelect(recipe.id)}
     >
       <span className="vault-row-photo" data-vault-photo="">
-        <img
-          src={shown.heroImage || FALLBACK_RECIPE_PHOTO}
-          alt=""
-          loading={isMorphTarget ? 'eager' : 'lazy'}
-          data-morph-photo={isMorphTarget ? '' : undefined}
-        />
+        {photo ? (
+          <img
+            src={photo}
+            alt=""
+            loading={isMorphTarget ? 'eager' : 'lazy'}
+            data-morph-photo={isMorphTarget ? '' : undefined}
+          />
+        ) : (
+          <CategoryTile recipe={recipe} />
+        )}
       </span>
       <span className="vault-row-text">
         <span className="vault-row-name" data-vault-name="">
