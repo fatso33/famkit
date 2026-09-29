@@ -16,6 +16,8 @@ interface StepEditorProps {
   number: number | null;
   /** The number a fork path's first own step gets. */
   pathStart: (path: number) => number;
+  /** A step follows in the same section, so a fork joins back into it. */
+  join: boolean;
   /** Whether its tools are open. */
   active: boolean;
   /** It differs in the restored earlier version. */
@@ -41,6 +43,7 @@ export const StepEditor: React.FC<StepEditorProps> = ({
   step,
   number,
   pathStart,
+  join,
   active,
   restored,
   canMoveUp,
@@ -86,222 +89,246 @@ export const StepEditor: React.FC<StepEditorProps> = ({
     }
   };
 
+  const rail = (
+    <div className="step-editor-rail">
+      <div className="step-editor-number">
+        {plain ? (
+          <button
+            type="button"
+            className="step-number-add"
+            aria-label={t.numberThisStep}
+            onClick={() => patch({ plain: false })}
+          >
+            <Hash size="1rem" aria-hidden="true" />
+          </button>
+        ) : (
+          <>
+            <span className="step-num" aria-hidden="true">
+              <NumberRoll value={n} />
+            </span>
+            <button
+              type="button"
+              className="step-number-remove"
+              aria-label={t.removeStepNumber}
+              tabIndex={active ? 0 : -1}
+              aria-hidden={!active || undefined}
+              onClick={() => patch({ plain: true })}
+            >
+              <X size="0.8rem" strokeWidth={2.6} aria-hidden="true" />
+            </button>
+          </>
+        )}
+      </div>
+      <Reveal open={active} className="step-editor-move">
+        <button
+          type="button"
+          className="step-move-button"
+          aria-label={t.moveStepUp(n)}
+          disabled={!canMoveUp}
+          onClick={() => onMove(-1)}
+        >
+          <ChevronUp size="1.35rem" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="step-move-button"
+          aria-label={t.moveStepDown(n)}
+          disabled={!canMoveDown}
+          onClick={() => onMove(1)}
+        >
+          <ChevronDown size="1.35rem" aria-hidden="true" />
+        </button>
+      </Reveal>
+    </div>
+  );
+
+  const extras = (
+    <>
+      {step.showTip && (
+        <div className="step-tip-field field-with-icon">
+          <Lightbulb className="field-icon is-gold" size="1.1em" aria-hidden="true" />
+          <AutoGrowTextarea
+            aria-label={plain ? t.tip : t.stepTipLabel(n)}
+            value={step.tip}
+            onChange={(e) => patch({ tip: e.target.value })}
+          />
+        </div>
+      )}
+
+      {(showPhoto || hasPhoto) && (
+        <div className="step-photo-field">
+          <ImagePickerWithPreview
+            imageUrl={step.imageSrc}
+            onChange={(url) => patch({ imageSrc: url })}
+            t={t}
+          />
+          {hasPhoto && (
+            <input
+              className="form-control step-photo-caption"
+              type="text"
+              aria-label={t.photoCaptionLabel}
+              autoComplete="off"
+              value={step.imageCaption}
+              onChange={(e) => patch({ imageCaption: e.target.value })}
+            />
+          )}
+        </div>
+      )}
+    </>
+  );
+
+  const tools = (
+    <Reveal open={active} className="item-tools step-editor-tools">
+      <div className="tool-strip" role="group" aria-label={toolsName}>
+        {!plain && !fork && (
+          <button
+            type="button"
+            className="tool-strip-button"
+            aria-disabled={substepsFull || undefined}
+            onClick={(e) => {
+              const button = e.currentTarget;
+              if (substepsFull) {
+                button.animate?.(
+                  [
+                    { transform: 'none' },
+                    { transform: 'translateX(-3px)' },
+                    { transform: 'translateX(3px)' },
+                    { transform: 'none' },
+                  ],
+                  { duration: 260 },
+                );
+                return;
+              }
+              patch({ substeps: [...step.substeps, textItem()] });
+              requestAnimationFrame(() => {
+                const rows = button
+                  .closest('.step-editor')
+                  ?.querySelectorAll<HTMLTextAreaElement>('.substep-row textarea');
+                rows?.[rows.length - 1]?.focus();
+              });
+            }}
+          >
+            <span className="tool-strip-letter" aria-hidden="true">
+              a)
+            </span>
+            <span>{substepsFull ? t.substepsFull : t.substep}</span>
+          </button>
+        )}
+        <button
+          type="button"
+          className="tool-strip-button"
+          aria-pressed={step.showTip}
+          onClick={() => patch({ showTip: !step.showTip })}
+        >
+          <Lightbulb size="1.25rem" aria-hidden="true" />
+          <span>{t.tip}</span>
+        </button>
+        <button
+          type="button"
+          className="tool-strip-button"
+          aria-pressed={showPhoto || hasPhoto}
+          onClick={togglePhoto}
+        >
+          <Camera size="1.25rem" aria-hidden="true" />
+          <span>{t.photo}</span>
+        </button>
+        {!plain && (
+          <button
+            type="button"
+            className="tool-strip-button"
+            aria-pressed={Boolean(fork)}
+            onClick={toggleForking}
+          >
+            <ForkIcon paths={2} />
+            <span>{t.fork}</span>
+          </button>
+        )}
+        <button
+          type="button"
+          className="tool-strip-button is-danger"
+          aria-label={t.removeStep}
+          onClick={(e) => onRemove(e.currentTarget.closest('li'))}
+        >
+          <Trash2 size="1.25rem" aria-hidden="true" />
+          <span aria-hidden="true">{t.remove}</span>
+        </button>
+      </div>
+    </Reveal>
+  );
+
   return (
     <li
       data-motion-id={step.id}
       data-item-id={step.id}
-      className={`step-editor${plain ? ' is-plain' : ''}${fork ? ' is-fork' : ''}${active ? ' is-active' : ''}${restored ? ' is-restored' : ''}`}
+      className={`step-editor${plain ? ' is-plain' : ''}${fork ? ' is-fork' : ''}${active ? ' is-active' : ''}${restored ? ' is-restored' : ''}${fork && join ? ' has-join' : ''}`}
     >
       {restored && <span className="restored-chip">{t.restoredChip}</span>}
 
-      <div className="step-editor-rail">
-        <div className="step-editor-number">
-          {plain ? (
-            <button
-              type="button"
-              className="step-number-add"
-              aria-label={t.numberThisStep}
-              onClick={() => patch({ plain: false })}
-            >
-              <Hash size="1rem" aria-hidden="true" />
-            </button>
-          ) : (
-            <>
-              <span className="step-num" aria-hidden="true">
-                <NumberRoll value={n} />
+      {fork ? (
+        <ForkEditor
+          step={step}
+          pathStart={pathStart}
+          join={join}
+          rail={rail}
+          extras={extras}
+          tools={tools}
+          onChange={onChange}
+          t={t}
+        />
+      ) : (
+        <>
+          {rail}
+          <div className="step-editor-body">
+            {plain && (
+              <span className="step-plain-tag" aria-hidden="true">
+                {t.textBetweenSteps}
               </span>
-              <button
-                type="button"
-                className="step-number-remove"
-                aria-label={t.removeStepNumber}
-                tabIndex={active ? 0 : -1}
-                aria-hidden={!active || undefined}
-                onClick={() => patch({ plain: true })}
-              >
-                <X size="0.8rem" strokeWidth={2.6} aria-hidden="true" />
-              </button>
-            </>
-          )}
-        </div>
-        {fork && <ForkIcon className="step-editor-fork" paths={fork.paths.length} />}
-        <Reveal open={active} className="step-editor-move">
-          <button
-            type="button"
-            className="step-move-button"
-            aria-label={t.moveStepUp(n)}
-            disabled={!canMoveUp}
-            onClick={() => onMove(-1)}
-          >
-            <ChevronUp size="1.35rem" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className="step-move-button"
-            aria-label={t.moveStepDown(n)}
-            disabled={!canMoveDown}
-            onClick={() => onMove(1)}
-          >
-            <ChevronDown size="1.35rem" aria-hidden="true" />
-          </button>
-        </Reveal>
-      </div>
-
-      <div className="step-editor-body">
-        {plain && (
-          <span className="step-plain-tag" aria-hidden="true">
-            {t.textBetweenSteps}
-          </span>
-        )}
-        {fork ? (
-          <ForkEditor step={step} pathStart={pathStart} onChange={onChange} t={t} />
-        ) : (
-          <AutoGrowTextarea
-            className="step-editor-text"
-            aria-label={plain ? t.textBetweenSteps : t.stepInstructionLabel(n)}
-            value={step.text}
-            onChange={(e) => patch({ text: e.target.value })}
-          />
-        )}
-
-        {!plain && !fork && step.substeps.length > 0 && (
-          <ol className="substep-list">
-            {step.substeps.map((sub, k) => (
-              <li key={sub.id} className="substep-row">
-                <span className="substep-letter" aria-hidden="true">
-                  {LETTERS[k]})
-                </span>
-                <AutoGrowTextarea
-                  aria-label={t.substepLabel(LETTERS[k])}
-                  value={sub.text}
-                  onChange={(e) =>
-                    patch({
-                      substeps: step.substeps.map((s) =>
-                        s.id === sub.id ? { ...s, text: e.target.value } : s,
-                      ),
-                    })
-                  }
-                />
-                <button
-                  type="button"
-                  className="icon-button is-small"
-                  aria-label={t.removeSubstep}
-                  onClick={() => patch({ substeps: step.substeps.filter((s) => s.id !== sub.id) })}
-                >
-                  <X size="1.1rem" aria-hidden="true" />
-                </button>
-              </li>
-            ))}
-          </ol>
-        )}
-
-        {step.showTip && (
-          <div className="step-tip-field field-with-icon">
-            <Lightbulb className="field-icon is-gold" size="1.1em" aria-hidden="true" />
-            <AutoGrowTextarea
-              aria-label={plain ? t.tip : t.stepTipLabel(n)}
-              value={step.tip}
-              onChange={(e) => patch({ tip: e.target.value })}
-            />
-          </div>
-        )}
-
-        {(showPhoto || hasPhoto) && (
-          <div className="step-photo-field">
-            <ImagePickerWithPreview
-              imageUrl={step.imageSrc}
-              onChange={(url) => patch({ imageSrc: url })}
-              t={t}
-            />
-            {hasPhoto && (
-              <input
-                className="form-control step-photo-caption"
-                type="text"
-                aria-label={t.photoCaptionLabel}
-                autoComplete="off"
-                value={step.imageCaption}
-                onChange={(e) => patch({ imageCaption: e.target.value })}
-              />
             )}
-          </div>
-        )}
-      </div>
+            <AutoGrowTextarea
+              className="step-editor-text"
+              aria-label={plain ? t.textBetweenSteps : t.stepInstructionLabel(n)}
+              value={step.text}
+              onChange={(e) => patch({ text: e.target.value })}
+            />
 
-      <Reveal open={active} className="item-tools step-editor-tools">
-        <div className="tool-strip" role="group" aria-label={toolsName}>
-          {!plain && !fork && (
-            <button
-              type="button"
-              className="tool-strip-button"
-              aria-disabled={substepsFull || undefined}
-              onClick={(e) => {
-                const button = e.currentTarget;
-                if (substepsFull) {
-                  button.animate?.(
-                    [
-                      { transform: 'none' },
-                      { transform: 'translateX(-3px)' },
-                      { transform: 'translateX(3px)' },
-                      { transform: 'none' },
-                    ],
-                    { duration: 260 },
-                  );
-                  return;
-                }
-                patch({ substeps: [...step.substeps, textItem()] });
-                requestAnimationFrame(() => {
-                  const rows = button
-                    .closest('.step-editor')
-                    ?.querySelectorAll<HTMLTextAreaElement>('.substep-row textarea');
-                  rows?.[rows.length - 1]?.focus();
-                });
-              }}
-            >
-              <span className="tool-strip-letter" aria-hidden="true">
-                a)
-              </span>
-              <span>{substepsFull ? t.substepsFull : t.substep}</span>
-            </button>
-          )}
-          <button
-            type="button"
-            className="tool-strip-button"
-            aria-pressed={step.showTip}
-            onClick={() => patch({ showTip: !step.showTip })}
-          >
-            <Lightbulb size="1.25rem" aria-hidden="true" />
-            <span>{t.tip}</span>
-          </button>
-          <button
-            type="button"
-            className="tool-strip-button"
-            aria-pressed={showPhoto || hasPhoto}
-            onClick={togglePhoto}
-          >
-            <Camera size="1.25rem" aria-hidden="true" />
-            <span>{t.photo}</span>
-          </button>
-          {!plain && (
-            <button
-              type="button"
-              className="tool-strip-button"
-              aria-pressed={Boolean(fork)}
-              onClick={toggleForking}
-            >
-              <ForkIcon paths={2} />
-              <span>{t.fork}</span>
-            </button>
-          )}
-          <button
-            type="button"
-            className="tool-strip-button is-danger"
-            aria-label={t.removeStep}
-            onClick={(e) => onRemove(e.currentTarget.closest('li'))}
-          >
-            <Trash2 size="1.25rem" aria-hidden="true" />
-            <span aria-hidden="true">{t.remove}</span>
-          </button>
-        </div>
-      </Reveal>
+            {!plain && step.substeps.length > 0 && (
+              <ol className="substep-list">
+                {step.substeps.map((sub, k) => (
+                  <li key={sub.id} className="substep-row">
+                    <span className="substep-letter" aria-hidden="true">
+                      {LETTERS[k]})
+                    </span>
+                    <AutoGrowTextarea
+                      aria-label={t.substepLabel(LETTERS[k])}
+                      value={sub.text}
+                      onChange={(e) =>
+                        patch({
+                          substeps: step.substeps.map((s) =>
+                            s.id === sub.id ? { ...s, text: e.target.value } : s,
+                          ),
+                        })
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="icon-button is-small"
+                      aria-label={t.removeSubstep}
+                      onClick={() =>
+                        patch({ substeps: step.substeps.filter((s) => s.id !== sub.id) })
+                      }
+                    >
+                      <X size="1.1rem" aria-hidden="true" />
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            )}
+
+            {extras}
+          </div>
+          {tools}
+        </>
+      )}
     </li>
   );
 };

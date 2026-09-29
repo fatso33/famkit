@@ -85,6 +85,7 @@ export const StepsList: React.FC<StepsListProps> = ({
                     number={number}
                     path={chosenPath(step.fork, choices[idx])}
                     onChoose={(path) => onChoosePath(idx, path)}
+                    join={k < section.steps.length - 1}
                     t={t}
                   >
                     {extras}

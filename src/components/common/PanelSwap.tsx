@@ -5,13 +5,15 @@ const GLIDE = 'cubic-bezier(0.32, 0.72, 0, 1)';
 
 /**
  * Shows one of several panels (the caller keys it). Changing `index` slides the new panel in
- * from its side while the frame's height eases to fit it.
+ * from its side while the frame's height eases to fit it. With `stagger`, the panel's children
+ * arrive one after another instead.
  */
 export const PanelSwap: React.FC<{
   index: number;
   className?: string;
+  stagger?: boolean;
   children: React.ReactNode;
-}> = ({ index, className = '', children }) => {
+}> = ({ index, className = '', stagger = false, children }) => {
   const ref = useRef<HTMLDivElement>(null);
   // The height as last drawn, kept current as the panel's text grows or shrinks.
   const last = useRef<{ index: number; height: number } | null>(null);
@@ -32,13 +34,16 @@ export const PanelSwap: React.FC<{
       settle,
       settle,
     );
-    const panel = el.firstElementChild as HTMLElement | null;
-    panel?.animate(
-      [
-        { opacity: 0, transform: `translateX(${from * 1.5}rem)` },
-        { opacity: 1, transform: 'none' },
-      ],
-      timing,
+    const panel = el.firstElementChild;
+    const arriving = !panel ? [] : stagger ? Array.from(panel.children) : [panel];
+    arriving.forEach((part, k) =>
+      part.animate(
+        [
+          { opacity: 0, transform: `translateX(${from * 1.5}rem)` },
+          { opacity: 1, transform: 'none' },
+        ],
+        stagger ? { ...timing, duration: 520, delay: k * 70, fill: 'backwards' } : timing,
+      ),
     );
   });
 

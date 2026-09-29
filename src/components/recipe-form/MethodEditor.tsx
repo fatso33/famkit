@@ -189,7 +189,7 @@ export const MethodEditor: React.FC<MethodEditorProps> = ({
             </header>
 
             <ol className="method-steps">
-              {section.steps.map((step) => {
+              {section.steps.map((step, k) => {
                 const flat = allSteps.indexOf(step);
                 return (
                   <StepEditor
@@ -197,6 +197,7 @@ export const MethodEditor: React.FC<MethodEditorProps> = ({
                     step={step}
                     number={numbers.get(step.id) ?? null}
                     pathStart={(p) => numbers.get(`${step.id}:${p}`) ?? 1}
+                    join={k < section.steps.length - 1}
                     active={step.id === activeId}
                     restored={step.origin !== undefined && Boolean(restoredSteps?.has(step.origin))}
                     canMoveUp={flat > 0}
