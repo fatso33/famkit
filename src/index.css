@@ -2678,10 +2678,21 @@
         }
       }
 
-      /* A heading over part of the list ("For the sauce"), opening its own group of rows. */
+      /* A heading over part of the list ("For the sauce"), opening its own group of rows. From the
+         heading to its last row, the table's left edge turns accent (the spine), so each group
+         reads as one without giving up any width. The editor draws the same spine
+         (.ingredient-heading-row). */
+      .ingredient-table {
+        --spine-width: 3px;
+        --spine-color: color-mix(in srgb, var(--accent) 65%, transparent);
+      }
+
       .ingredient-table th.ingredient-group-heading {
-        padding-top: 1rem;
-        padding-bottom: 0.45rem;
+        --group-top: 1rem;
+        position: relative;
+        padding-top: var(--group-top);
+        padding-bottom: 0.3rem;
+        border-bottom: 0;
         font-family: var(--font-serif);
         font-size: 1.0625rem;
         font-weight: var(--weight-heading);
@@ -2691,8 +2702,48 @@
         background: transparent;
       }
 
-      .ingredient-table tbody + tbody tr:first-child > * {
-        border-top: 1px solid var(--border-subtle);
+      /* Groups part with room above the next heading rather than a rule. */
+      .ingredient-table tbody + tbody th.ingredient-group-heading {
+        --group-top: 1.35rem;
+      }
+
+      /* Inside the edge, since the wrapper clips what overflows it. Rounded on the inner side at
+         each end, like the editor's bar for the row being edited. */
+      .ingredient-table th.ingredient-group-heading::after,
+      .ingredient-table tbody.ingredient-group td.td-ingredient::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        width: var(--spine-width);
+        background: var(--spine-color);
+      }
+
+      .ingredient-table th.ingredient-group-heading::after {
+        top: var(--group-top);
+        bottom: 0;
+        border-top-right-radius: var(--spine-width);
+      }
+
+      .ingredient-table tbody.ingredient-group td.td-ingredient {
+        position: relative;
+      }
+
+      .ingredient-table tbody.ingredient-group td.td-ingredient::after {
+        top: 0;
+        bottom: -1px;
+      }
+
+      .ingredient-table tbody.ingredient-group tr:last-child td.td-ingredient::after {
+        bottom: 0.6rem;
+        border-bottom-right-radius: var(--spine-width);
+      }
+
+      .ingredient-group-count {
+        margin-left: 0.45rem;
+        font-family: var(--font-sans);
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--text-muted);
       }
 
       /* Fixed px spacing on phones so large text keeps its room instead of growing the padding too. */
@@ -6120,9 +6171,45 @@
         font-weight: 600;
       }
 
-      /* A heading row in the editor: its words in the heading face, like on the recipe page. */
+      /* A heading row in the editor: its words in the heading face, its count beside them, and its
+         rows on the spine down the table's left edge, like on the recipe page. The row being edited
+         draws its accent bar over the same edge. */
       .ingredient-heading-row {
-        background: var(--bg-card);
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      .ingredient-heading-row > .ingredient-group-count {
+        align-self: center;
+        margin: 0 0.15rem 0 0.6rem;
+      }
+
+      .ingredient-heading-row > .item-tools {
+        grid-column: 1 / -1;
+      }
+
+      .ingredient-heading-row.has-rows::after,
+      .ingredient-row.in-group::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        bottom: -1px;
+        width: var(--spine-width);
+        background: var(--spine-color);
+      }
+
+      .ingredient-heading-row.has-rows::after {
+        top: 0.5rem;
+        border-top-right-radius: var(--spine-width);
+      }
+
+      .ingredient-row.in-group::after {
+        top: 0;
+      }
+
+      .ingredient-row.in-group.ends-group::after {
+        bottom: 0.5rem;
+        border-bottom-right-radius: var(--spine-width);
       }
 
       .ingredient-heading-input {

@@ -110,6 +110,22 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
   for (const row of rows) if (!row.heading) numbers.set(row.id, numbers.size + 1);
   const ingredientCount = numbers.size;
 
+  // As on the recipe page, rows under a heading hang from it on a line: how many each heading
+  // holds, and which rows are under one (the last of them ends the line).
+  const groupSizes = new Map<string, number>();
+  const inGroup = new Set<string>();
+  let heading: string | undefined;
+  for (const row of rows) {
+    if (row.heading) {
+      heading = row.id;
+      groupSizes.set(row.id, 0);
+    } else if (heading) {
+      groupSizes.set(heading, (groupSizes.get(heading) ?? 0) + 1);
+      inGroup.add(row.id);
+    }
+  }
+  const groupEnds = (index: number) => !rows[index + 1] || !!rows[index + 1].heading;
+
   const moveTools = (row: IngredientRowState, index: number) => (
     <>
       <button
@@ -168,12 +184,13 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
           {rows.map((row, index) => {
             const active = row.id === activeId;
             if (row.heading) {
+              const size = groupSizes.get(row.id) ?? 0;
               return (
                 <li
                   key={row.id}
                   data-motion-id={row.id}
                   data-item-id={row.id}
-                  className={`ingredient-row ingredient-heading-row${active ? ' is-active' : ''}`}
+                  className={`ingredient-row ingredient-heading-row${active ? ' is-active' : ''}${size ? ' has-rows' : ''}`}
                 >
                   <input
                     className="form-control ingredient-heading-input"
@@ -192,6 +209,11 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
                       addRow(row.id);
                     }}
                   />
+                  {size > 0 && (
+                    <span className="ingredient-group-count" aria-hidden="true">
+                      {size}
+                    </span>
+                  )}
                   <Reveal open={active} className="item-tools">
                     <div className="tool-strip" role="group" aria-label={t.ingredientHeadingTools}>
                       {moveTools(row, index)}
@@ -211,12 +233,17 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
             }
             const n = numbers.get(row.id) ?? index + 1;
             const restored = row.origin !== undefined && restoredRows?.has(row.origin);
+            const spine = !inGroup.has(row.id)
+              ? ''
+              : groupEnds(index)
+                ? ' in-group ends-group'
+                : ' in-group';
             return (
               <li
                 key={row.id}
                 data-motion-id={row.id}
                 data-item-id={row.id}
-                className={`ingredient-row${active ? ' is-active' : ''}${restored ? ' is-restored' : ''}`}
+                className={`ingredient-row${active ? ' is-active' : ''}${restored ? ' is-restored' : ''}${spine}`}
               >
                 {restored && <span className="sr-only">{t.restoredChip}</span>}
                 {/* Long names and amounts wrap onto more lines rather than being cut off. */}

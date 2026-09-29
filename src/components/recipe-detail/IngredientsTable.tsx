@@ -69,12 +69,20 @@ export const IngredientsTable: React.FC<IngredientsTableProps> = ({
             </tr>
           </thead>
           {ingredientGroups(ingredients).map((group, g) => (
-            // Each heading starts its own group of rows (Ingredient.section).
-            <tbody key={g} id={g === 0 ? 'ingredientTableBody' : undefined}>
+            // Each heading starts its own group of rows (Ingredient.section), hung from it on a line.
+            <tbody
+              key={g}
+              id={g === 0 ? 'ingredientTableBody' : undefined}
+              className={group.heading ? 'ingredient-group' : undefined}
+            >
               {group.heading && (
                 <tr className="ingredient-group-row">
                   <th scope="rowgroup" colSpan={2} className="ingredient-group-heading">
                     {group.heading}
+                    <span className="ingredient-group-count" aria-hidden="true">
+                      {group.rows.length}
+                    </span>
+                    <span className="sr-only">, {t.ingredientsCount(group.rows.length)}</span>
                   </th>
                 </tr>
               )}

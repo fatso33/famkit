@@ -136,8 +136,11 @@ describe('the ingredient table on the recipe page', () => {
 
   it('shows each heading over its rows', () => {
     table(curry);
-    const headings = screen.getAllByRole('rowheader').map((h) => h.textContent);
-    expect(headings).toEqual(['For the Sauce', 'For Serving']);
+    // Each says how many ingredients it holds; the bare number is shown, the words are read out.
+    const headings = screen.getAllByRole('rowheader');
+    // (jsdom spaces the spans apart; browsers don't.)
+    expect(headings[0]).toHaveAccessibleName(/^For the Sauce ?, 2 ingredients$/);
+    expect(headings[1]).toHaveAccessibleName(/^For Serving ?, 1 ingredient$/);
     const groups = screen.getAllByRole('rowgroup').slice(1);
     expect(groups.map((g) => within(g).getAllByRole('row').length)).toEqual([1, 3, 2]);
   });
