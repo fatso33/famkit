@@ -16,6 +16,7 @@ import {
 import { hasLeftOutPhotos, keepLoadedPhotos } from '../utils/deviceCopy';
 import { legacyVersions, prepareEdit } from '../utils/recipeVersions';
 import { isDeleted, withDeletedAt } from '../utils/recipeTrash';
+import { newRecipeId } from '../utils/recipeId';
 import type { CurrentUser } from './useCurrentUser';
 import { isTranslationAvailable, translatePieces } from '../services/gemini';
 import { isFirebaseConfigured } from '../services/firebase';
@@ -216,7 +217,7 @@ export function useRecipes(currentUser: CurrentUser | null) {
         ...newRecipe,
         ownerEmail: currentUser?.email,
         ownerName: currentUser?.name,
-        id: 'recipe-' + Date.now(),
+        id: newRecipeId(),
         version: 1,
         createdAt: Date.now(),
         updatedAt: Date.now(),
