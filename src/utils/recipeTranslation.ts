@@ -161,13 +161,50 @@ export function translationMemory(recipe: Recipe): TranslationMemory {
   return new Map();
 }
 
-/** The recipe's pieces that have no translation yet, each once (same words, one piece). */
+// Each language's unit words, which a translation into the other shouldn't keep: translations
+// made while the prompt said to keep amounts "exactly as written" read "Mąka - 2 cups". Whole
+// words only (not "Cup4Cup"), with Polish typed without its letters too. "Stick" isn't here: a
+// stick of butter isn't a kostka, so it may rightly stay.
+const unitWords = (list: string) => new RegExp(`(?<![\\p{L}\\d])(?:${list})(?![\\p{L}\\d])`, 'iu');
+const UNIT_WORDS: Record<Language, RegExp> = {
+  en: unitWords(
+    'cups?|tsps?|teaspoons?|tbsps?|tbs|tablespoons?|oz|ounces?|lbs?|pounds?|pints?|quarts?|gallons?|cloves?|pinch(?:es)?|dash(?:es)?|handfuls?',
+  ),
+  pl: unitWords(
+    'szklan\\p{L}*|łyż\\p{L}*|lyz\\p{L}*|szczypt\\p{L}*|ząb(?:ek|ki|ków|ka)|garś\\p{L}*|dag|dkg|opakowa\\p{L}*|pusz\\p{L}*|kost(?:ka|ki|kę|ek)|sztuk\\p{L}*',
+  ),
+};
+
+/** Whether translated words still hold unit words of the language they were translated from. */
+export function keepsSourceUnits(value: PieceValue, source: Language): boolean {
+  const texts = typeof value === 'string' ? [value] : Object.values(value);
+  return texts.some((text) => typeof text === 'string' && UNIT_WORDS[source].test(text));
+}
+
+/**
+ * Whether the recipe's translation predates translated units, so each remembered piece that kept
+ * its original's units is asked for once more. The next translation stored is stamped
+ * (`unitsTranslated`), so whatever comes back then stays: nothing is asked for twice.
+ */
+function checksUnits(recipe: Recipe): boolean {
+  const tr = recipe.translations?.[otherLanguage(sourceLanguageOf(recipe))];
+  return Boolean(tr && !tr.unitsTranslated);
+}
+
+/**
+ * The recipe's pieces that have no translation yet, or one that kept its original's units (see
+ * checksUnits), each once (same words, one piece).
+ */
 export function pendingPieces(recipe: Recipe): Piece[] {
   const memory = translationMemory(recipe);
+  const source = sourceLanguageOf(recipe);
+  const recheck = checksUnits(recipe);
   const seen = new Set<string>();
   return recipePieces(translatableContent(recipe)).filter((piece) => {
     const hash = pieceHash(piece);
-    if (memory.has(hash) || seen.has(hash)) return false;
+    const known = memory.get(hash);
+    const done = known !== undefined && !(recheck && keepsSourceUnits(known, source));
+    if (done || seen.has(hash)) return false;
     seen.add(hash);
     return true;
   });
@@ -322,6 +359,7 @@ export function withTranslation(
     ...content,
     pieceSources,
     sourceHash: sourceHash(recipe),
+    unitsTranslated: true,
   };
   return { ...recipe, sourceLanguage: language, translations };
 }
@@ -396,6 +434,8 @@ function carriedTranslation(
     ...originalText,
     pieceSources: pairedSources(shown, originalText),
     sourceHash: sourceHash(original),
+    // The author's own words, not a translation: their units are as they wrote them.
+    unitsTranslated: true,
   };
 }
 

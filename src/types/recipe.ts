@@ -119,6 +119,12 @@ export interface LocalizedRecipeContent {
    * Missing on translations made before pieces.
    */
   pieceSources?: Record<string, string>;
+  /**
+   * Set on translations stored since the translator was told to translate unit words. Missing
+   * on older ones, whose pieces that kept the original's units ("Mąka - 2 cups") are asked for
+   * once more (see utils/recipeTranslation).
+   */
+  unitsTranslated?: boolean;
 }
 
 export interface RecipeTranslations {

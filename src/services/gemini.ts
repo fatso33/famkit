@@ -99,7 +99,7 @@ ${languageRule}
 
 Rules:
 1. Translate cooking terms the way cooks say them, e.g. "sloppy dough" = "luźne, klejące ciasto" (not "niechlujne ciasto"), "Dutch oven" = "garnek żeliwny" (not "holenderski piec").
-2. Keep every number, amount, temperature and time exactly as written (450g, 1.5, 450°F, 30 minutes). Don't convert units or add anything.
+2. Keep every number, temperature and time exactly as written (450g, 1.5, 450°F, 30 minutes), and never convert one measure into another (cups stay cups, ounces stay ounces). Unit words are words like any other and are translated: "2 cups" = "2 szklanki", "1 tsp" = "1 łyżeczka", "3 Tbsp" = "3 łyżki", "4 oz" = "4 uncje", "a pinch" = "szczypta", "2 łyżki" = "2 tablespoons". Symbols stay as they are (g, kg, ml, l, °C, °F).
 3. Don't add, drop, merge or explain anything. Each piece says exactly what its original says.
 4. Keep people's names; a possessive takes the natural form ("Wanda's Cheese Bread" = "Chleb serowy Wandy").
 5. Instructions: in Polish, the informal imperative ("Dodaj", "Wymieszaj"); in English, the imperative ("Add", "Mix").

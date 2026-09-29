@@ -103,6 +103,20 @@ describe('translatePieces', () => {
     expect(promptSent()).not.toContain('for context');
   });
 
+  it('asks for unit words translated, and the numbers and measures kept', async () => {
+    const { translatePieces } = await load();
+    generateContent.mockResolvedValue(
+      reply({ detectedLanguage: 'pl', texts: [{ id: 'p1', text: "Grandma's Apple Pie" }] }),
+    );
+    await translatePieces(testRecipe, pendingPieces(testRecipe), 'pl');
+
+    // "Keep every amount exactly as written" left "Mąka - 2 cups" in Polish.
+    expect(promptSent()).not.toMatch(/amount[^.]*exactly as written/);
+    expect(promptSent()).toContain('Unit words are words like any other and are translated');
+    expect(promptSent()).toContain('"2 cups" = "2 szklanki"');
+    expect(promptSent()).toContain('never convert one measure into another');
+  });
+
   it('asks for only the changed pieces, with the recipe and its current translation as context', async () => {
     const { translatePieces } = await load();
     const translated: Recipe = {
