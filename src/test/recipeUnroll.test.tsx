@@ -106,7 +106,7 @@ describe('a recipe unrolling out of its photo', () => {
     // Hidden before the first frame, so the page is snapshotted with only its photo.
     const reveal = animations.played.find((a) => a.target.classList.contains('detail-body'))!;
     expect(reveal.options.fill).toBe('backwards');
-    expect(reveal.keyframes[0].clipPath).toMatch(/^inset\(0 0 calc\(100% - -?\d+px\) 0\)$/);
+    expect(reveal.keyframes[0].clipPath).toMatch(/^inset\(0 -2rem calc\(100% - -?\d+px\) -2rem\)$/);
 
     await animations.cue().finish();
     expect(backButton()).toBeInTheDocument();

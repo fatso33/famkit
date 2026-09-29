@@ -2577,9 +2577,13 @@
         /* Stacked under the ingredients, the method starts off screen, so the browser lays it
            out only as it nears the screen. Opening a recipe then lays out half as much text
            before its photo can start to fly. */
+        /* That also clips its painting to its box, so the box reaches out into the page's side
+           margins (the content stays put), leaving room for the step numbers' tabs. */
         .method-panel {
           content-visibility: auto;
           contain-intrinsic-size: auto 1200px;
+          margin-inline: -1rem;
+          padding-inline: 1rem;
         }
       }
 

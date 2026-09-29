@@ -9,9 +9,17 @@ import {
 
 describe('unroll', () => {
   it('shows everything above the edge, and nothing while the edge is above the body', () => {
-    expect(revealClip(240)).toBe('inset(0 0 calc(100% - 240px) 0)');
+    expect(revealClip(240)).toBe('inset(0 -2rem calc(100% - 240px) -2rem)');
     // Tucked under the photo: the inset is more than the whole body.
-    expect(revealClip(-26)).toBe('inset(0 0 calc(100% - -26px) 0)');
+    expect(revealClip(-26)).toBe('inset(0 -2rem calc(100% - -26px) -2rem)');
+  });
+
+  it('never cuts off what stands out at the sides, like the step number tabs', () => {
+    const [, right, , left] = revealClip(240)
+      .slice('inset('.length, -1)
+      .split(/ (?![^(]*\))/);
+    expect(right).toBe('-2rem');
+    expect(left).toBe('-2rem');
     expect(revealKeyframes(-26, 600)).toEqual([
       { clipPath: revealClip(-26) },
       { clipPath: revealClip(600) },

@@ -17,8 +17,13 @@ export const UNROLL_EASING = 'cubic-bezier(0.38, 0.1, 0.12, 1)';
 // Rolls up quickly, braking just as it tucks under the photo.
 export const ROLL_UP_EASING = 'cubic-bezier(0.55, 0, 0.2, 1)';
 
-/** How much of the body shows: everything above `edge` (it may sit above the body's top). */
-export const revealClip = (edge: number) => `inset(0 0 calc(100% - ${Math.round(edge)}px) 0)`;
+/**
+ * How much of the body shows: everything above `edge` (it may sit above the body's top). Only
+ * the bottom is cut: the sides reach out past the body, so what stands out of it (the step
+ * numbers' tabs) shows whole as it unrolls.
+ */
+export const revealClip = (edge: number) =>
+  `inset(0 -2rem calc(100% - ${Math.round(edge)}px) -2rem)`;
 
 export function revealKeyframes(from: number, to: number): Keyframe[] {
   return [{ clipPath: revealClip(from) }, { clipPath: revealClip(to) }];
