@@ -40,7 +40,7 @@ export interface Step {
   notes?: string;
   /** Unnumbered text shown between the steps. */
   plain?: boolean;
-  /** Up to three smaller steps, shown as a), b), c). */
+  /** Smaller steps, lettered a) to z) (at most one per letter). */
   substeps?: string[];
   /**
    * This step starts a new section with this heading. On the first step it renames the first

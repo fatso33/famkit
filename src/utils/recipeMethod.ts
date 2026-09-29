@@ -6,6 +6,9 @@ import { Ingredient, Step, StepFork } from '../types/recipe';
  * text, and after a fork they follow the path the cook is on.
  */
 
+/** A step's substeps are lettered a) to z), so it has at most one per letter. */
+export const SUBSTEP_LETTERS = 'abcdefghijklmnopqrstuvwxyz';
+
 /** A run of steps under one heading. */
 export interface MethodSection {
   /** The heading as stored. Empty: the default heading. */

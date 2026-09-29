@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Camera, ChevronDown, ChevronUp, Hash, Lightbulb, Trash2, X } from 'lucide-react';
 import { UiTranslations } from '../../i18n/translations';
 import { MAX_SUBSTEPS, StepState, textItem, toggleFork } from '../../utils/recipeForm';
+import { SUBSTEP_LETTERS } from '../../utils/recipeMethod';
 import type { ToastAction } from '../../hooks/useToast';
 import { AutoGrowTextarea } from '../common/AutoGrowTextarea';
 import { ForkIcon } from '../common/ForkIcon';
@@ -31,8 +32,6 @@ interface StepEditorProps {
   onToast: (message: string, action?: ToastAction) => void;
   t: UiTranslations;
 }
-
-const LETTERS = 'abc';
 
 /**
  * One step, laid out like the recipe page's: its number on the left, what to do on the right.
@@ -296,10 +295,10 @@ export const StepEditor: React.FC<StepEditorProps> = ({
                 {step.substeps.map((sub, k) => (
                   <li key={sub.id} className="substep-row">
                     <span className="substep-letter" aria-hidden="true">
-                      {LETTERS[k]})
+                      {SUBSTEP_LETTERS[k]})
                     </span>
                     <AutoGrowTextarea
-                      aria-label={t.substepLabel(LETTERS[k])}
+                      aria-label={t.substepLabel(SUBSTEP_LETTERS[k])}
                       value={sub.text}
                       onChange={(e) =>
                         patch({

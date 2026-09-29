@@ -277,3 +277,22 @@ describe('pasting', () => {
     expect(steps.map((s) => s.text)).toEqual(['Mix.', 'Knead.', 'Bake.', 'Ostudź.', 'Serve.']);
   });
 });
+
+describe('substeps', () => {
+  it('keeps one for every letter, a) to z), and no more', () => {
+    const parts = Array.from({ length: 27 }, (_, i) => `Part ${i + 1}.`);
+    const recipe: Recipe = {
+      id: 'r',
+      name: 'Pierogi',
+      author: 'Ola',
+      category: 'mains',
+      heroImage: '',
+      yieldHeader: '',
+      ingredients: [],
+      steps: [{ num: 1, text: 'Fill.', substeps: parts }],
+    };
+    const form = formFromRecipe(recipe, labels);
+    expect(form.sections[0].steps[0].substeps).toHaveLength(26);
+    expect(formToRecipe(form).steps[0].substeps).toEqual(parts.slice(0, 26));
+  });
+});

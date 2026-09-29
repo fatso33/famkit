@@ -9,14 +9,21 @@ import {
 } from '../types/recipe';
 import { isRecipeCategory, recipePhoto } from './vault';
 import { authorModeOf } from './ownership';
-import { chosenPath, firstStepNumber, methodSections, numberSteps } from './recipeMethod';
+import {
+  SUBSTEP_LETTERS,
+  chosenPath,
+  firstStepNumber,
+  methodSections,
+  numberSteps,
+} from './recipeMethod';
 
 /**
  * The recipe editor's state and the pure edits made to it. The form holds text as typed; it
  * becomes a Recipe on save (formToRecipe), dropping what's empty.
  */
 
-export const MAX_SUBSTEPS = 3;
+// One substep per letter, a) to z).
+export const MAX_SUBSTEPS = SUBSTEP_LETTERS.length;
 export const MAX_PATHS = 3;
 export const DEFAULT_YIELD = 'For 1 loaf:';
 
