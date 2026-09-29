@@ -23,16 +23,15 @@ export const RECIPE_CATEGORIES: readonly RecipeCategory[] = [
 
 /** Everything the vault can sort by, in the order the sort menu lists them. */
 export const VAULT_SORT_KEYS: readonly VaultSortKey[] = [
+  'category',
   'changed',
-  'added',
   'time',
   'name',
   'cook',
-  'category',
 ];
 
-/** Most recently changed first. */
-export const DEFAULT_SORT: VaultSort = { by: 'changed', reversed: false };
+/** By category, breakfast to drinks. */
+export const DEFAULT_SORT: VaultSort = { by: 'category', reversed: false };
 
 export const NO_FILTER: VaultFilter = { category: 'all', author: '', unseen: false, query: '' };
 
@@ -48,9 +47,11 @@ export function isDefaultSort(sort: VaultSort): boolean {
   return sort.by === DEFAULT_SORT.by && sort.reversed === DEFAULT_SORT.reversed;
 }
 
-// The sorts the first version of the vault stored, each one direction of a key now.
+// Sorts earlier versions of the vault stored, each one direction of a key now. Date added was
+// folded into last added ('changed'), which counts a new recipe as changed when it's added.
 const LEGACY_SORTS: Record<string, VaultSortKey> = {
-  newest: 'added',
+  added: 'changed',
+  newest: 'changed',
   az: 'name',
   quickest: 'time',
   updated: 'changed',
@@ -208,7 +209,6 @@ export function sortEntries(entries: VaultEntry[], sort: VaultSort, lang: Langua
   const isOther = (entry: VaultEntry) => (categoryOf(entry.recipe) === 'other' ? 1 : 0);
   // Each key in its natural order.
   const natural: Record<VaultSortKey, (a: VaultEntry, b: VaultEntry) => number> = {
-    added: (a, b) => (b.recipe.createdAt ?? 0) - (a.recipe.createdAt ?? 0),
     time: (a, b) => minutes.get(a)! - minutes.get(b)!,
     name: byName,
     changed: (a, b) => changedAt(b.recipe) - changedAt(a.recipe),

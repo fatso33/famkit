@@ -267,7 +267,7 @@ describe('the vault toolbar', () => {
     expect(screen.getByRole('button', { name: t.sortRecipes })).toHaveFocus();
   });
 
-  it('sorts the most recently changed first, then as chosen, and remembers the choice', () => {
+  it('sorts by category first, then as chosen, and remembers the choice', () => {
     localStorage.setItem(
       'wandas_recipes',
       JSON.stringify(
@@ -275,11 +275,12 @@ describe('the vault toolbar', () => {
       ),
     );
     const { unmount } = render(<App />);
-    expect(shownRecipes()).toEqual(['Plum Kompot', 'Sunday Żurek', 'Easter Babka']);
-
-    const menu = openMenu(t.sortRecipes);
-    fireEvent.click(choice(menu, t.vaultSorts.added));
     expect(shownRecipes()).toEqual(['Sunday Żurek', 'Easter Babka', 'Plum Kompot']);
+
+    // Last added counts a recipe's new version as added.
+    const menu = openMenu(t.sortRecipes);
+    fireEvent.click(choice(menu, t.vaultSorts.changed));
+    expect(shownRecipes()).toEqual(['Plum Kompot', 'Sunday Żurek', 'Easter Babka']);
     // The menu stays open for another choice.
     act(() => {
       vi.runAllTimers();

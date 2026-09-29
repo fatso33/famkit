@@ -133,8 +133,8 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
               }}
             >
               {language === 'pl'
-                ? 'Ten adres e-mail nie znajduje się na liście gości naszego rodzinnego skarbca. Jeśli jesteś członkiem rodziny, poproś administratora o dodanie Twojego adresu Gmail.'
-                : 'This email account is not on our family guest list. If you are a family member, please ask the vault administrator to add your Gmail address.'}
+                ? 'Ten adres e-mail nie znajduje się na liście gości naszego rodzinnego przepiśnika. Jeśli jesteś członkiem rodziny, poproś administratora o dodanie Twojego adresu Gmail.'
+                : 'This email account is not on our family guest list. If you are a family member, please ask the Recipe Box administrator to add your Gmail address.'}
             </div>
 
             <button

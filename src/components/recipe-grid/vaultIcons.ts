@@ -1,6 +1,5 @@
 import {
   CakeSlice,
-  CalendarPlus,
   CaseSensitive,
   ChefHat,
   Cherry,
@@ -32,7 +31,6 @@ export const CATEGORY_ICONS: Record<RecipeCategory, LucideIcon> = {
 };
 
 export const SORT_ICONS: Record<VaultSortKey, LucideIcon> = {
-  added: CalendarPlus,
   time: Timer,
   name: CaseSensitive,
   changed: History,

@@ -72,6 +72,7 @@ describe('storage service', () => {
       }));
 
     it('keeps every recipe, with photos for the newest, when the cloud has the rest', () => {
+      setStoredVaultSort({ by: 'changed', reversed: false });
       const vault = bigVault();
       saveRecipes(vault, { photosInCloud: true });
 
@@ -153,8 +154,8 @@ describe('storage service', () => {
     expect(getStoredFontScale()).toBe(0.85);
   });
 
-  it("keeps the vault's sort and layout, falling back to last changed first as a list", () => {
-    expect(getStoredVaultSort()).toEqual({ by: 'changed', reversed: false });
+  it("keeps the vault's sort and layout, falling back to by category as a list", () => {
+    expect(getStoredVaultSort()).toEqual({ by: 'category', reversed: false });
     expect(getStoredVaultView()).toBe('list');
 
     setStoredVaultSort({ by: 'cook', reversed: true });
@@ -163,7 +164,7 @@ describe('storage service', () => {
     expect(getStoredVaultView()).toBe('cards');
 
     localStorage.setItem('family_kitchen_vault_sort', 'by-colour');
-    expect(getStoredVaultSort()).toEqual({ by: 'changed', reversed: false });
+    expect(getStoredVaultSort()).toEqual({ by: 'category', reversed: false });
   });
 
   it('clears a Gemini API key left over from the old Settings field', () => {

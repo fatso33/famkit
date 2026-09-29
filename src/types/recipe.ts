@@ -233,11 +233,11 @@ export type RecipeCategory =
   'breakfast' | 'soups' | 'mains' | 'sides' | 'breads' | 'cakes' | 'preserves' | 'drinks' | 'other';
 
 /** What the vault orders its recipes by. */
-export type VaultSortKey = 'added' | 'time' | 'name' | 'changed' | 'cook' | 'category';
+export type VaultSortKey = 'time' | 'name' | 'changed' | 'cook' | 'category';
 
 /**
  * How the vault orders its recipes: by what, and whether the other way round from that key's
- * natural order (newest, quickest, A to Z, most recently changed, cooks A to Z, the filter's
+ * natural order (quickest, A to Z, most recently added or changed, cooks A to Z, the filter's
  * category order).
  */
 export interface VaultSort {

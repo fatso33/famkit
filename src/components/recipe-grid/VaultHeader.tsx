@@ -19,9 +19,9 @@ const TUCK_AFTER_PX = 24;
 const SHOW_AFTER_PX = 6;
 
 /**
- * The vault's banner: "Recipe Vault" over the splash's heart flourish and a count of recipes
+ * The vault's banner: "Recipe Box" over the splash's heart flourish and a count of recipes
  * and cooks. When the bar holding the toolbar reaches the top it pins there, gaining a
- * background and a small "Recipe Vault" title. Where the browser has scroll-driven animations,
+ * background and a small "Recipe Box" title. Where the browser has scroll-driven animations,
  * the big title shrinks into the small one as the page scrolls, tracking the finger (index.css,
  * from the geometry measured here), and grows back out of it on the way up. A scroll that stops
  * halfway settles onward, so the title is never left between sizes.

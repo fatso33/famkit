@@ -1103,7 +1103,7 @@
       }
 
       /* ── The vault ──
-         The banner ("Recipe Vault", the splash's heart flourish, a count), then the bar holding
+         The banner ("Recipe Box", the splash's heart flourish, a count), then the bar holding
          the toolbar. The bar is sticky, --vault-bar-title below the top, with that space above
          it drawn by the bar itself: once it pins (VaultHeader sets data-condensed), its
          background fades in and a small title appears in the space. Where the browser can
@@ -1135,12 +1135,6 @@
         letter-spacing: -0.015em;
         text-wrap: balance;
         color: var(--text-primary);
-      }
-
-      /* "Skarbiec przepisów" is half as long again as "Recipe Vault": a step smaller keeps it on
-         one line on a phone. */
-      :root:lang(pl) .vault-title {
-        font-size: 2.2rem;
       }
 
       .vault-word {

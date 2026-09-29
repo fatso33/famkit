@@ -166,7 +166,7 @@ describe('saving drafts', () => {
     fireEvent.click(chip);
     expect(within(editor()!).getByLabelText(t.recipeTitle)).toHaveValue('Babka Wielkanocna');
     expect(within(editor()!).getByText(t.draftLabel(2))).toBeInTheDocument();
-    chooseSave(/^Save to Vault/);
+    chooseSave(/^Save to Recipe Box/);
     await waitFor(() => expect(editor()).toBeNull());
 
     expect(heading()).toHaveTextContent('Babka Wielkanocna');
@@ -219,7 +219,7 @@ describe('saving drafts', () => {
     fireEvent.change(within(editor()!).getByLabelText(t.recipeTitle), {
       target: { value: 'Pierniczki' },
     });
-    chooseSave(/^Save to Vault/);
+    chooseSave(/^Save to Recipe Box/);
     expect(editor()).toBeInTheDocument();
     const alerts = within(editor()!).getAllByRole('alert');
     expect(alerts.map((a) => a.textContent)).toContain(t.categoryRequired);

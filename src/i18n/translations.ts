@@ -270,7 +270,7 @@ export interface UiTranslations {
   /** Saving: the Save pill's two choices. */
   saveChoices: string;
   saveToVault: string;
-  /** Under Save to Vault: who sees it, and as which version (null for a new recipe). */
+  /** Under Save to Recipe Box: who sees it, and as which version (null for a new recipe). */
   saveToVaultHint: (version: number | null) => string;
   saveDraft: (version: number) => string;
   saveDraftHint: string;
@@ -342,7 +342,7 @@ export interface UiTranslations {
 
 export const UI_TEXT: Record<Language, UiTranslations> = {
   en: {
-    vaultTitle: 'Recipe Vault',
+    vaultTitle: 'Recipe Box',
     vaultCaption: (recipes: number, cooks: number) =>
       `${recipes} recipe${recipes === 1 ? '' : 's'} from ${cooks} cook${cooks === 1 ? '' : 's'}`,
     allRecipes: 'All recipes',
@@ -359,18 +359,16 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     },
     categoryLabel: 'Category',
     vaultSorts: {
-      added: 'Date added',
       time: 'Cooking time',
       name: 'Name',
-      changed: 'Last changed',
+      changed: 'Last added',
       cook: 'Cook',
       category: 'Category',
     },
     vaultSortOrders: {
-      added: ['Newest first', 'Oldest first'],
       time: ['Quickest first', 'Longest first'],
       name: ['A to Z', 'Z to A'],
-      changed: ['Most recent first', 'Least recent first'],
+      changed: ['Newest first', 'Oldest first'],
       cook: ['A to Z', 'Z to A'],
       category: ['Breakfast to drinks', 'Drinks to breakfast'],
     },
@@ -596,7 +594,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     discard: 'Discard',
     keepEditing: 'Keep editing',
     saveChoices: 'Save',
-    saveToVault: 'Save to Vault',
+    saveToVault: 'Save to Recipe Box',
     saveToVaultHint: (version: number | null) =>
       version === null ? 'The family can see it' : `The family sees v${version}`,
     saveDraft: (version: number) => `Save draft v${version}`,
@@ -635,7 +633,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     preferences: 'Preferences',
     language: 'Language',
     darkMode: 'Dark mode',
-    recipeVault: 'Recipe Vault',
+    recipeVault: 'Recipe Box',
     makes: 'Makes',
     addMake: 'Add Make',
     comingSoonToast: 'Makes are coming soon!',
@@ -666,7 +664,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     recaptchaNoticeEnd: ' apply.',
   },
   pl: {
-    vaultTitle: 'Skarbiec przepisów',
+    vaultTitle: 'Przepiśnik',
     vaultCaption: (recipes: number, cooks: number) =>
       `${recipes} ${plPlural(recipes, 'przepis', 'przepisy', 'przepisów')} od ${cooks} ${cooks === 1 ? 'osoby' : 'osób'}`,
     allRecipes: 'Wszystkie przepisy',
@@ -683,18 +681,16 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     },
     categoryLabel: 'Kategoria',
     vaultSorts: {
-      added: 'Data dodania',
       time: 'Czas przygotowania',
       name: 'Nazwa',
-      changed: 'Ostatnia zmiana',
+      changed: 'Ostatnio dodane',
       cook: 'Autor',
       category: 'Kategoria',
     },
     vaultSortOrders: {
-      added: ['Najpierw najnowsze', 'Najpierw najstarsze'],
       time: ['Najpierw najszybsze', 'Najpierw najdłuższe'],
       name: ['Od A do Z', 'Od Z do A'],
-      changed: ['Najpierw ostatnio zmienione', 'Najpierw najdawniej zmienione'],
+      changed: ['Najpierw najnowsze', 'Najpierw najstarsze'],
       cook: ['Od A do Z', 'Od Z do A'],
       category: ['Od śniadań do napojów', 'Od napojów do śniadań'],
     },
@@ -925,7 +921,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     discard: 'Odrzuć',
     keepEditing: 'Edytuj dalej',
     saveChoices: 'Zapisz',
-    saveToVault: 'Zapisz w skarbcu',
+    saveToVault: 'Zapisz w przepiśniku',
     saveToVaultHint: (version: number | null) =>
       version === null ? 'Rodzina go zobaczy' : `Rodzina zobaczy wersję ${version}`,
     saveDraft: (version: number) => `Zapisz szkic wersji ${version}`,
@@ -965,12 +961,12 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     preferences: 'Preferencje',
     language: 'Język',
     darkMode: 'Tryb ciemny',
-    recipeVault: 'Skarbiec przepisów',
-    makes: 'Wypieki',
-    addMake: 'Dodaj Wypiek',
-    comingSoonToast: 'Wypieki już wkrótce!',
-    makesEmptyTitle: 'Nie ma jeszcze wypieków',
-    makesEmptyBody: 'Tu wkrótce pojawią się Twoje wypieki.',
+    recipeVault: 'Przepiśnik',
+    makes: 'Popisy',
+    addMake: 'Dodaj popis',
+    comingSoonToast: 'Popisy już wkrótce!',
+    makesEmptyTitle: 'Nie ma jeszcze popisów',
+    makesEmptyBody: 'Tu wkrótce pojawią się Twoje popisy.',
     seasonSection: 'Pory roku',
     seasonInfo:
       'Kolory zmieniają się razem z porami roku. Tekst przez cały rok czyta się równie łatwo.',

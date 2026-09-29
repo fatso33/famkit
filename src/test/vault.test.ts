@@ -149,11 +149,6 @@ describe('vault sort', () => {
   const sorted = (by: Key, reversed = false, lang: 'en' | 'pl' = 'pl') =>
     names(sortEntries(entries, { by, reversed }, lang));
 
-  it('puts the newest first, and the oldest first turned round', () => {
-    expect(sorted('added')).toEqual(['Babka', 'Zapiekanka', 'Żurek']);
-    expect(sorted('added', true)).toEqual(['Żurek', 'Zapiekanka', 'Babka']);
-  });
-
   it('sorts by name in the viewer’s alphabet (Polish Ż after Z), either way', () => {
     expect(sorted('name')).toEqual(['Babka', 'Zapiekanka', 'Żurek']);
     expect(sorted('name', true)).toEqual(['Żurek', 'Zapiekanka', 'Babka']);
@@ -164,12 +159,16 @@ describe('vault sort', () => {
     expect(sorted('time', true)).toEqual(['Żurek', 'Babka', 'Zapiekanka']);
   });
 
-  it('puts the most recently changed first by default, a new recipe changed when added', () => {
+  it('sorts by category by default', () => {
+    expect(DEFAULT_SORT).toEqual({ by: 'category', reversed: false });
     expect(names(sortEntries(entries, DEFAULT_SORT, 'pl'))).toEqual([
       'Żurek',
-      'Babka',
       'Zapiekanka',
+      'Babka',
     ]);
+  });
+
+  it('puts the last added first, counting a new version of a recipe as added', () => {
     expect(sorted('changed')).toEqual(['Żurek', 'Babka', 'Zapiekanka']);
     expect(sorted('changed', true)).toEqual(['Zapiekanka', 'Babka', 'Żurek']);
   });
@@ -206,12 +205,16 @@ describe('vault sort', () => {
   });
 
   it('keeps a sort on the device as text, reading the first version’s sorts too', () => {
-    expect(formatVaultSort(DEFAULT_SORT)).toBe('changed');
+    expect(formatVaultSort(DEFAULT_SORT)).toBe('category');
     expect(formatVaultSort({ by: 'time', reversed: true })).toBe('time:reversed');
     expect(parseVaultSort('time:reversed')).toEqual({ by: 'time', reversed: true });
     expect(parseVaultSort('az')).toEqual({ by: 'name', reversed: false });
     expect(parseVaultSort('quickest')).toEqual({ by: 'time', reversed: false });
     expect(parseVaultSort('updated')).toEqual({ by: 'changed', reversed: false });
+    // Date added became part of last added.
+    expect(parseVaultSort('added')).toEqual({ by: 'changed', reversed: false });
+    expect(parseVaultSort('added:reversed')).toEqual({ by: 'changed', reversed: true });
+    expect(parseVaultSort('newest')).toEqual({ by: 'changed', reversed: false });
     expect(parseVaultSort('cook')).toEqual({ by: 'cook', reversed: false });
     expect(parseVaultSort('by-colour')).toBeNull();
     expect(parseVaultSort('name:sideways')).toBeNull();

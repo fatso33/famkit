@@ -1,4 +1,4 @@
-# 🌾 Family Kitchen — Heirloom Family Recipe Vault
+# 🌾 Family Kitchen — Heirloom Family Recipe Box
 
 A professional, modern, offline-first Progressive Web App (PWA) built with **React 19**, **TypeScript**, **Tailwind CSS v4**, **Vite 6**, and **Firebase 12**. Designed to preserve heirloom family recipes with verbatim culinary directives, dynamic portion scaling, screen wake lock for cooking, multi-device cloud synchronization, and authentic bilingual Polish/English support.
 
