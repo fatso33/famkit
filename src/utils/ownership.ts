@@ -15,6 +15,11 @@ export function canEditRecipe(
   accessControlled: boolean,
 ): boolean {
   if (!accessControlled) return true;
+  return isOwnRecipe(recipe, user);
+}
+
+/** Whether this person added the recipe. */
+export function isOwnRecipe(recipe: Recipe, user: CurrentUser | null): boolean {
   return sameEmail(recipe.ownerEmail, user?.email);
 }
 
@@ -65,9 +70,4 @@ export function memberDisplayName(
 /** The author to store for a save from the form. */
 export function resolveAuthor(mode: AuthorMode, typedAuthor: string, user: CurrentUser | null) {
   return mode === 'auto' && user ? user.name : typedAuthor.trim();
-}
-
-/** A recipe credited to someone outside the app, e.g. passed down from a grandparent. */
-export function isHeirloom(recipe: Recipe): boolean {
-  return addedByName(recipe) !== null;
 }

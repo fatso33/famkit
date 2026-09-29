@@ -289,6 +289,38 @@ export function setStoredVaultSort(sort: VaultSort): void {
   writeSetting(VAULT_SORT_KEY, formatVaultSort(sort));
 }
 
+// The recipes each person has opened on this device, for the vault's Unseen filter:
+// lowercase email ('' signed out) → recipe ids.
+const SEEN_RECIPES_KEY = 'family_kitchen_seen_recipes';
+
+function readSeenRecipes(): Record<string, unknown> {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(SEEN_RECIPES_KEY) || '{}');
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+export function getSeenRecipes(email: string): string[] {
+  if (typeof window === 'undefined') return [];
+  const ids = readSeenRecipes()[email.toLowerCase()];
+  return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : [];
+}
+
+export function setSeenRecipes(email: string, ids: string[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const all = readSeenRecipes();
+    all[email.toLowerCase()] = ids;
+    localStorage.setItem(SEEN_RECIPES_KEY, JSON.stringify(all));
+  } catch (e) {
+    console.warn('Could not remember which recipes were opened on this device:', e);
+  }
+}
+
 // The fork path each recipe was last cooked on, per device: recipe id → fork step → path.
 const FORK_PATHS_KEY = 'family_kitchen_fork_paths';
 

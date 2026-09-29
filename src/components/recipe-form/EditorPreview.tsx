@@ -36,15 +36,7 @@ export const EditorPreview: React.FC<EditorPreviewProps> = ({ recipe, language, 
       aria-label={t.preview}
     >
       <div className="app-container editor-preview-page">
-        <RecipeDetailView
-          recipe={recipe}
-          language={language}
-          isWakeLocked={false}
-          onToggleWakeLock={noop}
-          isWakeLockSupported={false}
-          onUnrolled={noop}
-          t={t}
-        />
+        <RecipeDetailView recipe={recipe} language={language} onUnrolled={noop} t={t} />
       </div>
       <div className="editor-preview-back">
         <button

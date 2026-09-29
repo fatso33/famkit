@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { transitionTheme, transitionView, vaultItemKey } from '../utils/viewTransition';
+import {
+  themeSpreadKeyframes,
+  transitionTheme,
+  transitionView,
+  vaultItemKey,
+} from '../utils/viewTransition';
 
 const root = document.documentElement;
 
@@ -94,6 +99,7 @@ describe('transitionTheme', () => {
     Reflect.deleteProperty(root, 'animate');
     Reflect.deleteProperty(window, 'matchMedia');
     delete root.dataset.themeSwap;
+    vi.unstubAllGlobals();
   });
 
   it('just switches where view transitions are unsupported', () => {
@@ -114,7 +120,8 @@ describe('transitionTheme', () => {
     expect(update).toHaveBeenCalledOnce();
   });
 
-  it('spreads the new theme in a circle from the tapped control', async () => {
+  it('washes the new theme out from the tapped control in a soft-edged circle', async () => {
+    vi.stubGlobal('CSS', { supports: () => true });
     const { start, animate, crossFade, finish } = fakeThemeTransition();
     const update = vi.fn();
 
@@ -126,6 +133,41 @@ describe('transitionTheme', () => {
     await settle();
     expect(crossFade.cancel).toHaveBeenCalled();
     expect(animate).toHaveBeenCalledWith(
+      themeSpreadKeyframes(origin, window.innerWidth, window.innerHeight),
+      expect.objectContaining({
+        pseudoElement: '::view-transition-new(root)',
+        // Unhurried: the first version's quick hard-edged wipe felt abrupt.
+        duration: expect.toSatisfy((ms: number) => ms >= 1000),
+      }),
+    );
+
+    finish();
+    await settle();
+    expect(root.dataset.themeSwap).toBeUndefined();
+  });
+
+  it('grows from nothing at the control until its solid middle covers every corner', () => {
+    const [from, to] = themeSpreadKeyframes({ x: 300, y: 100 }, 400, 800);
+    expect(from).toMatchObject({ maskSize: '0px 0px', maskPosition: '300px 100px' });
+
+    const size = parseFloat(String(to.maskSize));
+    const [left, top] = String(to.maskPosition).split(' ').map(parseFloat);
+    // Centred on the control.
+    expect(left + size / 2).toBeCloseTo(300);
+    expect(top + size / 2).toBeCloseTo(100);
+    // Fully opaque out to the farthest corner (bottom left), then a soft edge beyond.
+    const mask = String(to.maskImage);
+    const solidPercent = parseFloat(/rgb\(0 0 0 \/ 1\.000\) ([\d.]+)%/.exec(mask)![1]);
+    expect(((size / 2) * solidPercent) / 100).toBeGreaterThanOrEqual(Math.hypot(300, 700) - 1);
+    expect(mask).toMatch(/rgb\(0 0 0 \/ 0\.000\) 100\.0%\)$/);
+  });
+
+  it('falls back to a plain growing circle where masks are unsupported', async () => {
+    vi.stubGlobal('CSS', { supports: () => false });
+    const { animate } = fakeThemeTransition();
+    transitionTheme(() => {}, origin);
+    await settle();
+    expect(animate).toHaveBeenCalledWith(
       {
         clipPath: [
           'circle(0px at 100px 200px)',
@@ -134,10 +176,6 @@ describe('transitionTheme', () => {
       },
       expect.objectContaining({ pseudoElement: '::view-transition-new(root)' }),
     );
-
-    finish();
-    await settle();
-    expect(root.dataset.themeSwap).toBeUndefined();
   });
 
   it("keeps a newer switch's marker when a quick second tap skips the first", async () => {

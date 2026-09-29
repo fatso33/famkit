@@ -4,14 +4,14 @@ import { useTheme } from './hooks/useTheme';
 import { useFontScale } from './hooks/useFontScale';
 import { useSeason } from './hooks/useSeason';
 import { useLanguage } from './hooks/useLanguage';
-import { useCookMode } from './hooks/useCookMode';
 import { usePWAInstall } from './hooks/usePWAInstall';
 import { useRecipes, getLocalizedRecipe } from './hooks/useRecipes';
 import { useToast } from './hooks/useToast';
 import { useCurrentUser } from './hooks/useCurrentUser';
 import { useBackStep } from './hooks/useBackStep';
+import { useSeenRecipes } from './hooks/useSeenRecipes';
 import { isFirebaseConfigured } from './services/firebase';
-import { canEditRecipe } from './utils/ownership';
+import { canEditRecipe, isOwnRecipe } from './utils/ownership';
 import { hasLeftOutPhotos } from './utils/deviceCopy';
 import {
   editingLanguage,
@@ -84,12 +84,12 @@ export default function App() {
     seasonFor,
   } = useSeason();
   const { language, toggleLanguage, t } = useLanguage();
-  const { isCookModeOn, toggleCookMode, isSupported: isWakeLockSupported } = useCookMode();
   const { isBannerVisible, triggerInstall, dismissBanner, showIOSModal, setShowIOSModal } =
     usePWAInstall();
 
   const { toast, visible: isToastVisible, showToast, hideToast, clearToast } = useToast();
   const currentUser = useCurrentUser();
+  const { seen, markSeen } = useSeenRecipes(currentUser?.email ?? '');
 
   const {
     recipes,
@@ -110,6 +110,9 @@ export default function App() {
   // The vault's filter and each main page's scroll survive a visit to a sub-page, so going
   // back returns to the same spot (and a recipe's photo can shrink back into its card).
   const [vaultFilter, setVaultFilter] = useState<VaultFilter>(NO_FILTER);
+  // What the Unseen filter goes by: the recipes opened as of its last change, so one opened
+  // from the unseen list is still there to come back to (and its photo still has its card).
+  const [seenForFilter, setSeenForFilter] = useState(seen);
   // How the vault is ordered and laid out is this person's preference, kept on the device.
   const [vaultSort, setVaultSort] = useState<VaultSort>(getStoredVaultSort);
   const [vaultView, setVaultView] = useState<VaultView>(getStoredVaultView);
@@ -201,6 +204,7 @@ export default function App() {
 
   const handleSelectRecipe = (id: string) => {
     mainScroll.current.recipes = window.scrollY;
+    markSeen(id);
     // Marks the tapped card before the browser snapshots the vault.
     flushSync(() => setLastRecipeId(id));
     transitionView(
@@ -233,17 +237,27 @@ export default function App() {
 
     transitionView(
       () => {
-        alongside?.();
-        setBackShown(false);
-        setVaultEntrance(!goingBack && !morphsBack);
-        setPage(target);
-        if (target !== 'settings') setMainPage(target);
-        setSelectedRecipeId(null);
+        flushSync(() => {
+          alongside?.();
+          setBackShown(false);
+          setVaultEntrance(!goingBack && !morphsBack);
+          setPage(target);
+          if (target !== 'settings') setMainPage(target);
+          setSelectedRecipeId(null);
+        });
+        // Only once the page is there: a shorter page it replaces (a recipe) can't scroll as
+        // far, and the jump would land short of the spot.
         jumpTo(goingBack && target !== 'settings' ? mainScroll.current[target] : 0);
       },
       { motion, morph: morphsBack ? 'recipe' : undefined, animated },
     );
   };
+
+  const changeVaultFilter = (filter: VaultFilter) => {
+    setVaultFilter(filter);
+    setSeenForFilter(seen);
+  };
+  const vaultSeen = vaultFilter.unseen ? seenForFilter : seen;
 
   const changeVaultSort = (sort: VaultSort) => {
     setVaultSort(sort);
@@ -396,9 +410,6 @@ export default function App() {
             key={selectedRecipe.id}
             recipe={selectedRecipe}
             language={language}
-            isWakeLocked={isCookModeOn}
-            onToggleWakeLock={() => void toggleCookMode()}
-            isWakeLockSupported={isWakeLockSupported}
             ref={recipePage}
             onUnrolled={() => setBackShown(true)}
             t={t}
@@ -408,11 +419,12 @@ export default function App() {
             recipes={recipes}
             language={language}
             filter={vaultFilter}
-            onFilterChange={setVaultFilter}
+            onFilterChange={changeVaultFilter}
             sort={vaultSort}
             onSortChange={changeVaultSort}
             view={vaultView}
             onViewChange={changeVaultView}
+            isSeen={(recipe) => vaultSeen.has(recipe.id) || isOwnRecipe(recipe, currentUser)}
             animateIn={vaultEntrance}
             morphRecipeId={lastRecipeId}
             onSelectRecipe={handleSelectRecipe}
@@ -437,7 +449,7 @@ export default function App() {
         language={language}
         onToggleLanguage={toggleLanguage}
         theme={theme}
-        onToggleTheme={toggleTheme}
+        onToggleTheme={(origin) => transitionTheme(toggleTheme, origin)}
         fontPercent={fontPercent}
         onIncreaseFont={increaseScale}
         onDecreaseFont={decreaseScale}

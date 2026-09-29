@@ -27,9 +27,6 @@ export interface RecipePageHandle {
 interface RecipeDetailViewProps {
   recipe: Recipe;
   language: Language;
-  isWakeLocked: boolean;
-  onToggleWakeLock: () => void;
-  isWakeLockSupported: boolean;
   /** Once the recipe has (nearly) finished unrolling out of its photo. */
   onUnrolled: () => void;
   ref?: Ref<RecipePageHandle>;
@@ -39,9 +36,6 @@ interface RecipeDetailViewProps {
 export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   recipe: rawRecipe,
   language,
-  isWakeLocked,
-  onToggleWakeLock,
-  isWakeLockSupported,
   onUnrolled,
   ref,
   t,
@@ -141,20 +135,6 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
               >
                 ⏱️ <NumberRoll value={timeText} />
               </span>
-
-              {isWakeLockSupported && (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <button
-                    className={`btn btn-meta-pill ${isWakeLocked ? 'btn-primary' : ''}`}
-                    onClick={onToggleWakeLock}
-                    title={t.cookModeTooltip}
-                  >
-                    {isWakeLocked && <span className="pulse-dot" />}
-                    <span>{isWakeLocked ? t.cookModeOn : t.cookModeOff}</span>
-                  </button>
-                </>
-              )}
             </div>
           </header>
 

@@ -21,7 +21,6 @@ function durationPl(minutes: number): string {
 
 export interface UiTranslations {
   vaultTitle: string;
-  vaultSubtitle: string;
   vaultCaption: (recipes: number, cooks: number) => string;
   allRecipes: string;
   recipeCategories: Record<RecipeCategory, string>;
@@ -35,16 +34,20 @@ export interface UiTranslations {
   filterRecipes: string;
   sortRecipes: string;
   sortBy: string;
-  heirloomsOnly: string;
   removeFilter: (label: string) => string;
+  filterAuthor: string;
+  allAuthors: string;
+  /** The filter for recipes this person hasn't opened yet. */
+  unseen: string;
+  unseenCaption: (n: number) => string;
+  /** Nothing left to show with only unseen recipes. */
+  allSeen: string;
   recipeLayout: string;
   layoutCards: string;
   layoutList: string;
   recipesShown: (n: number) => string;
   noMatches: string;
   showAllRecipes: string;
-  heirloomBadge: string;
-  familyBadge: string;
   viewRecipe: string;
   ingredientsCount: (n: number) => string;
   thIngredient: string;
@@ -67,10 +70,6 @@ export interface UiTranslations {
   iosStep2: string;
   iosStep3: string;
   iosModalDone: string;
-  cookModeOn: string;
-  cookModeOff: string;
-  cookModeUnsupported: string;
-  cookModeTooltip: string;
   shareSuccess: string;
   shareFailed: string;
   backToRecipes: string;
@@ -314,8 +313,6 @@ export interface UiTranslations {
 export const UI_TEXT: Record<Language, UiTranslations> = {
   en: {
     vaultTitle: 'Recipe Vault',
-    vaultSubtitle:
-      'Heirloom family recipes crafted with precision, love, and time-honored tradition.',
     vaultCaption: (recipes: number, cooks: number) =>
       `${recipes} recipe${recipes === 1 ? '' : 's'} from ${cooks} cook${cooks === 1 ? '' : 's'}`,
     allRecipes: 'All recipes',
@@ -353,16 +350,19 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     filterRecipes: 'Filter recipes',
     sortRecipes: 'Sort recipes',
     sortBy: 'Sort by',
-    heirloomsOnly: 'Heirlooms only',
     removeFilter: (label: string) => `Remove filter: ${label}`,
+    filterAuthor: 'Author',
+    allAuthors: 'All authors',
+    unseen: 'Unseen',
+    unseenCaption: (n: number) =>
+      n === 0 ? "You've opened every one" : `${n} you haven't opened yet`,
+    allSeen: "Nothing new here: you've opened every one.",
     recipeLayout: 'Recipe layout',
     layoutCards: 'Cards',
     layoutList: 'List',
     recipesShown: (n: number) => `${n} recipe${n === 1 ? '' : 's'}`,
     noMatches: 'No recipes match that.',
     showAllRecipes: 'Show all recipes',
-    heirloomBadge: 'Heirloom',
-    familyBadge: 'Family Recipe',
     viewRecipe: 'View Recipe →',
     ingredientsCount: (n: number) => `${n} ingredient${n === 1 ? '' : 's'}`,
     thIngredient: 'Ingredient',
@@ -384,10 +384,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     iosStep2: 'Scroll down and tap <strong>Add to Home Screen</strong> {icon}.',
     iosStep3: 'Tap <strong>Add</strong> in the top-right corner to finish.',
     iosModalDone: 'Got it',
-    cookModeOn: 'Cook Mode: On (Screen Awake)',
-    cookModeOff: 'Cook Mode: Off',
-    cookModeUnsupported: 'Screen Wake Lock is not supported on this browser.',
-    cookModeTooltip: 'Keeps the screen awake while you cook',
     shareSuccess: 'Recipe link copied to clipboard!',
     shareFailed: "Couldn't copy the recipe link.",
     backToRecipes: 'Back to Recipes',
@@ -433,15 +429,15 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     restoredChip: 'Restored',
     changeNoteLabel: 'What changed?',
     restoredNote: (version: number) => `Restored version ${version}`,
-    deleteRecipe: 'Delete recipe',
+    deleteRecipe: 'Remove recipe',
     confirmDeleteRecipe: (name: string) =>
-      `Delete “${name}”? You can bring it back later from Settings.`,
-    recipeDeleted: 'Recipe deleted',
+      `Remove “${name}”? You can bring it back later from Settings.`,
+    recipeDeleted: 'Recipe removed',
     undo: 'Undo',
-    deletedRecipes: 'Deleted recipes',
-    deletedRecipesInfo: 'Recipes you delete are kept here, so you can bring them back.',
-    noDeletedRecipes: "You haven't deleted any recipes.",
-    deletedAgo: (when: string) => `Deleted ${when}`,
+    deletedRecipes: 'Removed recipes',
+    deletedRecipesInfo: 'Recipes you remove are kept here, so you can bring them back.',
+    noDeletedRecipes: "You haven't removed any recipes.",
+    deletedAgo: (when: string) => `Removed ${when}`,
     restoreRecipe: 'Restore',
     restoreRecipeLabel: (name: string) => `Restore ${name}`,
     recipeRestored: 'Recipe restored',
@@ -450,7 +446,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     emptyVault: 'No recipes yet. Add the first one from the menu.',
     emptyFilter: 'No recipes here yet.',
     estimatedTime: (minutes: number) => `~${durationEn(minutes)}`,
-    shareText: (name: string, author: string) => `${name} by ${author} - Heirloom Family Recipe`,
+    shareText: (name: string, author: string) => `${name} by ${author} – a family recipe`,
     logoAlt: 'Family Kitchen logo',
     languageToggle: 'Toggle language: English / Polish',
     decreaseTextSize: 'Decrease text size',
@@ -620,7 +616,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
   },
   pl: {
     vaultTitle: 'Skarbiec przepisów',
-    vaultSubtitle: 'Dziedzictwo kulinarnych sekretów przekazywane z pokolenia na pokolenie.',
     vaultCaption: (recipes: number, cooks: number) =>
       `${recipes} ${plPlural(recipes, 'przepis', 'przepisy', 'przepisów')} od ${cooks} ${cooks === 1 ? 'osoby' : 'osób'}`,
     allRecipes: 'Wszystkie przepisy',
@@ -658,16 +653,21 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     filterRecipes: 'Filtruj przepisy',
     sortRecipes: 'Sortuj przepisy',
     sortBy: 'Sortuj według',
-    heirloomsOnly: 'Tylko z tradycją',
     removeFilter: (label: string) => `Usuń filtr: ${label}`,
+    filterAuthor: 'Autor',
+    allAuthors: 'Wszyscy autorzy',
+    unseen: 'Nieobejrzane',
+    unseenCaption: (n: number) =>
+      n === 0
+        ? 'Wszystkie już obejrzane'
+        : `${n} ${plPlural(n, 'przepis', 'przepisy', 'przepisów')} do obejrzenia`,
+    allSeen: 'Nie ma tu nic nowego: wszystko już obejrzane.',
     recipeLayout: 'Układ przepisów',
     layoutCards: 'Karty',
     layoutList: 'Lista',
     recipesShown: (n: number) => `${n} ${plPlural(n, 'przepis', 'przepisy', 'przepisów')}`,
     noMatches: 'Żaden przepis tu nie pasuje.',
     showAllRecipes: 'Pokaż wszystkie przepisy',
-    heirloomBadge: 'Przepis z tradycją',
-    familyBadge: 'Przepis Rodzinny',
     viewRecipe: 'Zobacz przepis →',
     ingredientsCount: (n: number) => `${n} ${plPlural(n, 'składnik', 'składniki', 'składników')}`,
     thIngredient: 'Składnik',
@@ -689,10 +689,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     iosStep2: 'Przewiń w dół i wybierz <strong>Do ekranu początkowego</strong> {icon}.',
     iosStep3: 'Dotknij <strong>Dodaj</strong> w prawym górnym rogu ekranu.',
     iosModalDone: 'Rozumiem',
-    cookModeOn: 'Tryb gotowania: Włączony (ekran wybudzony)',
-    cookModeOff: 'Tryb gotowania: Wyłączony',
-    cookModeUnsupported: 'Funkcja blokady wygaszania ekranu nie jest wspierana.',
-    cookModeTooltip: 'Ekran nie wygaśnie podczas gotowania',
     shareSuccess: 'Link do przepisu skopiowany do schowka!',
     shareFailed: 'Nie udało się skopiować linku do przepisu.',
     backToRecipes: 'Powrót do przepisów',
@@ -757,8 +753,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     emptyVault: 'Nie ma jeszcze żadnych przepisów. Dodaj pierwszy z menu.',
     emptyFilter: 'Nie ma tu jeszcze przepisów.',
     estimatedTime: (minutes: number) => `~${durationPl(minutes)}`,
-    shareText: (name: string, author: string) =>
-      `${name} (${author}) – rodzinny przepis z tradycją`,
+    shareText: (name: string, author: string) => `${name} (${author}) – przepis rodzinny`,
     logoAlt: 'Logo Family Kitchen',
     languageToggle: 'Zmień język: angielski / polski',
     decreaseTextSize: 'Zmniejsz tekst',

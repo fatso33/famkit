@@ -3,7 +3,6 @@ import { Recipe, Language } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
 import { recipeTime } from '../../utils/timeEstimator';
 import { getLocalizedRecipe } from '../../hooks/useRecipes';
-import { isHeirloom } from '../../utils/ownership';
 import { vaultItemKey } from '../../utils/viewTransition';
 import { recipePhoto } from '../../utils/vault';
 import { photoPending } from '../../utils/deviceCopy';
@@ -32,7 +31,6 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
   const time = recipeTime(recipe);
   const estimatedTime = time.manual ? t.totalTime(time.minutes) : t.estimatedTime(time.minutes);
 
-  const badgeText = isHeirloom(rawRecipe) ? t.heirloomBadge : t.familyBadge;
   const photo = recipePhoto(recipe);
   const ingCountText = t.ingredientsCount(recipe.ingredients ? recipe.ingredients.length : 0);
 
@@ -76,7 +74,6 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
         ) : (
           <CategoryTile recipe={rawRecipe} />
         )}
-        <div className="card-badge">{badgeText}</div>
       </div>
       <div className="card-body">
         <h3 className="card-title" data-vault-name="">

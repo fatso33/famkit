@@ -5,7 +5,6 @@ import {
   authorModeOf,
   canEditRecipe,
   familyMemberName,
-  isHeirloom,
   memberDisplayName,
   resolveAuthor,
   shortName,
@@ -67,11 +66,6 @@ describe('authors', () => {
     expect(addedByName(recipe)).toBeNull();
     expect(addedByName(WANDAS_CHEESE_BREAD)).toBe('Peter Gzowski');
     expect(addedByName({ ...recipe, authorMode: 'custom', author: 'Ola Nowak' })).toBeNull();
-  });
-
-  it('counts recipes passed down from someone else as heirlooms', () => {
-    expect(isHeirloom(WANDAS_CHEESE_BREAD)).toBe(true);
-    expect(isHeirloom(recipe)).toBe(false);
   });
 });
 

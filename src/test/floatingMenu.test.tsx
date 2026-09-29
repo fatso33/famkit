@@ -260,4 +260,25 @@ describe('floating menu', () => {
     expect(dark).toHaveAttribute('aria-checked', String(!wasDark));
     expect(document.documentElement).toHaveAttribute('data-theme', wasDark ? 'light' : 'dark');
   });
+
+  it('spreads the new theme out from the pill, as on the splash', () => {
+    // A browser's view transition: snapshots, applies the change, then animates.
+    const start = vi.fn((update: () => void) => {
+      update();
+      return { ready: new Promise(() => {}), finished: new Promise(() => {}) };
+    });
+    document.startViewTransition = start as unknown as typeof document.startViewTransition;
+    render(<App />);
+    const menu = openMenu();
+    openPreferences(menu);
+    const dark = within(menu).getByRole('switch', { name: t.darkMode });
+    const wasDark = dark.getAttribute('aria-checked') === 'true';
+
+    fireEvent.click(dark);
+    expect(start).toHaveBeenCalledOnce();
+    expect(document.documentElement.dataset.themeSwap).toBe('');
+    expect(document.documentElement).toHaveAttribute('data-theme', wasDark ? 'light' : 'dark');
+    Reflect.deleteProperty(document, 'startViewTransition');
+    delete document.documentElement.dataset.themeSwap;
+  });
 });

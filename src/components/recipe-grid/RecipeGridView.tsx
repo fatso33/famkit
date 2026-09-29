@@ -6,7 +6,7 @@ import { getLocalizedRecipe } from '../../hooks/useRecipes';
 import { transitionView } from '../../utils/viewTransition';
 import {
   NO_FILTER,
-  categoryCounts,
+  filterCounts,
   filterEntries,
   groupEntries,
   isRecipeCategory,
@@ -34,6 +34,8 @@ interface RecipeGridViewProps {
   onSortChange: (sort: VaultSort) => void;
   view: VaultView;
   onViewChange: (view: VaultView) => void;
+  /** Whether this person has opened the recipe (or added it), for the Unseen filter. */
+  isSeen: (recipe: Recipe) => boolean;
   /** The recipe whose photo morphs to and from its card or row when opening or leaving it. */
   morphRecipeId: string | null;
   onSelectRecipe: (id: string) => void;
@@ -53,6 +55,7 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
   onSortChange,
   view,
   onViewChange,
+  isSeen,
   morphRecipeId,
   onSelectRecipe,
   animateIn,
@@ -71,8 +74,10 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
   const entries: VaultEntry[] = recipes.map((recipe) => ({
     recipe,
     shown: getLocalizedRecipe(recipe, language) ?? recipe,
+    seen: isSeen(recipe),
   }));
   const shown = sortEntries(filterEntries(entries, filter), sort, language);
+  const counts = filterCounts(entries, filter, language);
   const groups = groupEntries(shown, sort.by);
 
   /**
@@ -129,7 +134,7 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
         {recipes.length > 0 && (
           <VaultToolbar
             filter={filter}
-            counts={categoryCounts(entries, filter)}
+            counts={counts}
             shownCount={shown.length}
             onFilterChange={(next) => changeVault(() => onFilterChange(next))}
             onQueryChange={typeQuery}
@@ -150,7 +155,12 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
         {recipes.length === 0 && <p className="vault-empty">{t.emptyVault}</p>}
         {recipes.length > 0 && shown.length === 0 && (
           <div className="vault-empty">
-            <p>{t.noMatches}</p>
+            {/* Only the unseen filter came up empty: everything else would show something. */}
+            <p>
+              {filter.unseen && filterEntries(entries, { ...filter, unseen: false }).length > 0
+                ? t.allSeen
+                : t.noMatches}
+            </p>
             <button
               type="button"
               className="vault-empty-reset"

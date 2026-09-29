@@ -112,12 +112,51 @@ export function prefersReducedMotion(): boolean {
 
 let currentThemeSwap: ViewTransition | null = null;
 
+type Point = { x: number; y: number };
+
+// How much of the spreading circle's radius is its soft edge, where the old and new colours
+// blend into each other instead of meeting at a hard line.
+const THEME_FEATHER = 0.45;
+const THEME_SPREAD_MS = 1300;
+// Eases in and settles slowly, spreading evenly rather than bursting out: a wash, not a wipe.
+const THEME_SPREAD_EASING = 'cubic-bezier(0.45, 0.05, 0.3, 1)';
+
 /**
- * Switches the theme with the new colours spreading out in a circle from `origin` (the centre
- * of the control that was tapped, in viewport pixels). Where view transitions are unsupported,
- * or motion is reduced, the theme simply switches.
+ * The new theme's spread as keyframes: a radial mask, solid in the middle and fading out
+ * smoothly over its edge, that grows from nothing at `origin` until its solid middle covers the
+ * farthest corner of a `width` × `height` screen.
  */
-export function transitionTheme(update: () => void, origin: { x: number; y: number }) {
+export function themeSpreadKeyframes({ x, y }: Point, width: number, height: number): Keyframe[] {
+  const reach = Math.hypot(Math.max(x, width - x), Math.max(y, height - y));
+  const size = Math.ceil((2 * reach) / (1 - THEME_FEATHER));
+  // The edge fades along a smoothstep, so it has no visible start or end.
+  const solid = (1 - THEME_FEATHER) * 100;
+  const stops = [0, 0.25, 0.5, 0.75, 1].map((t) => {
+    const alpha = 1 - t * t * (3 - 2 * t);
+    return `rgb(0 0 0 / ${alpha.toFixed(3)}) ${(solid + t * THEME_FEATHER * 100).toFixed(1)}%`;
+  });
+  const maskImage = `radial-gradient(closest-side, ${stops.join(', ')})`;
+  return [
+    { maskImage, maskRepeat: 'no-repeat', maskSize: '0px 0px', maskPosition: `${x}px ${y}px` },
+    {
+      maskImage,
+      maskRepeat: 'no-repeat',
+      maskSize: `${size}px ${size}px`,
+      maskPosition: `${x - size / 2}px ${y - size / 2}px`,
+    },
+  ];
+}
+
+/** Whether masks are understood unprefixed (older engines get a plain growing circle). */
+const canMask = () =>
+  typeof CSS !== 'undefined' && !!CSS.supports?.('mask-image', 'radial-gradient(#000, #0000)');
+
+/**
+ * Switches the theme with the new colours washing out in a soft-edged circle from `origin` (the
+ * centre of the control that was tapped, in viewport pixels). Where view transitions are
+ * unsupported, or motion is reduced, the theme simply switches.
+ */
+export function transitionTheme(update: () => void, origin: Point) {
   if (!document.startViewTransition || prefersReducedMotion()) {
     update();
     return;
@@ -135,17 +174,23 @@ export function transitionTheme(update: () => void, origin: { x: number; y: numb
         const pseudo = (animation.effect as KeyframeEffect | null)?.pseudoElement;
         if (pseudo?.startsWith('::view-transition')) animation.cancel();
       }
+      const timing: KeyframeAnimationOptions = {
+        duration: THEME_SPREAD_MS,
+        easing: THEME_SPREAD_EASING,
+        fill: 'both',
+        pseudoElement: '::view-transition-new(root)',
+      };
+      if (canMask()) {
+        root.animate(themeSpreadKeyframes(origin, window.innerWidth, window.innerHeight), timing);
+        return;
+      }
       const radius = Math.hypot(
         Math.max(x, window.innerWidth - x),
         Math.max(y, window.innerHeight - y),
       );
       root.animate(
         { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
-        {
-          duration: 700,
-          easing: 'cubic-bezier(0.2, 0, 0, 1)',
-          pseudoElement: '::view-transition-new(root)',
-        },
+        timing,
       );
     },
     // Skipped (e.g. another transition started): the theme has still switched.

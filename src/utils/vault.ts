@@ -6,7 +6,6 @@ import {
   VaultSort,
   VaultSortKey,
 } from '../types/recipe';
-import { isHeirloom } from './ownership';
 import { recipeTime } from './timeEstimator';
 
 /** Every category, in the order the filter lists them. */
@@ -35,7 +34,7 @@ export const VAULT_SORT_KEYS: readonly VaultSortKey[] = [
 /** Newest first. */
 export const DEFAULT_SORT: VaultSort = { by: 'added', reversed: false };
 
-export const NO_FILTER: VaultFilter = { category: 'all', heirloomsOnly: false, query: '' };
+export const NO_FILTER: VaultFilter = { category: 'all', author: '', unseen: false, query: '' };
 
 export function isRecipeCategory(value: unknown): value is RecipeCategory {
   return (RECIPE_CATEGORIES as readonly unknown[]).includes(value);
@@ -80,6 +79,8 @@ export function categoryOf(recipe: Pick<Recipe, 'category'>): RecipeCategory {
 export interface VaultEntry {
   recipe: Recipe;
   shown: Recipe;
+  /** Whether this person has opened it (or added it themselves), for the Unseen filter. */
+  seen?: boolean;
 }
 
 /**
@@ -108,40 +109,89 @@ function matchesQuery({ shown }: VaultEntry, query: string): boolean {
   return texts.some((text) => text && findMatch(text, query));
 }
 
-/** Whether a recipe passes the heirloom switch and the search (everything but the category). */
-function passesRest(entry: VaultEntry, filter: VaultFilter): boolean {
-  if (filter.heirloomsOnly && !isHeirloom(entry.recipe)) return false;
+const changedAt = (r: Recipe) => r.updatedAt ?? r.createdAt ?? 0;
+
+/** The cook's name, trimmed. Cloud records aren't checked, so one may have none. */
+const cookOf = (r: Pick<Recipe, 'author'>) => (r.author ?? '').trim();
+
+/** An author's name as the author filter matches it: case and accents aside ("ola" = "Ola"). */
+export function authorKey(recipe: Pick<Recipe, 'author'>): string {
+  return foldText(cookOf(recipe));
+}
+
+/** The parts of the filter besides the search, each of which the filter menu counts for. */
+type Facet = 'category' | 'author' | 'unseen';
+
+/** Whether a recipe passes the filter, leaving out one part of it when counting for that part. */
+function passes(entry: VaultEntry, filter: VaultFilter, except?: Facet): boolean {
+  if (except !== 'category' && filter.category !== 'all') {
+    if (categoryOf(entry.recipe) !== filter.category) return false;
+  }
+  if (except !== 'author' && filter.author && authorKey(entry.recipe) !== filter.author) {
+    return false;
+  }
+  if (except !== 'unseen' && filter.unseen && entry.seen) return false;
   return !filter.query.trim() || matchesQuery(entry, filter.query);
 }
 
 /** The recipes the filter lets through. */
 export function filterEntries(entries: VaultEntry[], filter: VaultFilter): VaultEntry[] {
-  return entries.filter(
-    (entry) =>
-      (filter.category === 'all' || categoryOf(entry.recipe) === filter.category) &&
-      passesRest(entry, filter),
-  );
+  return entries.filter((entry) => passes(entry, filter));
 }
 
-/** How many recipes each category would show, given the rest of the filter. */
-export function categoryCounts(
+/** An author the filter can narrow to, with how many recipes choosing them would show. */
+export interface VaultAuthor {
+  /** authorKey of their name. */
+  key: string;
+  name: string;
+  count: number;
+}
+
+/** What each choice in the filter menu would show, given the rest of the filter. */
+export interface FilterCounts {
+  categories: Record<RecipeCategory | 'all', number>;
+  /** Every author in the vault, A to Z, including those the rest of the filter leaves at 0. */
+  authors: VaultAuthor[];
+  /** With every author. */
+  allAuthors: number;
+  unseen: number;
+}
+
+export function filterCounts(
   entries: VaultEntry[],
   filter: VaultFilter,
-): Record<RecipeCategory | 'all', number> {
-  const counts = { all: 0 } as Record<RecipeCategory | 'all', number>;
-  for (const category of RECIPE_CATEGORIES) counts[category] = 0;
+  lang: Language,
+): FilterCounts {
+  const categories = { all: 0 } as Record<RecipeCategory | 'all', number>;
+  for (const category of RECIPE_CATEGORIES) categories[category] = 0;
+  const authors = new Map<string, VaultAuthor>();
+  let allAuthors = 0;
+  let unseen = 0;
   for (const entry of entries) {
-    if (!passesRest(entry, filter)) continue;
-    counts.all++;
-    counts[categoryOf(entry.recipe)]++;
+    if (passes(entry, filter, 'category')) {
+      categories.all++;
+      categories[categoryOf(entry.recipe)]++;
+    }
+    const key = authorKey(entry.recipe);
+    const name = cookOf(entry.recipe);
+    let author = authors.get(key);
+    if (!author && key) authors.set(key, (author = { key, name, count: 0 }));
+    // The same author typed two ways goes by the capitalised spelling.
+    else if (author && startsLower(author.name) && !startsLower(name)) author.name = name;
+    if (passes(entry, filter, 'author')) {
+      allAuthors++;
+      if (author) author.count++;
+    }
+    if (!entry.seen && passes(entry, filter, 'unseen')) unseen++;
   }
-  return counts;
+  const collator = new Intl.Collator(lang, { sensitivity: 'base' });
+  return {
+    categories,
+    authors: [...authors.values()].sort((a, b) => collator.compare(a.name, b.name)),
+    allAuthors,
+    unseen,
+  };
 }
-
-const changedAt = (r: Recipe) => r.updatedAt ?? r.createdAt ?? 0;
-
-/** The cook's name, trimmed. Cloud records aren't checked, so one may have none. */
-const cookOf = (r: Recipe) => (r.author ?? '').trim();
 
 /**
  * The recipes in the chosen order, turned round if asked. Ties go alphabetically either way,

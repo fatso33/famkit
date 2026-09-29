@@ -67,7 +67,10 @@ describe('motion', () => {
     fireEvent.click(screen.getByRole('button', { name: t.filterRecipes }));
     const filter = screen.getByRole('dialog', { name: t.filterRecipes });
     fireEvent.click(
-      within(filter).getByRole('button', {
+      within(filter).getByRole('button', { name: (name) => name.startsWith(t.categoryLabel) }),
+    );
+    fireEvent.click(
+      within(filter).getByRole('option', {
         name: (name) => name.startsWith(t.recipeCategories.breads),
       }),
     );
@@ -80,6 +83,23 @@ describe('motion', () => {
     expect(card('Babka')).toBeInTheDocument();
     expect(card('Pierogi')).toBeNull();
     expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 640, behavior: 'instant' });
+    Reflect.deleteProperty(window, 'scrollY');
+  });
+
+  it('sets the remembered scroll on the vault itself, not on the recipe it replaces', () => {
+    render(<App />);
+    Object.defineProperty(window, 'scrollY', { value: 1800, configurable: true });
+    fireEvent.click(card('Babka')!);
+    // A recipe page shorter than the vault can't scroll that far, so a jump made while it is
+    // still showing lands short of the card that was opened.
+    const vaultThere: boolean[] = [];
+    window.scrollTo = vi.fn(() => {
+      vaultThere.push(!!document.getElementById('viewGrid'));
+    }) as unknown as typeof window.scrollTo;
+    fireEvent.click(screen.getByRole('button', { name: t.backToRecipes }));
+
+    expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 1800, behavior: 'instant' });
+    expect(vaultThere.at(-1)).toBe(true);
     Reflect.deleteProperty(window, 'scrollY');
   });
 

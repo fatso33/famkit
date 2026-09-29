@@ -579,15 +579,6 @@
         :root[data-morph='recipe'] :is(.detail-hero-img, .detail-hero-tile) {
           view-transition-group: nearest;
         }
-        /* The card's badge fades where it is rather than riding under the photo. */
-        :root[data-morph='recipe'] .recipe-card.is-morph-target .card-badge {
-          view-transition-name: recipe-badge;
-        }
-        /* The browser carries the badge's frosted backdrop over to its morph group, where it
-           would stay drawn on the flying photo after the badge itself had faded. */
-        ::view-transition-group(recipe-badge) {
-          backdrop-filter: none;
-        }
         ::view-transition-group(recipe-frame) {
           animation-duration: var(--morph-duration);
           animation-timing-function: var(--ease-glide);
@@ -623,12 +614,6 @@
         }
         :root[data-nav='back']::view-transition-group-children(recipe-frame) {
           animation: vt-clip-to-card var(--morph-duration) var(--ease-glide) both;
-        }
-        :root[data-nav='forward']::view-transition-old(recipe-badge) {
-          animation: vt-fade-out 0.16s linear both;
-        }
-        :root[data-nav='back']::view-transition-new(recipe-badge) {
-          animation: fk-fade-in 0.24s ease calc(var(--morph-duration) * 0.7) both;
         }
       }
 
@@ -706,12 +691,8 @@
         ::view-transition-group-children(recipe-frame) {
           animation: none;
         }
-        ::view-transition-old(recipe-frame),
-        ::view-transition-old(recipe-badge) {
+        ::view-transition-old(recipe-frame) {
           animation: vt-fade-out 0.15s linear both;
-        }
-        ::view-transition-new(recipe-badge) {
-          animation: fk-fade-in 0.15s linear both;
         }
         ::view-transition-new(recipe-frame) {
           animation: fk-fade-in 0.15s linear both;
@@ -1105,21 +1086,6 @@
         .recipe-card:hover .card-media img {
           transform: scale(1.03);
         }
-      }
-
-      .card-badge {
-        position: absolute;
-        top: 0.75rem;
-        left: 0.75rem;
-        background: rgba(19, 18, 17, 0.75);
-        backdrop-filter: blur(6px);
-        color: #fff;
-        padding: 0.25rem 0.6rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-        border-radius: var(--radius-full);
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
       }
 
       .card-body {
@@ -1607,8 +1573,8 @@
           transform 0.45s var(--ease-glide);
       }
 
-      /* Cards or list: two buttons in a tray, with a raised thumb that springs between them. It
-         holds the row's left end. */
+      /* Cards or list: one switch, a tray with both icons and a raised thumb under the one
+         showing. A tap anywhere on it springs the thumb across. It holds the row's left end. */
       .vault-layout {
         position: relative;
         flex: none;
@@ -1618,32 +1584,30 @@
         border: 1px solid var(--border-subtle);
         border-radius: var(--radius-full);
         background: var(--menu-well);
+        font: inherit;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
       }
 
-      .vault-layout button {
+      .vault-layout-icon {
         position: relative;
         z-index: 1;
         width: calc(var(--vault-key) - 2px);
         height: calc(var(--vault-key) - 8px);
         display: grid;
         place-items: center;
-        border: 0;
         border-radius: var(--radius-full);
-        background: none;
         color: var(--text-muted);
-        cursor: pointer;
         transition: color 0.25s ease;
       }
 
-      /* The tray's padding still counts as the button: 44px to tap. */
-      .vault-layout button::after {
-        content: '';
-        position: absolute;
-        inset: -3px 0;
+      .vault-layout-icon.is-active {
+        color: var(--text-primary);
       }
 
-      .vault-layout button[aria-pressed='true'] {
-        color: var(--text-primary);
+      /* Pressed, the thumb gives a little, as a key would. */
+      .vault-layout:active .vault-layout-thumb {
+        scale: 0.94;
       }
 
       .vault-layout-thumb {
@@ -1656,14 +1620,16 @@
         border-radius: var(--radius-full);
         background: var(--key-face);
         box-shadow: var(--key-lift);
-        transition: transform 0.5s var(--spring-soft);
+        transition:
+          transform 0.5s var(--spring-soft),
+          scale 0.2s ease;
       }
 
       .vault-layout[data-view='list'] .vault-layout-thumb {
         transform: translateX(100%);
       }
 
-      :is(.vault-key, .vault-search-close, .vault-layout button, .vault-chip):focus-visible,
+      :is(.vault-key, .vault-search-close, .vault-layout, .vault-chip):focus-visible,
       .vault-search:has(.vault-search-key:focus-visible) {
         outline: 3px solid var(--accent);
         outline-offset: 2px;
@@ -1689,7 +1655,15 @@
         top: calc(100% + 0.6rem);
         right: 0;
         width: min(22rem, calc(100vw - 2rem));
-        max-height: calc(100dvh - 10rem);
+        /* Down to just above the floating menu button (VaultPopover measures --popover-top),
+           and never so short that a list has no room to show. */
+        max-height: max(
+          16rem,
+          calc(
+            100dvh - var(--popover-top, 10rem) - var(--fab-size) - 2.25rem -
+              env(safe-area-inset-bottom)
+          )
+        );
         overflow-y: auto;
         overscroll-behavior: contain;
         padding: 0.9rem 0.8rem 0.8rem;
@@ -1723,27 +1697,143 @@
         color: var(--text-muted);
       }
 
-      .vault-choices {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.4rem;
+      /* The filter menu's fields (FilterSelect): what's chosen, in a well, with its options
+         unfolding in place beneath it (0fr → 1fr) and rising in one after another. */
+      .vault-select + .vault-select {
+        margin-top: 0.9rem;
       }
 
-      .vault-choice {
+      .vault-select .vault-popover-title {
+        display: block;
+        margin-bottom: 0.45rem;
+      }
+
+      .vault-select-trigger {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        width: 100%;
+        min-height: 3rem;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-field);
+        border-radius: var(--radius-md);
+        background: var(--menu-well);
+        color: var(--text-primary);
+        font: inherit;
+        font-size: 1rem;
+        font-weight: 600;
+        line-height: 1.2;
+        text-align: left;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          border-color 0.25s ease,
+          background-color 0.25s ease,
+          transform 0.15s ease;
+      }
+
+      .vault-select-trigger:active {
+        transform: scale(0.985);
+      }
+
+      .vault-select.is-open .vault-select-trigger {
+        border-color: color-mix(in srgb, var(--accent) 50%, var(--border-field));
+      }
+
+      .vault-select-icon {
+        flex: none;
+        display: grid;
+        place-items: center;
+        min-width: 1.45rem;
+        color: var(--accent-gold);
+      }
+
+      .vault-select-value {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      /* Options wrap rather than cut a name short ("Cakes & desserts" two to a row). */
+      .vault-select-option-label {
+        flex: 1;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .vault-select-count {
+        flex: none;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        color: var(--text-muted);
+      }
+
+      .vault-select-chevron {
+        flex: none;
+        color: var(--text-muted);
+        transition:
+          rotate 0.4s var(--ease-glide),
+          color 0.25s ease;
+      }
+
+      .vault-select.is-open .vault-select-chevron {
+        rotate: 180deg;
+        color: var(--accent);
+      }
+
+      .vault-select-drawer {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 0.4s var(--ease-glide);
+      }
+
+      .vault-select.is-open .vault-select-drawer {
+        grid-template-rows: 1fr;
+      }
+
+      .vault-select-clip {
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .vault-select-list {
+        display: grid;
+        gap: 0.35rem;
+        padding-top: 0.45rem;
+        opacity: 0;
+        transition: opacity 0.18s ease;
+      }
+
+      .vault-select.is-open .vault-select-list {
+        opacity: 1;
+        transition: opacity 0.25s ease;
+      }
+
+      .vault-select-list.is-paired {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .vault-select-option {
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        min-width: 0;
         min-height: 44px;
         padding: 0.45rem 0.6rem;
         border: 1px solid transparent;
         border-radius: var(--radius-md);
         background: var(--menu-well);
         color: var(--text-secondary);
+        font: inherit;
         font-size: 0.9375rem;
         font-weight: 600;
         line-height: 1.2;
         text-align: left;
         cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
         transition:
           background-color 0.2s ease,
           border-color 0.2s ease,
@@ -1751,43 +1841,88 @@
           transform 0.15s ease;
       }
 
-      .vault-choice:active,
-      .vault-option:active {
+      .vault-select.is-open .vault-select-option {
+        animation: vault-pop-item 0.42s var(--ease-glide) calc(50ms + var(--i, 0) * 16ms) both;
+      }
+
+      .vault-select-option:active {
         transform: scale(0.97);
       }
 
-      .vault-choice.is-wide {
+      .vault-select-option.is-wide {
         grid-column: 1 / -1;
       }
 
-      .vault-choice-icon {
-        flex: none;
-        color: var(--accent-gold);
-      }
-
-      .vault-choice-label {
-        flex: 1;
-        min-width: 0;
-      }
-
-      .vault-choice-count {
-        font-size: 0.8125rem;
-        font-variant-numeric: tabular-nums;
+      .vault-select-option.is-empty .vault-select-option-label {
         color: var(--text-muted);
       }
 
-      .vault-choice.is-empty .vault-choice-label {
-        color: var(--text-muted);
-      }
-
-      .vault-choice[aria-pressed='true'] {
+      .vault-select-option[aria-selected='true'] {
         border-color: color-mix(in srgb, var(--accent) 40%, transparent);
         background: var(--accent-subtle);
         color: var(--accent);
       }
 
-      .vault-choice[aria-pressed='true'] :is(.vault-choice-icon, .vault-choice-count, .vault-choice-label) {
+      .vault-select-option[aria-selected='true'] :is(.vault-select-icon, .vault-select-count) {
         color: var(--accent);
+      }
+
+      .vault-select-check {
+        flex: none;
+        color: var(--accent);
+        animation: vault-chip-in 0.35s var(--spring-soft) both;
+      }
+
+      @media (hover: hover) {
+        .vault-select-trigger:hover {
+          background: var(--menu-well-hover);
+        }
+        .vault-select-option:not([aria-selected='true']):hover {
+          background: var(--menu-well-hover);
+        }
+      }
+
+      /* An author's initials in a small round, where a category shows its icon. */
+      .vault-monogram {
+        display: inline-grid;
+        place-items: center;
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: var(--radius-full);
+        background: var(--accent-gold-subtle);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-gold) 30%, transparent);
+        color: var(--accent-gold);
+        font-size: 0.625rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        line-height: 1;
+      }
+
+      .vault-chip .vault-monogram {
+        width: 1.35rem;
+        height: 1.35rem;
+      }
+
+      [aria-selected='true'] .vault-monogram {
+        background: color-mix(in srgb, var(--accent) 14%, transparent);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+        color: var(--accent);
+      }
+
+      .vault-option:active {
+        transform: scale(0.97);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .vault-select-drawer,
+        .vault-select-chevron,
+        .vault-layout-thumb {
+          transition: none;
+        }
+        .vault-select.is-open .vault-select-option,
+        .vault-select-check {
+          animation: none;
+        }
       }
 
       .vault-switch-row {
@@ -1796,8 +1931,8 @@
         gap: 0.65rem;
         width: 100%;
         min-height: 3rem;
-        margin-top: 0.65rem;
-        padding: 0.65rem 0.45rem 0;
+        margin-top: 0.9rem;
+        padding: 0.8rem 0.45rem 0;
         border: 0;
         border-top: 1px solid var(--border-subtle);
         background: none;
@@ -1808,8 +1943,24 @@
         cursor: pointer;
       }
 
-      .vault-switch-heart {
+      .vault-switch-icon {
+        flex: none;
         color: var(--accent-gold);
+      }
+
+      .vault-switch-text {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.1rem;
+        line-height: 1.2;
+      }
+
+      .vault-switch-caption {
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: var(--text-muted);
       }
 
       .vault-switch {
@@ -1949,7 +2100,7 @@
         transform: rotate(180deg);
       }
 
-            :is(.vault-choice, .vault-option, .vault-switch-row):focus-visible {
+            :is(.vault-select-trigger, .vault-select-option, .vault-option, .vault-switch-row):focus-visible {
         outline: 3px solid var(--accent);
         outline-offset: 1px;
       }
@@ -2147,11 +2298,6 @@
         white-space: nowrap;
       }
 
-      .vault-row-heirloom {
-        flex: none;
-        color: var(--accent-gold);
-      }
-
       .vault-row-time {
         flex: none;
         white-space: nowrap;
@@ -2340,40 +2486,13 @@
         flex-wrap: wrap;
       }
 
-      .cook-mode-banner {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.6rem;
-        background: var(--accent-gold-subtle);
-        color: var(--accent-gold);
-        border: 1px solid var(--accent-gold);
-        padding: 0.5rem 0.9rem;
-        border-radius: var(--radius-sm);
-        font-size: 0.875rem;
-        font-weight: 600;
-        margin-bottom: 1.5rem;
-      }
-
-      /* Compact pill buttons in the recipe meta row (Edit, Cook Mode) */
+      /* Compact pill buttons (the editor's version banner, Settings' restore) */
       .btn-meta-pill {
         padding: 0.35rem 0.9rem;
         min-height: 44px;
         font-size: 0.875rem;
         gap: 0.35rem;
         border-radius: var(--radius-full);
-      }
-
-      .pulse-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--accent-gold);
-        animation: pulse 1.6s infinite ease-in-out;
-      }
-
-      @keyframes pulse {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.4; transform: scale(1.3); }
       }
 
       /* Two Column Content */

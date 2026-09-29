@@ -214,7 +214,10 @@ export type VaultView = 'cards' | 'list';
 /** Which recipes the vault shows. */
 export interface VaultFilter {
   category: RecipeCategory | 'all';
-  heirloomsOnly: boolean;
+  /** One author, as utils/vault's authorKey gives their name; '' for everyone's recipes. */
+  author: string;
+  /** Only the recipes this person hasn't opened yet. */
+  unseen: boolean;
   /** Search text, matched against names, cooks and ingredients. */
   query: string;
 }

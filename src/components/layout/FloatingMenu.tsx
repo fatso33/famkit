@@ -28,7 +28,8 @@ interface FloatingMenuProps {
   language: Language;
   onToggleLanguage: () => void;
   theme: Theme;
-  onToggleTheme: () => void;
+  /** From the centre of the theme pill, where the new theme spreads out from. */
+  onToggleTheme: (origin: { x: number; y: number }) => void;
   fontPercent: number;
   onIncreaseFont: () => void;
   onDecreaseFont: () => void;
@@ -289,7 +290,13 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
                     data-value={theme}
                     aria-checked={theme === 'dark'}
                     aria-labelledby={darkLabelId}
-                    onClick={onToggleTheme}
+                    onClick={(e) => {
+                      const pill = e.currentTarget.getBoundingClientRect();
+                      onToggleTheme({
+                        x: pill.left + pill.width / 2,
+                        y: pill.top + pill.height / 2,
+                      });
+                    }}
                   >
                     <span className="fk-segmented-thumb" aria-hidden="true" />
                     <span className={theme === 'light' ? 'is-active' : ''}>

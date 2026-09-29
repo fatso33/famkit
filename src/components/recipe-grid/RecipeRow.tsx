@@ -1,9 +1,8 @@
 import React from 'react';
-import { ChevronRight, Heart } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { Recipe } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
 import { recipeTime } from '../../utils/timeEstimator';
-import { isHeirloom } from '../../utils/ownership';
 import { vaultItemKey } from '../../utils/viewTransition';
 import { recipePhoto } from '../../utils/vault';
 import { photoPending } from '../../utils/deviceCopy';
@@ -30,7 +29,6 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
   onSelect,
   t,
 }) => {
-  const heirloom = isHeirloom(recipe);
   const photo = recipePhoto(shown);
   return (
     <button
@@ -63,14 +61,6 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
           {shown.name}
         </span>
         <span className="vault-row-meta">
-          {heirloom && (
-            <Heart
-              className="vault-row-heirloom"
-              size="0.95em"
-              strokeWidth={2.2}
-              aria-hidden="true"
-            />
-          )}
           <span className="vault-row-cook">{shown.author}</span>
           <span aria-hidden="true">·</span>
           <span className="vault-row-time">{t.totalTime(recipeTime(shown).minutes)}</span>

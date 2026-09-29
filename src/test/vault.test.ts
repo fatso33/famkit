@@ -3,8 +3,9 @@ import { Recipe } from '../types/recipe';
 import {
   DEFAULT_SORT,
   NO_FILTER,
-  categoryCounts,
+  authorKey,
   categoryOf,
+  filterCounts,
   filterEntries,
   findMatch,
   foldText,
@@ -29,15 +30,13 @@ const recipe = (id: string, extra: Partial<Recipe> = {}): Recipe => ({
   ...extra,
 });
 
-const entry = (r: Recipe, shown: Partial<Recipe> = {}): VaultEntry => ({
+const entry = (r: Recipe, shown: Partial<Recipe> = {}, seen = false): VaultEntry => ({
   recipe: r,
   shown: { ...r, ...shown },
+  seen,
 });
 
 const names = (entries: VaultEntry[]) => entries.map((e) => e.shown.name);
-
-// Credited to someone outside the app (utils/ownership), e.g. a grandmother.
-const heirloom = { authorMode: 'custom' as const, ownerName: 'Peter' };
 
 describe('vault categories', () => {
   it('files older records, and anything unknown, under Other', () => {
@@ -73,32 +72,45 @@ describe('vault search', () => {
 
 describe('vault filter', () => {
   const entries = [
-    entry(recipe('babka', { category: 'cakes', ...heirloom })),
-    entry(recipe('sernik', { category: 'cakes' })),
-    entry(recipe('zurek', { category: 'soups', ...heirloom })),
-    entry(recipe('old', { category: 'family' })),
+    entry(recipe('babka', { category: 'cakes', author: 'Babcia Zosia' })),
+    entry(recipe('sernik', { category: 'cakes' }), {}, true),
+    entry(recipe('zurek', { category: 'soups', author: 'babcia zosia ' })),
+    entry(recipe('old', { category: 'family', author: 'Kasia' }), {}, true),
   ];
+  const zosia = authorKey({ author: 'Babcia Zosia' });
 
-  it('narrows by category and to heirlooms, together', () => {
+  it('narrows by category, author and unseen, together', () => {
     const shown = (filter: Partial<typeof NO_FILTER>) =>
       names(filterEntries(entries, { ...NO_FILTER, ...filter }));
     expect(shown({ category: 'cakes' })).toEqual(['babka', 'sernik']);
     expect(shown({ category: 'other' })).toEqual(['old']);
-    expect(shown({ heirloomsOnly: true })).toEqual(['babka', 'zurek']);
-    expect(shown({ category: 'cakes', heirloomsOnly: true })).toEqual(['babka']);
+    // The same author, however their name was typed.
+    expect(shown({ author: zosia })).toEqual(['babka', 'zurek']);
+    expect(shown({ unseen: true })).toEqual(['babka', 'zurek']);
+    expect(shown({ category: 'cakes', unseen: true })).toEqual(['babka']);
+    expect(shown({ author: authorKey({ author: 'Kasia' }), unseen: true })).toEqual([]);
   });
 
-  it("counts each category's recipes under the rest of the filter", () => {
-    const counts = categoryCounts(entries, {
-      ...NO_FILTER,
-      category: 'soups',
-      heirloomsOnly: true,
-    });
-    expect(counts.all).toBe(2);
-    expect(counts.cakes).toBe(1);
-    expect(counts.soups).toBe(1);
-    expect(counts.other).toBe(0);
-    expect(counts.drinks).toBe(0);
+  it('counts what each choice would show under the rest of the filter', () => {
+    const counts = filterCounts(
+      entries,
+      { ...NO_FILTER, category: 'soups', author: zosia, unseen: true },
+      'en',
+    );
+    // Categories: Zosia's unseen recipes.
+    expect(counts.categories.all).toBe(2);
+    expect(counts.categories.cakes).toBe(1);
+    expect(counts.categories.soups).toBe(1);
+    expect(counts.categories.other).toBe(0);
+    // Authors: unseen soups. Every author is listed, A to Z, by their capitalised spelling.
+    expect(counts.authors).toEqual([
+      { key: zosia, name: 'Babcia Zosia', count: 1 },
+      { key: 'kasia', name: 'Kasia', count: 0 },
+      { key: 'ola', name: 'Ola', count: 0 },
+    ]);
+    expect(counts.allAuthors).toBe(1);
+    // Unseen: Zosia's soups not yet opened.
+    expect(counts.unseen).toBe(1);
   });
 });
 
