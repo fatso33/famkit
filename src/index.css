@@ -424,7 +424,7 @@
 
       /* The floating button, its menu and the toast stay put while the page moves:
          only their live selves show, never a sliding snapshot. */
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='vault'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='vault'], [data-nav='zoom'])
         .fab-group {
         view-transition-name: fk-fab;
       }
@@ -783,50 +783,6 @@
         display: flex;
       }
 
-      .image-modal-toolbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.85rem 1.25rem;
-        background: rgba(20, 18, 16, 0.6);
-        backdrop-filter: blur(8px);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        color: #ffffff;
-        z-index: 10;
-        flex-shrink: 0;
-      }
-
-      .image-modal-controls {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-
-      .image-modal-btn {
-        background: rgba(255, 255, 255, 0.12);
-        color: #ffffff;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: var(--radius-sm);
-        padding: 0.4rem 0.75rem;
-        font-size: 0.85rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background 0.15s, border-color 0.15s;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        min-height: 44px;
-        min-width: 44px;
-        justify-content: center;
-      }
-
-      @media (hover: hover) {
-        .image-modal-btn:hover {
-          background: rgba(255, 255, 255, 0.25);
-          border-color: rgba(255, 255, 255, 0.4);
-        }
-      }
-
       .image-modal-content {
         flex: 1;
         overflow: hidden;
@@ -868,25 +824,6 @@
           transform: scale(1.008);
           box-shadow: var(--shadow-md);
         }
-      }
-
-      .zoom-badge-hint {
-        position: absolute;
-        bottom: 0.5rem;
-        right: 0.5rem;
-        background: rgba(19, 18, 17, 0.78);
-        backdrop-filter: blur(4px);
-        color: #fff;
-        font-size: 0.8125rem;
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        border: 1px solid rgba(255, 255, 255, 0.35);
-        pointer-events: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
       }
 
       /* Buttons & Controls */
@@ -2647,24 +2584,25 @@
       }
 
       /* Ingredients Sidebar */
+      /* One tile: its heading, scaler and yield at the top, then the table's rows running out to
+         its edges, so ingredient names get the tile's whole width. */
       .ingredients-panel {
+        --panel-pad: 1.5rem;
         background: var(--bg-surface);
         border: 1px solid var(--border-subtle);
         border-radius: var(--radius-md);
-        padding: 1.5rem;
         position: relative;
+        overflow: clip;
         box-shadow: var(--shadow-sm);
       }
 
       .panel-header {
         display: flex;
         justify-content: space-between;
-        align-items: baseline;
+        align-items: center;
         flex-wrap: wrap;
         gap: 0.5rem 0.75rem;
-        margin-bottom: 1rem;
-        padding-bottom: 0.75rem;
-        border-bottom: 1px solid var(--border-subtle);
+        padding: 1.25rem var(--panel-pad) 0;
       }
 
       .panel-title {
@@ -2674,58 +2612,76 @@
         letter-spacing: -0.01em;
       }
 
-      /* Portion Scaler */
+      /* Portion scaler: the text size stepper's pill, − and + raised round keys set into it
+         (see .fk-stepper) */
       .scaler-control {
         display: inline-flex;
         align-items: center;
-        gap: 0.35rem;
-        background: var(--bg-card);
-        padding: 0.2rem;
-        border-radius: var(--radius-sm);
         border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-full);
+        background: var(--menu-well);
       }
 
-      /* Raised keys, like the text size steppers' (see .fk-stepper) */
       .scaler-btn {
+        position: relative;
+        isolation: isolate;
         width: 44px;
         height: 44px;
-        border: 1px solid var(--key-edge);
-        background: var(--key-face);
-        box-shadow: var(--key-lift);
-        border-radius: 6px;
+        padding: 0;
+        border: none;
+        border-radius: var(--radius-full);
+        background: transparent;
         color: var(--text-primary);
-        font-weight: 700;
         cursor: pointer;
         display: grid;
         place-items: center;
-        transition: background-color 0.15s ease, border-color 0.15s ease, scale 0.15s ease;
+        transition: scale 0.15s ease;
         -webkit-tap-highlight-color: transparent;
       }
 
+      /* The key's face sits inside the 44px tap area, clear of the pill's edge. */
+      .scaler-btn::before {
+        content: '';
+        position: absolute;
+        inset: 4px;
+        z-index: -1;
+        border: 1px solid var(--key-edge);
+        border-radius: inherit;
+        background: var(--key-face);
+        box-shadow: var(--key-lift);
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+
       @media (hover: hover) {
-        .scaler-btn:hover {
+        .scaler-btn:hover::before {
           border-color: color-mix(in srgb, var(--accent) 50%, var(--key-edge));
         }
       }
 
-      .scaler-btn:active {
-        scale: 0.93;
-        box-shadow: none;
+      .scaler-btn:active { scale: 0.92; }
+      .scaler-btn:active::before { box-shadow: none; }
+
+      .scaler-btn:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
       }
 
       .scaler-display {
-        font-size: 0.85rem;
-        font-weight: 600;
-        padding: 0 0.5rem;
-        min-width: 32px;
+        min-width: 2.75rem;
+        overflow: hidden;
         text-align: center;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        font-variant-numeric: tabular-nums;
       }
 
       .yield-text {
         font-size: 0.9375rem;
         color: var(--accent);
         font-weight: 600;
-        margin-bottom: 1rem;
+        margin: 0.65rem 0 0.9rem;
+        padding: 0 var(--panel-pad);
         display: flex;
         flex-wrap: wrap;
         align-items: baseline;
@@ -2744,11 +2700,13 @@
       /* Modern 2-Column Ingredients Table */
       .ingredient-table-wrapper {
         width: 100%;
-        overflow-x: auto;
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-md);
-        background: var(--bg-surface);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        margin-top: 0.9rem;
+        border-top: 1px solid var(--border-subtle);
+      }
+
+      /* No yield line: the rows start the same distance under the heading. */
+      .yield-text + .ingredient-table-wrapper {
+        margin-top: 0;
       }
 
       .ingredient-table {
@@ -2770,19 +2728,82 @@
         text-align: left;
       }
 
+      /* On the recipe page the rows are blocks rather than table rows: each amount floats at
+         the right of its row (.ingredient-amount-float), the name stays in its column beside it,
+         and a note runs on under the amount once past it, using the row's whole width. The
+         column heading lines up with the floated amounts (same --amount-col of the same width).
+         The markup sets every table role, so it still reads as a table. */
+      table.ingredient-table {
+        --cell-pad: 1rem;
+        --amount-col: 40%;
+        --col-gap: 0.75rem;
+      }
+
+      table.ingredient-table,
+      table.ingredient-table :is(thead, tbody, tr, td) {
+        display: block;
+      }
+
+      table.ingredient-table thead tr {
+        display: flex;
+        padding-inline: var(--cell-pad);
+        background: var(--bg-card);
+        border-bottom: 1px solid var(--border-subtle);
+      }
+
+      table.ingredient-table thead th {
+        padding-inline: 0;
+        border-bottom: 0;
+      }
+
       .ingredient-table th.th-ingredient {
-        width: 58%;
+        flex: 1;
+        min-width: 0;
+        padding-right: var(--col-gap);
       }
 
       .ingredient-table th.th-amount {
-        width: 42%;
+        flex: none;
+        width: var(--amount-col);
       }
 
       .ingredient-table td {
-        padding: 0.85rem 1rem;
+        padding: 0.85rem var(--cell-pad);
         vertical-align: top;
         border-bottom: 1px solid var(--border-subtle);
         text-align: left;
+      }
+
+      /* Holds its floated amount inside, however short the name beside it. The tile clips what
+         overflows it, so a long unbroken run (a pasted link) wraps rather than being cut off. */
+      table.ingredient-table td.td-ingredient {
+        display: flow-root;
+        overflow-wrap: anywhere;
+      }
+
+      .ingredient-amount-float {
+        float: right;
+        width: var(--amount-col);
+        margin: 0 0 0.2rem var(--col-gap);
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 1.125rem;
+        letter-spacing: 0.01em;
+        line-height: 1.35;
+        overflow-wrap: break-word;
+      }
+
+      /* The amount as a cell, for screen readers; on screen it's the float above. */
+      table.ingredient-table td.td-amount {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+        border: 0;
       }
 
       .ingredient-table tbody tr:last-child td {
@@ -2802,20 +2823,20 @@
         }
       }
 
-      /* A heading over part of the list ("For the sauce"), opening its own group of rows. From the
-         heading to its last row, the table's left edge turns accent (the spine), so each group
-         reads as one without giving up any width. The editor draws the same spine
-         (.ingredient-heading-row). */
+      /* A heading over part of the list ("For the sauce"), opening its own group of rows. It
+         sits in a band, an accent wash fading across the row, and from the band down to its last
+         row the tile's left edge turns accent (the spine): the band's stretch of it full accent
+         and a little wider, so the heading reads as the head of its group without giving up any
+         width. The editor draws the same spine (.ingredient-heading-row). */
       .ingredient-table {
         --spine-width: 3px;
         --spine-color: color-mix(in srgb, var(--accent) 65%, transparent);
       }
 
       .ingredient-table th.ingredient-group-heading {
-        --group-top: 1rem;
         position: relative;
-        padding-top: var(--group-top);
-        padding-bottom: 0.3rem;
+        display: block;
+        padding: 0.6rem var(--cell-pad, 1rem);
         border-bottom: 0;
         font-family: var(--font-serif);
         font-size: 1.0625rem;
@@ -2823,16 +2844,15 @@
         letter-spacing: normal;
         text-transform: none;
         color: var(--accent);
-        background: transparent;
+        background: linear-gradient(
+          90deg,
+          color-mix(in srgb, var(--accent) 13%, transparent),
+          color-mix(in srgb, var(--accent) 3%, transparent) 70%,
+          transparent
+        );
       }
 
-      /* Groups part with room above the next heading rather than a rule. */
-      .ingredient-table tbody + tbody th.ingredient-group-heading {
-        --group-top: 1.35rem;
-      }
-
-      /* Inside the edge, since the wrapper clips what overflows it. Rounded on the inner side at
-         each end, like the editor's bar for the row being edited. */
+      /* Inside the edge, since the tile clips what overflows it. */
       .ingredient-table th.ingredient-group-heading::after,
       .ingredient-table tbody.ingredient-group td.td-ingredient::after {
         content: '';
@@ -2843,9 +2863,10 @@
       }
 
       .ingredient-table th.ingredient-group-heading::after {
-        top: var(--group-top);
+        top: 0;
         bottom: 0;
-        border-top-right-radius: var(--spine-width);
+        width: calc(var(--spine-width) + 1px);
+        background: var(--accent);
       }
 
       .ingredient-table tbody.ingredient-group td.td-ingredient {
@@ -2873,36 +2894,36 @@
       /* Fixed px spacing on phones so large text keeps its room instead of growing the padding too. */
       @media (max-width: 480px) {
         .ingredients-panel {
-          padding: 16px;
+          --panel-pad: 16px;
         }
 
-        .ingredient-table th,
-        .ingredient-table td {
-          padding-inline: 12px;
+        table.ingredient-table {
+          --cell-pad: 16px;
+          --col-gap: 12px;
         }
       }
 
-      .ingredient-name-col {
-        display: flex;
-        flex-direction: column;
-        gap: 0.2rem;
-        align-items: flex-start;
-        text-align: left;
-      }
-
+      /* A block of its own (flow-root) beside the floated amount, so the name keeps to its
+         column for all its lines. */
       .ingredient-name {
+        display: flow-root;
         font-weight: 600;
         color: var(--text-primary);
         font-size: 1.125rem;
         line-height: 1.35;
       }
 
+      /* An ordinary block, so its lines wrap beside the amount and, once past it, run on
+         across the row. */
       .ingredient-bracket-note {
+        display: block;
+        margin-top: 0.2rem;
         font-size: 0.875rem;
         color: var(--accent);
         font-style: normal;
         font-weight: 500;
-        line-height: 1.25;
+        line-height: 1.3;
+        text-wrap: pretty;
       }
 
       .ingredient-amount-col {
@@ -2919,6 +2940,93 @@
         font-feature-settings: "frac" 1;
         font-weight: 700;
         color: var(--accent);
+      }
+
+      /* The recipe page's subheader: a slim frosted bar pinned to the top of the screen, naming
+         the section being read once its own heading has gone under it (RecipeSubheader). It
+         slides down out of the top edge, and the names in it roll as the page moves on. */
+      .recipe-subheader {
+        position: fixed;
+        inset: 0 0 auto;
+        z-index: 40;
+        height: calc(3rem + env(safe-area-inset-top));
+        padding-top: env(safe-area-inset-top);
+        background: color-mix(in srgb, var(--bg-main) 86%, transparent);
+        backdrop-filter: blur(16px) saturate(1.3);
+        box-shadow:
+          0 1px 0 var(--border-subtle),
+          var(--shadow-md);
+        pointer-events: none;
+        transform: translateY(calc(-100% - 1.5rem));
+        visibility: hidden;
+        transition:
+          transform 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+          visibility 0s linear 0.34s;
+      }
+
+      .recipe-subheader[data-shown] {
+        transform: none;
+        visibility: visible;
+        transition:
+          transform 0.5s var(--ease-glide),
+          visibility 0s;
+      }
+
+      .recipe-subheader-inner {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        height: 100%;
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 0 1.25rem;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+
+      .recipe-subheader-title {
+        flex: none;
+        font: var(--weight-heading) 1.125rem/1.2 var(--font-serif);
+        letter-spacing: -0.01em;
+        color: var(--text-primary);
+      }
+
+      .recipe-subheader-crumb {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        min-width: 0;
+        font: var(--weight-heading) 1rem/1.2 var(--font-serif);
+        color: var(--accent);
+        transition:
+          opacity 0.3s ease,
+          translate 0.45s var(--ease-glide);
+      }
+
+      .recipe-subheader-crumb::before {
+        content: '';
+        flex: none;
+        width: 0.3rem;
+        height: 0.3rem;
+        border-radius: var(--radius-full);
+        background: var(--text-muted);
+      }
+
+      .recipe-subheader-crumb > .number-roll {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .recipe-subheader-crumb[data-empty] {
+        opacity: 0;
+        translate: -0.5rem 0;
+      }
+
+      @media (min-width: 861px) {
+        .recipe-subheader {
+          display: none;
+        }
       }
 
       /* Callout Cards */
@@ -2968,6 +3076,7 @@
       }
 
       .section-heading {
+        scroll-margin-top: 3.5rem;
         font-family: var(--font-serif);
         font-size: 1.5rem;
         font-weight: var(--weight-heading);
@@ -2975,17 +3084,41 @@
         letter-spacing: -0.01em;
       }
 
+      /* A step's tile. Its number is a tab pinned on the top-left corner, standing out of the
+         tile, so the text has the tile's whole width. Unnumbered text (.is-plain) sits in the
+         same tile, without the tab. */
       .step-card {
+        position: relative;
         background: var(--bg-surface);
         border: 1px solid var(--border-subtle);
         border-radius: var(--radius-md);
-        padding: 0.85rem 1.15rem;
-        padding-left: 0.75rem;
-        display: flex;
-        gap: 0.65rem;
-        align-items: flex-start;
+        padding: 1.125rem 1.15rem 0.9rem;
         box-shadow: var(--shadow-sm);
         transition: border-color 0.15s, transform 0.15s;
+      }
+
+      .step-card.is-plain {
+        padding-top: 0.9rem;
+      }
+
+      .step-card.is-plain .step-text {
+        color: var(--text-secondary);
+      }
+
+      /* Ringed in the page's colour, so it reads as set on the corner rather than cut into it. */
+      .step-card > .step-num {
+        position: absolute;
+        top: -0.6875rem;
+        left: -0.5rem;
+        width: 1.875rem;
+        height: 1.875rem;
+        margin: 0;
+        background: var(--accent);
+        color: var(--on-accent);
+        font-size: 0.9375rem;
+        box-shadow:
+          0 0 0 3px var(--bg-main),
+          0 3px 8px -2px color-mix(in srgb, var(--accent) 55%, transparent);
       }
 
       .step-num {
@@ -3003,7 +3136,6 @@
       }
 
       .step-content {
-        flex: 1;
         min-width: 0;
       }
 
@@ -3016,7 +3148,6 @@
 
       /* Line breaks typed into a step, tip or note show as typed. */
       .step-text,
-      .step-interlude > p,
       #tipsText,
       #notesText {
         white-space: pre-line;
@@ -3430,15 +3561,7 @@
         border-left: 3px solid var(--accent-gold);
         font-size: 0.9375rem;
         color: var(--text-primary);
-        display: flex;
-        align-items: flex-start;
-        gap: 0.5rem;
         line-height: 1.45;
-      }
-
-      .step-note-icon {
-        flex-shrink: 0;
-        font-size: 0.95rem;
       }
 
       /* In-app Toast Notification */
@@ -4286,6 +4409,59 @@
       .fab-group[data-back='hidden'] .fab-pill { animation: fab-pill-in 0.34s cubic-bezier(0.5, 0, 0.25, 1) both; }
       .fab-group[data-back='hidden'] .fab-menu { animation: fab-absorb 0.5s ease-out 0.16s both; }
 
+      /* A photo open full screen: the back button glides over into the menu button's place and
+         closes the photo, as the menu button shrinks away under it and the pill draws in around
+         it. Both sit over the photo. Closing the photo, the back button glides home and the menu
+         button grows back out from under it. The resting positions are set outright, so reduced
+         motion (which drops the animations) still lands in them. */
+      .fab-group[data-back='photo'] { z-index: 210; }
+      .fab-group[data-back='photo'] .fab-back,
+      .fab-group[data-back='unphoto'] .fab-back { z-index: 3; }
+      .fab-group[data-back='photo'] .fab-back { translate: var(--fab-shift) 0; }
+      .fab-group[data-back='photo'] .fab-pill { translate: var(--fab-shift) 0; }
+      .fab-group[data-back='photo'] .fab-menu { scale: 0.5; opacity: 0; visibility: hidden; }
+      .fab-group[data-back='photo'] .fab-back { animation: fab-back-over 0.62s var(--spring-soft) both; }
+      .fab-group[data-back='photo'] .fab-back-arrow { animation: fab-arrow-over 0.5s var(--ease-glide) both; }
+      .fab-group[data-back='photo'] .fab-pill { animation: fab-pill-over 0.62s var(--spring-soft) both; }
+      .fab-group[data-back='photo'] .fab-menu { animation: fab-menu-tuck 0.32s cubic-bezier(0.5, 0, 0.25, 1) 0.08s both; }
+      .fab-group[data-back='unphoto'] .fab-back { animation: fab-back-home 0.66s var(--spring-soft) both; }
+      .fab-group[data-back='unphoto'] .fab-back-arrow { animation: fab-arrow-home 0.5s var(--ease-glide) both; }
+      .fab-group[data-back='unphoto'] .fab-pill { animation: fab-pill-home 0.66s var(--spring-soft) both; }
+      .fab-group[data-back='unphoto'] .fab-menu { animation: fab-menu-spawn 0.7s var(--spring-soft) 0.14s both; }
+
+      @keyframes fab-back-over {
+        from { translate: 0 0; }
+        to { translate: var(--fab-shift) 0; }
+      }
+      /* The arrow leans into the glide, and settles as the button lands. */
+      @keyframes fab-arrow-over {
+        30% { translate: 0.2rem 0; }
+      }
+      @keyframes fab-pill-over {
+        from { translate: 0 0; }
+        to { translate: var(--fab-shift) 0; }
+      }
+      @keyframes fab-menu-tuck {
+        from { scale: 1; opacity: 1; visibility: visible; }
+        to { scale: 0.5; opacity: 0; visibility: hidden; }
+      }
+      @keyframes fab-back-home {
+        from { translate: var(--fab-shift) 0; }
+        to { translate: 0 0; }
+      }
+      @keyframes fab-arrow-home {
+        30% { translate: -0.2rem 0; }
+      }
+      @keyframes fab-pill-home {
+        from { translate: var(--fab-shift) 0; }
+        to { translate: 0 0; }
+      }
+      @keyframes fab-menu-spawn {
+        from { scale: 0.5; opacity: 0; }
+        35% { opacity: 1; }
+        to { scale: 1; opacity: 1; }
+      }
+
       @keyframes fab-push {
         24% { scale: 1.07 0.94; translate: -0.15rem 0; }
         58% { scale: 0.98 1.02; translate: 0 0; }
@@ -4988,6 +5164,9 @@
         .fab-group[data-back='hidden'] .fab-menu { animation: none; }
         .fab-group[data-back='hidden'] .fab-pill { animation: fk-fade-out 0.15s ease both; }
         .fab-group[data-back='hidden'] .fab-back { animation: fab-fade-away 0.15s ease both; }
+        .fab-group:is([data-back='photo'], [data-back='unphoto']) :is(.fab-back, .fab-back-arrow, .fab-pill, .fab-menu) {
+          animation: none;
+        }
         .fab-back,
         .fab-menu,
         .fab-menu-glyph > span,
@@ -4998,6 +5177,8 @@
         .fk-prefs-glyph circle,
         .fk-menu-action,
         .fk-prefs-drawer,
+        .recipe-subheader,
+        .recipe-subheader-crumb,
         .fk-menu-content[data-prefs] :is(.fk-prefs-drawer, .fk-prefs-row) { transition: none; }
         .author-hint,
         .author-custom,
@@ -6754,7 +6935,7 @@
 
       /* The split starts just under whatever comes before it: a step, text, or the heading. */
       .steps-stack > .fork {
-        margin-top: -0.75rem;
+        margin-top: -1.125rem;
       }
 
       .steps-stack > .fork:first-child {
@@ -6762,7 +6943,11 @@
       }
 
       .steps-stack > .fork.has-join + * {
-        margin-top: -0.75rem;
+        margin-top: -1.125rem;
+      }
+
+      .steps-stack > .fork.has-join + .step-card:not(.is-plain) {
+        margin-top: -0.5rem;
       }
 
       .method-steps > .step-editor.is-fork:not(:first-child),
@@ -6953,13 +7138,14 @@
 
       /* The chosen path, under the switch: on the recipe page, ordinary numbered steps. */
       .fork-step-stage {
-        margin-top: 1rem;
+        margin: 0.5rem -0.75rem 0;
+        padding: 0.6875rem 0.75rem 0;
       }
 
       .fork-step-path {
         display: flex;
         flex-direction: column;
-        gap: 1rem;
+        gap: 1.375rem;
       }
 
       /* In the editor, the fork's step loses its own card: the lines and switch sit on the page,
@@ -7134,15 +7320,11 @@
       .steps-stack {
         display: flex;
         flex-direction: column;
-        gap: 1rem;
+        gap: 1.375rem;
       }
 
-      .step-interlude {
-        padding: 0.35rem 0 0.35rem 1rem;
-        border-left: 3px solid var(--accent-gold);
-        font-size: 1.0625rem;
-        line-height: 1.6;
-        color: var(--text-secondary);
+      .steps-stack > .step-card:first-child:not(.is-plain) {
+        margin-top: 0.5rem;
       }
 
       .substeps {
@@ -7172,9 +7354,11 @@
       }
 
       .ingredient-substitute {
-        display: inline-flex;
+        display: flex;
+        width: fit-content;
         align-items: center;
         gap: 0.3rem;
+        margin-top: 0.2rem;
         font-size: 0.875rem;
         font-weight: 600;
         line-height: 1.3;
@@ -7360,6 +7544,11 @@
         background: color-mix(in srgb, var(--bg-card) 90%, transparent);
         backdrop-filter: blur(16px) saturate(1.4);
         animation: editor-back-in 0.7s var(--spring-soft) 0.12s backwards;
+      }
+
+      /* Over a step photo open full screen, which it closes. */
+      .editor-preview-back.is-over-photo {
+        z-index: 201;
       }
 
       .editor-preview-back .fab-back-arrow {

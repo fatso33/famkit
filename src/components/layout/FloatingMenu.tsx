@@ -37,6 +37,9 @@ interface FloatingMenuProps {
   /** A back button grows out of the menu button's left side while this is true. It stays out
       while the menu is open, where it closes the menu instead. */
   showBack: boolean;
+  /** A photo is open full screen: the back button glides over into the menu button's place,
+      which tucks away under it, and closes the photo. Closing it, they swap back. */
+  photoOpen: boolean;
   onBack: () => void;
   t: UiTranslations;
 }
@@ -45,7 +48,7 @@ interface FloatingMenuProps {
 type MenuState = 'closed' | 'open' | 'closing';
 
 export const FloatingMenu: React.FC<FloatingMenuProps> = (props) => {
-  const { t, showBack, onBack } = props;
+  const { t, showBack, photoOpen, onBack } = props;
   const [state, setState] = useState<MenuState>('closed');
   const fabRef = useRef<HTMLButtonElement>(null);
   const groupRef = useRef<HTMLDivElement>(null);
@@ -55,7 +58,20 @@ export const FloatingMenu: React.FC<FloatingMenuProps> = (props) => {
   // Until it first appears there's nothing to animate away, so it isn't there at all.
   const [backEverShown, setBackEverShown] = useState(false);
   if (showBack && !backEverShown) setBackEverShown(true);
-  const back = showBack ? 'shown' : backEverShown ? 'hidden' : 'none';
+  // Once a photo has been open, the buttons come back from it (not out of the menu button) and
+  // stay that way until the back button next tucks away.
+  const [backFromPhoto, setBackFromPhoto] = useState(false);
+  if (photoOpen && !backFromPhoto) setBackFromPhoto(true);
+  if (!showBack && backFromPhoto) setBackFromPhoto(false);
+  const back = photoOpen
+    ? 'photo'
+    : showBack
+      ? backFromPhoto
+        ? 'unphoto'
+        : 'shown'
+      : backEverShown
+        ? 'hidden'
+        : 'none';
 
   const close = useCallback(() => {
     setState('closing');
@@ -84,11 +100,14 @@ export const FloatingMenu: React.FC<FloatingMenuProps> = (props) => {
         <span className="fab-pill-track" aria-hidden="true">
           <span className="fab-pill" />
         </span>
+        {/* Over a photo, the photo's dialog holds the same close for the keyboard and screen
+            readers, so this one is for pointers only there. */}
         <button
           type="button"
           className="fab-back"
-          aria-label={isOpen ? t.closeMenu : t.backToRecipes}
-          aria-hidden={!showBack || undefined}
+          aria-label={photoOpen ? t.closePhotoPreview : isOpen ? t.closeMenu : t.backToRecipes}
+          aria-hidden={!showBack || photoOpen || undefined}
+          tabIndex={photoOpen ? -1 : undefined}
           inert={!showBack}
           onClick={() => {
             // With the menu open, back steps out of the menu only, leaving the recipe showing.
@@ -113,6 +132,8 @@ export const FloatingMenu: React.FC<FloatingMenuProps> = (props) => {
           type="button"
           className={`fab-menu ${isOpen ? 'is-open' : ''}`}
           id="fabMenuBtn"
+          aria-hidden={photoOpen || undefined}
+          inert={photoOpen}
           aria-label={isOpen ? t.closeMenu : t.openMenu}
           aria-expanded={isOpen}
           aria-controls={state !== 'closed' ? panelId : undefined}

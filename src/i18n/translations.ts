@@ -154,10 +154,6 @@ export interface UiTranslations {
   viewStepPhoto: string;
   stepPhotoAlt: string;
   photoZoomDialog: string;
-  zoomIn: string;
-  zoomOut: string;
-  zoomReset: string;
-  zoomResetTitle: string;
   closePhotoPreview: string;
   enlargedPhotoAlt: string;
   photoPreviewAlt: string;
@@ -464,10 +460,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     viewStepPhoto: 'Click to view and zoom photo',
     stepPhotoAlt: 'Step consistency visual',
     photoZoomDialog: 'Step photo zoom',
-    zoomIn: 'Zoom in',
-    zoomOut: 'Zoom out',
-    zoomReset: 'Reset',
-    zoomResetTitle: 'Reset zoom',
     closePhotoPreview: 'Close image preview',
     enlargedPhotoAlt: 'Enlarged step photo',
     photoPreviewAlt: 'Photo preview',
@@ -772,10 +764,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     viewStepPhoto: 'Kliknij, aby obejrzeć i powiększyć zdjęcie',
     stepPhotoAlt: 'Zdjęcie konsystencji ciasta w tym kroku',
     photoZoomDialog: 'Powiększenie zdjęcia kroku',
-    zoomIn: 'Powiększ',
-    zoomOut: 'Pomniejsz',
-    zoomReset: 'Resetuj',
-    zoomResetTitle: 'Przywróć oryginalny rozmiar',
     closePhotoPreview: 'Zamknij podgląd zdjęcia',
     enlargedPhotoAlt: 'Powiększone zdjęcie kroku',
     photoPreviewAlt: 'Podgląd zdjęcia',

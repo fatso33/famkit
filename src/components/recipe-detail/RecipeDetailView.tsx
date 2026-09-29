@@ -10,6 +10,7 @@ import { IngredientsTable } from './IngredientsTable';
 import { StepsList } from './StepsList';
 import { BakingOptionsView } from './BakingOptionsView';
 import { ImageZoomModal } from './ImageZoomModal';
+import { RecipeSubheader } from './RecipeSubheader';
 import { getLocalizedRecipe } from '../../hooks/useRecipes';
 import { addedByName } from '../../utils/ownership';
 import { transitionView } from '../../utils/viewTransition';
@@ -22,6 +23,8 @@ import { CategoryTile } from '../recipe-grid/CategoryTile';
 export interface RecipePageHandle {
   /** Rolls the recipe up into its photo; null where nothing would animate. */
   rollUp: () => Promise<void> | null;
+  /** Closes the step photo open full screen (the menu button's back button does this). */
+  closePhoto: () => void;
 }
 
 interface RecipeDetailViewProps {
@@ -29,6 +32,8 @@ interface RecipeDetailViewProps {
   language: Language;
   /** Once the recipe has (nearly) finished unrolling out of its photo. */
   onUnrolled: () => void;
+  /** A step photo opened full screen, or closed: the back button takes the menu button's place. */
+  onPhotoOpenChange: (open: boolean) => void;
   ref?: Ref<RecipePageHandle>;
   t: UiTranslations;
 }
@@ -37,14 +42,17 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   recipe: rawRecipe,
   language,
   onUnrolled,
+  onPhotoOpenChange,
   ref,
   t,
 }) => {
+  const pageRef = useRef<HTMLElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const rollRef = useRef<HTMLDivElement>(null);
   const { rollUp } = useUnroll({ photo: heroRef, body: bodyRef, roll: rollRef }, onUnrolled);
-  useImperativeHandle(ref, () => ({ rollUp }));
+  // Set once the recipe starts rolling up to leave, so the pinned subheader tucks away with it.
+  const [leaving, setLeaving] = useState(false);
 
   const [scale, setScale] = useState(1);
   // The path each fork is on, remembered per recipe on this phone.
@@ -61,14 +69,30 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   const openZoom = (src: string, step: number) => {
     // Marks the thumbnail before the browser snapshots the page, so the photo grows from it.
     flushSync(() => setZoom({ src, step, open: false }));
-    transitionView(() => setZoom({ src, step, open: true }), { motion: 'zoom', morph: 'photo' });
+    transitionView(
+      () => {
+        setZoom({ src, step, open: true });
+        onPhotoOpenChange(true);
+      },
+      { motion: 'zoom', morph: 'photo' },
+    );
   };
   const closeZoom = (animated = true) =>
-    transitionView(() => setZoom((z) => z && { ...z, open: false }), {
-      motion: 'zoom',
-      morph: 'photo',
-      animated,
-    });
+    transitionView(
+      () => {
+        setZoom((z) => z && { ...z, open: false });
+        onPhotoOpenChange(false);
+      },
+      { motion: 'zoom', morph: 'photo', animated },
+    );
+
+  useImperativeHandle(ref, () => ({
+    rollUp: () => {
+      setLeaving(true);
+      return rollUp();
+    },
+    closePhoto: () => closeZoom(),
+  }));
 
   const recipe = getLocalizedRecipe(rawRecipe, language) || rawRecipe;
   // The time follows the path the cook is on, unless the author set it.
@@ -85,7 +109,9 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   };
 
   return (
-    <article id="viewDetail" className="recipe-detail active">
+    <article ref={pageRef} id="viewDetail" className="recipe-detail active">
+      <RecipeSubheader page={pageRef} hidden={leaving} />
+
       {/* Hero Photo */}
       <div ref={heroRef} className="detail-hero-frame">
         {recipePhoto(recipe) ? (

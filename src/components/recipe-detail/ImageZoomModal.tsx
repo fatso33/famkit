@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { useBackStep } from '../../hooks/useBackStep';
 import { UiTranslations } from '../../i18n/translations';
@@ -29,20 +29,42 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClos
     };
   }, []);
 
-  const handleZoomIn = () =>
-    setZoomScale((prev) => Math.min(3.5, Number((prev + 0.35).toFixed(2))));
+  // Setters only, so these stay the same across renders and the key listener is added once.
+  const handleZoomIn = useCallback(
+    () => setZoomScale((prev) => Math.min(3.5, Number((prev + 0.35).toFixed(2)))),
+    [],
+  );
 
-  const handleZoomOut = () =>
-    setZoomScale((prev) => {
-      const next = Math.max(1, Number((prev - 0.35).toFixed(2)));
-      if (next === 1) setPosition({ x: 0, y: 0 });
-      return next;
-    });
+  const handleZoomOut = useCallback(
+    () =>
+      setZoomScale((prev) => {
+        const next = Math.max(1, Number((prev - 0.35).toFixed(2)));
+        if (next === 1) setPosition({ x: 0, y: 0 });
+        return next;
+      }),
+    [],
+  );
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setZoomScale(1);
     setPosition({ x: 0, y: 0 });
-  };
+  }, []);
+
+  // Keyboard zoom, standing in for the zoom buttons the viewer no longer shows.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === '+' || e.key === '=') handleZoomIn();
+      else if (e.key === '-' || e.key === '−') handleZoomOut();
+      else if (e.key === '0') handleReset();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [handleZoomIn, handleZoomOut, handleReset]);
+
+  const focusOnOpen = useCallback((button: HTMLButtonElement | null) => {
+    button?.focus({ preventScroll: true });
+  }, []);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     didPan.current = false;
@@ -98,59 +120,20 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClos
       aria-label={t.photoZoomDialog}
       {...backdropProps}
     >
-      <div className="image-modal-toolbar">
-        <div className="image-modal-controls">
-          <button
-            className="image-modal-btn"
-            id="zoomOutBtn"
-            aria-label={t.zoomOut}
-            title={t.zoomOut}
-            onClick={handleZoomOut}
-          >
-            −
-          </button>
-          <span
-            id="zoomLevelText"
-            style={{
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              minWidth: '48px',
-              textAlign: 'center',
-            }}
-          >
-            {Math.round(zoomScale * 100)}%
-          </span>
-          <button
-            className="image-modal-btn"
-            id="zoomInBtn"
-            aria-label={t.zoomIn}
-            title={t.zoomIn}
-            onClick={handleZoomIn}
-          >
-            +
-          </button>
-          <button
-            className="image-modal-btn"
-            id="zoomResetBtn"
-            title={t.zoomResetTitle}
-            onClick={handleReset}
-          >
-            {t.zoomReset}
-          </button>
-        </div>
-        <button
-          className="image-modal-btn"
-          id="closeImageModalBtn"
-          aria-label={t.closePhotoPreview}
-          style={{ fontSize: '1.15rem', padding: '0.35rem 0.75rem' }}
-          onClick={() => onClose()}
-        >
-          ✕
-        </button>
-      </div>
+      {/* On screen, the photo closes with the back button in the menu button's place (FloatingMenu)
+          or a tap beside it. This one is for the keyboard and screen readers, which start here. */}
+      <button
+        ref={focusOnOpen}
+        type="button"
+        className="sr-only"
+        id="closeImageModalBtn"
+        onClick={() => onClose()}
+      >
+        {t.closePhotoPreview}
+      </button>
 
       {/* Drag-to-pan, wheel zoom, click-to-zoom and click-empty-space-to-close are mouse
-          conveniences; the toolbar buttons and Escape cover the same actions from the keyboard. */}
+          conveniences; from the keyboard, + and − zoom, 0 resets and Escape closes. */}
       {/* eslint-disable-next-line jsx-a11y-x/no-static-element-interactions, jsx-a11y-x/click-events-have-key-events */}
       <div
         className="image-modal-content"

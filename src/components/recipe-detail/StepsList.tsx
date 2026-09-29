@@ -3,6 +3,7 @@ import { Step, StepFork } from '../../types/recipe';
 import { capitalizeFirstLetter } from '../../utils/timeEstimator';
 import {
   PathChoices,
+  SUBSTEP_LETTERS,
   chosenPath,
   firstStepNumber,
   methodSections,
@@ -24,8 +25,6 @@ interface StepsListProps {
   onZoomImage: (src: string, step: number) => void;
   t: UiTranslations;
 }
-
-const LETTERS = 'abc';
 
 /**
  * The method, section by section. Numbers run on across sections and skip unnumbered text;
@@ -51,74 +50,80 @@ export const StepsList: React.FC<StepsListProps> = ({
 
   return (
     <>
-      {methodSections(steps).map((section, s) => (
-        <section key={section.start}>
-          <h2 className="section-heading">
-            {section.title || (s === 0 ? t.prepSteps : t.moreSteps)}
-          </h2>
-          <div className="steps-stack">
-            {section.steps.map((step, k) => {
-              const idx = section.start + k;
-              const extras = (
-                <StepExtras
-                  step={step}
-                  index={idx}
-                  isZoomSource={idx === zoomSource}
-                  onZoomImage={onZoomImage}
-                  t={t}
-                />
-              );
-              if (step.plain) {
-                return (
-                  <div key={idx} className="step-interlude">
-                    <p>{capitalizeFirstLetter(step.text)}</p>
-                    {extras}
-                  </div>
-                );
-              }
-              const number = numbers[idx] ?? 0;
-              if (step.fork && step.fork.paths.length >= 2) {
-                return (
-                  <ForkStep
-                    key={idx}
-                    step={step as Step & { fork: StepFork }}
-                    number={number}
-                    path={chosenPath(step.fork, choices[idx])}
-                    onChoose={(path) => onChoosePath(idx, path)}
-                    join={k < section.steps.length - 1}
+      {methodSections(steps).map((section, s) => {
+        const heading = section.title || (s === 0 ? t.prepSteps : t.moreSteps);
+        return (
+          <section key={section.start} data-subheader={heading}>
+            <h2 className="section-heading" data-subheader-title="">
+              {heading}
+            </h2>
+            <div className="steps-stack">
+              {section.steps.map((step, k) => {
+                const idx = section.start + k;
+                const extras = (
+                  <StepExtras
+                    step={step}
+                    index={idx}
+                    isZoomSource={idx === zoomSource}
+                    onZoomImage={onZoomImage}
                     t={t}
-                  >
-                    {extras}
-                  </ForkStep>
+                  />
                 );
-              }
-              return (
-                <div key={idx} className="step-card">
-                  <div className="step-num">
-                    <NumberRoll value={number} />
+                // Unnumbered text: a tile like the steps', its text where the number would be.
+                if (step.plain) {
+                  return (
+                    <div key={idx} className="step-card is-plain">
+                      <div className="step-content">
+                        <p className="step-text">{capitalizeFirstLetter(step.text)}</p>
+                        {extras}
+                      </div>
+                    </div>
+                  );
+                }
+                const number = numbers[idx] ?? 0;
+                if (step.fork && step.fork.paths.length >= 2) {
+                  return (
+                    <ForkStep
+                      key={idx}
+                      step={step as Step & { fork: StepFork }}
+                      number={number}
+                      path={chosenPath(step.fork, choices[idx])}
+                      onChoose={(path) => onChoosePath(idx, path)}
+                      join={k < section.steps.length - 1}
+                      t={t}
+                    >
+                      {extras}
+                    </ForkStep>
+                  );
+                }
+                return (
+                  <div key={idx} className="step-card">
+                    <div className="step-num">
+                      <NumberRoll value={number} />
+                    </div>
+                    <div className="step-content">
+                      <p className="step-text">{capitalizeFirstLetter(step.text)}</p>
+                      {step.substeps && step.substeps.length > 0 && (
+                        <ol className="substeps">
+                          {step.substeps.map((sub, j) => (
+                            <li key={j}>
+                              <span className="substep-letter" aria-hidden="true">
+                                {SUBSTEP_LETTERS[j]})
+                              </span>
+                              <span>{capitalizeFirstLetter(sub)}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      )}
+                      {extras}
+                    </div>
                   </div>
-                  <div className="step-content">
-                    <p className="step-text">{capitalizeFirstLetter(step.text)}</p>
-                    {step.substeps && step.substeps.length > 0 && (
-                      <ol className="substeps">
-                        {step.substeps.map((sub, j) => (
-                          <li key={j}>
-                            <span className="substep-letter" aria-hidden="true">
-                              {LETTERS[j]})
-                            </span>
-                            <span>{capitalizeFirstLetter(sub)}</span>
-                          </li>
-                        ))}
-                      </ol>
-                    )}
-                    {extras}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      ))}
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
 
       {/* Lamination Directive: bullet points */}
       {laminationSentences.length > 0 && (

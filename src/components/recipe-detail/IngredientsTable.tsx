@@ -17,6 +17,13 @@ interface IngredientsTableProps {
   t: UiTranslations;
 }
 
+/**
+ * The ingredients as a two-column table, drawn so a long note can use the whole row: each
+ * amount is shown floated at the right of its row (index.css, .ingredient-amount-float), with
+ * the name held in its column beside it and the note flowing on under the amount once past it.
+ * The table's own amount cells are kept for screen readers and hidden on screen. The rows are
+ * laid out as blocks, so the table, its rows and headers state their roles.
+ */
 export const IngredientsTable: React.FC<IngredientsTableProps> = ({
   ingredients,
   scale,
@@ -31,9 +38,11 @@ export const IngredientsTable: React.FC<IngredientsTableProps> = ({
   const scaled = scale !== 1;
 
   return (
-    <aside className="ingredients-panel">
+    <aside className="ingredients-panel" data-subheader={t.ingredients}>
       <div className="panel-header">
-        <h2 className="panel-title">{t.ingredients}</h2>
+        <h2 className="panel-title" data-subheader-title="">
+          {t.ingredients}
+        </h2>
         <PortionScaler
           scale={scale}
           onIncrease={onIncreaseScale}
@@ -50,7 +59,6 @@ export const IngredientsTable: React.FC<IngredientsTableProps> = ({
         </span>
       )}
 
-      {/* Modern 2-Column Ingredients Table */}
       <div className="ingredient-table-wrapper">
         <table
           className="ingredient-table"
@@ -59,11 +67,11 @@ export const IngredientsTable: React.FC<IngredientsTableProps> = ({
           aria-label={t.ingredientsTableLabel}
         >
           <thead>
-            <tr>
-              <th scope="col" className="th-ingredient" id="thIngredientHeader">
+            <tr role="row">
+              <th scope="col" role="columnheader" className="th-ingredient" id="thIngredientHeader">
                 {t.thIngredient}
               </th>
-              <th scope="col" className="th-amount" id="thAmountHeader">
+              <th scope="col" role="columnheader" className="th-amount" id="thAmountHeader">
                 {t.thAmount}
               </th>
             </tr>
@@ -74,10 +82,16 @@ export const IngredientsTable: React.FC<IngredientsTableProps> = ({
               key={g}
               id={g === 0 ? 'ingredientTableBody' : undefined}
               className={group.heading ? 'ingredient-group' : undefined}
+              data-subheader-group={group.heading || undefined}
             >
               {group.heading && (
-                <tr className="ingredient-group-row">
-                  <th scope="rowgroup" colSpan={2} className="ingredient-group-heading">
+                <tr role="row" className="ingredient-group-row">
+                  <th
+                    scope="rowgroup"
+                    role="rowheader"
+                    colSpan={2}
+                    className="ingredient-group-heading"
+                  >
                     {group.heading}
                     <span className="ingredient-group-count" aria-hidden="true">
                       {group.rows.length}
@@ -89,23 +103,28 @@ export const IngredientsTable: React.FC<IngredientsTableProps> = ({
               {group.rows.map(({ ing, idx }) => {
                 const row = parseIngredientRow(ing, scale, language);
                 return (
-                  <tr key={idx}>
+                  <tr key={idx} role="row">
                     <td className="td-ingredient">
-                      <div className="ingredient-name-col">
-                        <span className="ingredient-name">{row.name}</span>
-                        {row.notes.length > 0 && (
-                          <span className="ingredient-bracket-note">({row.notes.join(', ')})</span>
-                        )}
-                        {row.substitute && (
-                          <span className="ingredient-substitute">
-                            <ArrowLeftRight size={14} aria-hidden="true" />
-                            <span>
-                              {t.orSubstitute(row.substitute.name)}
-                              {row.substitute.amount && ` · ${row.substitute.amount}`}
-                            </span>
+                      {/* First, so the name and note flow beside it (screen readers use the
+                          amount cell). With no amount, the name has the whole row. */}
+                      {row.amount && (
+                        <span className="ingredient-amount-float" aria-hidden="true">
+                          {row.amount}
+                        </span>
+                      )}
+                      <span className="ingredient-name">{row.name}</span>
+                      {row.notes.length > 0 && (
+                        <span className="ingredient-bracket-note">({row.notes.join(', ')})</span>
+                      )}
+                      {row.substitute && (
+                        <span className="ingredient-substitute">
+                          <ArrowLeftRight size={14} aria-hidden="true" />
+                          <span>
+                            {t.orSubstitute(row.substitute.name)}
+                            {row.substitute.amount && ` · ${row.substitute.amount}`}
                           </span>
-                        )}
-                      </div>
+                        </span>
+                      )}
                     </td>
                     <td className="td-amount">
                       <span className="ingredient-amount-col">{row.amount}</span>

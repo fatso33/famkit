@@ -134,6 +134,9 @@ export default function App() {
   const recipePage = useRef<RecipePageHandle>(null);
   // Set once the recipe has unrolled: a back button grows out of the menu button.
   const [backShown, setBackShown] = useState(false);
+  // The recipe whose step photo is open full screen, if any: the back button takes the menu
+  // button's place and closes it. Kept by id, so it can't outlive that recipe's page.
+  const [photoOpenFor, setPhotoOpenFor] = useState<string | null>(null);
   // While the recipe rolls up on its way back to the vault.
   const leavingRecipe = useRef(false);
 
@@ -348,6 +351,9 @@ export default function App() {
     }
   };
 
+  const onRecipe = page === 'recipes' && !!selectedRecipe;
+  const photoOpen = onRecipe && photoOpenFor === selectedRecipe.id;
+
   // Page-dependent entries at the bottom of the floating menu.
   let pageActions: MenuAction[] = [];
   switch (page) {
@@ -412,6 +418,7 @@ export default function App() {
             language={language}
             ref={recipePage}
             onUnrolled={() => setBackShown(true)}
+            onPhotoOpenChange={(open) => setPhotoOpenFor(open ? selectedRecipe.id : null)}
             t={t}
           />
         ) : (
@@ -453,8 +460,9 @@ export default function App() {
         fontPercent={fontPercent}
         onIncreaseFont={increaseScale}
         onDecreaseFont={decreaseScale}
-        showBack={backShown && page === 'recipes' && !!selectedRecipe}
-        onBack={() => leaveRecipe()}
+        showBack={(backShown || photoOpen) && onRecipe}
+        photoOpen={photoOpen}
+        onBack={() => (photoOpen ? recipePage.current?.closePhoto() : leaveRecipe())}
         t={t}
       />
 

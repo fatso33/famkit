@@ -22,14 +22,7 @@ export const StepExtras: React.FC<StepExtrasProps> = ({
   t,
 }) => (
   <>
-    {step.notes && (
-      <div className="step-note-pill">
-        <span className="step-note-icon" aria-hidden="true">
-          💡
-        </span>
-        <span>{capitalizeFirstLetter(step.notes)}</span>
-      </div>
-    )}
+    {step.notes && <div className="step-note-pill">{capitalizeFirstLetter(step.notes)}</div>}
 
     {step.hasImage && step.imageSrc && (
       <div
@@ -48,9 +41,6 @@ export const StepExtras: React.FC<StepExtrasProps> = ({
           alt={step.imageCaption || t.stepPhotoAlt}
           loading="lazy"
         />
-        <div className="zoom-badge-hint" aria-hidden="true" title={t.zoomIn}>
-          🔍
-        </div>
       </div>
     )}
   </>

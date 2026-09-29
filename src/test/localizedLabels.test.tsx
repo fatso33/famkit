@@ -32,12 +32,10 @@ describe('screen-reader labels follow the selected language', () => {
     expect(screen.getByRole('table', { name: 'Składniki przepisu' })).toBeInTheDocument();
   });
 
-  it('names the photo zoom dialog and its controls in Polish', () => {
+  it('names the photo zoom dialog and its close button in Polish', () => {
     render(<ImageZoomModal imageSrc="x.jpg" onClose={noop} t={pl} />);
 
     expect(screen.getByRole('dialog', { name: 'Powiększenie zdjęcia kroku' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Powiększ' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Pomniejsz' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Zamknij podgląd zdjęcia' })).toBeInTheDocument();
     expect(screen.getByAltText('Powiększone zdjęcie kroku')).toBeInTheDocument();
   });
