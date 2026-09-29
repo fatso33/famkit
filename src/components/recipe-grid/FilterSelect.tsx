@@ -25,8 +25,8 @@ interface FilterSelectProps {
 
 /**
  * A choice in the filter menu: a field showing what's chosen, which unfolds its options in
- * place beneath it. Only one is open at a time (the menu decides), and picking an option folds
- * it back with the new choice showing.
+ * place beneath it. Only one is open at a time (the menu decides). Picking an option leaves it
+ * unfolded, the choice ticked; the field (or Escape) folds it back.
  */
 export const FilterSelect: React.FC<FilterSelectProps> = ({
   label,
@@ -149,9 +149,9 @@ export const FilterSelect: React.FC<FilterSelectProps> = ({
                   aria-selected={selected}
                   className={`vault-select-option${option.wide ? ' is-wide' : ''}${option.count === 0 ? ' is-empty' : ''}`}
                   style={{ '--i': i } as React.CSSProperties}
+                  // The list stays unfolded, so a mistaken tap can be put right at once.
                   onClick={() => {
                     if (!selected) onChange(option.value);
-                    close();
                   }}
                   onKeyDown={(e) => {
                     const moves: Record<string, number> =

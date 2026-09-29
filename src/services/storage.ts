@@ -270,8 +270,8 @@ export function setConfirmedMember(member: ConfirmedMember | null): void {
 }
 
 export function getStoredVaultView(): VaultView {
-  if (typeof window === 'undefined') return 'cards';
-  return readSetting(VAULT_VIEW_KEY) === 'list' ? 'list' : 'cards';
+  if (typeof window === 'undefined') return 'list';
+  return readSetting(VAULT_VIEW_KEY) === 'cards' ? 'cards' : 'list';
 }
 
 export function setStoredVaultView(view: VaultView): void {

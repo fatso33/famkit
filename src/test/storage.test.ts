@@ -153,17 +153,17 @@ describe('storage service', () => {
     expect(getStoredFontScale()).toBe(0.85);
   });
 
-  it("keeps the vault's sort and layout, falling back to newest first as cards", () => {
-    expect(getStoredVaultSort()).toEqual({ by: 'added', reversed: false });
-    expect(getStoredVaultView()).toBe('cards');
-
-    setStoredVaultSort({ by: 'cook', reversed: true });
-    setStoredVaultView('list');
-    expect(getStoredVaultSort()).toEqual({ by: 'cook', reversed: true });
+  it("keeps the vault's sort and layout, falling back to last changed first as a list", () => {
+    expect(getStoredVaultSort()).toEqual({ by: 'changed', reversed: false });
     expect(getStoredVaultView()).toBe('list');
 
+    setStoredVaultSort({ by: 'cook', reversed: true });
+    setStoredVaultView('cards');
+    expect(getStoredVaultSort()).toEqual({ by: 'cook', reversed: true });
+    expect(getStoredVaultView()).toBe('cards');
+
     localStorage.setItem('family_kitchen_vault_sort', 'by-colour');
-    expect(getStoredVaultSort()).toEqual({ by: 'added', reversed: false });
+    expect(getStoredVaultSort()).toEqual({ by: 'changed', reversed: false });
   });
 
   it('clears a Gemini API key left over from the old Settings field', () => {

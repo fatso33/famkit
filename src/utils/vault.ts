@@ -23,16 +23,16 @@ export const RECIPE_CATEGORIES: readonly RecipeCategory[] = [
 
 /** Everything the vault can sort by, in the order the sort menu lists them. */
 export const VAULT_SORT_KEYS: readonly VaultSortKey[] = [
+  'changed',
   'added',
   'time',
   'name',
-  'changed',
   'cook',
   'category',
 ];
 
-/** Newest first. */
-export const DEFAULT_SORT: VaultSort = { by: 'added', reversed: false };
+/** Most recently changed first. */
+export const DEFAULT_SORT: VaultSort = { by: 'changed', reversed: false };
 
 export const NO_FILTER: VaultFilter = { category: 'all', author: '', unseen: false, query: '' };
 

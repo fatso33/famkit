@@ -24,10 +24,6 @@ import { CATEGORY_ICONS, SORT_ICONS } from './vaultIcons';
 import { VaultPopover } from './VaultPopover';
 import { FilterSelect, type FilterOption } from './FilterSelect';
 
-// A sort chosen in its menu shows for a moment before the menu closes: its arrow turning over
-// and its new order.
-const CLOSE_AFTER_SORT_MS = 420;
-
 interface VaultToolbarProps {
   filter: VaultFilter;
   /** What each choice in the filter menu would show, with the rest of the filter. */
@@ -48,13 +44,14 @@ interface VaultToolbarProps {
 type Menu = { kind: 'filter' | 'sort'; originFromRight: number };
 
 /**
- * The row under the vault's banner: the cards/list switch on the left; filter and sort, whose
+ * The row under the vault's banner: the list/cards switch on the left; filter and sort, whose
  * menus spring out of their buttons; and search on the right, which grows leftward into a field
  * across the row. Under it, while anything narrows the vault, a line with what does and how
  * many recipes show.
  *
  * The sort menu lists what to sort by, each with the order it gives. Tapping the chosen one
- * again turns it round (newest first to oldest first, and so on), its arrow turning over.
+ * again turns it round (newest first to oldest first, and so on), its arrow turning over. It
+ * stays open after a choice, so a mistaken tap can be put right at once; a tap outside closes it.
  */
 export const VaultToolbar: React.FC<VaultToolbarProps> = ({
   filter,
@@ -108,11 +105,6 @@ export const VaultToolbar: React.FC<VaultToolbarProps> = ({
     setMenu(null);
   };
 
-  const chooseSoon = (close: () => void, change: () => void) => {
-    change();
-    window.setTimeout(close, CLOSE_AFTER_SORT_MS);
-  };
-
   const categoryLabel =
     filter.category === 'all' ? t.allRecipes : t.recipeCategories[filter.category];
   const CategoryIcon = filter.category === 'all' ? BookOpen : CATEGORY_ICONS[filter.category];
@@ -133,11 +125,11 @@ export const VaultToolbar: React.FC<VaultToolbarProps> = ({
             onClick={() => onViewChange(view === 'cards' ? 'list' : 'cards')}
           >
             <span className="vault-layout-thumb" aria-hidden="true" />
-            <span className={`vault-layout-icon${view === 'cards' ? ' is-active' : ''}`}>
-              <LayoutGrid size="1.2em" strokeWidth={2} aria-hidden="true" />
-            </span>
             <span className={`vault-layout-icon${view === 'list' ? ' is-active' : ''}`}>
               <List size="1.25em" strokeWidth={2} aria-hidden="true" />
+            </span>
+            <span className={`vault-layout-icon${view === 'cards' ? ' is-active' : ''}`}>
+              <LayoutGrid size="1.2em" strokeWidth={2} aria-hidden="true" />
             </span>
           </button>
           <button
@@ -238,7 +230,7 @@ export const VaultToolbar: React.FC<VaultToolbarProps> = ({
             originFromRight={menu.originFromRight}
             onClosed={menuClosed}
           >
-            {(close) => (
+            {() => (
               <>
                 <p className="vault-popover-title vault-pop-in">{t.sortBy}</p>
                 {VAULT_SORT_KEYS.map((key, i) => {
@@ -255,11 +247,8 @@ export const VaultToolbar: React.FC<VaultToolbarProps> = ({
                       style={{ '--i': i + 1 } as React.CSSProperties}
                       aria-pressed={chosen}
                       onClick={() =>
-                        chooseSoon(
-                          close,
-                          // A new sort starts in its natural order; the chosen one turns round.
-                          () => onSortChange({ by: key, reversed: chosen && !sort.reversed }),
-                        )
+                        // A new sort starts in its natural order; the chosen one turns round.
+                        onSortChange({ by: key, reversed: chosen && !sort.reversed })
                       }
                     >
                       <Icon className="vault-option-icon" size="1.25em" aria-hidden="true" />

@@ -122,18 +122,28 @@ describe('the vault toolbar', () => {
 
     fireEvent.click(option(list, t.recipeCategories.soups));
     expect(shownRecipes()).toEqual(['Sunday Żurek']);
-    // The list folds away, the field showing the choice, and the menu stays for more.
-    expect(screen.queryByRole('listbox')).toBeNull();
+    // The list stays unfolded with the choice ticked, so a mistaken tap can be put right.
+    expect(option(list, t.recipeCategories.soups)).toHaveAttribute('aria-selected', 'true');
     expect(field(menu, t.categoryLabel)).toHaveAccessibleName(
       `${t.categoryLabel} ${t.recipeCategories.soups}`,
     );
-    expect(field(menu, t.categoryLabel)).toHaveFocus();
     act(() => {
       vi.runAllTimers();
     });
     expect(screen.getByRole('dialog', { name: t.filterRecipes })).toBeInTheDocument();
+    fireEvent.click(option(list, t.recipeCategories.drinks));
+    expect(shownRecipes()).toEqual(['Plum Kompot']);
 
-    fireEvent.click(screen.getByRole('button', { name: t.removeFilter(t.recipeCategories.soups) }));
+    // The field folds it back.
+    fireEvent.click(field(menu, t.categoryLabel));
+    expect(screen.queryByRole('listbox')).toBeNull();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    act(() => {
+      vi.runAllTimers();
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: t.removeFilter(t.recipeCategories.drinks) }),
+    );
     expect(shownRecipes()).toHaveLength(3);
   });
 
@@ -257,11 +267,24 @@ describe('the vault toolbar', () => {
     expect(screen.getByRole('button', { name: t.sortRecipes })).toHaveFocus();
   });
 
-  it('sorts newest first, then as chosen, and remembers the choice on this device', () => {
+  it('sorts the most recently changed first, then as chosen, and remembers the choice', () => {
+    localStorage.setItem(
+      'wandas_recipes',
+      JSON.stringify(
+        RECIPES.map((r) => (r.name === 'Plum Kompot' ? { ...r, updatedAt: 4000 } : r)),
+      ),
+    );
     const { unmount } = render(<App />);
-    expect(shownRecipes()).toEqual(['Sunday Żurek', 'Easter Babka', 'Plum Kompot']);
+    expect(shownRecipes()).toEqual(['Plum Kompot', 'Sunday Żurek', 'Easter Babka']);
 
     const menu = openMenu(t.sortRecipes);
+    fireEvent.click(choice(menu, t.vaultSorts.added));
+    expect(shownRecipes()).toEqual(['Sunday Żurek', 'Easter Babka', 'Plum Kompot']);
+    // The menu stays open for another choice.
+    act(() => {
+      vi.runAllTimers();
+    });
+    expect(screen.getByRole('dialog', { name: t.sortRecipes })).toBeInTheDocument();
     fireEvent.click(choice(menu, t.vaultSorts.name));
     expect(shownRecipes()).toEqual(['Easter Babka', 'Plum Kompot', 'Sunday Żurek']);
 
@@ -273,13 +296,9 @@ describe('the vault toolbar', () => {
   it('turns the chosen sort round when it is tapped again, saying which way it now runs', () => {
     const { unmount } = render(<App />);
     const [aToZ, zToA] = t.vaultSortOrders.name;
-    fireEvent.click(choice(openMenu(t.sortRecipes), t.vaultSorts.name));
-    act(() => {
-      vi.advanceTimersByTime(1000);
-    });
-
     const menu = openMenu(t.sortRecipes);
     const byName = choice(menu, t.vaultSorts.name);
+    fireEvent.click(byName);
     expect(byName).toHaveAttribute('aria-pressed', 'true');
     expect(byName).toHaveAccessibleName(`${t.vaultSorts.name} ${aToZ}`);
     fireEvent.click(byName);
@@ -287,10 +306,7 @@ describe('the vault toolbar', () => {
     expect(shownRecipes()).toEqual(['Sunday Żurek', 'Plum Kompot', 'Easter Babka']);
 
     // Another sort starts the natural way round.
-    act(() => {
-      vi.advanceTimersByTime(1000);
-    });
-    const time = choice(openMenu(t.sortRecipes), t.vaultSorts.time);
+    const time = choice(menu, t.vaultSorts.time);
     expect(time).toHaveAccessibleName(`${t.vaultSorts.time} ${t.vaultSortOrders.time[0]}`);
 
     unmount();
@@ -305,18 +321,20 @@ describe('the vault toolbar', () => {
     expect(headings).toEqual(['Babcia Zosia', 'Kasia', 'Ola']);
   });
 
-  it('switches to a list and back with a tap anywhere on the switch, remembering it', () => {
+  it('starts as a list, switching to cards and back with a tap anywhere on the switch', () => {
     const { unmount } = render(<App />);
-    const layout = screen.getByRole('button', { name: `${t.recipeLayout}: ${t.layoutCards}` });
-    // Its cards half is the one showing, so a tap there switches too.
-    fireEvent.click(layout.querySelector('.vault-layout-icon.is-active')!);
-    expect(layout).toHaveAccessibleName(`${t.recipeLayout}: ${t.layoutList}`);
+    const layout = screen.getByRole('button', { name: `${t.recipeLayout}: ${t.layoutList}` });
     expect(document.querySelectorAll('.vault-row')).toHaveLength(3);
     expect(document.documentElement.dataset.vaultView).toBe('list');
+    // Its list half is the one showing, so a tap there switches too.
+    fireEvent.click(layout.querySelector('.vault-layout-icon.is-active')!);
+    expect(layout).toHaveAccessibleName(`${t.recipeLayout}: ${t.layoutCards}`);
+    expect(document.querySelectorAll('.vault-row')).toHaveLength(0);
+    expect(document.documentElement.dataset.vaultView).toBe('cards');
 
     unmount();
     render(<App />);
-    expect(document.querySelectorAll('.vault-row')).toHaveLength(3);
+    expect(document.querySelectorAll('.vault-row')).toHaveLength(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Easter Babka' }));
     expect(screen.getByRole('heading', { name: 'Easter Babka', level: 1 })).toBeInTheDocument();

@@ -1700,7 +1700,7 @@
           scale 0.2s ease;
       }
 
-      .vault-layout[data-view='list'] .vault-layout-thumb {
+      .vault-layout[data-view='cards'] .vault-layout-thumb {
         transform: translateX(100%);
       }
 
