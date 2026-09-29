@@ -1,6 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { Recipe, Language, VaultFilter, VaultSort, VaultView } from '../../types/recipe';
+import {
+  Recipe,
+  RecipeDraft,
+  Language,
+  VaultFilter,
+  VaultSort,
+  VaultView,
+} from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
 import { getLocalizedRecipe } from '../../hooks/useRecipes';
 import { transitionView } from '../../utils/viewTransition';
@@ -39,6 +46,10 @@ interface RecipeGridViewProps {
   /** The recipe whose photo morphs to and from its card or row when opening or leaving it. */
   morphRecipeId: string | null;
   onSelectRecipe: (id: string) => void;
+  /** This person's drafts of new recipes, first in the vault while nothing is filtered. */
+  drafts?: RecipeDraft[];
+  /** Opens the editor on a draft, out of its card or row. */
+  onOpenDraft?: (draft: RecipeDraft, from: HTMLElement) => void;
   /** Plays the banner's entrance: true arriving at the vault, false coming back to it. */
   animateIn: boolean;
   /** Shown above the vault title, e.g. the install prompt. */
@@ -58,6 +69,8 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
   isSeen,
   morphRecipeId,
   onSelectRecipe,
+  drafts = [],
+  onOpenDraft,
   animateIn,
   banner,
   t,
@@ -113,14 +126,35 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
     keepListInView();
   };
 
+  // Drafts show while the whole vault does: a filter or search is looking for recipes.
+  const filtering =
+    filter.category !== NO_FILTER.category ||
+    filter.author !== NO_FILTER.author ||
+    filter.unseen ||
+    filter.query.trim() !== '';
+  const shownDrafts = filtering || !onOpenDraft ? [] : drafts;
+  // A draft shows as the recipe it will be, named even before it has a title.
+  const draftRecipe = (draft: RecipeDraft): Recipe => ({
+    ...draft.recipe,
+    id: draft.id,
+    name: draft.recipe.name.trim() || t.untitledDraft,
+  });
+  const openDraft = (id: string, from: HTMLElement) => {
+    const draft = drafts.find((d) => d.id === id);
+    if (draft) onOpenDraft?.(draft, from);
+  };
+
   let itemIndex = 0;
   const enterIndex = () => (entering ? Math.min(itemIndex++, ENTRANCE_ITEMS) : undefined);
 
+  // Under the drafts, the recipes get a heading of their own when the sort gives them none.
   const groupHeading = (key: string) =>
-    key && (
+    key ? (
       <h2 className="vault-group-heading">
         {sort.by === 'category' && isRecipeCategory(key) ? t.recipeCategories[key] : key}
       </h2>
+    ) : (
+      shownDrafts.length > 0 && <h2 className="vault-group-heading">{t.familyRecipes}</h2>
     );
 
   return (
@@ -152,7 +186,9 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
         className={view === 'list' ? 'vault-list' : 'recipe-grid'}
         id="recipesGrid"
       >
-        {recipes.length === 0 && <p className="vault-empty">{t.emptyVault}</p>}
+        {recipes.length === 0 && shownDrafts.length === 0 && (
+          <p className="vault-empty">{t.emptyVault}</p>
+        )}
         {recipes.length > 0 && shown.length === 0 && (
           <div className="vault-empty">
             {/* Only the unseen filter came up empty: everything else would show something. */}
@@ -170,6 +206,43 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
             </button>
           </div>
         )}
+        {shownDrafts.length > 0 &&
+          (view === 'cards' ? (
+            <>
+              <h2 className="vault-group-heading">{t.yourDrafts}</h2>
+              {shownDrafts.map((draft) => (
+                <RecipeCard
+                  key={draft.id}
+                  recipe={draftRecipe(draft)}
+                  language={language}
+                  enterIndex={enterIndex()}
+                  draft
+                  onSelect={openDraft}
+                  t={t}
+                />
+              ))}
+            </>
+          ) : (
+            <section className="vault-list-group">
+              <h2 className="vault-group-heading">{t.yourDrafts}</h2>
+              <div className="vault-list-card">
+                {shownDrafts.map((draft) => {
+                  const recipe = draftRecipe(draft);
+                  return (
+                    <RecipeRow
+                      key={draft.id}
+                      recipe={recipe}
+                      shown={recipe}
+                      enterIndex={enterIndex()}
+                      draft
+                      onSelect={openDraft}
+                      t={t}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+          ))}
         {view === 'cards'
           ? groups.map(({ key, entries: group }) => (
               <React.Fragment key={key || 'all'}>

@@ -15,7 +15,10 @@ interface RecipeCardProps {
   isMorphTarget?: boolean;
   /** Its place in the vault's entrance, when the page is arriving (see VaultHeader). */
   enterIndex?: number;
-  onSelect: (id: string) => void;
+  /** A draft: marked as one, named as one, and it's carried on with rather than viewed. */
+  draft?: boolean;
+  /** Given the card, which a page can open out of. */
+  onSelect: (id: string, from: HTMLElement) => void;
   t: UiTranslations;
 }
 
@@ -24,6 +27,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
   language,
   isMorphTarget = false,
   enterIndex,
+  draft = false,
   onSelect,
   t,
 }) => {
@@ -43,23 +47,28 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
 
   return (
     <div
-      className={`recipe-card vault-item${isMorphTarget ? ' is-morph-target' : ''}`}
+      className={`recipe-card vault-item${isMorphTarget ? ' is-morph-target' : ''}${draft ? ' is-draft' : ''}`}
       data-vault-item={vaultItemKey(rawRecipe.id)}
       style={
         enterIndex === undefined ? undefined : ({ '--enter-i': enterIndex } as React.CSSProperties)
       }
       role="button"
       tabIndex={0}
-      aria-label={recipe.name}
-      onClick={() => onSelect(rawRecipe.id)}
+      aria-label={draft ? t.draftNamed(recipe.name) : recipe.name}
+      onClick={(e) => onSelect(rawRecipe.id, e.currentTarget)}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          onSelect(rawRecipe.id);
+          onSelect(rawRecipe.id, e.currentTarget);
         }
       }}
     >
       <div className="card-media" data-vault-photo="">
+        {draft && (
+          <span className="vault-draft-ribbon" aria-hidden="true">
+            {t.draftRibbon}
+          </span>
+        )}
         {photo ? (
           <img
             src={photo}
@@ -86,7 +95,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
         </div>
         <p className="card-desc">{cardDesc}</p>
         <div className="card-footer">
-          <span>{t.viewRecipe}</span>
+          <span>{draft ? t.continueDraft : t.viewRecipe}</span>
           <span>{ingCountText}</span>
         </div>
       </div>

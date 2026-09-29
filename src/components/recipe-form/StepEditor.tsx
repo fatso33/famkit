@@ -1,7 +1,14 @@
 import React, { useState } from 'react';
 import { Camera, ChevronDown, ChevronUp, Hash, Lightbulb, Trash2, X } from 'lucide-react';
 import { UiTranslations } from '../../i18n/translations';
-import { MAX_SUBSTEPS, StepState, textItem, toggleFork } from '../../utils/recipeForm';
+import {
+  ExtrasState,
+  MAX_SUBSTEPS,
+  StepState,
+  textItem,
+  toggleFork,
+  updatePath,
+} from '../../utils/recipeForm';
 import { SUBSTEP_LETTERS } from '../../utils/recipeMethod';
 import type { ToastAction } from '../../hooks/useToast';
 import { AutoGrowTextarea } from '../common/AutoGrowTextarea';
@@ -54,29 +61,44 @@ export const StepEditor: React.FC<StepEditorProps> = ({
   onToast,
   t,
 }) => {
-  const [showPhoto, setShowPhoto] = useState(Boolean(step.imageSrc));
   const n = number ?? 0;
   const { plain, fork } = step;
-  const hasPhoto = Boolean(step.imageSrc);
+  // The tip and photo being edited: the step's, or on a fork the open path's.
+  const extras: ExtrasState & { id: string } = fork ? fork.paths[fork.active] : step;
+  // Photo pickers opened while still empty, by step or path.
+  const [photoOpen, setPhotoOpen] = useState<ReadonlySet<string>>(new Set());
+  const hasPhoto = Boolean(extras.imageSrc);
+  const showPhoto = hasPhoto || photoOpen.has(extras.id);
   const substepsFull = step.substeps.length >= MAX_SUBSTEPS;
   const toolsName = plain ? t.textTools : t.stepTools(n);
 
   const patch = (change: Partial<StepState>) => onChange((s) => ({ ...s, ...change }));
+  // Found by id when it runs, so an Undo still lands on its path after others moved or went.
+  const patchExtras = (change: Partial<ExtrasState>, id = extras.id) =>
+    onChange((s) => {
+      if (s.id === id) return { ...s, ...change };
+      const at = s.fork?.paths.findIndex((p) => p.id === id) ?? -1;
+      return at === -1 ? s : updatePath(s, at, (p) => ({ ...p, ...change }));
+    });
+  const setPhotoPicker = (id: string, open: boolean) =>
+    setPhotoOpen((ids) => {
+      const next = new Set(ids);
+      if (open) next.add(id);
+      else next.delete(id);
+      return next;
+    });
 
   const togglePhoto = () => {
     if (!hasPhoto) {
-      setShowPhoto(!showPhoto);
+      setPhotoPicker(extras.id, !showPhoto);
       return;
     }
-    const { imageSrc, imageCaption } = step;
-    patch({ imageSrc: '', imageCaption: '' });
-    setShowPhoto(false);
+    const { id, imageSrc, imageCaption } = extras;
+    patchExtras({ imageSrc: '', imageCaption: '' });
+    setPhotoPicker(id, false);
     onToast(t.photoRemoved, {
       label: t.undo,
-      onAction: () => {
-        patch({ imageSrc, imageCaption });
-        setShowPhoto(true);
-      },
+      onAction: () => patchExtras({ imageSrc, imageCaption }, id),
     });
   };
 
@@ -143,24 +165,24 @@ export const StepEditor: React.FC<StepEditorProps> = ({
     </div>
   );
 
-  const extras = (
+  const extrasFields = (
     <>
-      {step.showTip && (
+      {extras.showTip && (
         <div className="step-tip-field field-with-icon">
           <Lightbulb className="field-icon is-gold" size="1.1em" aria-hidden="true" />
           <AutoGrowTextarea
             aria-label={plain ? t.tip : t.stepTipLabel(n)}
-            value={step.tip}
-            onChange={(e) => patch({ tip: e.target.value })}
+            value={extras.tip}
+            onChange={(e) => patchExtras({ tip: e.target.value })}
           />
         </div>
       )}
 
-      {(showPhoto || hasPhoto) && (
+      {showPhoto && (
         <div className="step-photo-field">
           <ImagePickerWithPreview
-            imageUrl={step.imageSrc}
-            onChange={(url) => patch({ imageSrc: url })}
+            imageUrl={extras.imageSrc}
+            onChange={(url) => patchExtras({ imageSrc: url })}
             t={t}
           />
           {hasPhoto && (
@@ -169,8 +191,8 @@ export const StepEditor: React.FC<StepEditorProps> = ({
               type="text"
               aria-label={t.photoCaptionLabel}
               autoComplete="off"
-              value={step.imageCaption}
-              onChange={(e) => patch({ imageCaption: e.target.value })}
+              value={extras.imageCaption}
+              onChange={(e) => patchExtras({ imageCaption: e.target.value })}
             />
           )}
         </div>
@@ -218,8 +240,8 @@ export const StepEditor: React.FC<StepEditorProps> = ({
         <button
           type="button"
           className="tool-strip-button"
-          aria-pressed={step.showTip}
-          onClick={() => patch({ showTip: !step.showTip })}
+          aria-pressed={extras.showTip}
+          onClick={() => patchExtras({ showTip: !extras.showTip })}
         >
           <Lightbulb size="1.25rem" aria-hidden="true" />
           <span>{t.tip}</span>
@@ -227,7 +249,7 @@ export const StepEditor: React.FC<StepEditorProps> = ({
         <button
           type="button"
           className="tool-strip-button"
-          aria-pressed={showPhoto || hasPhoto}
+          aria-pressed={showPhoto}
           onClick={togglePhoto}
         >
           <Camera size="1.25rem" aria-hidden="true" />
@@ -271,7 +293,7 @@ export const StepEditor: React.FC<StepEditorProps> = ({
           pathStart={pathStart}
           join={join}
           rail={rail}
-          extras={extras}
+          extras={extrasFields}
           tools={tools}
           onChange={onChange}
           t={t}
@@ -325,7 +347,7 @@ export const StepEditor: React.FC<StepEditorProps> = ({
               </ol>
             )}
 
-            {extras}
+            {extrasFields}
           </div>
           {tools}
         </>

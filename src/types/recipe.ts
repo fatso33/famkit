@@ -47,7 +47,15 @@ export interface Step {
    * section; later, an empty heading still starts a section.
    */
   section?: string;
-  /** The cook chooses between two or three ways of doing this step. */
+  /**
+   * On a section's first step: the section numbers its steps from the recipe's first number
+   * again, rather than carrying on from the section before.
+   */
+  restart?: boolean;
+  /**
+   * The cook chooses between two or three ways of doing this step. The step's own tip and photo
+   * belong to its first path.
+   */
   fork?: StepFork;
 }
 
@@ -65,6 +73,14 @@ export interface ForkPath {
   sameAsFirst?: boolean;
   /** Steps only this path has, numbered on from the fork. The recipe then carries on. */
   steps?: string[];
+  /**
+   * The path's own tip and photo. Only on the second and third paths: the first path's are the
+   * step's own (notes, imageSrc, imageCaption), which is also what older app versions show.
+   */
+  notes?: string;
+  hasImage?: boolean;
+  imageSrc?: string;
+  imageCaption?: string;
 }
 
 /** Legacy: earlier versions used to be kept inside the recipe, without photos. */
@@ -94,6 +110,27 @@ export interface RecipeVersion extends VersionSummary {
   recipe: RecipeSnapshot;
   /** False for versions from before photos were kept: restoring one leaves the photos alone. */
   hasPhotos: boolean;
+}
+
+/**
+ * A recipe someone is still writing: `drafts/{their email}/recipes/{id}`, seen only by them.
+ * A new recipe's draft becomes version 1 when saved to the vault; an edit's draft becomes the
+ * recipe's next version. There's at most one draft per recipe, and saving it to the vault
+ * removes it.
+ */
+export interface RecipeDraft {
+  id: string;
+  /** The recipe this edits. Missing for a new recipe. */
+  recipeId?: string;
+  /** The recipe's version when the draft was started from it. */
+  baseVersion?: number;
+  /** The content as written so far, unchecked (it may lack a title or a category). */
+  recipe: RecipeSnapshot;
+  /** The "what changed" note written so far (edits). */
+  changeNote?: string;
+  /** The language the editor showed the recipe in, which an edit is saved in. */
+  language: Language;
+  savedAt: number;
 }
 
 export interface BakingOptions {

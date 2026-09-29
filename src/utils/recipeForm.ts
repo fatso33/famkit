@@ -65,7 +65,16 @@ export interface TextItem {
   text: string;
 }
 
-export interface PathState {
+/** A step's (or a fork path's) tip and photo. */
+export interface ExtrasState {
+  tip: string;
+  /** Whether the tip field is open (it can be while still empty). */
+  showTip: boolean;
+  imageSrc: string;
+  imageCaption: string;
+}
+
+export interface PathState extends ExtrasState {
   id: string;
   label: string;
   text: string;
@@ -79,16 +88,12 @@ export interface ForkState {
   active: number;
 }
 
-export interface StepState {
+export interface StepState extends ExtrasState {
   id: string;
-  /** What to do. A fork's paths each have their own. */
+  /** What to do. A fork's paths each have their own, and their own tip and photo too. */
   text: string;
   plain: boolean;
   substeps: TextItem[];
-  tip: string;
-  showTip: boolean;
-  imageSrc: string;
-  imageCaption: string;
   fork: ForkState | null;
   origin?: number;
 }
@@ -97,6 +102,8 @@ export interface SectionState {
   id: string;
   /** Empty: the default heading. */
   title: string;
+  /** Its steps are numbered from the start again (not for the first section). */
+  restart: boolean;
   steps: StepState[];
 }
 
@@ -153,21 +160,29 @@ export const ingredientRowsOnly = (rows: IngredientRowState[]) => rows.filter((r
 
 export const textItem = (text = ''): TextItem => ({ id: newId('txt'), text });
 
+const noExtras = (): ExtrasState => ({ tip: '', showTip: false, imageSrc: '', imageCaption: '' });
+
+/** The tip and photo alone, to hand from a step to a fork path or back. */
+const extrasOf = ({ tip, showTip, imageSrc, imageCaption }: ExtrasState): ExtrasState => ({
+  tip,
+  showTip,
+  imageSrc,
+  imageCaption,
+});
+
 export const emptyStep = (text = ''): StepState => ({
   id: newId('step'),
   text,
   plain: false,
   substeps: [],
-  tip: '',
-  showTip: false,
-  imageSrc: '',
-  imageCaption: '',
+  ...noExtras(),
   fork: null,
 });
 
 export const emptySection = (title = ''): SectionState => ({
   id: newId('sec'),
   title,
+  restart: false,
   steps: [emptyStep()],
 });
 
@@ -177,6 +192,19 @@ const emptyPath = (text = '', sameAsFirst = false): PathState => ({
   text,
   sameAsFirst,
   steps: [],
+  ...noExtras(),
+});
+
+/** Stored tip and photo fields as the form's. */
+const extrasFrom = (from: {
+  notes?: string;
+  imageSrc?: string;
+  imageCaption?: string;
+}): ExtrasState => ({
+  tip: from.notes ?? '',
+  showTip: Boolean(from.notes?.trim()),
+  imageSrc: from.imageSrc ?? '',
+  imageCaption: from.imageCaption ?? '',
 });
 
 export const emptyForm = (): FormState => ({
@@ -263,28 +291,27 @@ function rowFromIngredient(ing: Ingredient, origin: number): IngredientRowState 
 
 function stepFromRecipe(step: Step, origin: number): StepState {
   const paths = step.fork?.paths ?? [];
+  const forked = paths.length >= 2;
   return {
     id: newId('step'),
     text: step.text ?? '',
     plain: Boolean(step.plain),
     substeps: (step.substeps ?? []).slice(0, MAX_SUBSTEPS).map((s) => textItem(s)),
-    tip: step.notes ?? '',
-    showTip: Boolean(step.notes?.trim()),
-    imageSrc: step.imageSrc ?? '',
-    imageCaption: step.imageCaption ?? '',
-    fork:
-      paths.length >= 2
-        ? {
-            active: 0,
-            paths: paths.slice(0, MAX_PATHS).map((p: ForkPath, i) => ({
-              id: newId('path'),
-              label: p.label ?? '',
-              text: p.text ?? (i === 0 ? step.text : ''),
-              sameAsFirst: i > 0 && Boolean(p.sameAsFirst),
-              steps: (p.steps ?? []).map((s) => textItem(s)),
-            })),
-          }
-        : null,
+    // A fork's own tip and photo are its first path's.
+    ...(forked ? noExtras() : extrasFrom(step)),
+    fork: forked
+      ? {
+          active: 0,
+          paths: paths.slice(0, MAX_PATHS).map((p: ForkPath, i) => ({
+            id: newId('path'),
+            label: p.label ?? '',
+            text: p.text ?? (i === 0 ? step.text : ''),
+            sameAsFirst: i > 0 && Boolean(p.sameAsFirst),
+            steps: (p.steps ?? []).map((s) => textItem(s)),
+            ...extrasFrom(i === 0 ? step : p),
+          })),
+        }
+      : null,
     origin,
   };
 }
@@ -329,16 +356,17 @@ function legacyMethod(recipe: Recipe, labels: LegacyLabels, sections: SectionSta
   } else {
     steps = (first ? [first] : second).map((text) => emptyStep(text));
   }
-  sections.push({ id: newId('sec'), title: labels.bakingSection, steps });
+  sections.push({ id: newId('sec'), title: labels.bakingSection, restart: false, steps });
 }
 
 /** The form for editing a recipe. */
 export function formFromRecipe(recipe: Recipe, labels: LegacyLabels): FormState {
   const authorMode = authorModeOf(recipe);
   const steps = recipe.steps ?? [];
-  const sections: SectionState[] = methodSections(steps).map((section) => ({
+  const sections: SectionState[] = methodSections(steps).map((section, s) => ({
     id: newId('sec'),
     title: section.title,
+    restart: s > 0 && Boolean(section.steps[0]?.restart),
     steps: section.steps.map((step, k) => stepFromRecipe(step, section.start + k)),
   }));
   if (sections.length === 0) sections.push(emptySection());
@@ -401,28 +429,39 @@ function draftRow(raw: Json): IngredientRowState {
   return row;
 }
 
+function draftExtras(raw: Json): ExtrasState {
+  // Drafts from before the redesign called the tip "notes".
+  const tip = str(raw.tip) || str(raw.notes);
+  return {
+    tip,
+    showTip: raw.showTip === true || Boolean(tip),
+    imageSrc: str(raw.imageSrc),
+    imageCaption: str(raw.imageCaption),
+  };
+}
+
 function draftStep(raw: Json): StepState {
   const fork = isObject(raw.fork) ? list(raw.fork.paths).slice(0, MAX_PATHS) : [];
   const step: StepState = {
     ...emptyStep(str(raw.text)),
     plain: raw.plain === true,
     substeps: texts(raw.substeps, MAX_SUBSTEPS),
-    // Drafts from before the redesign called the tip "notes".
-    tip: str(raw.tip) || str(raw.notes),
-    imageSrc: str(raw.imageSrc),
-    imageCaption: str(raw.imageCaption),
+    ...draftExtras(raw),
   };
-  step.showTip = raw.showTip === true || Boolean(step.tip);
   if (fork.length >= 2) {
     const active = isObject(raw.fork) && typeof raw.fork.active === 'number' ? raw.fork.active : 0;
+    // Drafts from before paths had their own tip and photo kept the fork's on the step.
+    const pathsHaveExtras = fork.some((p) => 'imageSrc' in p || 'tip' in p);
     step.fork = {
       active: chosenPath({ paths: fork }, active),
       paths: fork.map((p, i) => ({
         ...emptyPath(str(p.text), i > 0 && p.sameAsFirst === true),
         label: str(p.label),
         steps: texts(p.steps),
+        ...(pathsHaveExtras ? draftExtras(p) : i === 0 ? extrasOf(step) : noExtras()),
       })),
     };
+    Object.assign(step, noExtras());
   }
   return step;
 }
@@ -454,12 +493,19 @@ export function formFromDraft(raw: unknown): FormState | null {
   if (rows.length > 0) form.ingredientRows = rows;
 
   const sections = list(raw.sections)
-    .map((s) => ({ id: newId('sec'), title: str(s.title), steps: list(s.steps).map(draftStep) }))
+    .map((s) => ({
+      id: newId('sec'),
+      title: str(s.title),
+      restart: s.restart === true,
+      steps: list(s.steps).map(draftStep),
+    }))
     .filter((s) => s.steps.length > 0);
   // Drafts from before sections kept one list of steps.
   const steps = list(raw.steps).map(draftStep);
   if (sections.length > 0) form.sections = sections;
-  else if (steps.length > 0) form.sections = [{ id: newId('sec'), title: '', steps }];
+  else if (steps.length > 0) {
+    form.sections = [{ id: newId('sec'), title: '', restart: false, steps }];
+  }
   return form;
 }
 
@@ -522,15 +568,18 @@ export function rowsToIngredients(rows: IngredientRowState[]): Ingredient[] {
   return ingredients;
 }
 
+/** A tip and photo as stored: `hasImage` always, the rest only when there's something in it. */
+function storedExtras(extras: ExtrasState) {
+  return {
+    notes: (extras.showTip && extras.tip.trim()) || undefined,
+    hasImage: Boolean(extras.imageSrc),
+    imageSrc: extras.imageSrc || undefined,
+    imageCaption: extras.imageCaption.trim() || undefined,
+  };
+}
+
 /** The step as stored (its number comes later), or null when there's nothing in it. */
 function stateToStep(state: StepState): Step | null {
-  const photo = {
-    hasImage: Boolean(state.imageSrc),
-    imageSrc: state.imageSrc || undefined,
-    imageCaption: state.imageCaption.trim() || undefined,
-  };
-  const notes = (state.showTip && state.tip.trim()) || undefined;
-
   if (state.fork) {
     const paths = state.fork.paths
       .map((p, i) => ({
@@ -538,22 +587,39 @@ function stateToStep(state: StepState): Step | null {
         text: p.text.trim(),
         sameAsFirst: i > 0 && p.sameAsFirst,
         steps: p.steps.map((s) => s.text.trim()).filter(Boolean),
+        extras: storedExtras(p),
       }))
-      .filter((p, i) => i === 0 || p.label || p.text || (!p.sameAsFirst && p.steps.length > 0));
+      .filter(
+        (p, i) =>
+          i === 0 ||
+          p.label ||
+          p.text ||
+          p.extras.imageSrc ||
+          (!p.sameAsFirst && p.steps.length > 0),
+      );
     if (!paths.some((p) => p.text)) return null;
+    // The first path's tip and photo are the step's own.
+    const first = paths[0];
     if (paths.length < 2) {
-      return { num: 0, text: paths[0].text, notes, ...photo };
+      return { num: 0, text: first.text, ...first.extras };
     }
     return {
       num: 0,
-      text: paths[0].text,
-      notes,
-      ...photo,
+      text: first.text,
+      ...first.extras,
       fork: {
-        paths: paths.map(({ label, text, sameAsFirst, steps }) => {
+        paths: paths.map(({ label, text, sameAsFirst, steps, extras }, i) => {
           const path: ForkPath = { label, text };
           if (sameAsFirst) path.sameAsFirst = true;
           else if (steps.length > 0) path.steps = steps;
+          if (i > 0) {
+            if (extras.notes) path.notes = extras.notes;
+            if (extras.imageSrc) {
+              path.hasImage = true;
+              path.imageSrc = extras.imageSrc;
+              if (extras.imageCaption) path.imageCaption = extras.imageCaption;
+            }
+          }
           return path;
         }),
       },
@@ -566,8 +632,7 @@ function stateToStep(state: StepState): Step | null {
   return {
     num: 0,
     text,
-    notes,
-    ...photo,
+    ...storedExtras(state),
     plain: state.plain || undefined,
     substeps: substeps.length > 0 ? substeps.slice(0, MAX_SUBSTEPS) : undefined,
   };
@@ -578,6 +643,7 @@ export function methodToSteps(sections: SectionState[], numberFrom: number): Ste
   const kept = sections
     .map((section) => ({
       title: section.title.trim(),
+      restart: section.restart,
       steps: section.steps.map(stateToStep).filter((s): s is Step => s !== null),
     }))
     .filter((section) => section.steps.length > 0);
@@ -586,6 +652,7 @@ export function methodToSteps(sections: SectionState[], numberFrom: number): Ste
   kept.forEach((section, s) => {
     section.steps.forEach((step, k) => {
       if (k === 0 && (s > 0 || section.title)) step.section = section.title;
+      if (k === 0 && s > 0 && section.restart) step.restart = true;
       steps.push(step);
     });
   });
@@ -631,7 +698,10 @@ export function formText(form: FormState): string {
     form.ingredientRows
       .map((row) => (row.heading ? { heading: row.name.trim() } : rowText(row)))
       .filter((r) => ('heading' in r ? r.heading : r.name || r.amount)),
-    recipe.steps.map(({ hasImage: _h, imageSrc: _s, num: _n, ...text }) => text),
+    recipe.steps.map(({ hasImage: _h, imageSrc: _s, num: _n, fork, ...text }) => ({
+      ...text,
+      fork: fork?.paths.map(({ hasImage: _ph, imageSrc: _ps, ...path }) => path),
+    })),
   ]);
 }
 
@@ -727,17 +797,24 @@ export function removeSection(sections: SectionState[], sectionId: string) {
   };
 }
 
-/** Splits a step into two paths (its text goes to the first), or joins a fork back into one step. */
+/**
+ * Splits a step into two paths (its text, tip and photo go to the first), or joins a fork back
+ * into one step, which keeps the open path's.
+ */
 export function toggleFork(step: StepState): StepState {
   if (step.fork) {
     const open = step.fork.paths[step.fork.active] ?? step.fork.paths[0];
-    return { ...step, text: open.text, fork: null };
+    return { ...step, text: open.text, ...extrasOf(open), fork: null };
   }
   return {
     ...step,
     plain: false,
     substeps: [],
-    fork: { active: 0, paths: [emptyPath(step.text), emptyPath('', true)] },
+    ...noExtras(),
+    fork: {
+      active: 0,
+      paths: [{ ...emptyPath(step.text), ...extrasOf(step) }, emptyPath('', true)],
+    },
   };
 }
 
@@ -775,7 +852,11 @@ export function updatePath(
  * the path open in the editor.
  */
 export function editorNumbers(sections: SectionState[], numberFrom: number) {
-  const steps = sections.flatMap((section) => section.steps);
+  const steps = sections.flatMap((section, s) =>
+    section.steps.map((step, k) =>
+      k === 0 && s > 0 && section.restart ? { ...step, restart: true } : step,
+    ),
+  );
   const choices: Record<number, number> = {};
   steps.forEach((step, i) => {
     if (step.fork) choices[i] = step.fork.active;

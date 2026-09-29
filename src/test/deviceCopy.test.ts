@@ -27,6 +27,28 @@ const recipe = (id: string, createdAt: number, extra: Partial<Recipe> = {}): Rec
 const parse = (json: string) => JSON.parse(json) as Recipe[];
 
 describe('leaving photos out of the quick-start copy', () => {
+  it("drops a fork path's own photo too", () => {
+    const forked = recipe('pierogi', 1, {
+      heroImage: '',
+      steps: [
+        {
+          num: 1,
+          text: 'Boil.',
+          fork: {
+            paths: [
+              { label: 'Boil', text: 'Boil.' },
+              { label: 'Fry', text: 'Fry.', hasImage: true, imageSrc: photo('fry') },
+            ],
+          },
+        },
+      ],
+    });
+    const slim = leavePhotosOut(forked);
+    expect(slim.steps[0].fork!.paths[1].imageSrc).toBeUndefined();
+    expect(slim.steps[0].fork!.paths[1].text).toBe('Fry.');
+    expect(slim.photosOmitted).toEqual({ hero: false });
+  });
+
   it('drops the hero and step photos, and marks the copy', () => {
     const withSteps = recipe('babka', 1, {
       steps: [

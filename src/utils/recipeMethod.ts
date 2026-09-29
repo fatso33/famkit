@@ -1,9 +1,9 @@
-import { Ingredient, Step, StepFork } from '../types/recipe';
+import { ForkPath, Ingredient, Step, StepFork } from '../types/recipe';
 
 /**
  * The method's shape, shared by the recipe page and the editor: sections, step numbers and
- * forks. Numbers are worked out from the order. They run on across sections, skip unnumbered
- * text, and after a fork they follow the path the cook is on.
+ * forks. Numbers are worked out from the order. They run on across sections (unless a section
+ * starts them again), skip unnumbered text, and after a fork they follow the path the cook is on.
  */
 
 /** A step's substeps are lettered a) to z), so it has at most one per letter. */
@@ -54,6 +54,8 @@ export function ingredientGroups(ingredients: Ingredient[]): IngredientGroup[] {
 /** What numbering needs to know about a step, in the recipe or in the editor. */
 export interface NumberedItem {
   plain?: boolean;
+  /** Numbers start again here (a section's first step). */
+  restart?: boolean;
   fork?: {
     paths: readonly { sameAsFirst?: boolean; steps?: readonly unknown[] }[];
   } | null;
@@ -74,6 +76,20 @@ export function pathStepCount(fork: NonNullable<NumberedItem['fork']>, index: nu
   return followed?.steps?.length ?? 0;
 }
 
+/** A fork path's tip and photo. */
+export type PathExtras = Pick<ForkPath, 'notes' | 'hasImage' | 'imageSrc' | 'imageCaption'>;
+
+/** The tip and photo shown with a path: the first path's are the step's own. */
+export function pathExtras(step: Step, index: number): PathExtras {
+  const from = index > 0 ? step.fork?.paths[index] : step;
+  return {
+    notes: from?.notes,
+    hasImage: from?.hasImage,
+    imageSrc: from?.imageSrc,
+    imageCaption: from?.imageCaption,
+  };
+}
+
 /** The own steps a path follows: its own, or the first path's when it shares them. */
 export function pathSteps(fork: StepFork, index: number): string[] {
   const path = fork.paths[index] ?? fork.paths[0];
@@ -91,7 +107,8 @@ export function firstStepNumber(steps: readonly Pick<Step, 'num' | 'plain'>[]): 
 
 /**
  * Each step's number (null for unnumbered text). A fork's paths number their own steps on from
- * the fork, and the steps after it carry on from the path it's on.
+ * the fork, and the steps after it carry on from the path it's on. A step marked `restart` starts
+ * the count again from `start`.
  */
 export function numberSteps(
   items: readonly NumberedItem[],
@@ -100,6 +117,7 @@ export function numberSteps(
 ): (number | null)[] {
   let next = start;
   return items.map((item, i) => {
+    if (item.restart) next = start;
     if (item.plain) return null;
     const number = next;
     next += 1;

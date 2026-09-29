@@ -144,6 +144,8 @@ export function recipePieces(content: LocalizedRecipeContent): Piece[] {
       text(`${at}:fork:${k}:label`, 'pathLabel', path.label);
       text(`${at}:fork:${k}:text`, 'pathText', path.text);
       path.steps?.forEach((sub, j) => text(`${at}:fork:${k}:steps:${j}`, 'pathStep', sub));
+      text(`${at}:fork:${k}:notes`, 'stepTip', path.notes);
+      text(`${at}:fork:${k}:imageCaption`, 'caption', path.imageCaption);
     });
   });
   return pieces;
@@ -245,6 +247,10 @@ export function buildTranslation(
                 text(`${at}:fork:${k}:steps:${j}`, 'pathStep', s),
               );
             }
+            const tip = optional(`${at}:fork:${k}:notes`, 'stepTip', path.notes);
+            const caption = optional(`${at}:fork:${k}:imageCaption`, 'caption', path.imageCaption);
+            if (tip !== undefined) translated.notes = tip;
+            if (caption !== undefined) translated.imageCaption = caption;
             return translated;
           }),
         };

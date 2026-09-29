@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ForkSwitch } from '../components/common/ForkSwitch';
 import { StepsList } from '../components/recipe-detail/StepsList';
 import { UI_TEXT } from '../i18n/translations';
@@ -136,10 +136,20 @@ describe('a fork on the recipe page', () => {
     expect(numberOf('Cover the bowl.')).toBe('1');
     expect(numberOf('Cool it.')).toBe('2');
 
+    vi.useFakeTimers();
     fireEvent.click(screen.getByRole('radio', { name: 'Dutch Oven Bake' }));
 
+    // The branch lights at once, while the path being left fades away first.
     expect(lit('is-split')).toEqual([false, true]);
     expect(lit('is-join')).toEqual([false, true]);
+    expect(container.querySelector('.fork-step-stage.is-leaving')).not.toBeNull();
+    expect(numberOf('Cool it.')).toBe('2');
+
+    act(() => {
+      vi.runAllTimers();
+    });
+    vi.useRealTimers();
+    expect(container.querySelector('.fork-step-stage.is-leaving')).toBeNull();
     expect(numberOf('Preheat the Dutch oven.')).toBe('1');
     expect(numberOf('Put the dough in.')).toBe('2');
     expect(numberOf('Bake.')).toBe('3');

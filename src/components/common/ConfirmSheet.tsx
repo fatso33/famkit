@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef } from 'react';
+import { useBackStep } from '../../hooks/useBackStep';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { useExitAnimation } from '../../hooks/useExitAnimation';
 
@@ -10,13 +11,16 @@ interface ConfirmSheetProps {
   /** Styles the confirm button as destructive. */
   danger?: boolean;
   onConfirm: () => void;
+  /** A third choice, offered first (e.g. "Save draft" before "Discard"). */
+  alternative?: { label: string; onSelect: () => void };
   /** Runs once the sheet has closed, whichever way. */
   onClose: () => void;
 }
 
 /**
  * Asks before something that can't simply be undone. Mount only while open. Focus starts on the
- * safe choice, so a stray Enter keeps things as they are.
+ * safe choice, so a stray Enter keeps things as they are. With an alternative, the three choices
+ * stack: the alternative, then the confirm, then the safe choice.
  */
 export const ConfirmSheet: React.FC<ConfirmSheetProps> = ({
   title,
@@ -25,10 +29,13 @@ export const ConfirmSheet: React.FC<ConfirmSheetProps> = ({
   cancelLabel,
   danger = false,
   onConfirm,
+  alternative,
   onClose,
 }) => {
   const { ref, isClosing, requestClose } = useExitAnimation<HTMLDivElement>(onClose);
   const backdropProps = useDialogDismiss(requestClose);
+  // The back gesture closes the sheet, like its safe choice.
+  useBackStep(true, () => requestClose());
   const titleId = useId();
   const messageId = useId();
   const cancel = useRef<HTMLButtonElement>(null);
@@ -38,6 +45,12 @@ export const ConfirmSheet: React.FC<ConfirmSheetProps> = ({
     cancel.current?.focus({ preventScroll: true });
     return () => opener?.focus({ preventScroll: true });
   }, []);
+
+  const safe = (
+    <button ref={cancel} type="button" className="btn" onClick={requestClose}>
+      {cancelLabel}
+    </button>
+  );
 
   return (
     // Backdrop click is a mouse shortcut; keyboard users close with Escape (useDialogDismiss).
@@ -60,13 +73,24 @@ export const ConfirmSheet: React.FC<ConfirmSheetProps> = ({
         <p className="editor-sheet-message" id={messageId}>
           {message}
         </p>
-        <div className="editor-sheet-actions">
-          <button ref={cancel} type="button" className="btn" onClick={requestClose}>
-            {cancelLabel}
-          </button>
+        <div className={`editor-sheet-actions${alternative ? ' is-stacked' : ''}`}>
+          {alternative && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                alternative.onSelect();
+                requestClose();
+              }}
+            >
+              {alternative.label}
+            </button>
+          )}
+          {!alternative && safe}
           <button
             type="button"
-            className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`}
+            // Under a main choice, a destructive one is quieter.
+            className={`btn ${danger ? (alternative ? 'btn-danger-quiet' : 'btn-danger') : 'btn-primary'}`}
             onClick={() => {
               onConfirm();
               requestClose();
@@ -74,6 +98,7 @@ export const ConfirmSheet: React.FC<ConfirmSheetProps> = ({
           >
             {confirmLabel}
           </button>
+          {alternative && safe}
         </div>
       </div>
     </div>

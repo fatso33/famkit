@@ -26,6 +26,13 @@ const labels = {
   bakingPaths: UI_TEXT.en.legacyBakingPaths,
 };
 
+// A recipe without Wanda's older blocks, which the editor would add as steps.
+const plainRecipe: Recipe = {
+  ...WANDAS_CHEESE_BREAD,
+  laminationDirective: undefined,
+  bakingOptions: undefined,
+};
+
 const texts = (form: FormState) => form.sections.map((s) => s.steps.map((st) => st.text));
 const ids = (form: FormState) => form.sections.map((s) => s.steps.map((st) => st.id));
 
@@ -192,6 +199,98 @@ describe('editing the method', () => {
     fork.fork!.active = 1;
     expect(editorNumbers(sections, 1).get(after.id)).toBe(2);
     expect(editorNumbers(sections, 1).get(`${fork.id}:1`)).toBe(2);
+  });
+
+  it('lets a later section start its numbers again, and keeps that through a save', () => {
+    const sections = twoSections();
+    sections[1] = { ...sections[1], restart: true };
+    const numbers = editorNumbers(sections, 1);
+    expect(sections.flatMap((s) => s.steps.map((st) => numbers.get(st.id)))).toEqual([1, 2, 1]);
+
+    const form = { ...formFromDraft({})!, sections };
+    const steps = formToRecipe(form).steps;
+    expect(steps.map((st) => [st.num, st.restart])).toEqual([
+      [1, undefined],
+      [2, undefined],
+      [1, true],
+    ]);
+    const reopened = formFromRecipe({ ...plainRecipe, steps }, labels);
+    expect(reopened.sections.map((s) => s.restart)).toEqual([false, true]);
+    // The first section has nothing to start again from.
+    const first = [{ ...sections[0], restart: true }, sections[1]];
+    expect(formToRecipe({ ...form, sections: first }).steps[0].restart).toBeUndefined();
+  });
+
+  it('keeps a photo on the one fork path it was added to (regression: it showed on every path)', () => {
+    const fork = addPath(toggleFork(emptyStep('Bake in a tin.')));
+    fork.fork!.paths[1] = { ...fork.fork!.paths[1], label: 'Stone', text: 'Bake on a stone.' };
+    fork.fork!.paths[2] = {
+      ...fork.fork!.paths[2],
+      label: 'Pot',
+      text: 'Bake in a pot.',
+      imageSrc: 'data:pot',
+      imageCaption: 'The lid on',
+      tip: 'Heat the pot first.',
+      showTip: true,
+    };
+    const form = { ...formFromDraft({})!, sections: [{ ...emptySection(), steps: [fork] }] };
+    const [saved] = formToRecipe(form).steps;
+    expect(saved.imageSrc).toBeUndefined();
+    expect(saved.hasImage).toBe(false);
+    expect(saved.fork!.paths.map((p) => p.imageSrc)).toEqual([undefined, undefined, 'data:pot']);
+    expect(saved.fork!.paths[2]).toMatchObject({ notes: 'Heat the pot first.', hasImage: true });
+
+    const reopened = formFromRecipe({ ...WANDAS_CHEESE_BREAD, steps: [saved] } as Recipe, labels)
+      .sections[0].steps[0];
+    expect(reopened.fork!.paths.map((p) => [p.imageSrc, p.tip])).toEqual([
+      ['', ''],
+      ['', ''],
+      ['data:pot', 'Heat the pot first.'],
+    ]);
+    // A new photo alone isn't a text edit.
+    const newPhoto = structuredClone(form);
+    newPhoto.sections[0].steps[0].fork!.paths[2].imageSrc = 'data:another';
+    expect(formText(newPhoto)).toBe(formText(form));
+  });
+
+  it("gives an older fork's photo to its first path only", () => {
+    const older = {
+      ...WANDAS_CHEESE_BREAD,
+      steps: [
+        {
+          num: 1,
+          text: 'Bake.',
+          hasImage: true,
+          imageSrc: 'data:loaf',
+          notes: 'Watch it.',
+          fork: {
+            paths: [
+              { label: 'A', text: 'Bake.' },
+              { label: 'B', text: 'Fry.' },
+            ],
+          },
+        },
+      ],
+    } as Recipe;
+    const step = formFromRecipe(older, labels).sections[0].steps[0];
+    expect(step.imageSrc).toBe('');
+    expect(step.fork!.paths.map((p) => [p.imageSrc, p.tip])).toEqual([
+      ['data:loaf', 'Watch it.'],
+      ['', ''],
+    ]);
+  });
+
+  it('hands the tip and photo to the first path on forking, and back from the open one on joining', () => {
+    const step = { ...emptyStep('Bake.'), tip: 'Hot oven.', showTip: true, imageSrc: 'data:x' };
+    const forked = toggleFork(step);
+    expect([forked.tip, forked.imageSrc]).toEqual(['', '']);
+    expect([forked.fork!.paths[0].tip, forked.fork!.paths[0].imageSrc]).toEqual([
+      'Hot oven.',
+      'data:x',
+    ]);
+    const onSecond = { ...forked, fork: { ...forked.fork!, active: 1 } };
+    onSecond.fork.paths[1] = { ...onSecond.fork.paths[1], imageSrc: 'data:y' };
+    expect(toggleFork(onSecond)).toMatchObject({ imageSrc: 'data:y', tip: '' });
   });
 
   it('leaves out empty steps and sections, and a section heading on a lone default section', () => {

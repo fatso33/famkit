@@ -44,7 +44,9 @@ function openVersions(editor: HTMLElement) {
 function renameTo(name: string, note: string) {
   const editor = openEditor();
   fireEvent.change(within(editor).getByLabelText(t.recipeTitle), { target: { value: name } });
-  fireEvent.change(within(editor).getByLabelText(t.changeNoteLabel), { target: { value: note } });
+  fireEvent.change(within(editor).getByLabelText(/^What changed since v/), {
+    target: { value: note },
+  });
   fireEvent.click(within(editor).getByRole('button', { name: t.save }));
 }
 
@@ -85,7 +87,9 @@ describe('version history', () => {
     const restoredEditor = screen.getByRole('dialog', { name: /edit recipe/i });
     expect(within(restoredEditor).getByLabelText(t.recipeTitle)).toHaveValue('Babka');
     expect(within(restoredEditor).getAllByText(t.restoredChip)).toHaveLength(1);
-    expect(within(restoredEditor).getByLabelText(t.changeNoteLabel)).toHaveValue(t.restoredNote(1));
+    expect(within(restoredEditor).getByLabelText(/^What changed since v/)).toHaveValue(
+      t.restoredNote(1),
+    );
 
     fireEvent.click(within(restoredEditor).getByRole('button', { name: t.save }));
 

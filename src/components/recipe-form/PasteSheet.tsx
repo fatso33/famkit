@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { ClipboardPaste } from 'lucide-react';
 import { UiTranslations } from '../../i18n/translations';
+import { useBackStep } from '../../hooks/useBackStep';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { useExitAnimation } from '../../hooks/useExitAnimation';
 
@@ -16,6 +17,7 @@ interface PasteSheetProps {
 export const PasteSheet: React.FC<PasteSheetProps> = ({ onAdd, onClose, t }) => {
   const { ref, isClosing, requestClose } = useExitAnimation<HTMLDivElement>(onClose);
   const backdropProps = useDialogDismiss(requestClose);
+  useBackStep(true, () => requestClose());
   const titleId = useId();
   const fieldId = useId();
   const helpId = useId();

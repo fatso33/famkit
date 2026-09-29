@@ -958,6 +958,36 @@
         border-radius: var(--card-photo-corners);
       }
 
+      /* A draft in the vault (only its writer's): a ribbon on its photo, or before its cook. */
+      .vault-draft-ribbon {
+        position: absolute;
+        z-index: 1;
+        top: 0.65rem;
+        left: 0.65rem;
+        padding: 0.25rem 0.65rem;
+        border-radius: var(--radius-full);
+        background: var(--accent);
+        color: var(--on-accent);
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        box-shadow: 0 3px 10px -3px color-mix(in srgb, var(--accent) 60%, transparent);
+      }
+
+      .vault-draft-ribbon.is-inline {
+        position: static;
+        flex: none;
+        padding: 0.1rem 0.5rem;
+        font-size: 0.6875rem;
+        box-shadow: none;
+      }
+
+      .recipe-card.is-draft,
+      .vault-row.is-draft {
+        border-style: dashed;
+      }
+
       .card-media img {
         width: 100%;
         height: 100%;
@@ -2545,6 +2575,55 @@
         align-items: center;
         gap: 0.5rem;
         flex-wrap: wrap;
+      }
+
+      /* The owner's unfinished edit of this recipe, under its byline: tap to carry on. */
+      .detail-draft-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        min-height: 44px;
+        margin-top: 0.75rem;
+        padding: 0.45rem 0.8rem 0.45rem 0.9rem;
+        border: 1px dashed color-mix(in srgb, var(--accent) 55%, var(--border-subtle));
+        border-radius: var(--radius-full);
+        background: color-mix(in srgb, var(--accent) 8%, var(--bg-surface));
+        color: var(--text-primary);
+        font: inherit;
+        font-size: 0.9375rem;
+        font-weight: 700;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          background-color 0.2s ease,
+          scale 0.15s ease;
+      }
+
+      .detail-draft-chip > svg {
+        color: var(--accent);
+      }
+
+      .detail-draft-chip-dot {
+        color: var(--text-muted);
+      }
+
+      .detail-draft-chip-action {
+        color: var(--accent);
+      }
+
+      .detail-draft-chip:active {
+        scale: 0.97;
+      }
+
+      .detail-draft-chip:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      @media (hover: hover) {
+        .detail-draft-chip:hover {
+          background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
+        }
       }
 
       /* Compact pill buttons (the editor's version banner, Settings' restore) */
@@ -5616,6 +5695,113 @@
         color: var(--accent);
       }
 
+      /* ── Save's two choices: a card unfolding from under the Save pill (SaveMenu). */
+      .save-menu-layer {
+        position: absolute;
+        top: 100%;
+        right: max(0.75rem, env(safe-area-inset-right));
+        z-index: 3;
+        text-align: left;
+      }
+
+      .save-menu {
+        position: relative;
+        display: grid;
+        gap: 0.25rem;
+        width: min(19rem, calc(100vw - 1.5rem));
+        margin-top: 0.35rem;
+        padding: 0.4rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        background: var(--elev-menu);
+        box-shadow: var(--shadow-lg);
+        transform-origin: calc(100% - 2.5rem) 0;
+        animation: vault-popover-in 0.5s var(--spring-soft) both;
+      }
+
+      .save-menu-layer.is-closing .save-menu {
+        animation: fk-exit-popover 0.2s var(--ease-accelerate) both;
+      }
+
+      .save-option {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        min-height: 3.75rem;
+        padding: 0.6rem 0.75rem 0.6rem 0.6rem;
+        border: 0;
+        border-radius: calc(var(--radius-lg) - 0.3rem);
+        background: transparent;
+        color: var(--text-primary);
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          background-color 0.2s ease,
+          scale 0.15s ease;
+        animation: save-option-in 0.45s var(--ease-glide) both;
+      }
+
+      .save-option + .save-option {
+        animation-delay: 0.06s;
+      }
+
+      @keyframes save-option-in {
+        from { opacity: 0; transform: translateY(-0.4rem); }
+      }
+
+      .save-option:active {
+        scale: 0.98;
+        background: var(--menu-well);
+      }
+
+      .save-option:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: -1px;
+      }
+
+      .save-option-icon {
+        flex: none;
+        width: 2.5rem;
+        height: 2.5rem;
+        display: grid;
+        place-items: center;
+        border-radius: var(--radius-full);
+        background: var(--menu-well);
+        color: var(--accent);
+      }
+
+      .save-option.is-vault .save-option-icon {
+        background: var(--accent);
+        color: var(--on-accent);
+        box-shadow: 0 3px 8px -2px color-mix(in srgb, var(--accent) 55%, transparent);
+      }
+
+      .save-option-text {
+        display: grid;
+        gap: 0.1rem;
+        min-width: 0;
+      }
+
+      .save-option-title {
+        font-size: 1rem;
+        font-weight: 700;
+        line-height: 1.25;
+      }
+
+      .save-option-hint {
+        font-size: 0.875rem;
+        line-height: 1.3;
+        color: var(--text-secondary);
+      }
+
+      @media (hover: hover) {
+        .save-option:hover {
+          background: var(--menu-well);
+        }
+      }
+
       /* ── Shared field pieces ── */
 
       /* A two-way choice with a sliding thumb (author, time mode, paste target, a path's
@@ -6583,6 +6769,14 @@
         margin-bottom: 0.5rem;
       }
 
+      /* Under a later section's heading: carry its step numbers on, or start them again. */
+      .method-numbering {
+        min-width: 0;
+        margin: 0 0 1rem;
+        padding: 0;
+        border: 0;
+      }
+
       .method-section-title {
         flex: 1;
         min-width: 0;
@@ -6736,8 +6930,10 @@
       }
 
       /* Up and down: raised keys in a small tray (the portion scaler's), which springs out of the
-         number along the tile's top edge while the step is tapped, and tucks back into it after. */
+         number along the tile's top edge while the step is tapped, and tucks back into it after.
+         It sits centred on the tile's edge, a little above the tab, so it clears the text field. */
       .step-move-pill {
+        translate: 0 -0.5rem;
         display: flex;
         gap: 0.25rem;
         padding: 2px;
@@ -6789,7 +6985,7 @@
       .step-move-button::before {
         content: '';
         position: absolute;
-        inset: -7px -3px;
+        inset: -9px -3px -5px;
       }
 
       .step-move-button:active:not(:disabled) {
@@ -7213,6 +7409,21 @@
         display: flex;
         flex-direction: column;
         gap: 1.375rem;
+        transition:
+          opacity 0.22s ease,
+          transform 0.3s cubic-bezier(0.4, 0, 1, 1);
+      }
+
+      /* Choosing a path (ForkStep): the one being left fades away towards the side it's leaving
+         while the branch draws down to the switch. The chosen one then arrives as the switch
+         floods, and the branch under it lights once it has settled. */
+      .fork-step-stage.is-leaving > .fork-step-path {
+        opacity: 0;
+        transform: translateX(calc(var(--leave-x, 1) * 1.25rem));
+      }
+
+      .fork-step .fork-lines.is-join .fork-line-lit.is-on {
+        animation-delay: 0.76s;
       }
 
       /* In the editor, the fork's step loses its own card: the lines and switch sit on the page,
@@ -7276,6 +7487,12 @@
 
       .fork-path > .form-label.is-small {
         margin-top: 0.75rem;
+      }
+
+      /* Each path's own tip and photo, under what it says to do. */
+      .fork-path > .step-tip-field,
+      .fork-path > .step-photo-field {
+        margin-top: 0.6rem;
       }
 
       .fork-path > .form-label.is-small:first-child {
@@ -7555,6 +7772,12 @@
         gap: 0.75rem;
       }
 
+      /* Three choices (e.g. Save draft, Discard, Keep editing) stack, the main one on top. */
+      .editor-sheet-actions.is-stacked {
+        grid-template-columns: 1fr;
+        gap: 0.6rem;
+      }
+
       .editor-sheet-actions > .btn {
         min-height: 48px;
         border-radius: var(--radius-full);
@@ -7645,16 +7868,20 @@
         .editor-sheet-layer.is-closing .editor-sheet,
         .version-menu,
         .version-menu-layer.is-closing .version-menu,
+        .save-menu,
+        .save-menu-layer.is-closing .save-menu,
         .category-list,
         .category-list-layer.is-closing .category-list {
           animation: fk-fade-in 0.15s ease both;
         }
         .editor-sheet-layer.is-closing .editor-sheet,
         .version-menu-layer.is-closing .version-menu,
+        .save-menu-layer.is-closing .save-menu,
         .category-list-layer.is-closing .category-list {
           animation-name: fk-exit-fade;
         }
         .editor-rise,
+        .save-option,
         .editor-bar-status,
         .editor-preview-back,
         .editor-preview-back .fab-back-arrow,
@@ -7680,6 +7907,7 @@
         .choice-pill-thumb,
         .fork-line-lit,
         .fork-switch-option::before,
+        .fork-step-path,
         .reveal,
         .reveal-inner,
         .ingredient-row::before,

@@ -116,7 +116,8 @@ export interface UiTranslations {
   nextChange: string;
   keepCurrent: string;
   restoredChip: string;
-  changeNoteLabel: string;
+  /** Over the edit's note, naming the version it changes. */
+  changeNoteLabel: (version: number) => string;
   restoredNote: (version: number) => string;
   // Deleting and restoring recipes
   deleteRecipe: string;
@@ -213,6 +214,10 @@ export interface UiTranslations {
   sectionName: string;
   done: string;
   removeSection: string;
+  /** A later section's choice: its step numbers carry on, or start again. */
+  stepNumbering: string;
+  numberingCarryOn: string;
+  numberingRestart: (first: number) => string;
   sectionRemoved: string;
   addSection: string;
   addSectionHint: string;
@@ -262,6 +267,33 @@ export interface UiTranslations {
   discardBody: string;
   discard: string;
   keepEditing: string;
+  /** Saving: the Save pill's two choices. */
+  saveChoices: string;
+  saveToVault: string;
+  /** Under Save to Vault: who sees it, and as which version (null for a new recipe). */
+  saveToVaultHint: (version: number | null) => string;
+  saveDraft: (version: number) => string;
+  saveDraftHint: string;
+  /** A draft, named by the version it becomes. */
+  draftLabel: (version: number) => string;
+  draftSavedToast: (version: number) => string;
+  draftSaveFailed: string;
+  /** The recipe page's way back into its draft. */
+  continueDraft: string;
+  continueDraftLabel: (version: number) => string;
+  yourDrafts: string;
+  /** Over the vault's recipes, when drafts are shown above them. */
+  familyRecipes: string;
+  draftRibbon: string;
+  untitledDraft: string;
+  /** A draft in the vault, for screen readers. */
+  draftNamed: (name: string) => string;
+  /** Leaving the editor with changes. */
+  leaveTitle: string;
+  leaveBody: string;
+  discardDraft: string;
+  discardDraftBody: string;
+  draftDiscarded: string;
   titleRequired: string;
   authorRequired: string;
   categoryRequired: string;
@@ -398,8 +430,8 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     yieldHeader: 'Yield',
     heroPhoto: 'Photo',
     editRecipe: 'Edit Recipe',
-    draftRestored: 'Draft restored',
-    confirmClearDraft: 'Start over? The saved draft will be cleared.',
+    draftRestored: 'Unsaved work restored',
+    confirmClearDraft: 'Start over? What you wrote here will be cleared.',
     addStep: 'Add step',
     removeStep: 'Remove step',
     takePhoto: 'Take photo',
@@ -425,7 +457,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     nextChange: 'Next change',
     keepCurrent: 'Keep current',
     restoredChip: 'Restored',
-    changeNoteLabel: 'What changed?',
+    changeNoteLabel: (version: number) => `What changed since v${version}?`,
     restoredNote: (version: number) => `Restored version ${version}`,
     deleteRecipe: 'Remove recipe',
     confirmDeleteRecipe: (name: string) =>
@@ -475,7 +507,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     editorTitleNew: 'New Recipe',
     editorTitleEdit: 'Edit Recipe',
     save: 'Save',
-    draftSaved: 'Draft saved',
+    draftSaved: 'Kept on this phone',
     paste: 'Paste',
     preview: 'Preview',
     backToEditing: 'Back to editing',
@@ -514,6 +546,9 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     sectionName: 'Section name',
     done: 'Done',
     removeSection: 'Remove section',
+    stepNumbering: 'Step numbers',
+    numberingCarryOn: 'Carry on',
+    numberingRestart: (first: number) => `Start at ${first}`,
     sectionRemoved: 'Section removed',
     addSection: 'Add a section',
     addSectionHint: 'Baking, icing, filling…',
@@ -560,6 +595,27 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     discardBody: "Closing now loses what you've changed since you opened the recipe.",
     discard: 'Discard',
     keepEditing: 'Keep editing',
+    saveChoices: 'Save',
+    saveToVault: 'Save to Vault',
+    saveToVaultHint: (version: number | null) =>
+      version === null ? 'The family can see it' : `The family sees v${version}`,
+    saveDraft: (version: number) => `Save draft v${version}`,
+    saveDraftHint: 'Only you can see it. Finish it later.',
+    draftLabel: (version: number) => `Draft v${version}`,
+    draftSavedToast: (version: number) => `Draft v${version} saved`,
+    draftSaveFailed: "Couldn't save the draft",
+    continueDraft: 'Continue',
+    continueDraftLabel: (version: number) => `Continue draft v${version}`,
+    yourDrafts: 'Your drafts',
+    familyRecipes: 'Family recipes',
+    draftRibbon: 'Draft',
+    untitledDraft: 'Untitled recipe',
+    draftNamed: (name: string) => `Draft: ${name}`,
+    leaveTitle: 'Keep your changes?',
+    leaveBody: 'Save them as a draft to finish later, or let them go.',
+    discardDraft: 'Discard draft',
+    discardDraftBody: 'This draft will be deleted for good. What the family sees stays as it is.',
+    draftDiscarded: 'Draft discarded',
     titleRequired: 'Add a name to save the recipe',
     authorRequired: 'Add whose recipe it is',
     categoryRequired: 'Choose a category',
@@ -700,8 +756,8 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     yieldHeader: 'Wydajność',
     heroPhoto: 'Zdjęcie',
     editRecipe: 'Edytuj Przepis',
-    draftRestored: 'Przywrócono szkic',
-    confirmClearDraft: 'Zacząć od nowa? Zapisany szkic zostanie usunięty.',
+    draftRestored: 'Przywrócono niezapisaną pracę',
+    confirmClearDraft: 'Zacząć od nowa? To, co tu napisano, zostanie usunięte.',
     addStep: 'Dodaj krok',
     removeStep: 'Usuń krok',
     takePhoto: 'Zrób zdjęcie',
@@ -728,7 +784,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     nextChange: 'Następna zmiana',
     keepCurrent: 'Zostaw aktualną',
     restoredChip: 'Przywrócone',
-    changeNoteLabel: 'Co się zmieniło?',
+    changeNoteLabel: (version: number) => `Co się zmieniło od wersji ${version}?`,
     restoredNote: (version: number) => `Przywrócono wersję ${version}`,
     deleteRecipe: 'Usuń przepis',
     confirmDeleteRecipe: (name: string) =>
@@ -779,7 +835,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     editorTitleNew: 'Nowy Przepis',
     editorTitleEdit: 'Edytuj Przepis',
     save: 'Zapisz',
-    draftSaved: 'Szkic zapisany',
+    draftSaved: 'Zachowano na tym telefonie',
     paste: 'Wklej',
     preview: 'Podgląd',
     backToEditing: 'Wróć do edycji',
@@ -818,6 +874,9 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     sectionName: 'Nazwa sekcji',
     done: 'Gotowe',
     removeSection: 'Usuń sekcję',
+    stepNumbering: 'Numeracja kroków',
+    numberingCarryOn: 'Kontynuuj',
+    numberingRestart: (first: number) => `Zacznij od ${first}`,
     sectionRemoved: 'Usunięto sekcję',
     addSection: 'Dodaj sekcję',
     addSectionHint: 'Pieczenie, lukier, nadzienie…',
@@ -865,6 +924,28 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     discardBody: 'Jeśli zamkniesz teraz, stracisz zmiany wprowadzone od otwarcia przepisu.',
     discard: 'Odrzuć',
     keepEditing: 'Edytuj dalej',
+    saveChoices: 'Zapisz',
+    saveToVault: 'Zapisz w skarbcu',
+    saveToVaultHint: (version: number | null) =>
+      version === null ? 'Rodzina go zobaczy' : `Rodzina zobaczy wersję ${version}`,
+    saveDraft: (version: number) => `Zapisz szkic wersji ${version}`,
+    saveDraftHint: 'Widzisz go tylko Ty. Dokończysz go później.',
+    draftLabel: (version: number) => `Szkic wersji ${version}`,
+    draftSavedToast: (version: number) => `Zapisano szkic wersji ${version}`,
+    draftSaveFailed: 'Nie udało się zapisać szkicu',
+    continueDraft: 'Kontynuuj',
+    continueDraftLabel: (version: number) => `Kontynuuj szkic wersji ${version}`,
+    yourDrafts: 'Twoje szkice',
+    familyRecipes: 'Przepisy rodziny',
+    draftRibbon: 'Szkic',
+    untitledDraft: 'Przepis bez nazwy',
+    draftNamed: (name: string) => `Szkic: ${name}`,
+    leaveTitle: 'Zachować zmiany?',
+    leaveBody: 'Zapisz je jako szkic, by dokończyć później, albo je odrzuć.',
+    discardDraft: 'Odrzuć szkic',
+    discardDraftBody:
+      'Ten szkic zostanie usunięty na zawsze. To, co widzi rodzina, zostanie bez zmian.',
+    draftDiscarded: 'Szkic odrzucony',
     titleRequired: 'Dodaj nazwę, aby zapisać przepis',
     authorRequired: 'Wpisz, czyj to przepis',
     categoryRequired: 'Wybierz kategorię',

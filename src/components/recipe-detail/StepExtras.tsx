@@ -1,10 +1,11 @@
 import React from 'react';
-import { Step } from '../../types/recipe';
+import { PathExtras } from '../../utils/recipeMethod';
 import { capitalizeFirstLetter } from '../../utils/timeEstimator';
 import { UiTranslations } from '../../i18n/translations';
 
 interface StepExtrasProps {
-  step: Step;
+  /** The step's tip and photo, or on a fork the chosen path's. */
+  step: PathExtras;
   /** The step's place in the recipe, which the photo viewer is opened with. */
   index: number;
   /** Whether this step's photo is the one the viewer grows from and shrinks back into. */

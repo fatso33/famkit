@@ -11,9 +11,10 @@ const GLIDE = 'cubic-bezier(0.32, 0.72, 0, 1)';
 export const PanelSwap: React.FC<{
   index: number;
   className?: string;
+  style?: React.CSSProperties;
   stagger?: boolean;
   children: React.ReactNode;
-}> = ({ index, className = '', stagger = false, children }) => {
+}> = ({ index, className = '', style, stagger = false, children }) => {
   const ref = useRef<HTMLDivElement>(null);
   // The height as last drawn, kept current as the panel's text grows or shrinks.
   const last = useRef<{ index: number; height: number } | null>(null);
@@ -48,7 +49,7 @@ export const PanelSwap: React.FC<{
   });
 
   return (
-    <div ref={ref} className={className}>
+    <div ref={ref} className={className} style={style}>
       {children}
     </div>
   );

@@ -186,22 +186,25 @@ describe('back gesture', () => {
     await historyAt(0);
   });
 
-  it('keeps the recipe editor open, with its changes, when going back', async () => {
+  it('asks before going back from an edit with changes, keeping them meanwhile', async () => {
     render(<App />);
     openBabka();
     openMenuItem(t.editRecipe);
     fireEvent.change(within(editor()!).getByLabelText(t.recipeTitle), {
       target: { value: 'Babka Wielkanocna' },
     });
+    await settle();
 
+    // Nobody signed in, so no drafts: it asks before the changes go.
     await swipeBack();
     await settle();
-    expect(editor()).toBeInTheDocument();
+    expect(screen.getByRole('alertdialog', { name: t.discardTitle })).toBeInTheDocument();
     expect(screen.getByLabelText(t.recipeTitle)).toHaveValue('Babka Wielkanocna');
 
-    // And again: every swipe is absorbed while the draft is open.
+    // Back again answers "keep editing".
     await swipeBack();
     await settle();
+    expect(screen.queryByRole('alertdialog', { name: t.discardTitle })).toBeNull();
     expect(screen.getByLabelText(t.recipeTitle)).toHaveValue('Babka Wielkanocna');
 
     // Closing the editor (its changes discarded) hands the gesture back to the recipe page.
@@ -216,13 +219,19 @@ describe('back gesture', () => {
     expect(heading()).toHaveTextContent(t.vaultTitle);
   });
 
-  it('keeps a new recipe draft open when going back from the vault', async () => {
+  it('closes a new recipe on back, keeping what was typed on this phone', async () => {
     render(<App />);
     openMenuItem(t.addRecipe);
-    expect(editor()).toBeInTheDocument();
+    fireEvent.change(within(editor()!).getByLabelText(t.recipeTitle), {
+      target: { value: 'Pierniczki' },
+    });
+    await settle();
+    await historyAt(1);
 
     await swipeBack();
     await settle();
-    expect(editor()).toBeInTheDocument();
+    expect(editor()).toBeNull();
+    expect(localStorage.getItem('family_kitchen_recipe_draft')).toContain('Pierniczki');
+    await historyAt(0);
   });
 });

@@ -16,7 +16,10 @@ interface RecipeRowProps {
   isMorphTarget?: boolean;
   /** Its place in the vault's entrance, when the page is arriving. */
   enterIndex?: number;
-  onSelect: (id: string) => void;
+  /** A draft: marked and named as one. */
+  draft?: boolean;
+  /** Given the row, which a page can open out of. */
+  onSelect: (id: string, from: HTMLElement) => void;
   t: UiTranslations;
 }
 
@@ -26,6 +29,7 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
   shown,
   isMorphTarget = false,
   enterIndex,
+  draft = false,
   onSelect,
   t,
 }) => {
@@ -33,14 +37,14 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
   return (
     <button
       type="button"
-      className={`vault-row vault-item${isMorphTarget ? ' is-morph-target' : ''}`}
+      className={`vault-row vault-item${isMorphTarget ? ' is-morph-target' : ''}${draft ? ' is-draft' : ''}`}
       data-vault-item={vaultItemKey(recipe.id)}
       style={
         enterIndex === undefined ? undefined : ({ '--enter-i': enterIndex } as React.CSSProperties)
       }
       // Named like a card: by the recipe alone.
-      aria-label={shown.name}
-      onClick={() => onSelect(recipe.id)}
+      aria-label={draft ? t.draftNamed(shown.name) : shown.name}
+      onClick={(e) => onSelect(recipe.id, e.currentTarget)}
     >
       <span className="vault-row-photo" data-vault-photo="">
         {photo ? (
@@ -61,6 +65,11 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
           {shown.name}
         </span>
         <span className="vault-row-meta">
+          {draft && (
+            <span className="vault-draft-ribbon is-inline" aria-hidden="true">
+              {t.draftRibbon}
+            </span>
+          )}
           <span className="vault-row-cook">{shown.author}</span>
           <span aria-hidden="true">·</span>
           <span className="vault-row-time">{t.totalTime(recipeTime(shown).minutes)}</span>

@@ -188,6 +188,36 @@ export const MethodEditor: React.FC<MethodEditorProps> = ({
               )}
             </header>
 
+            {/* A later section's numbers carry on from the one before, or start again. */}
+            {s > 0 && (
+              <fieldset className="method-numbering">
+                <legend className="form-label is-small">{t.stepNumbering}</legend>
+                <div className="choice-pill" data-value={section.restart ? 'other' : 'first'}>
+                  <span className="choice-pill-thumb" aria-hidden="true" />
+                  {[false, true].map((restart) => (
+                    <label
+                      key={String(restart)}
+                      className={section.restart === restart ? 'is-active' : ''}
+                    >
+                      <input
+                        type="radio"
+                        name={`${section.id}-numbering`}
+                        checked={section.restart === restart}
+                        onChange={() =>
+                          onChange((current) =>
+                            current.map((sec) =>
+                              sec.id === section.id ? { ...sec, restart } : sec,
+                            ),
+                          )
+                        }
+                      />
+                      {restart ? t.numberingRestart(numberFrom) : t.numberingCarryOn}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+
             <ol className="method-steps">
               {section.steps.map((step, k) => {
                 const flat = allSteps.indexOf(step);

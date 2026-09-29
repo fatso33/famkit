@@ -2,6 +2,7 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { History } from 'lucide-react';
 import { Language, VersionSummary } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
+import { useBackStep } from '../../hooks/useBackStep';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { useExitAnimation } from '../../hooks/useExitAnimation';
 import { formatVersionDate } from '../../utils/recipeVersions';
@@ -34,6 +35,7 @@ export const VersionMenu: React.FC<VersionMenuProps> = ({
 }) => {
   const { ref: layerRef, isClosing, requestClose } = useExitAnimation<HTMLDivElement>(onClose);
   const backdropProps = useDialogDismiss(requestClose);
+  useBackStep(true, () => requestClose());
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);

@@ -56,6 +56,29 @@ export function collapseAway(el: HTMLElement | null): Promise<void> {
 }
 
 /**
+ * Keeps what's below `above` still on screen while `above` changes height (e.g. its tools fold
+ * away as a step further down is tapped): each frame, the scroller takes up the difference. Call
+ * it before the change. The browser's own scroll anchoring is off meanwhile, so the two don't add
+ * up. Only the height counts, so the browser scrolling a focused field into view isn't undone.
+ */
+export function keepStillBelow(scroller: HTMLElement, above: HTMLElement, ms = 520) {
+  if (typeof requestAnimationFrame === 'undefined') return;
+  let last = above.getBoundingClientRect().height;
+  const until = performance.now() + ms;
+  scroller.style.overflowAnchor = 'none';
+  const tick = () => {
+    const height = above.isConnected ? above.getBoundingClientRect().height : last;
+    if (height !== last) {
+      scroller.scrollTop -= last - height;
+      last = height;
+    }
+    if (performance.now() < until) requestAnimationFrame(tick);
+    else scroller.style.removeProperty('overflow-anchor');
+  };
+  requestAnimationFrame(tick);
+}
+
+/**
  * Motion for an editable list whose items carry data-motion-id: reordered items glide from
  * where they were, and added ones grow in. Call beforeMove() just before a reorder, and
  * willAdd(id) when adding.

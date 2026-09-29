@@ -1,4 +1,4 @@
-import { Recipe } from '../types/recipe';
+import { Recipe, Step } from '../types/recipe';
 
 /**
  * How big this device's quick-start copy of the vault may get, in characters. Browsers let a
@@ -14,11 +14,16 @@ export const DEVICE_COPY_BUDGET = 2_500_000;
 export function leavePhotosOut(recipe: Recipe): Recipe {
   const steps = recipe.steps ?? [];
   const hero = Boolean(recipe.heroImage);
-  if (!hero && !steps.some((st) => st.imageSrc)) return recipe;
+  const hasPhoto = (st: Step) => st.imageSrc || st.fork?.paths.some((path) => path.imageSrc);
+  if (!hero && !steps.some(hasPhoto)) return recipe;
   return {
     ...recipe,
     heroImage: '',
-    steps: steps.map(({ imageSrc: _photo, ...st }) => st),
+    steps: steps.map(({ imageSrc: _photo, ...st }) =>
+      st.fork
+        ? { ...st, fork: { paths: st.fork.paths.map(({ imageSrc: _p, ...path }) => path) } }
+        : st,
+    ),
     photosOmitted: { hero },
   };
 }

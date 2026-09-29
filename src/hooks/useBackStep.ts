@@ -9,7 +9,7 @@ import { useEffect, useRef, type RefObject } from 'react';
  */
 
 type OnBack = (animated: boolean) => void;
-// A step without onBack blocks the gesture, e.g. so a stray swipe can't discard a draft.
+// A step without onBack blocks the gesture.
 interface Step {
   onBack: RefObject<OnBack | null>;
 }
@@ -91,12 +91,10 @@ function useStep(active: boolean, onBack: OnBack | null) {
   }, [active]);
 }
 
-/** While active, the back gesture calls onBack, which must close this step. */
+/**
+ * While active, the back gesture calls onBack, which must close this step, or open another over
+ * it (e.g. a sheet asking first) that takes a step of its own.
+ */
 export function useBackStep(active: boolean, onBack: OnBack) {
   useStep(active, onBack);
-}
-
-/** While mounted, the back gesture does nothing, so a stray swipe can't discard unsaved work. */
-export function useBlockBack() {
-  useStep(true, null);
 }

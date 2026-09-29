@@ -60,5 +60,11 @@ service cloud.firestore {
         allow update, delete: if false;
       }
     }
+
+    // Drafts: recipes and edits a family member is still writing, kept under their own email
+    // (in lowercase). Only they can read, save or discard them.
+    match /drafts/{email}/recipes/{draftId} {
+      allow read, write: if isFamily() && myEmail() == email;
+    }
   }
 }

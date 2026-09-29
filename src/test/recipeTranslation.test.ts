@@ -246,6 +246,35 @@ describe('resolveEdit', () => {
     expect(needsTranslation(saved)).toBe(false);
   });
 
+  it("keeps a new photo on a fork's other path when only photos changed", () => {
+    const forked: Recipe = {
+      ...recipe,
+      steps: [
+        {
+          num: 1,
+          text: 'Bake.',
+          fork: {
+            paths: [
+              { label: 'Oven', text: 'Bake.' },
+              { label: 'Pan', text: 'Fry.', hasImage: true, imageSrc: 'old.jpg' },
+              { label: 'Grill', text: 'Grill.' },
+            ],
+          },
+        },
+      ],
+    };
+    const photos = structuredClone(forked);
+    photos.steps[0].fork!.paths[1].imageSrc = 'new.jpg';
+    photos.steps[0].fork!.paths[2] = { label: 'Grill', text: 'Grill.', imageSrc: 'grill.jpg' };
+    const saved = resolveEdit(forked, photos, 'en', false);
+    expect(saved.steps[0].fork!.paths.map((p) => p.imageSrc)).toEqual([
+      undefined,
+      'new.jpg',
+      'grill.jpg',
+    ]);
+    expect(saved.steps[0].imageSrc).toBeUndefined();
+  });
+
   it('keeps the owner and creation date when the text is edited', () => {
     const owned = { ...recipe, ownerEmail: 'ola@example.com', ownerName: 'Ola', createdAt: 5 };
     // The form sends no record metadata, only what it edits.

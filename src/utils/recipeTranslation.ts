@@ -82,6 +82,9 @@ export function translatableContent(recipe: Recipe): LocalizedRecipeContent {
           label: path.label,
           text: path.text,
           steps: path.steps,
+          // Newer fields last, and missing on older forks, so their fingerprint doesn't change.
+          notes: path.notes,
+          imageCaption: path.imageCaption,
         })),
       },
     })),
@@ -103,6 +106,9 @@ function overlayFork(source: StepFork, translated?: StepFork): StepFork {
         label: t?.label ?? path.label,
         text: t?.text ?? path.text,
         steps: overlayList(path.steps, t?.steps),
+        notes: path.notes === undefined ? undefined : (t?.notes ?? path.notes),
+        imageCaption:
+          path.imageCaption === undefined ? undefined : (t?.imageCaption ?? path.imageCaption),
       };
     }),
   };
@@ -277,6 +283,7 @@ export function overlayTranslation(recipe: Recipe, tr: LocalizedRecipeContent): 
           hasImage: src.hasImage,
           imageSrc: src.imageSrc,
           plain: src.plain,
+          restart: src.restart,
           section: src.section === undefined ? undefined : (t.section ?? src.section),
           substeps: overlayList(src.substeps, t.substeps),
           fork: src.fork && overlayFork(src.fork, t.fork),
@@ -461,11 +468,26 @@ export function resolveEdit(
       category: edited.category,
       manualMinutes: edited.manualMinutes,
       heroImage: edited.heroImage,
-      steps: (original.steps || []).map((st, i) => ({
-        ...st,
-        hasImage: edited.steps[i]?.hasImage ?? st.hasImage,
-        imageSrc: edited.steps[i] ? edited.steps[i].imageSrc : st.imageSrc,
-      })),
+      steps: (original.steps || []).map((st, i) => {
+        const photo = edited.steps[i];
+        const step: Step = {
+          ...st,
+          hasImage: photo?.hasImage ?? st.hasImage,
+          imageSrc: photo ? photo.imageSrc : st.imageSrc,
+        };
+        // A fork's other paths have photos of their own.
+        if (st.fork) {
+          step.fork = {
+            paths: st.fork.paths.map((path, k) => {
+              const other = photo?.fork?.paths[k];
+              if (k === 0 || !photo) return path;
+              const { hasImage: _h, imageSrc: _s, ...rest } = path;
+              return other?.imageSrc ? { ...rest, hasImage: true, imageSrc: other.imageSrc } : rest;
+            }),
+          };
+        }
+        return step;
+      }),
     };
   }
   const shownLanguage = editingLanguage(original, viewerLanguage);

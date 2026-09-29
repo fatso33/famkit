@@ -26,7 +26,7 @@ interface ForkEditorProps {
   join: boolean;
   /** The step's number, its × and its move keys. */
   rail: React.ReactNode;
-  /** The step's tip and photo fields. */
+  /** The open path's tip and photo fields, which swap in with it. */
   extras: React.ReactNode;
   /** The step's tool strip. */
   tools: React.ReactNode;
@@ -148,9 +148,9 @@ export const ForkEditor: React.FC<ForkEditorProps> = ({
                   </div>
                 </fieldset>
               )}
+              {extras}
             </div>
           </PanelSwap>
-          {extras}
         </div>
 
         <PanelSwap index={active} className="fork-steps-stage">

@@ -127,6 +127,49 @@ describe('only what changed is translated again', () => {
     expect(needsTranslation(rebuilt)).toBe(false);
   });
 
+  it("translates a fork path's own tip and caption, and keeps its photo and a restart", () => {
+    const recipe: Recipe = {
+      ...WANDAS_CHEESE_BREAD,
+      laminationDirective: undefined,
+      bakingOptions: undefined,
+      translations: undefined,
+      steps: [
+        { num: 1, text: 'Mix.' },
+        {
+          num: 1,
+          text: 'Bake.',
+          section: 'Baking',
+          restart: true,
+          fork: {
+            paths: [
+              { label: 'Oven', text: 'Bake.' },
+              {
+                label: 'Pan',
+                text: 'Fry.',
+                notes: 'Low heat.',
+                hasImage: true,
+                imageSrc: 'data:pan',
+                imageCaption: 'Golden',
+              },
+            ],
+          },
+        },
+      ],
+    };
+    const pieces = pendingPieces(recipe);
+    expect(pieces.map((p) => p.key)).toEqual(
+      expect.arrayContaining(['steps:1:fork:1:notes', 'steps:1:fork:1:imageCaption']),
+    );
+    const done = applyTranslation(recipe, answer(pieces), sourceHash(recipe));
+    const pl = localizeRecipe(done, 'pl').steps[1];
+    expect(pl.restart).toBe(true);
+    expect(pl.fork!.paths[1]).toMatchObject({
+      notes: 'PL Low heat.',
+      imageCaption: 'PL Golden',
+      imageSrc: 'data:pan',
+    });
+  });
+
   it('stores nothing undefined (Firestore rejects it)', () => {
     const tr = translated.translations!.pl!;
     expect(JSON.parse(JSON.stringify(tr))).toEqual(tr);

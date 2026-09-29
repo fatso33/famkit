@@ -4,6 +4,7 @@ import {
   firstStepNumber,
   methodSections,
   numberSteps,
+  pathExtras,
   pathStepCount,
   pathSteps,
 } from '../utils/recipeMethod';
@@ -69,6 +70,19 @@ describe('numberSteps', () => {
     expect(numberSteps([step('a', { fork: shared }), step('b')], 1, { 0: 1 })).toEqual([1, 4]);
   });
 
+  it('starts a section that restarts its numbers again from the first number', () => {
+    const steps = [
+      step('Mix.'),
+      step('Shape.'),
+      step('Heat the oven.', { section: 'Baking', restart: true }),
+      step('Bake.'),
+    ];
+    expect(numberSteps(steps, 1)).toEqual([1, 2, 1, 2]);
+    // A recipe numbered from 0 starts again at 0; unnumbered text first still restarts the count.
+    const fromZero = [step('Divide.'), step('Note.', { plain: true, restart: true }), step('Mix.')];
+    expect(numberSteps(fromZero, 0)).toEqual([0, null, 0]);
+  });
+
   it('starts from 0 for a recipe numbered from 0', () => {
     const steps = [step('Divide.', { num: 0 }), step('Mix.', { num: 1 })];
     expect(firstStepNumber(steps)).toBe(0);
@@ -85,6 +99,29 @@ describe('fork paths', () => {
     expect(chosenPath(bake, 1)).toBe(1);
     expect(chosenPath(bake, 2)).toBe(0);
     expect(chosenPath(bake, -1)).toBe(0);
+  });
+
+  it("gives each path its own tip and photo, the first path's being the step's", () => {
+    const forked = step('Chill overnight.', {
+      notes: 'Cover it.',
+      hasImage: true,
+      imageSrc: 'data:fridge',
+      fork: {
+        paths: [bake.paths[0], { ...bake.paths[1], imageSrc: 'data:oven', hasImage: true }],
+      },
+    });
+    expect(pathExtras(forked, 0)).toEqual({
+      notes: 'Cover it.',
+      hasImage: true,
+      imageSrc: 'data:fridge',
+      imageCaption: undefined,
+    });
+    expect(pathExtras(forked, 1)).toEqual({
+      notes: undefined,
+      hasImage: true,
+      imageSrc: 'data:oven',
+      imageCaption: undefined,
+    });
   });
 
   it("lists a path's own steps, or the first path's when it shares them", () => {

@@ -78,6 +78,6 @@ describe('RecipeCard keyboard access', () => {
     expect(card).toHaveAttribute('tabindex', '0');
     fireEvent.keyDown(card, { key });
 
-    expect(onSelect).toHaveBeenCalledWith('custom-1');
+    expect(onSelect).toHaveBeenCalledWith('custom-1', expect.any(HTMLElement));
   });
 });

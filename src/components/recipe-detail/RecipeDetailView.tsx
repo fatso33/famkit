@@ -1,4 +1,5 @@
 import React, { useImperativeHandle, useRef, useState, type Ref } from 'react';
+import { ChevronRight, FilePen } from 'lucide-react';
 import { flushSync } from 'react-dom';
 import { Recipe, Language } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
@@ -34,6 +35,10 @@ interface RecipeDetailViewProps {
   onUnrolled: () => void;
   /** A step photo opened full screen, or closed: the back button takes the menu button's place. */
   onPhotoOpenChange: (open: boolean) => void;
+  /** The version the owner's draft of it becomes, when they have one. */
+  draftVersion?: number;
+  /** Opens the editor on that draft, out of the chip that was tapped. */
+  onContinueDraft?: (from: Element) => void;
   ref?: Ref<RecipePageHandle>;
   t: UiTranslations;
 }
@@ -43,6 +48,8 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   language,
   onUnrolled,
   onPhotoOpenChange,
+  draftVersion,
+  onContinueDraft,
   ref,
   t,
 }) => {
@@ -162,6 +169,22 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                 ⏱️ <NumberRoll value={timeText} />
               </span>
             </div>
+            {/* The owner's unfinished edit, ready to carry on with. */}
+            {draftVersion !== undefined && onContinueDraft && (
+              <button
+                type="button"
+                className="detail-draft-chip"
+                onClick={(e) => onContinueDraft(e.currentTarget)}
+              >
+                <FilePen size="1.05em" aria-hidden="true" />
+                <span>{t.draftLabel(draftVersion)}</span>
+                <span className="detail-draft-chip-dot" aria-hidden="true">
+                  ·
+                </span>
+                <span className="detail-draft-chip-action">{t.continueDraft}</span>
+                <ChevronRight size="1em" aria-hidden="true" />
+              </button>
+            )}
           </header>
 
           {/* Two Column Layout */}

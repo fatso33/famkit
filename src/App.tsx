@@ -10,6 +10,7 @@ import { useToast } from './hooks/useToast';
 import { useCurrentUser } from './hooks/useCurrentUser';
 import { useBackStep } from './hooks/useBackStep';
 import { useSeenRecipes } from './hooks/useSeenRecipes';
+import { useDrafts } from './hooks/useDrafts';
 import { isFirebaseConfigured } from './services/firebase';
 import { canEditRecipe, isOwnRecipe } from './utils/ownership';
 import { hasLeftOutPhotos } from './utils/deviceCopy';
@@ -21,6 +22,13 @@ import {
 } from './utils/recipeTranslation';
 import { diffRecipes, recipeAtVersion, versionSummaries } from './utils/recipeVersions';
 import { restorableRecipes } from './utils/recipeTrash';
+import {
+  draftFor,
+  draftVersion,
+  editDraftId,
+  newDraftId,
+  newRecipeDrafts,
+} from './utils/recipeDrafts';
 import { NO_FILTER } from './utils/vault';
 import {
   getStoredVaultSort,
@@ -43,12 +51,19 @@ import {
   RecipeDetailView,
   type RecipePageHandle,
 } from './components/recipe-detail/RecipeDetailView';
-import { AddRecipeModal } from './components/recipe-form/AddRecipeModal';
+import { AddRecipeModal, type DraftContent } from './components/recipe-form/AddRecipeModal';
 import { IOSInstallModal } from './components/layout/IOSInstallModal';
 import { MakesView } from './components/makes/MakesView';
 import { SettingsView } from './components/settings/SettingsView';
 import { Toast } from './components/common/Toast';
-import { Recipe, RecipeVersion, VaultFilter, VaultSort, VaultView } from './types/recipe';
+import {
+  Recipe,
+  RecipeDraft,
+  RecipeVersion,
+  VaultFilter,
+  VaultSort,
+  VaultView,
+} from './types/recipe';
 import { AppPage, MainPage } from './types/navigation';
 
 // Page changes jump straight to their scroll position: html's smooth scrolling would
@@ -103,6 +118,14 @@ export default function App() {
     restoreRecipe,
   } = useRecipes(currentUser);
   const localizedRecipe = getLocalizedRecipe(selectedRecipe, language);
+  // The signed-in family member's unfinished recipes and edits, seen only by them.
+  const {
+    drafts,
+    loaded: draftsLoaded,
+    saveDraft,
+    discardDraft,
+    canDraft,
+  } = useDrafts(currentUser);
 
   const [page, setPage] = useState<AppPage>('recipes');
   // The last main page (not Settings), where the back gesture returns to.
@@ -124,6 +147,11 @@ export default function App() {
   const [lastRecipeId, setLastRecipeId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
+  // The draft the editor carried on with, if any: saving it again replaces it.
+  const [editingDraft, setEditingDraft] = useState<RecipeDraft | null>(null);
+  // Whether the drafts were known when the editor opened. An edit opened before then can't tell
+  // if its recipe already has a draft, which saving one would replace unseen.
+  const [draftsKnownAtOpen, setDraftsKnownAtOpen] = useState(false);
   // Where the editor opens out of: the button that asked for it.
   const [editorOrigin, setEditorOrigin] = useState<{ x: number; y: number } | undefined>();
   // An earlier version the author loaded into the editor, to restore on save.
@@ -145,14 +173,16 @@ export default function App() {
     editingRecipe && restoredVersion
       ? recipeAtVersion(editingRecipe, restoredVersion)
       : editingRecipe;
-  // Edit in the viewer's language where possible; see resolveEdit for how saves merge.
-  const editForm = editBase && recipeForEditing(editBase, language);
+  // Edit in the viewer's language where possible (a draft, in the one it was written in); see
+  // resolveEdit for how saves merge.
+  const editLanguage = editingDraft?.language ?? language;
+  const editForm = editBase && recipeForEditing(editBase, editLanguage);
   const restore =
     editingRecipe && editBase && editForm && restoredVersion
       ? {
           version: restoredVersion,
           changes: diffRecipes(
-            localizeRecipe(editingRecipe, editingLanguage(editBase, language)),
+            localizeRecipe(editingRecipe, editingLanguage(editBase, editLanguage)),
             editForm,
             restoredVersion.hasPhotos,
           ),
@@ -162,6 +192,7 @@ export default function App() {
   const closeEditor = () => {
     setIsAddModalOpen(false);
     setEditingRecipe(null);
+    setEditingDraft(null);
     setRestoredVersion(null);
     setEditorReopened(false);
   };
@@ -310,23 +341,55 @@ export default function App() {
       : navigateTo(mainPage, { animated }),
   );
 
-  // The editor opens out of the menu button, where "Add recipe" or "Edit recipe" was chosen.
-  const openEditor = (recipe: Recipe | null) => {
+  // The editor opens out of the button that asked for it: the menu button, where "Add recipe"
+  // or "Edit recipe" was chosen, unless a draft's card or chip was tapped.
+  const openEditor = (recipe: Recipe | null, draft: RecipeDraft | null, from?: Element | null) => {
     setEditingRecipe(recipe);
-    setEditorOrigin(centreOf(document.getElementById('fabMenuBtn')));
+    setEditingDraft(draft);
+    setDraftsKnownAtOpen(draftsLoaded);
+    setEditorOrigin(centreOf(from ?? document.getElementById('fabMenuBtn')));
     setIsAddModalOpen(true);
   };
 
-  const openAddRecipe = () => openEditor(null);
+  const openAddRecipe = () => openEditor(null, null);
 
-  const editRecipe = (recipe: Recipe) => {
+  // Editing a recipe carries on with its draft, if its owner left one.
+  const editRecipe = (recipe: Recipe, from?: Element | null) => {
     // Editing a copy without its photos would save the recipe without them.
     if (hasLeftOutPhotos(recipe)) {
       showToast(t.photosStillLoading, 'info');
       return;
     }
-    openEditor(recipe);
+    openEditor(recipe, draftFor(drafts, recipe.id), from);
   };
+
+  // Keeps what the editor holds as a draft: the open one again, else the recipe's, else a new one.
+  const keepDraft = (content: DraftContent, changeNote: string) => {
+    const recipeId = editingRecipe?.id;
+    const id = editingDraft?.id ?? (recipeId ? editDraftId(recipeId) : newDraftId());
+    const draft: RecipeDraft = {
+      id,
+      recipe: { ...content, id: recipeId ?? id },
+      language: editLanguage,
+      savedAt: Date.now(),
+    };
+    if (editingRecipe && recipeId) {
+      draft.recipeId = recipeId;
+      draft.baseVersion = editingRecipe.version ?? 1;
+    }
+    if (changeNote.trim()) draft.changeNote = changeNote.trim();
+    showToast(t.draftSavedToast(draftVersion(editingRecipe)));
+    saveDraft(draft).catch((err: unknown) => {
+      console.warn('Failed to save a recipe draft:', err);
+      showToast(t.draftSaveFailed, 'error');
+    });
+  };
+
+  // A draft goes once it's discarded, or saved to the vault.
+  const dropDraft = (draft: RecipeDraft) =>
+    discardDraft(draft.id).catch((err: unknown) => {
+      console.warn('Failed to remove a recipe draft:', err);
+    });
 
   const handleShare = async () => {
     if (localizedRecipe && navigator.share) {
@@ -419,6 +482,10 @@ export default function App() {
             ref={recipePage}
             onUnrolled={() => setBackShown(true)}
             onPhotoOpenChange={(open) => setPhotoOpenFor(open ? selectedRecipe.id : null)}
+            draftVersion={
+              draftFor(drafts, selectedRecipe.id) ? draftVersion(selectedRecipe) : undefined
+            }
+            onContinueDraft={(from) => editRecipe(selectedRecipe, from)}
             t={t}
           />
         ) : (
@@ -435,6 +502,8 @@ export default function App() {
             animateIn={vaultEntrance}
             morphRecipeId={lastRecipeId}
             onSelectRecipe={handleSelectRecipe}
+            drafts={newRecipeDrafts(drafts)}
+            onOpenDraft={(draft, from) => openEditor(null, draft, from)}
             banner={
               isBannerVisible && (
                 <InstallCard
@@ -470,8 +539,23 @@ export default function App() {
       {isAddModalOpen && (
         <AddRecipeModal
           // A restored version reopens the form on its content.
-          key={`${editingRecipe?.id ?? 'new'}:${restoredVersion?.id ?? 'current'}`}
+          key={`${editingRecipe?.id ?? editingDraft?.id ?? 'new'}:${restoredVersion?.id ?? 'current'}`}
           initialRecipe={editForm}
+          // An earlier version picked from the list replaces the draft's content in the form.
+          draft={restoredVersion ? null : editingDraft}
+          onSaveDraft={
+            canDraft && (!editingRecipe || editingDraft || draftsKnownAtOpen)
+              ? keepDraft
+              : undefined
+          }
+          onDiscardDraft={
+            editingDraft
+              ? () => {
+                  void dropDraft(editingDraft);
+                  showToast(t.draftDiscarded);
+                }
+              : undefined
+          }
           versions={editingRecipe ? versionSummaries(editingRecipe) : []}
           restore={restore}
           onPickVersion={pickVersion}
@@ -490,12 +574,20 @@ export default function App() {
               const edited: Recipe = { ...recipeData, id: existingId };
               const saved = hasLeftOutPhotos(editBase)
                 ? null
-                : updateRecipe(resolveEdit(editBase, edited, language, textChanged), changeNote);
-              if (!saved) showToast(t.photosStillLoading, 'error');
+                : updateRecipe(
+                    resolveEdit(editBase, edited, editLanguage, textChanged),
+                    changeNote,
+                  );
+              if (!saved) {
+                showToast(t.photosStillLoading, 'error');
+                return;
+              }
             } else {
               // Provisional: translation detects the real language and corrects this.
-              addRecipe({ ...recipeData, sourceLanguage: language });
+              addRecipe({ ...recipeData, sourceLanguage: editLanguage });
             }
+            // In the vault now, so its draft is done with.
+            if (editingDraft) void dropDraft(editingDraft);
             // The editor then closes itself, and closeEditor clears it once it has slid away.
           }}
           t={t}

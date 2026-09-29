@@ -8,6 +8,7 @@ import {
   firstStepNumber,
   methodSections,
   numberSteps,
+  pathExtras,
 } from '../../utils/recipeMethod';
 import { UiTranslations } from '../../i18n/translations';
 import { NumberRoll } from '../common/NumberRoll';
@@ -60,9 +61,13 @@ export const StepsList: React.FC<StepsListProps> = ({
             <div className="steps-stack">
               {section.steps.map((step, k) => {
                 const idx = section.start + k;
+                const forked = step.fork && step.fork.paths.length >= 2;
+                const path = forked ? chosenPath(step.fork!, choices[idx]) : 0;
                 const extras = (
                   <StepExtras
-                    step={step}
+                    // A fork shows the chosen path's own tip and photo.
+                    key={path}
+                    step={forked ? pathExtras(step, path) : step}
                     index={idx}
                     isZoomSource={idx === zoomSource}
                     onZoomImage={onZoomImage}
@@ -81,13 +86,13 @@ export const StepsList: React.FC<StepsListProps> = ({
                   );
                 }
                 const number = numbers[idx] ?? 0;
-                if (step.fork && step.fork.paths.length >= 2) {
+                if (forked) {
                   return (
                     <ForkStep
                       key={idx}
                       step={step as Step & { fork: StepFork }}
                       number={number}
-                      path={chosenPath(step.fork, choices[idx])}
+                      path={path}
                       onChoose={(path) => onChoosePath(idx, path)}
                       join={k < section.steps.length - 1}
                       t={t}

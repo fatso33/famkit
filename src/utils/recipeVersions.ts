@@ -108,11 +108,21 @@ export function recipeAtVersion(current: Recipe, version: RecipeVersion): Recipe
   return {
     ...merged,
     heroImage: current.heroImage,
-    steps: (merged.steps || []).map((st, i) => ({
-      ...st,
-      hasImage: current.steps?.[i]?.hasImage,
-      imageSrc: current.steps?.[i]?.imageSrc,
-    })),
+    steps: (merged.steps || []).map((st, i) => {
+      const now = current.steps?.[i];
+      return {
+        ...st,
+        hasImage: now?.hasImage,
+        imageSrc: now?.imageSrc,
+        fork: st.fork && {
+          paths: st.fork.paths.map((path, k) => ({
+            ...path,
+            hasImage: now?.fork?.paths[k]?.hasImage,
+            imageSrc: now?.fork?.paths[k]?.imageSrc,
+          })),
+        },
+      };
+    }),
   };
 }
 
@@ -155,8 +165,13 @@ const stepShape = (step: Step) =>
       text(p.text),
       Boolean(p.sameAsFirst),
       (p.steps ?? []).map(text),
+      text(p.notes),
+      text(p.imageCaption),
     ]) ?? null,
+    Boolean(step.restart),
   ]);
+
+const pathPhotos = (step?: Step) => (step?.fork?.paths ?? []).map((p) => p.imageSrc ?? '').join();
 
 function stepDiffers(restored: Step, current: Step | undefined, photos: boolean) {
   if (!current) return true;
@@ -165,7 +180,9 @@ function stepDiffers(restored: Step, current: Step | undefined, photos: boolean)
     text(restored.notes) !== text(current.notes) ||
     text(restored.imageCaption) !== text(current.imageCaption) ||
     stepShape(restored) !== stepShape(current) ||
-    (photos && (restored.imageSrc ?? '') !== (current.imageSrc ?? ''))
+    (photos &&
+      ((restored.imageSrc ?? '') !== (current.imageSrc ?? '') ||
+        pathPhotos(restored) !== pathPhotos(current)))
   );
 }
 

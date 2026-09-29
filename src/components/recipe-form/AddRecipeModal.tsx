@@ -1,14 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, RotateCcw, Trash2, TriangleAlert, Lightbulb } from 'lucide-react';
-import { Recipe, Language, VersionSummary } from '../../types/recipe';
+import { Recipe, RecipeDraft, Language, VersionSummary } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
-import { useBlockBack } from '../../hooks/useBackStep';
+import { useBackStep } from '../../hooks/useBackStep';
 import { useExitAnimation } from '../../hooks/useExitAnimation';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
+import { keepStillBelow } from '../../hooks/useListMotion';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import type { ToastAction } from '../../hooks/useToast';
 import { resolveAuthor, shortName } from '../../utils/ownership';
 import { formatVersionDate, RecipeChanges, RestorableField } from '../../utils/recipeVersions';
+import { draftVersion } from '../../utils/recipeDrafts';
 import {
   FormState,
   LegacyLabels,
@@ -35,6 +37,7 @@ import { IngredientEditor } from './IngredientEditor';
 import { MethodEditor } from './MethodEditor';
 import { PasteSheet, PasteTarget } from './PasteSheet';
 import { RecipeTimeField } from './RecipeTimeField';
+import { SaveMenu } from './SaveMenu';
 import { VersionMenu } from './VersionMenu';
 
 const DRAFT_STORAGE_KEY = 'family_kitchen_recipe_draft';
@@ -60,11 +63,14 @@ const legacyLabels = (t: UiTranslations): LegacyLabels => ({
   bakingPaths: t.legacyBakingPaths,
 });
 
-// Initial contents: the recipe being edited, else a saved create-mode draft, else empty.
+// Initial contents: a saved draft, else the recipe being edited, else the unsaved new recipe
+// kept on this phone, else empty.
 function loadInitialForm(
   initialRecipe: Recipe | null | undefined,
+  draft: RecipeDraft | null | undefined,
   t: UiTranslations,
 ): { form: FormState; fromDraft: boolean } {
+  if (draft) return { form: formFromRecipe(draft.recipe, legacyLabels(t)), fromDraft: false };
   if (initialRecipe)
     return { form: formFromRecipe(initialRecipe, legacyLabels(t)), fromDraft: false };
   try {
@@ -78,7 +84,10 @@ function loadInitialForm(
 }
 
 type FieldError = 'title' | 'author' | 'category' | 'ingredients' | 'steps';
-type Sheet = 'paste' | 'discard' | 'delete' | 'startOver' | null;
+type Sheet = 'paste' | 'discard' | 'leave' | 'delete' | 'startOver' | 'discardDraft' | null;
+
+/** A recipe as written so far, which a draft keeps: unchecked, so it may lack a title. */
+export type DraftContent = Omit<Recipe, 'id' | 'createdAt'>;
 
 interface AddRecipeModalProps {
   onClose: () => void;
@@ -97,6 +106,12 @@ interface AddRecipeModalProps {
     changeNote: string,
   ) => void;
   initialRecipe?: Recipe | null;
+  /** A saved draft to carry on with, in place of the recipe as it is (or an empty form). */
+  draft?: RecipeDraft | null;
+  /** Keeps what's written as a draft. Missing when there's nobody signed in to keep it for. */
+  onSaveDraft?: (content: DraftContent, changeNote: string) => void;
+  /** Deletes the open draft (asked to confirm first). */
+  onDiscardDraft?: () => void;
   /** Earlier versions the author can restore (edit mode). */
   versions?: VersionSummary[];
   /** Set when the form holds an earlier version: which one, and what differs from the current. */
@@ -124,6 +139,9 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   origin,
   onSave,
   initialRecipe,
+  draft,
+  onSaveDraft,
+  onDiscardDraft,
   versions = [],
   restore,
   onPickVersion,
@@ -137,24 +155,29 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   // Closing folds the page back into the button it came from; saving lets it sink away.
   const [exit, setExit] = useState<'cancel' | 'save'>('cancel');
   const { ref: layerRef, isClosing, requestClose } = useExitAnimation<HTMLDivElement>(onClose);
-  // A stray back swipe must not close the editor and lose the draft.
-  useBlockBack();
   const currentUser = useCurrentUser();
 
-  const [initial] = useState(() => loadInitialForm(initialRecipe, t));
+  const [initial] = useState(() => loadInitialForm(initialRecipe, draft, t));
+  // What a save to the vault is compared against to tell a text edit: the recipe as the family
+  // sees it, even when the form opened on a draft of it.
+  const [publishedText] = useState(() =>
+    draft && initialRecipe ? formText(formFromRecipe(initialRecipe, legacyLabels(t))) : null,
+  );
   const [form, setForm] = useState<FormState>(initial.form);
   const [hasRestoredDraft, setHasRestoredDraft] = useState(initial.fromDraft);
   // With nobody signed in there is no "me" to credit, so the author is always typed.
   const authorMode = currentUser ? form.authorMode : 'custom';
-  const [changeNote, setChangeNote] = useState(() =>
-    restore ? t.restoredNote(restore.version.version) : '',
-  );
+  const initialNote = restore ? t.restoredNote(restore.version.version) : (draft?.changeNote ?? '');
+  const [changeNote, setChangeNote] = useState(initialNote);
+  // The version a draft of it becomes (the next, or 1 for a new recipe).
+  const nextVersion = draftVersion(initialRecipe);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showErrors, setShowErrors] = useState(false);
   const [sheet, setSheet] = useState<Sheet>(null);
   const [previewing, setPreviewing] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
+  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
   const [barHeight, setBarHeight] = useState(0);
   const [scroll, setScroll] = useState({ tucked: false, scrolled: false });
   const lastScrollTop = useRef(0);
@@ -170,7 +193,11 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   const restoredChip = (field: RestorableField) =>
     changes?.fields.has(field) && <span className="restored-chip">{t.restoredChip}</span>;
 
-  // --- Drafts (create mode) ---------------------------------------------------------------
+  // --- Kept on this phone (create mode) ---------------------------------------------------
+
+  // A new recipe not yet saved anywhere is kept on this phone as it's typed, so closing the app
+  // by accident loses nothing. Not while a saved draft is open: that has its own place.
+  const keptOnPhone = !isEditMode && !draft;
 
   // Draft JSON waiting on the 400ms debounce. Flushed on close so the last keystrokes
   // aren't lost; cleared when the form is emptied, submitted or the draft is discarded.
@@ -181,9 +208,9 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
     },
     [],
   );
-  const draftWorthy = !isEditMode && hasContent({ ...form, authorMode });
+  const draftWorthy = keptOnPhone && hasContent({ ...form, authorMode });
   useEffect(() => {
-    if (isEditMode) return;
+    if (!keptOnPhone) return;
     if (!draftWorthy) {
       pendingDraft.current = null;
       return;
@@ -195,7 +222,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
       pendingDraft.current = null;
     }, 400);
     return () => window.clearTimeout(timeout);
-  }, [isEditMode, draftWorthy, form, authorMode]);
+  }, [keptOnPhone, draftWorthy, form, authorMode]);
 
   // --- Checking and saving ----------------------------------------------------------------
 
@@ -245,32 +272,66 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
       });
       return;
     }
-    const textChanged = formText(initial.form) !== formText(form);
+    const textChanged = (publishedText ?? formText(initial.form)) !== formText(form);
     onSave(recipeFromForm(), initialRecipe?.id, textChanged, changeNote);
-    if (!isEditMode) {
-      pendingDraft.current = null;
-      clearDraft();
-    }
+    forgetKeptCopy();
     // Not reset: the form keeps its content while it sinks away, then unmounts.
     close('save');
   };
 
-  // Closing an edit with changes asks first; a new recipe keeps its draft, so it just closes.
+  // A draft keeps the form as it is, finished or not: no checks.
+  const saveDraft = () => {
+    if (!onSaveDraft) return;
+    const content = formToRecipe(form);
+    onSaveDraft(
+      {
+        ...content,
+        author: resolveAuthor(authorMode, form.author, currentUser),
+        authorMode,
+        baseYield: initialRecipe?.baseYield ?? 1,
+      },
+      changeNote,
+    );
+    forgetKeptCopy();
+    close('save');
+  };
+
+  // Saved somewhere for real (or let go), so the copy kept on this phone goes.
+  const forgetKeptCopy = () => {
+    if (!keptOnPhone) return;
+    pendingDraft.current = null;
+    clearDraft();
+  };
+
+  // With drafts, Save offers its two choices; without, it saves to the vault.
+  const requestSave = () => {
+    if (onSaveDraft) setSaveMenuOpen(!saveMenuOpen);
+    else save();
+  };
+
+  // Changed since it opened: an edit or a draft from how it was, a new recipe from empty.
   const isDirty = () =>
-    JSON.stringify([formToRecipe(form), authorMode, form.author.trim(), changeNote]) !==
-    JSON.stringify([
-      formToRecipe(initial.form),
-      currentUser ? initial.form.authorMode : 'custom',
-      initial.form.author.trim(),
-      restore ? t.restoredNote(restore.version.version) : '',
-    ]);
+    isEditMode || draft
+      ? JSON.stringify([formToRecipe(form), authorMode, form.author.trim(), changeNote]) !==
+        JSON.stringify([
+          formToRecipe(initial.form),
+          currentUser ? initial.form.authorMode : 'custom',
+          initial.form.author.trim(),
+          initialNote,
+        ])
+      : hasContent({ ...form, authorMode });
+  // Closing with changes offers to keep them as a draft. Without drafts, an edit asks before
+  // its changes go, and a new recipe stays kept on this phone.
   const requestCancel = () => {
-    if (isEditMode && isDirty()) setSheet('discard');
+    if (!isDirty()) close('cancel');
+    else if (onSaveDraft) setSheet('leave');
+    else if (isEditMode) setSheet('discard');
     else close('cancel');
   };
-  // Escape closes it like the ✕ (asking first when there are changes); sheets opened over it
-  // take Escape for themselves.
+  // Escape and the phone's back gesture close it like the ✕ (asking first when there are
+  // changes); sheets and menus opened over it take them for themselves.
   useDialogDismiss(requestCancel);
+  useBackStep(true, () => requestCancel());
 
   // --- Pasting ----------------------------------------------------------------------------
 
@@ -316,9 +377,22 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
   // --- The page -------------------------------------------------------------------------
 
-  // The item under a tap or focus: its tools open, and any other's close.
-  const itemAt = (target: EventTarget) =>
-    (target as Element).closest?.('[data-item-id]')?.getAttribute('data-item-id') ?? null;
+  // The item under a tap or focus: its tools open, and any other's close. Only a finished tap or
+  // focus counts, never a touch alone, so a scroll that starts on a step leaves it be.
+  const activate = (target: EventTarget) => {
+    const item = (target as Element).closest?.<HTMLElement>('[data-item-id]') ?? null;
+    const id = item?.dataset.itemId ?? null;
+    if (id === activeId) return;
+    const scroller = bodyRef.current;
+    const open = [...(scroller?.querySelectorAll<HTMLElement>('[data-item-id]') ?? [])].find(
+      (el) => el.dataset.itemId === activeId,
+    );
+    // The open item's tools fold away above what was tapped: keep that under the finger.
+    if (scroller && open && open.compareDocumentPosition(target as Node) & 4) {
+      keepStillBelow(scroller, open);
+    }
+    setActiveId(id);
+  };
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const top = e.currentTarget.scrollTop;
@@ -364,17 +438,41 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
       <EditorBar
         isEditMode={isEditMode}
         version={initialRecipe?.version ?? 1}
+        draftLabel={draft ? t.draftLabel(nextVersion) : undefined}
         hasVersions={Boolean(onPickVersion) && versions.length > 0}
         versionsOpen={versionsOpen}
         onToggleVersions={() => setVersionsOpen(!versionsOpen)}
-        status={hasRestoredDraft ? t.draftRestored : draftWorthy ? t.draftSaved : null}
+        status={
+          draft
+            ? t.draftLabel(nextVersion)
+            : hasRestoredDraft
+              ? t.draftRestored
+              : draftWorthy
+                ? t.draftSaved
+                : null
+        }
         tucked={scroll.tucked}
         scrolled={scroll.scrolled}
         onClose={requestCancel}
-        onSave={save}
-        onPaste={() => setSheet('paste')}
+        onSave={requestSave}
+        saveMenuOpen={saveMenuOpen}
+        saveMenu={
+          onSaveDraft && (
+            <SaveMenu
+              version={isEditMode ? nextVersion : null}
+              draftVersion={nextVersion}
+              onSaveToVault={save}
+              onSaveDraft={saveDraft}
+              onClose={() => setSaveMenuOpen(false)}
+              t={t}
+            />
+          )
+        }
+        // Pasting is for starting a recipe; an edit changes what's there.
+        onPaste={isEditMode ? undefined : () => setSheet('paste')}
         onPreview={() => setPreviewing(true)}
-        onStartOver={hasRestoredDraft && !isEditMode ? () => setSheet('startOver') : undefined}
+        onStartOver={hasRestoredDraft && keptOnPhone ? () => setSheet('startOver') : undefined}
+        onDiscardDraft={draft && onDiscardDraft ? () => setSheet('discardDraft') : undefined}
         onHeight={setBarHeight}
         t={t}
       >
@@ -399,8 +497,9 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
         className="editor-scroll"
         ref={bodyRef}
         onScroll={handleScroll}
-        onFocus={(e) => setActiveId(itemAt(e.target))}
-        onPointerDown={(e) => setActiveId(itemAt(e.target))}
+        onFocus={(e) => activate(e.target)}
+        // A touch that turns into a scroll ends in pointercancel, never pointerup.
+        onPointerUp={(e) => activate(e.target)}
       >
         <div className="editor-body">
           {restore && (
@@ -657,7 +756,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             <div className="form-group change-note">
               <div className="form-label-row">
                 <label className="form-label" htmlFor="recipeChangeNoteInput">
-                  {t.changeNoteLabel}
+                  {t.changeNoteLabel(initialRecipe?.version ?? 1)}
                 </label>
                 <span className="form-optional" aria-hidden="true">
                   {t.optional}
@@ -714,6 +813,35 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
           cancelLabel={t.keepEditing}
           danger
           onConfirm={() => close('cancel')}
+          onClose={() => setSheet(null)}
+        />
+      )}
+      {sheet === 'leave' && (
+        <ConfirmSheet
+          title={t.leaveTitle}
+          message={t.leaveBody}
+          alternative={{ label: t.saveDraft(nextVersion), onSelect: saveDraft }}
+          confirmLabel={t.discard}
+          cancelLabel={t.keepEditing}
+          danger
+          onConfirm={() => {
+            forgetKeptCopy();
+            close('cancel');
+          }}
+          onClose={() => setSheet(null)}
+        />
+      )}
+      {sheet === 'discardDraft' && onDiscardDraft && (
+        <ConfirmSheet
+          title={t.discardDraft}
+          message={t.discardDraftBody}
+          confirmLabel={t.discardDraft}
+          cancelLabel={t.keepEditing}
+          danger
+          onConfirm={() => {
+            onDiscardDraft();
+            close('cancel');
+          }}
           onClose={() => setSheet(null)}
         />
       )}

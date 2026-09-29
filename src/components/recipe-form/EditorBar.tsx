@@ -1,11 +1,22 @@
 import React, { useLayoutEffect, useRef } from 'react';
-import { Check, ChevronDown, CircleCheck, ClipboardPaste, Eye, RotateCcw, X } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  CircleCheck,
+  ClipboardPaste,
+  Eye,
+  RotateCcw,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { UiTranslations } from '../../i18n/translations';
 
 interface EditorBarProps {
   isEditMode: boolean;
   /** The recipe's current version (edit mode). */
   version: number;
+  /** Shown in place of the version while a draft is open, e.g. "Draft v4". */
+  draftLabel?: string;
   /** Whether it has earlier versions to pick from, in the dropdown under the title. */
   hasVersions: boolean;
   versionsOpen: boolean;
@@ -18,10 +29,16 @@ interface EditorBarProps {
   scrolled: boolean;
   onClose: () => void;
   onSave: () => void;
-  onPaste: () => void;
+  /** Save opens its choices (vault or draft), shown here while open. */
+  saveMenu?: React.ReactNode;
+  saveMenuOpen?: boolean;
+  /** New recipes only. */
+  onPaste?: () => void;
   onPreview: () => void;
   /** Offered while a restored draft is open. */
   onStartOver?: () => void;
+  /** Offered while a saved draft is open. */
+  onDiscardDraft?: () => void;
   /** Reports the bar's height, which the form below leaves room for. */
   onHeight: (px: number) => void;
   /** The version list, dropping down from under the title. */
@@ -31,12 +48,13 @@ interface EditorBarProps {
 
 /**
  * The editor's one bar: Close, the title (with the version, which drops down its history), and
- * Save; under them Paste and Preview, which slide away as the form scrolls down and come back as
- * it scrolls up.
+ * Save; under them Paste (new recipes) and Preview, which slide away as the form scrolls down and
+ * come back as it scrolls up.
  */
 export const EditorBar: React.FC<EditorBarProps> = ({
   isEditMode,
   version,
+  draftLabel,
   hasVersions,
   versionsOpen,
   onToggleVersions,
@@ -45,9 +63,12 @@ export const EditorBar: React.FC<EditorBarProps> = ({
   scrolled,
   onClose,
   onSave,
+  saveMenu,
+  saveMenuOpen,
   onPaste,
   onPreview,
   onStartOver,
+  onDiscardDraft,
   onHeight,
   children,
   t,
@@ -96,11 +117,11 @@ export const EditorBar: React.FC<EditorBarProps> = ({
                 aria-expanded={versionsOpen}
                 onClick={onToggleVersions}
               >
-                {t.versionLabel(version)}
+                {draftLabel ?? t.versionLabel(version)}
                 <ChevronDown className="editor-version-chevron" size="1.05em" aria-hidden="true" />
               </button>
             ) : (
-              <span className="editor-bar-status">{t.versionLabel(version)}</span>
+              <span className="editor-bar-status">{draftLabel ?? t.versionLabel(version)}</span>
             )
           ) : (
             status && (
@@ -112,16 +133,25 @@ export const EditorBar: React.FC<EditorBarProps> = ({
           )}
           {children}
         </div>
-        <button type="button" className="editor-save" onClick={onSave}>
+        <button
+          type="button"
+          className="editor-save"
+          aria-haspopup={saveMenu !== undefined ? 'dialog' : undefined}
+          aria-expanded={saveMenu !== undefined ? Boolean(saveMenuOpen) : undefined}
+          onClick={onSave}
+        >
           <Check className="editor-save-icon" size="1.25rem" strokeWidth={2.6} aria-hidden="true" />
           <span className="editor-save-label">{t.save}</span>
         </button>
+        {saveMenuOpen && saveMenu}
       </div>
       <div className="editor-bar-tools" inert={tucked}>
-        <button type="button" className="editor-chip" onClick={onPaste}>
-          <ClipboardPaste size="1.15em" aria-hidden="true" />
-          {t.paste}
-        </button>
+        {onPaste && (
+          <button type="button" className="editor-chip" onClick={onPaste}>
+            <ClipboardPaste size="1.15em" aria-hidden="true" />
+            {t.paste}
+          </button>
+        )}
         <button type="button" className="editor-chip" onClick={onPreview}>
           <Eye size="1.15em" aria-hidden="true" />
           {t.preview}
@@ -130,6 +160,12 @@ export const EditorBar: React.FC<EditorBarProps> = ({
           <button type="button" className="editor-chip" onClick={onStartOver}>
             <RotateCcw size="1.1em" aria-hidden="true" />
             {t.startOver}
+          </button>
+        )}
+        {onDiscardDraft && (
+          <button type="button" className="editor-chip" onClick={onDiscardDraft}>
+            <Trash2 size="1.05em" aria-hidden="true" />
+            {t.discardDraft}
           </button>
         )}
       </div>
