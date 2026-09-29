@@ -34,9 +34,10 @@ interface StepEditorProps {
 }
 
 /**
- * One step, laid out like the recipe page's: its number on the left, what to do on the right.
- * Tapped, it shows its tools: move arrows by the number, a small × on the number to make it
- * unnumbered text, and a strip for substeps, a tip, a photo, a fork or removing it.
+ * One step, laid out like the recipe page's: its number a tab on the tile's top-left corner and
+ * what to do across the tile. Tapped, it shows its tools: move keys springing out of the number,
+ * a small × on the number to make it unnumbered text, and a strip for substeps, a tip, a photo,
+ * a fork or removing it.
  */
 export const StepEditor: React.FC<StepEditorProps> = ({
   step,
@@ -118,7 +119,8 @@ export const StepEditor: React.FC<StepEditorProps> = ({
           </>
         )}
       </div>
-      <Reveal open={active} className="step-editor-move">
+      {/* While the step is tapped, its move keys spring out of the number along the top edge. */}
+      <div className={`step-move-pill${active ? ' is-open' : ''}`} inert={!active}>
         <button
           type="button"
           className="step-move-button"
@@ -126,7 +128,7 @@ export const StepEditor: React.FC<StepEditorProps> = ({
           disabled={!canMoveUp}
           onClick={() => onMove(-1)}
         >
-          <ChevronUp size="1.35rem" aria-hidden="true" />
+          <ChevronUp size="1.2rem" strokeWidth={2.4} aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -135,9 +137,9 @@ export const StepEditor: React.FC<StepEditorProps> = ({
           disabled={!canMoveDown}
           onClick={() => onMove(1)}
         >
-          <ChevronDown size="1.35rem" aria-hidden="true" />
+          <ChevronDown size="1.2rem" strokeWidth={2.4} aria-hidden="true" />
         </button>
-      </Reveal>
+      </div>
     </div>
   );
 

@@ -2907,10 +2907,13 @@
         }
       }
 
-      /* A block of its own (flow-root) beside the floated amount, so the name keeps to its
-         column for all its lines. */
-      .ingredient-name {
+      /* On the recipe page, a block of its own (flow-root) beside the floated amount, so the
+         name keeps to its column for all its lines. */
+      .td-ingredient > .ingredient-name {
         display: flow-root;
+      }
+
+      .ingredient-name {
         font-weight: 600;
         color: var(--text-primary);
         font-size: 1.125rem;
@@ -6486,6 +6489,12 @@
       .ingredient-heading-row {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
+        background: linear-gradient(
+          90deg,
+          color-mix(in srgb, var(--accent) 13%, transparent),
+          color-mix(in srgb, var(--accent) 3%, transparent) 70%,
+          transparent
+        );
       }
 
       .ingredient-heading-row > .ingredient-group-count {
@@ -6497,7 +6506,7 @@
         grid-column: 1 / -1;
       }
 
-      .ingredient-heading-row.has-rows::after,
+      .ingredient-heading-row::after,
       .ingredient-row.in-group::after {
         content: '';
         position: absolute;
@@ -6507,9 +6516,15 @@
         background: var(--spine-color);
       }
 
+      .ingredient-heading-row::after {
+        top: 0;
+        bottom: 0;
+        width: calc(var(--spine-width) + 1px);
+        background: var(--accent);
+      }
+
       .ingredient-heading-row.has-rows::after {
-        top: 0.5rem;
-        border-top-right-radius: var(--spine-width);
+        bottom: -1px;
       }
 
       .ingredient-row.in-group::after {
@@ -6521,9 +6536,11 @@
         border-bottom-right-radius: var(--spine-width);
       }
 
+      /* See-through, so the band shows through the field until it's being typed in. */
       .ingredient-heading-input {
         min-height: 44px;
         padding-inline: 0.7rem;
+        background: transparent;
         font-family: var(--font-serif);
         font-size: 1.0625rem;
         font-weight: var(--weight-heading);
@@ -6588,21 +6605,24 @@
         color: #f2b8b5;
       }
 
+      /* Room between the tiles, and above the first, for the tabs standing out of them. */
       .method-steps {
         display: flex;
         flex-direction: column;
-        gap: 0.75rem;
+        gap: 1.375rem;
         margin: 0;
-        padding: 0;
+        padding: 0.5rem 0 0;
         list-style: none;
       }
 
+      /* A step as the recipe page shows it: a tile with its number a tab on the top-left corner,
+         the text across the whole tile. The tab's row along the top edge also holds the move
+         keys while the step is tapped, so the tile starts a little lower than the page's. */
       .step-editor {
         position: relative;
         display: grid;
-        grid-template-columns: 2.75rem minmax(0, 1fr);
-        column-gap: 0.5rem;
-        padding: 0.75rem 0.85rem 0.75rem 0.5rem;
+        grid-template-columns: minmax(0, 1fr);
+        padding: 1.5rem 0.85rem 0.75rem;
         border: 1px solid var(--border-subtle);
         border-radius: var(--radius-md);
         background: var(--bg-surface);
@@ -6620,35 +6640,42 @@
           var(--shadow-md);
       }
 
-      /* Unnumbered text between steps: no card, just a dashed outline to edit it in. */
-      .step-editor.is-plain {
-        border-style: dashed;
-        background: transparent;
-        box-shadow: none;
+      /* The tab, and the move keys beside it, on the tile's top edge (the fork's card too). */
+      .step-editor-rail {
+        position: absolute;
+        z-index: 2;
+        top: -0.6875rem;
+        left: -0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.875rem;
+        pointer-events: none;
       }
 
-      .step-editor-rail {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.4rem;
-        padding-top: 0.45rem;
+      .step-editor-rail > * {
+        pointer-events: auto;
       }
 
       .step-editor-number {
         position: relative;
-        width: 2rem;
-        height: 2rem;
+        width: 1.875rem;
+        height: 1.875rem;
         display: grid;
         place-items: center;
       }
 
+      /* The recipe page's tab (.step-card > .step-num), ringed in the page's colour. */
       .step-editor .step-num {
-        width: 2rem;
-        height: 2rem;
+        width: 1.875rem;
+        height: 1.875rem;
         margin: 0;
+        background: var(--accent);
+        color: var(--on-accent);
         font-size: 0.9375rem;
         overflow: hidden;
+        box-shadow:
+          0 0 0 3px var(--bg-main),
+          0 3px 8px -2px color-mix(in srgb, var(--accent) 55%, transparent);
       }
 
       /* The small × on the number's corner that makes the step unnumbered text. */
@@ -6661,10 +6688,10 @@
         display: grid;
         place-items: center;
         padding: 0;
-        border: 2px solid var(--bg-surface);
+        border: 2px solid var(--bg-main);
         border-radius: var(--radius-full);
         background: var(--text-secondary);
-        color: var(--bg-surface);
+        color: var(--bg-main);
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
         transform: scale(0);
@@ -6685,14 +6712,15 @@
 
       .step-number-add {
         position: relative;
-        width: 2rem;
-        height: 2rem;
+        width: 1.875rem;
+        height: 1.875rem;
         display: grid;
         place-items: center;
         padding: 0;
-        border: 1.5px dashed var(--border-strong);
+        border: 1.5px dashed var(--border-field);
         border-radius: var(--radius-full);
-        background: transparent;
+        background: var(--bg-main);
+        box-shadow: 0 0 0 3px var(--bg-main);
         color: var(--text-muted);
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
@@ -6704,36 +6732,68 @@
       .step-number-add::before {
         content: '';
         position: absolute;
-        inset: -6px;
+        inset: -7px;
       }
 
-      .step-editor-move .reveal-inner {
+      /* Up and down: raised keys in a small tray (the portion scaler's), which springs out of the
+         number along the tile's top edge while the step is tapped, and tucks back into it after. */
+      .step-move-pill {
         display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.35rem;
+        gap: 0.25rem;
+        padding: 2px;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-full);
+        background: var(--menu-well);
+        box-shadow: 0 0 0 3px var(--bg-main);
+        transform-origin: -0.875rem 50%;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateX(-1.5rem) scale(0.4);
+        transition:
+          transform 0.26s cubic-bezier(0.5, 0, 0.25, 1),
+          opacity 0.16s ease 0.08s,
+          visibility 0s linear 0.26s;
+      }
+
+      .step-move-pill.is-open {
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+        transition:
+          transform 0.6s var(--spring-soft),
+          opacity 0.2s ease,
+          visibility 0s;
       }
 
       .step-move-button {
-        width: 2.75rem;
-        height: 2.75rem;
+        position: relative;
+        width: 2.375rem;
+        height: 1.875rem;
         display: grid;
         place-items: center;
         padding: 0;
         border: 1px solid var(--key-edge);
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-full);
         background: var(--key-face);
         box-shadow: var(--key-lift);
         color: var(--text-secondary);
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
         transition:
-          transform 0.15s ease,
-          opacity 0.2s ease;
+          scale 0.15s ease,
+          opacity 0.2s ease,
+          border-color 0.15s ease;
+      }
+
+      /* 44px to tap, around a smaller key. */
+      .step-move-button::before {
+        content: '';
+        position: absolute;
+        inset: -7px -3px;
       }
 
       .step-move-button:active:not(:disabled) {
-        transform: scale(0.92);
+        scale: 0.9;
         box-shadow: none;
       }
 
@@ -6954,7 +7014,10 @@
         margin-top: -0.5rem;
       }
 
-      .method-steps > .step-editor.is-fork:not(:first-child),
+      .method-steps > .step-editor.is-fork:not(:first-child) {
+        margin-top: -1.125rem;
+      }
+
       .method-steps > .step-editor.is-fork.has-join + .step-editor {
         margin-top: -0.5rem;
       }
@@ -7187,10 +7250,9 @@
       .fork-card {
         position: relative;
         display: grid;
-        grid-template-columns: 2.75rem minmax(0, 1fr);
-        column-gap: 0.5rem;
-        margin-top: 1rem;
-        padding: 0.75rem 0.85rem 0.75rem 0.5rem;
+        grid-template-columns: minmax(0, 1fr);
+        margin-top: 1.5rem;
+        padding: 1.5rem 0.85rem 0.75rem;
         border: 1px solid var(--border-subtle);
         border-radius: var(--radius-md);
         background: var(--bg-surface);
@@ -7249,9 +7311,15 @@
         animation: fk-rise-in 0.3s var(--ease-glide) both;
       }
 
+      /* The path's own steps, numbered in solid discs like the tabs. */
       .fork-path-step > .step-num {
         justify-self: center;
-        margin-top: 0.35rem;
+        width: 1.875rem;
+        height: 1.875rem;
+        margin-top: 0.4rem;
+        background: var(--accent);
+        color: var(--on-accent);
+        font-size: 0.9375rem;
       }
 
       .fork-add-step,
@@ -7260,7 +7328,7 @@
         align-items: center;
         gap: 0.4rem;
         min-height: 44px;
-        margin: 0.5rem 0 0 3.25rem;
+        margin: 0.5rem 0 0;
         padding: 0.4rem 0.85rem;
         border: 0;
         border-radius: var(--radius-full);
@@ -7289,7 +7357,7 @@
         display: flex;
         align-items: center;
         gap: 0.45rem;
-        margin: 0.75rem 0 0 3.25rem;
+        margin: 0.75rem 0 0;
         padding-top: 0.65rem;
         border-top: 1px dashed var(--border-strong);
         font-size: 0.875rem;
@@ -7615,6 +7683,7 @@
         .reveal,
         .reveal-inner,
         .ingredient-row::before,
+        .step-move-pill,
         .step-number-remove,
         .editor-version-chevron,
         .category-select-chevron {
