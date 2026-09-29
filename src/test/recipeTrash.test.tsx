@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import App from '../App';
 import { UI_TEXT } from '../i18n/translations';
+import { chooseFromMenu } from './menu';
 import { Recipe } from '../types/recipe';
 import { restorableRecipes, timeAgo, withDeletedAt } from '../utils/recipeTrash';
 
@@ -76,7 +77,7 @@ describe('deleting and restoring recipes', () => {
   // Asks first, in a sheet naming the recipe; confirm=false keeps it.
   function deletePierogi(confirm = true) {
     fireEvent.click(screen.getByRole('button', { name: 'Pierogi' }));
-    fireEvent.click(screen.getByRole('button', { name: /edit recipe/i }));
+    chooseFromMenu(UI_TEXT.en.editRecipe);
     fireEvent.click(screen.getByRole('button', { name: t.deleteRecipe }));
     const ask = screen.getByRole('alertdialog', { name: t.deleteRecipe });
     expect(ask).toHaveAccessibleDescription(t.confirmDeleteRecipe('Pierogi'));

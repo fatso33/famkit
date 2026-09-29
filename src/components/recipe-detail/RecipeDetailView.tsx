@@ -30,8 +30,6 @@ interface RecipeDetailViewProps {
   isWakeLocked: boolean;
   onToggleWakeLock: () => void;
   isWakeLockSupported: boolean;
-  /** `origin` is the Edit button's centre, where the editor opens out of. */
-  onEditRecipe?: (recipe: Recipe, origin?: { x: number; y: number }) => void;
   /** Once the recipe has (nearly) finished unrolling out of its photo. */
   onUnrolled: () => void;
   ref?: Ref<RecipePageHandle>;
@@ -44,7 +42,6 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   isWakeLocked,
   onToggleWakeLock,
   isWakeLockSupported,
-  onEditRecipe,
   onUnrolled,
   ref,
   t,
@@ -144,22 +141,6 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
               >
                 ⏱️ <NumberRoll value={timeText} />
               </span>
-
-              {onEditRecipe && (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <button
-                    className="btn btn-meta-pill"
-                    onClick={(e) => {
-                      const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
-                      onEditRecipe(rawRecipe, { x: left + width / 2, y: top + height / 2 });
-                    }}
-                    title={t.editRecipe}
-                  >
-                    ✏️ {t.editRecipe}
-                  </button>
-                </>
-              )}
 
               {isWakeLockSupported && (
                 <>

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import App from '../App';
 import { UI_TEXT } from '../i18n/translations';
+import { chooseFromMenu } from './menu';
 import { Recipe } from '../types/recipe';
 import { leavePhotosOut } from '../utils/deviceCopy';
 
@@ -49,7 +50,7 @@ describe('a recipe whose photos are still on their way', () => {
 
   it("doesn't open the editor, and says why", () => {
     fireEvent.click(screen.getByRole('button', { name: 'Babka' }));
-    fireEvent.click(screen.getByRole('button', { name: /edit recipe/i }));
+    chooseFromMenu(UI_TEXT.en.editRecipe);
 
     expect(screen.queryByRole('dialog', { name: /edit recipe/i })).not.toBeInTheDocument();
     expect(screen.getByText(t.photosStillLoading)).toBeInTheDocument();

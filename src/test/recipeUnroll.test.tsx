@@ -156,14 +156,15 @@ describe('a recipe unrolling out of its photo', () => {
     expect(screen.getByRole('heading', { name: t.settings, level: 1 })).toBeInTheDocument();
   });
 
-  it('tucks the back button into the menu button while the menu is open', async () => {
+  it('keeps the back button out beside the menu button while the menu is open', async () => {
     const animations = playAnimations();
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'Babka' }));
     await animations.cue().finish();
 
     fireEvent.click(screen.getByRole('button', { name: t.openMenu }));
-    expect(backButton()).toBeNull();
+    expect(backButton()).toBeInTheDocument();
+    expect(document.querySelector('.fab-group')).toHaveAttribute('data-back', 'shown');
     const menu = screen.getByRole('dialog', { name: t.menu });
     expect(within(menu).getByRole('button', { name: t.shareRecipe })).toBeInTheDocument();
   });

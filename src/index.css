@@ -4097,15 +4097,17 @@
         transform: translateY(calc(-0.5625rem + 1px)) rotate(-45deg);
       }
 
-      /* Menu layer: soft scrim + panel that blooms out of the button */
+      /* Menu layer: the page behind softens into a blur + panel that blooms out of the button.
+         Blurred, not dimmed: a darker page would part from the status bar, which keeps the
+         page's own colour. The faint frost is that same colour (--bg-main is theme-color). */
       .fk-menu-layer {
         position: fixed;
         inset: 0;
         z-index: 61;
-        background: var(--scrim);
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
-        animation: fk-fade-in 0.26s ease both;
+        background: color-mix(in srgb, var(--bg-main) 14%, transparent);
+        backdrop-filter: blur(12px) saturate(1.1);
+        -webkit-backdrop-filter: blur(12px) saturate(1.1);
+        animation: fk-fade-in 0.3s ease both;
       }
 
       .fk-menu-layer.is-closing {
@@ -4148,28 +4150,123 @@
         animation-delay: calc(70ms + var(--i, 0) * 22ms);
       }
 
+      /* The preferences drawer across the top, then the pages, with the preferences key laid
+         over the top page row's right end. */
       .fk-menu-content {
         flex-shrink: 0;
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
       }
 
-      /* Preferences: a drawer that unfolds upwards out of its toggle, growing the panel's top */
-      .fk-prefs {
-        padding-bottom: 0.4rem;
-        margin-bottom: 0.4rem;
-        border-bottom: 1px solid var(--border-subtle);
-      }
-
+      /* Preferences: a drawer that unfolds upwards out of its key, growing the panel's top */
       .fk-prefs-drawer {
+        grid-column: 1 / -1;
         display: grid;
         grid-template-rows: 0fr;
         transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
 
-      .fk-prefs[data-open='true'] .fk-prefs-drawer {
+      .fk-menu-content[data-prefs='open'] .fk-prefs-drawer {
         grid-template-rows: 1fr;
         transition: grid-template-rows 0.5s var(--ease-glide);
+      }
+
+      .fk-menu-pages {
+        grid-row: 2;
+        grid-column: 1 / -1;
+      }
+
+      /* The top page row stops short of the key beside it. */
+      .fk-menu-list > li:first-child {
+        margin-right: 3.25rem;
+      }
+
+      /* A round key as tall as a page row (the row's 0.4rem padding around its 2.25rem chip),
+         so the two line up at any text size. */
+      .fk-prefs-toggle {
+        grid-row: 2;
+        grid-column: 2;
+        align-self: start;
+        z-index: 1;
+        display: grid;
+        place-items: center;
+        min-width: 48px;
+        min-height: 48px;
+        padding: 0.275rem 0.25rem;
+        border: none;
+        border-radius: var(--radius-full);
+        background: transparent;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .fk-prefs-key {
+        --prefs-key-bg: var(--key-face);
+        display: grid;
+        place-items: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        border: 1px solid var(--key-edge);
+        border-radius: 50%;
+        background: var(--prefs-key-bg);
+        box-shadow: var(--key-lift);
+        color: var(--text-secondary);
+        transition:
+          background-color 0.25s ease,
+          border-color 0.25s ease,
+          box-shadow 0.25s ease,
+          color 0.25s ease,
+          scale 0.15s ease;
+      }
+
+      @media (hover: hover) {
+        .fk-prefs-toggle:hover .fk-prefs-key {
+          border-color: color-mix(in srgb, var(--accent) 50%, var(--key-edge));
+        }
+      }
+
+      .fk-prefs-toggle:active .fk-prefs-key {
+        scale: 0.92;
+        box-shadow: none;
+      }
+
+      .fk-prefs-toggle:focus-visible {
+        outline: none;
+      }
+
+      .fk-prefs-toggle:focus-visible .fk-prefs-key {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      /* While the drawer is open the key stays pressed in, tinted like the page you're on. */
+      .fk-menu-content[data-prefs='open'] .fk-prefs-key {
+        --prefs-key-bg: var(--accent-subtle);
+        border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.14);
+        color: var(--accent);
+      }
+
+      /* The knobs are filled with the key's face, so the tracks pass behind them. Opening
+         slides each to a new setting, one after another. */
+      .fk-prefs-glyph circle {
+        fill: var(--prefs-key-bg);
+        transition:
+          fill 0.25s ease,
+          transform 0.6s var(--spring-soft);
+      }
+
+      .fk-prefs-glyph circle:nth-of-type(2) { transition-delay: 0s, 50ms; }
+      .fk-prefs-glyph circle:nth-of-type(3) { transition-delay: 0s, 100ms; }
+
+      .fk-menu-content[data-prefs='open'] .fk-prefs-glyph circle:nth-of-type(1) {
+        transform: translateX(6px);
+      }
+      .fk-menu-content[data-prefs='open'] .fk-prefs-glyph circle:nth-of-type(2) {
+        transform: translateX(-7px);
+      }
+      .fk-menu-content[data-prefs='open'] .fk-prefs-glyph circle:nth-of-type(3) {
+        transform: translateX(8px);
       }
 
       /* Clips the folded rows; the side overhang keeps focus rings whole. The rows hang from the
@@ -4181,12 +4278,26 @@
         padding-inline: 4px;
       }
 
+      /* Ends in a rule above the pages, which folds away with the drawer. */
       .fk-prefs-body {
         flex-shrink: 0;
         display: flex;
         flex-direction: column;
         gap: 0.15rem;
-        padding: 4px 0 0.35rem;
+        padding: 4px 0 0.4rem;
+        margin-bottom: 0.4rem;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+
+      /* Language, theme and text size: pills of one size, stacked in a tidy column. The
+         stepper sets it (two 44px keys around its value, plus the border). */
+      .fk-prefs-body :is(.fk-segmented, .fk-stepper) {
+        width: calc(2 * 44px + 3rem + 2px);
+        min-height: 46px;
+      }
+
+      .fk-prefs-body .fk-stepper {
+        justify-content: space-between;
       }
 
       .fk-prefs-settings {
@@ -4203,31 +4314,11 @@
         transition: opacity 0.22s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
 
-      .fk-prefs[data-open='true'] .fk-prefs-row {
+      .fk-menu-content[data-prefs='open'] .fk-prefs-row {
         opacity: 1;
         transform: none;
         transition: opacity 0.32s ease, transform 0.5s var(--ease-glide);
         transition-delay: calc(var(--j, 0) * 30ms);
-      }
-
-      .fk-menu-item-trail {
-        flex-shrink: 0;
-        margin-right: 0.25rem;
-        color: var(--text-muted);
-      }
-
-      .fk-prefs-chevron {
-        transition: rotate 0.5s var(--ease-glide), color 0.2s ease;
-      }
-
-      .fk-prefs[data-open='true'] .fk-prefs-chevron {
-        rotate: 180deg;
-        color: var(--accent);
-      }
-
-      .fk-prefs[data-open='true'] .fk-prefs-toggle .fk-menu-chip {
-        background: var(--accent-subtle);
-        color: var(--accent);
       }
 
       .fk-menu-list {
@@ -4237,8 +4328,8 @@
         gap: 0.15rem;
       }
 
-      .fk-menu-item,
-      .fk-menu-action {
+      /* Pages are flat rows; the current page's actions are raised keys (.fk-menu-action). */
+      .fk-menu-item {
         position: relative;
         width: 100%;
         min-height: 48px;
@@ -4259,8 +4350,7 @@
       }
 
       @media (hover: hover) {
-        .fk-menu-item:hover,
-        .fk-menu-action:hover {
+        .fk-menu-item:hover {
           background: var(--menu-well);
         }
       }
@@ -4268,7 +4358,6 @@
       .fk-menu-item:focus-visible,
       .fk-menu-action:focus-visible,
       .fk-segmented:focus-visible,
-      .fk-switch:focus-visible,
       .fk-stepper button:focus-visible {
         outline: 2px solid var(--accent);
         outline-offset: 2px;
@@ -4298,6 +4387,7 @@
         padding: 0.25rem;
         border-radius: var(--radius-lg);
         background: var(--accent-subtle);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent);
       }
 
       .fk-menu-current .fk-menu-item {
@@ -4310,7 +4400,7 @@
       }
 
       @media (hover: hover) {
-        .fk-menu-current :is(.fk-menu-item, .fk-menu-action):hover {
+        .fk-menu-current .fk-menu-item:hover {
           background: color-mix(in srgb, var(--accent) 9%, transparent);
         }
       }
@@ -4332,7 +4422,7 @@
         color: var(--text-secondary);
       }
 
-      /* EN | PL segmented pill with a sliding thumb */
+      /* EN | PL and sun | moon: a segmented pill with a sliding thumb */
       .fk-segmented {
         position: relative;
         display: grid;
@@ -4376,52 +4466,6 @@
 
       .fk-segmented[data-value="pl"] .fk-segmented-thumb { transform: translateX(100%); }
 
-      /* Dark mode switch */
-      .fk-switch {
-        position: relative;
-        width: 3.4rem;
-        height: 2rem;
-        padding: 0;
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-full);
-        background: var(--menu-well);
-        cursor: pointer;
-        transition: background-color 0.25s ease, border-color 0.25s ease;
-      }
-
-      /* 44px tap area around the smaller visual switch */
-      .fk-switch::before {
-        content: '';
-        position: absolute;
-        inset: -7px -4px;
-      }
-
-      .fk-switch[aria-checked="true"] {
-        background: var(--accent);
-        border-color: var(--accent);
-      }
-
-      .fk-switch-thumb {
-        position: absolute;
-        top: 2px;
-        left: 2px;
-        width: calc(2rem - 6px);
-        height: calc(2rem - 6px);
-        display: grid;
-        place-items: center;
-        border-radius: 50%;
-        background: var(--bg-surface);
-        color: var(--accent-gold);
-        box-shadow: var(--shadow-sm);
-        transition: transform 0.38s cubic-bezier(0.34, 1.4, 0.64, 1);
-      }
-
-      .fk-switch[aria-checked="true"] .fk-switch-thumb {
-        transform: translateX(calc(3.4rem - 2rem));
-        background: var(--on-accent);
-        color: var(--accent);
-      }
-
       /* Text size stepper: A− and A+ are raised keys set into the pill, so they read as buttons */
       .fk-stepper {
         display: inline-flex;
@@ -4431,10 +4475,11 @@
         background: var(--menu-well);
       }
 
-      /* Raised keys (these steppers, the portion scaler, the vault's and the editor's keys): a lifted face with a defined edge.
+      /* Raised keys (these steppers, the menu's keys, the portion scaler, the vault's and the editor's keys): a lifted face with a defined edge.
          At night the face is lighter than its tray; darker would read as a hole. Built from
          season tokens, so every palette gets them. */
       .fk-stepper,
+      .fk-menu-panel,
       .scaler-control,
       .vault-page,
       .editor-layer {
@@ -4443,7 +4488,7 @@
         --key-lift: 0 1px 1px rgba(0, 0, 0, 0.04), 0 2px 5px -1px rgba(60, 35, 20, 0.16);
       }
 
-      [data-theme='dark'] :is(.fk-stepper, .scaler-control, .vault-page, .editor-layer) {
+      [data-theme='dark'] :is(.fk-stepper, .fk-menu-panel, .scaler-control, .vault-page, .editor-layer) {
         --key-face: var(--menu-well-hover);
         --key-edge: var(--border-strong);
         --key-lift: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 2px 5px -1px rgba(0, 0, 0, 0.5);
@@ -4498,54 +4543,62 @@
         font-variant-numeric: tabular-nums;
       }
 
-      /* The current page's actions hang off it, a thread running from its chip into each */
+      /* What you can do on the current page: raised keys set into its card, under its name.
+         They're buttons, where the pages are rows. Each key is as wide as its label needs and
+         they share out the card's width; when two won't fit side by side, they stack. */
       .fk-menu-actions {
         list-style: none;
         display: flex;
-        flex-direction: column;
-        gap: 0.15rem;
-        padding-left: 2.25rem;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        padding: 0.1rem 0.25rem 0.25rem;
       }
 
       .fk-menu-actions > li {
-        position: relative;
-      }
-
-      /* From the page chip's centre (0.5rem padding + half its 2.25rem) to just short of the
-         action's chip. The first starts under the page chip; later ones pick up at the row
-         above, so the threads join into one trunk. The colour is opaque so overlaps don't show. */
-      .fk-menu-actions > li::before {
-        content: '';
-        position: absolute;
-        left: calc(1.625rem - 2.25rem - 1px);
-        top: calc(-50% - 0.15rem);
-        bottom: calc(50% - 1px);
-        width: 0.85rem;
-        border-left: 2px solid var(--menu-thread);
-        border-bottom: 2px solid var(--menu-thread);
-        border-bottom-left-radius: 0.65rem;
-        pointer-events: none;
-        --menu-thread: color-mix(in srgb, var(--accent) 38%, var(--accent-subtle));
-      }
-
-      .fk-menu-actions > li:first-child::before {
-        top: -0.2rem;
+        flex: 1 1 auto;
+        display: flex;
       }
 
       .fk-menu-action {
-        gap: 0.7rem;
-        color: var(--accent);
-        font-weight: 700;
+        flex: 1;
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.55rem 0.9rem;
+        border: 1px solid var(--key-edge);
+        border-radius: var(--radius-md);
+        background: var(--key-face);
+        box-shadow: var(--key-lift);
+        color: var(--text-primary);
+        font-family: inherit;
+        font-size: 0.9rem;
+        font-weight: 650;
+        line-height: 1.2;
+        text-align: center;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          border-color 0.18s ease,
+          box-shadow 0.18s ease,
+          scale 0.15s ease;
       }
 
-      .fk-menu-action .fk-menu-chip {
-        width: 2rem;
-        height: 2rem;
-        background: var(--elev-menu);
+      .fk-menu-action-icon {
+        flex-shrink: 0;
         color: var(--accent);
-        box-shadow:
-          inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, transparent),
-          var(--shadow-sm);
+      }
+
+      @media (hover: hover) {
+        .fk-menu-action:hover {
+          border-color: color-mix(in srgb, var(--accent) 50%, var(--key-edge));
+        }
+      }
+
+      .fk-menu-action:active {
+        scale: 0.96;
+        box-shadow: none;
       }
 
       @keyframes fk-fade-in {
@@ -4648,12 +4701,13 @@
         .fab-menu,
         .fab-menu-glyph > span,
         .fk-segmented-thumb,
-        .fk-switch-thumb,
         .fk-stepper button,
         .scaler-btn,
-        .fk-prefs-chevron,
+        .fk-prefs-key,
+        .fk-prefs-glyph circle,
+        .fk-menu-action,
         .fk-prefs-drawer,
-        .fk-prefs[data-open] :is(.fk-prefs-drawer, .fk-prefs-row) { transition: none; }
+        .fk-menu-content[data-prefs] :is(.fk-prefs-drawer, .fk-prefs-row) { transition: none; }
         .author-hint,
         .author-custom,
         .restore-banner,

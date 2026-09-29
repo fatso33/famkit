@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import App from '../App';
 import { translatePieces } from '../services/gemini';
 import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
@@ -58,7 +58,10 @@ const seed = (...recipes: Recipe[]) =>
   localStorage.setItem('wandas_recipes', JSON.stringify([WANDAS_CHEESE_BREAD, ...recipes]));
 
 const editOpenRecipe = (lang: 'en' | 'pl', changes: Record<string, string>) => {
-  fireEvent.click(screen.getByRole('button', { name: new RegExp(UI_TEXT[lang].editRecipe) }));
+  // Edit is one of the recipe page's actions in the menu.
+  fireEvent.click(screen.getByRole('button', { name: UI_TEXT[lang].openMenu }));
+  const menu = screen.getByRole('dialog', { name: UI_TEXT[lang].menu });
+  fireEvent.click(within(menu).getByRole('button', { name: UI_TEXT[lang].editRecipe }));
   for (const [from, to] of Object.entries(changes)) {
     fireEvent.change(screen.getByDisplayValue(from), { target: { value: to } });
   }

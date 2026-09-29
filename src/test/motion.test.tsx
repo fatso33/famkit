@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import App from '../App';
 import { UI_TEXT } from '../i18n/translations';
+import { chooseFromMenu } from './menu';
 import { Recipe } from '../types/recipe';
 
 vi.mock('../services/gemini', () => ({
@@ -86,7 +87,7 @@ describe('motion', () => {
     const { finishExit } = playExitAnimations();
     render(<App />);
     fireEvent.click(card('Babka')!);
-    fireEvent.click(screen.getByRole('button', { name: /edit recipe/i }));
+    chooseFromMenu(UI_TEXT.en.editRecipe);
 
     fireEvent.click(within(editor()!).getByRole('button', { name: t.closeDialog }));
     expect(editor()).toBeInTheDocument();
@@ -137,7 +138,7 @@ describe('motion', () => {
     playExitAnimations(); // Never finished, as when the app is backgrounded mid-close.
     render(<App />);
     fireEvent.click(card('Babka')!);
-    fireEvent.click(screen.getByRole('button', { name: /edit recipe/i }));
+    chooseFromMenu(UI_TEXT.en.editRecipe);
     fireEvent.click(within(editor()!).getByRole('button', { name: t.closeDialog }));
 
     await act(() => new Promise((resolve) => setTimeout(resolve, 1100)));
@@ -148,7 +149,7 @@ describe('motion', () => {
     const { finishExit } = playExitAnimations();
     render(<App />);
     fireEvent.click(card('Babka')!);
-    fireEvent.click(screen.getByRole('button', { name: /edit recipe/i }));
+    chooseFromMenu(UI_TEXT.en.editRecipe);
     fireEvent.change(within(editor()!).getByLabelText(t.recipeTitle), {
       target: { value: 'Babka Wielkanocna' },
     });

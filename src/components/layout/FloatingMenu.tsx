@@ -2,11 +2,9 @@ import React, { useCallback, useId, useLayoutEffect, useRef, useState } from 're
 import {
   ArrowLeft,
   BookOpen,
-  ChevronUp,
   CookingPot,
   Moon,
   Settings,
-  SlidersHorizontal,
   Sun,
   type LucideIcon,
 } from 'lucide-react';
@@ -15,7 +13,7 @@ import { AppPage } from '../../types/navigation';
 import { UiTranslations } from '../../i18n/translations';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 
-/** A page-dependent entry at the bottom of the menu (e.g. "Add recipe" on the vault). */
+/** Something to do on the current page (e.g. "Add recipe" on the vault), held in its card. */
 export interface MenuAction {
   id: string;
   label: string;
@@ -34,7 +32,8 @@ interface FloatingMenuProps {
   fontPercent: number;
   onIncreaseFont: () => void;
   onDecreaseFont: () => void;
-  /** A back button grows out of the menu button's left side while this is true. */
+  /** A back button grows out of the menu button's left side while this is true. It stays out
+      while the menu is open. */
   showBack: boolean;
   onBack: () => void;
   t: UiTranslations;
@@ -47,15 +46,14 @@ export const FloatingMenu: React.FC<FloatingMenuProps> = (props) => {
   const { t, showBack, onBack } = props;
   const [state, setState] = useState<MenuState>('closed');
   const fabRef = useRef<HTMLButtonElement>(null);
+  const groupRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
   const isOpen = state === 'open';
 
-  // The back button tucks back into the menu button while the menu is open.
-  const backShown = showBack && state === 'closed';
   // Until it first appears there's nothing to animate away, so it isn't there at all.
   const [backEverShown, setBackEverShown] = useState(false);
-  if (backShown && !backEverShown) setBackEverShown(true);
-  const back = backShown ? 'shown' : backEverShown ? 'hidden' : 'none';
+  if (showBack && !backEverShown) setBackEverShown(true);
+  const back = showBack ? 'shown' : backEverShown ? 'hidden' : 'none';
 
   const close = useCallback(() => {
     setState('closing');
@@ -73,11 +71,11 @@ export const FloatingMenu: React.FC<FloatingMenuProps> = (props) => {
           // Focus already moved on (e.g. Tab out of the menu), so don't pull it back to the button.
           onFocusLeave={() => setState('closing')}
           onClosed={() => setState('closed')}
-          fabRef={fabRef}
+          fabGroupRef={groupRef}
         />
       )}
 
-      <div className="fab-group" data-back={back}>
+      <div ref={groupRef} className="fab-group" data-back={back}>
         <span className="fab-pill-track" aria-hidden="true">
           <span className="fab-pill" />
         </span>
@@ -85,11 +83,13 @@ export const FloatingMenu: React.FC<FloatingMenuProps> = (props) => {
           type="button"
           className="fab-back"
           aria-label={t.backToRecipes}
-          aria-hidden={!backShown || undefined}
-          inert={!backShown}
+          aria-hidden={!showBack || undefined}
+          inert={!showBack}
           onClick={() => {
             // It's about to tuck away, so keyboard focus moves to the menu button it merges into.
             fabRef.current?.focus({ preventScroll: true });
+            // From an open menu, the menu furls away as the recipe rolls up.
+            if (state === 'open') setState('closing');
             onBack();
           }}
         >
@@ -127,7 +127,8 @@ interface MenuPanelProps extends FloatingMenuProps {
   onClose: () => void;
   onFocusLeave: () => void;
   onClosed: () => void;
-  fabRef: React.RefObject<HTMLButtonElement | null>;
+  /** The menu and back buttons: focus can move to them without closing the menu. */
+  fabGroupRef: React.RefObject<HTMLDivElement | null>;
 }
 
 /**
@@ -150,7 +151,7 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
   onClose,
   onFocusLeave,
   onClosed,
-  fabRef,
+  fabGroupRef,
   page,
   onNavigate,
   actions,
@@ -165,7 +166,6 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
 }) => {
   const backdropProps = useDialogDismiss(onClose);
   const currentPageId = useId();
-  const prefsToggleId = useId();
   const prefsDrawerId = useId();
   const darkLabelId = useId();
   const textLabelId = useId();
@@ -201,10 +201,12 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
   const otherPages = pages.filter((p) => p !== current);
   const CurrentIcon = current.icon;
 
-  // The rows rise in from the bottom up, following the unfurl out of the menu button.
-  let row = 1 + otherPages.length + 1 + actions.length;
+  // The rows rise in from the bottom up, following the unfurl out of the menu button. The
+  // preferences key rises with the top page row, which it sits beside.
+  let row = otherPages.length + 1 + (actions.length > 0 ? 1 : 0);
+  const topRow = { '--i': row - 1 } as React.CSSProperties;
   const stagger = () => ({ '--i': --row }) as React.CSSProperties;
-  // The preference rows slide up out from behind their toggle, the top one leading.
+  // The preference rows slide up out from behind their key, the top one leading.
   let fold = 0;
   const unfold = () => ({ '--j': fold++ }) as React.CSSProperties;
 
@@ -228,7 +230,7 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
             !isClosing &&
             next instanceof Node &&
             !e.currentTarget.contains(next) &&
-            next !== fabRef.current
+            !fabGroupRef.current?.contains(next)
           ) {
             onFocusLeave();
           }
@@ -239,104 +241,100 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
       >
         {/* One child in a column-reverse scroller: if it outgrows the screen, it stays pinned
             to the menu button and the preferences scroll away upwards. */}
-        <div className="fk-menu-content">
-          <section className="fk-prefs" data-open={prefsOpen} aria-labelledby={prefsToggleId}>
-            <div id={prefsDrawerId} className="fk-prefs-drawer" inert={!prefsOpen}>
-              <div className="fk-prefs-clip">
-                <div className="fk-prefs-body">
-                  {page !== 'settings' && (
-                    <div className="fk-prefs-row fk-prefs-settings" style={unfold()}>
-                      <button type="button" className="fk-menu-item" onClick={() => go('settings')}>
-                        <span className="fk-menu-chip" aria-hidden="true">
-                          <Settings size="1.1em" strokeWidth={1.9} />
-                        </span>
-                        <span className="fk-menu-item-label">{t.settings}</span>
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="fk-pref-row fk-prefs-row" style={unfold()}>
-                    <span className="fk-pref-label">{t.language}</span>
-                    <button
-                      type="button"
-                      className="fk-segmented"
-                      data-value={language}
-                      aria-label={t.languageToggle}
-                      onClick={onToggleLanguage}
-                    >
-                      <span className="fk-segmented-thumb" aria-hidden="true" />
-                      <span className={language === 'en' ? 'is-active' : ''}>EN</span>
-                      <span className={language === 'pl' ? 'is-active' : ''}>PL</span>
+        <div className="fk-menu-content" data-prefs={prefsOpen ? 'open' : 'closed'}>
+          <div
+            id={prefsDrawerId}
+            className="fk-prefs-drawer"
+            role="group"
+            aria-label={t.preferences}
+            inert={!prefsOpen}
+          >
+            <div className="fk-prefs-clip">
+              <div className="fk-prefs-body">
+                {page !== 'settings' && (
+                  <div className="fk-prefs-row fk-prefs-settings" style={unfold()}>
+                    <button type="button" className="fk-menu-item" onClick={() => go('settings')}>
+                      <span className="fk-menu-chip" aria-hidden="true">
+                        <Settings size="1.1em" strokeWidth={1.9} />
+                      </span>
+                      <span className="fk-menu-item-label">{t.settings}</span>
                     </button>
                   </div>
+                )}
 
-                  <div className="fk-pref-row fk-prefs-row" style={unfold()}>
-                    <span id={darkLabelId} className="fk-pref-label">
-                      {t.darkMode}
+                <div className="fk-pref-row fk-prefs-row" style={unfold()}>
+                  <span className="fk-pref-label">{t.language}</span>
+                  <button
+                    type="button"
+                    className="fk-segmented"
+                    data-value={language}
+                    aria-label={t.languageToggle}
+                    onClick={onToggleLanguage}
+                  >
+                    <span className="fk-segmented-thumb" aria-hidden="true" />
+                    <span className={language === 'en' ? 'is-active' : ''}>EN</span>
+                    <span className={language === 'pl' ? 'is-active' : ''}>PL</span>
+                  </button>
+                </div>
+
+                <div className="fk-pref-row fk-prefs-row" style={unfold()}>
+                  <span id={darkLabelId} className="fk-pref-label">
+                    {t.darkMode}
+                  </span>
+                  {/* The splash's sun and moon pill, the size of its neighbours. */}
+                  <button
+                    type="button"
+                    role="switch"
+                    className="fk-segmented"
+                    data-value={theme}
+                    aria-checked={theme === 'dark'}
+                    aria-labelledby={darkLabelId}
+                    onClick={onToggleTheme}
+                  >
+                    <span className="fk-segmented-thumb" aria-hidden="true" />
+                    <span className={theme === 'light' ? 'is-active' : ''}>
+                      <Sun size="1.45em" strokeWidth={2} aria-hidden="true" />
                     </span>
-                    <button
-                      type="button"
-                      role="switch"
-                      className="fk-switch"
-                      aria-checked={theme === 'dark'}
-                      aria-labelledby={darkLabelId}
-                      onClick={onToggleTheme}
-                    >
-                      <span className="fk-switch-thumb" aria-hidden="true">
-                        {theme === 'dark' ? <Moon size="0.85em" /> : <Sun size="0.85em" />}
-                      </span>
+                    <span className={theme === 'dark' ? 'is-active' : ''}>
+                      <Moon size="1.35em" strokeWidth={2} aria-hidden="true" />
+                    </span>
+                  </button>
+                </div>
+
+                <div className="fk-pref-row fk-prefs-row" style={unfold()}>
+                  <span id={textLabelId} className="fk-pref-label">
+                    {t.textScaling}
+                  </span>
+                  <div className="fk-stepper" role="group" aria-labelledby={textLabelId}>
+                    <button type="button" aria-label={t.decreaseTextSize} onClick={onDecreaseFont}>
+                      A−
                     </button>
-                  </div>
-
-                  <div className="fk-pref-row fk-prefs-row" style={unfold()}>
-                    <span id={textLabelId} className="fk-pref-label">
-                      {t.textScaling}
+                    <span className="fk-stepper-value" aria-live="polite">
+                      {fontPercent}%
                     </span>
-                    <div className="fk-stepper" role="group" aria-labelledby={textLabelId}>
-                      <button
-                        type="button"
-                        aria-label={t.decreaseTextSize}
-                        onClick={onDecreaseFont}
-                      >
-                        A−
-                      </button>
-                      <span className="fk-stepper-value" aria-live="polite">
-                        {fontPercent}%
-                      </span>
-                      <button
-                        type="button"
-                        aria-label={t.increaseTextSize}
-                        onClick={onIncreaseFont}
-                      >
-                        A+
-                      </button>
-                    </div>
+                    <button type="button" aria-label={t.increaseTextSize} onClick={onIncreaseFont}>
+                      A+
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
 
-            <button
-              id={prefsToggleId}
-              type="button"
-              className="fk-menu-item fk-prefs-toggle fk-menu-row"
-              style={stagger()}
-              aria-expanded={prefsOpen}
-              aria-controls={prefsDrawerId}
-              onClick={() => setPrefsOpen((open) => !open)}
-            >
-              <span className="fk-menu-chip" aria-hidden="true">
-                <SlidersHorizontal size="1.1em" strokeWidth={1.9} />
-              </span>
-              <span className="fk-menu-item-label">{t.preferences}</span>
-              <ChevronUp
-                className="fk-menu-item-trail fk-prefs-chevron"
-                size="1.1em"
-                strokeWidth={2}
-                aria-hidden="true"
-              />
-            </button>
-          </section>
+          {/* A key beside the top page row; the drawer unfolds upwards out of it. */}
+          <button
+            type="button"
+            className="fk-prefs-toggle fk-menu-row"
+            style={topRow}
+            aria-label={t.preferences}
+            aria-expanded={prefsOpen}
+            aria-controls={prefsDrawerId}
+            onClick={() => setPrefsOpen((open) => !open)}
+          >
+            <span className="fk-prefs-key">
+              <PrefsGlyph />
+            </span>
+          </button>
 
           <nav className="fk-menu-pages" aria-label={t.pages}>
             <ul className="fk-menu-list">
@@ -351,7 +349,7 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
                 </li>
               ))}
 
-              {/* The page you're on, with what you can do on it hanging off it. */}
+              {/* The page you're on, holding what you can do there as keys. */}
               <li className="fk-menu-current">
                 <button
                   id={currentPageId}
@@ -368,9 +366,13 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
                 </button>
 
                 {actions.length > 0 && (
-                  <ul className="fk-menu-actions" aria-labelledby={currentPageId}>
+                  <ul
+                    className="fk-menu-actions fk-menu-row"
+                    style={stagger()}
+                    aria-labelledby={currentPageId}
+                  >
                     {actions.map(({ id: actionId, label, icon: Icon, onSelect }) => (
-                      <li key={actionId} className="fk-menu-row" style={stagger()}>
+                      <li key={actionId}>
                         <button
                           type="button"
                           className="fk-menu-action"
@@ -379,10 +381,13 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
                             onSelect();
                           }}
                         >
-                          <span className="fk-menu-chip" aria-hidden="true">
-                            <Icon size="1.05em" strokeWidth={2.2} />
-                          </span>
-                          <span className="fk-menu-item-label">{label}</span>
+                          <Icon
+                            className="fk-menu-action-icon"
+                            size="1.15em"
+                            strokeWidth={2.1}
+                            aria-hidden="true"
+                          />
+                          <span>{label}</span>
                         </button>
                       </li>
                     ))}
@@ -396,3 +401,23 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
     </div>
   );
 };
+
+/** Three sliders, whose knobs glide to new settings while the preferences are open. */
+const PrefsGlyph: React.FC = () => (
+  <svg
+    className="fk-prefs-glyph"
+    viewBox="0 0 24 24"
+    width="1.3em"
+    height="1.3em"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.9}
+    strokeLinecap="round"
+    aria-hidden="true"
+  >
+    <path d="M4 6.5h16M4 12h16M4 17.5h16" />
+    <circle cx="9" cy="6.5" r="2.4" />
+    <circle cx="15.5" cy="12" r="2.4" />
+    <circle cx="7.5" cy="17.5" r="2.4" />
+  </svg>
+);

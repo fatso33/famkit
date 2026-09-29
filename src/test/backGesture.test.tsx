@@ -150,7 +150,7 @@ describe('back gesture', () => {
   it('keeps the recipe editor open, with its changes, when going back', async () => {
     render(<App />);
     openBabka();
-    fireEvent.click(screen.getByRole('button', { name: /edit recipe/i }));
+    openMenuItem(t.editRecipe);
     fireEvent.change(within(editor()!).getByLabelText(t.recipeTitle), {
       target: { value: 'Babka Wielkanocna' },
     });

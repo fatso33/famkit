@@ -213,4 +213,51 @@ describe('floating menu', () => {
     const heading = t.vaultTitle;
     expect(screen.getByRole('heading', { name: heading, level: 1 })).toBeInTheDocument();
   });
+
+  it("holds Edit with Share in the recipe page's card, not on the page itself", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: WANDAS_CHEESE_BREAD.name }));
+    expect(screen.queryByRole('button', { name: t.editRecipe })).toBeNull();
+
+    const pages = within(openMenu()).getByRole('navigation', { name: t.pages });
+    const actions = within(pages).getByRole('list', { name: t.recipeVault });
+    expect(
+      within(actions)
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual([t.editRecipe, t.shareRecipe]);
+
+    fireEvent.click(within(actions).getByRole('button', { name: t.editRecipe }));
+    finishClosing();
+    expect(screen.getByRole('dialog', { name: t.editorTitleEdit })).toBeInTheDocument();
+  });
+
+  it('keeps the back button out while the menu is open, and going back closes the menu', () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: WANDAS_CHEESE_BREAD.name }));
+    const menu = openMenu();
+
+    const back = screen.getByRole('button', { name: t.backToRecipes });
+    // Focus reaching it doesn't count as leaving the menu.
+    act(() => back.focus());
+    expect(menu).not.toHaveClass('is-closing');
+
+    fireEvent.click(back);
+    expect(menu).toHaveClass('is-closing');
+    finishClosing();
+    expect(screen.queryByRole('dialog', { name: t.menu })).toBeNull();
+    expect(screen.getByRole('heading', { name: t.vaultTitle, level: 1 })).toBeInTheDocument();
+  });
+
+  it('switches to dark mode from the sun and moon pill', () => {
+    render(<App />);
+    const menu = openMenu();
+    openPreferences(menu);
+    const dark = within(menu).getByRole('switch', { name: t.darkMode });
+    const wasDark = dark.getAttribute('aria-checked') === 'true';
+
+    fireEvent.click(dark);
+    expect(dark).toHaveAttribute('aria-checked', String(!wasDark));
+    expect(document.documentElement).toHaveAttribute('data-theme', wasDark ? 'light' : 'dark');
+  });
 });

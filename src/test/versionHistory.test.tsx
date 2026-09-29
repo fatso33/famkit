@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import App from '../App';
 import { UI_TEXT } from '../i18n/translations';
+import { chooseFromMenu } from './menu';
 import { Recipe } from '../types/recipe';
 
 // Firebase is off in tests, so versions go through the on-device store: only Gemini is mocked.
@@ -30,7 +31,7 @@ const babka: Recipe = {
 const stored = () => (JSON.parse(localStorage.getItem('wandas_recipes')!) as Recipe[])[0];
 
 function openEditor() {
-  fireEvent.click(screen.getByRole('button', { name: /edit recipe/i }));
+  chooseFromMenu(UI_TEXT.en.editRecipe);
   return screen.getByRole('dialog', { name: /edit recipe/i });
 }
 

@@ -35,7 +35,7 @@ import {
   type NavMotion,
 } from './utils/viewTransition';
 import { SeasonPreference } from './utils/season';
-import { Plus, Share2 } from 'lucide-react';
+import { PencilLine, Plus, Share2 } from 'lucide-react';
 import { FloatingMenu, MenuAction } from './components/layout/FloatingMenu';
 import { InstallCard } from './components/layout/InstallCard';
 import { RecipeGridView } from './components/recipe-grid/RecipeGridView';
@@ -293,11 +293,22 @@ export default function App() {
       : navigateTo(mainPage, { animated }),
   );
 
-  const openAddRecipe = () => {
-    setEditingRecipe(null);
-    // It opens out of the menu button, where "Add recipe" was chosen.
+  // The editor opens out of the menu button, where "Add recipe" or "Edit recipe" was chosen.
+  const openEditor = (recipe: Recipe | null) => {
+    setEditingRecipe(recipe);
     setEditorOrigin(centreOf(document.getElementById('fabMenuBtn')));
     setIsAddModalOpen(true);
+  };
+
+  const openAddRecipe = () => openEditor(null);
+
+  const editRecipe = (recipe: Recipe) => {
+    // Editing a copy without its photos would save the recipe without them.
+    if (hasLeftOutPhotos(recipe)) {
+      showToast(t.photosStillLoading, 'info');
+      return;
+    }
+    openEditor(recipe);
   };
 
   const handleShare = async () => {
@@ -327,16 +338,27 @@ export default function App() {
   let pageActions: MenuAction[] = [];
   switch (page) {
     case 'recipes':
-      pageActions = selectedRecipe
-        ? [
-            {
-              id: 'share',
-              label: t.shareRecipe,
-              icon: Share2,
-              onSelect: () => void handleShare(),
-            },
-          ]
-        : [{ id: 'add-recipe', label: t.addRecipe, icon: Plus, onSelect: openAddRecipe }];
+      if (!selectedRecipe) {
+        pageActions = [
+          { id: 'add-recipe', label: t.addRecipe, icon: Plus, onSelect: openAddRecipe },
+        ];
+        break;
+      }
+      // Only the family member who added a recipe can edit it.
+      if (canEditRecipe(selectedRecipe, currentUser, isFirebaseConfigured)) {
+        pageActions.push({
+          id: 'edit-recipe',
+          label: t.editRecipe,
+          icon: PencilLine,
+          onSelect: () => editRecipe(selectedRecipe),
+        });
+      }
+      pageActions.push({
+        id: 'share',
+        label: t.shareRecipe,
+        icon: Share2,
+        onSelect: () => void handleShare(),
+      });
       break;
     case 'makes':
       pageActions = [
@@ -377,20 +399,6 @@ export default function App() {
             isWakeLocked={isCookModeOn}
             onToggleWakeLock={() => void toggleCookMode()}
             isWakeLockSupported={isWakeLockSupported}
-            onEditRecipe={
-              canEditRecipe(selectedRecipe, currentUser, isFirebaseConfigured)
-                ? (rec, origin) => {
-                    // Editing a copy without its photos would save the recipe without them.
-                    if (hasLeftOutPhotos(rec)) {
-                      showToast(t.photosStillLoading, 'info');
-                      return;
-                    }
-                    setEditingRecipe(rec);
-                    setEditorOrigin(origin);
-                    setIsAddModalOpen(true);
-                  }
-                : undefined
-            }
             ref={recipePage}
             onUnrolled={() => setBackShown(true)}
             t={t}
