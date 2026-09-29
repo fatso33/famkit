@@ -106,6 +106,9 @@ describe('back gesture', () => {
     openMenuItem(t.makes);
     openMenuItem(t.settings);
     expect(heading()).toHaveTextContent(t.settings);
+    // The menu's own entry gives way to Settings'.
+    await settle();
+    expect(depth()).toBe(1);
 
     await swipeBack();
     expect(heading()).toHaveTextContent(t.makes);
@@ -115,9 +118,45 @@ describe('back gesture', () => {
     render(<App />);
     openBabka();
     openMenuItem(t.settings);
+    await historyAt(1);
 
     await swipeBack();
     expect(heading()).toHaveTextContent(t.vaultTitle);
+  });
+
+  it('closes an open menu first, then goes back to the vault', async () => {
+    render(<App />);
+    openBabka();
+    fireEvent.click(screen.getByRole('button', { name: t.openMenu }));
+    expect(depth()).toBe(2);
+
+    await swipeBack();
+    const panel = document.querySelector('.fk-menu-panel');
+    if (panel) fireEvent.animationEnd(panel);
+    expect(screen.queryByRole('dialog', { name: t.menu })).toBeNull();
+    expect(heading()).toHaveTextContent('Babka');
+
+    await swipeBack();
+    expect(heading()).toHaveTextContent(t.vaultTitle);
+  });
+
+  it('closes an open menu on the vault instead of leaving the app', async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: t.openMenu }));
+    expect(depth()).toBe(1);
+
+    await swipeBack();
+    expect(screen.getByRole('button', { name: t.openMenu })).toBeInTheDocument();
+    expect(heading()).toHaveTextContent(t.vaultTitle);
+    await historyAt(0);
+  });
+
+  it("drops the menu's history entry when it's closed with a tap", async () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: t.openMenu }));
+    expect(depth()).toBe(1);
+    fireEvent.click(screen.getByRole('button', { name: t.closeMenu }));
+    await historyAt(0);
   });
 
   it('closes a photo first, then goes back to the vault', async () => {

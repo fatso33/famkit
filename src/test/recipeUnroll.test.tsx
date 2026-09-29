@@ -163,7 +163,8 @@ describe('a recipe unrolling out of its photo', () => {
     await animations.cue().finish();
 
     fireEvent.click(screen.getByRole('button', { name: t.openMenu }));
-    expect(backButton()).toBeInTheDocument();
+    // While the menu is open it closes the menu, and says so.
+    expect(screen.getAllByRole('button', { name: t.closeMenu })).toHaveLength(2);
     expect(document.querySelector('.fab-group')).toHaveAttribute('data-back', 'shown');
     const menu = screen.getByRole('dialog', { name: t.menu });
     expect(within(menu).getByRole('button', { name: t.shareRecipe })).toBeInTheDocument();

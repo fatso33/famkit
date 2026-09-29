@@ -232,12 +232,16 @@ describe('floating menu', () => {
     expect(screen.getByRole('dialog', { name: t.editorTitleEdit })).toBeInTheDocument();
   });
 
-  it('keeps the back button out while the menu is open, and going back closes the menu', () => {
+  it('keeps the back button out while the menu is open, where it closes only the menu', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: WANDAS_CHEESE_BREAD.name }));
     const menu = openMenu();
 
-    const back = screen.getByRole('button', { name: t.backToRecipes });
+    // The menu button is named Close menu too; the back button is the one without a menu of its own.
+    const back = screen
+      .getAllByRole('button', { name: t.closeMenu })
+      .find((button) => !button.hasAttribute('aria-expanded'))!;
+    expect(back).toBeDefined();
     // Focus reaching it doesn't count as leaving the menu.
     act(() => back.focus());
     expect(menu).not.toHaveClass('is-closing');
@@ -246,6 +250,11 @@ describe('floating menu', () => {
     expect(menu).toHaveClass('is-closing');
     finishClosing();
     expect(screen.queryByRole('dialog', { name: t.menu })).toBeNull();
+    // Still on the recipe, whose back button now goes back to the vault.
+    expect(
+      screen.getByRole('heading', { name: WANDAS_CHEESE_BREAD.name, level: 1 }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: t.backToRecipes }));
     expect(screen.getByRole('heading', { name: t.vaultTitle, level: 1 })).toBeInTheDocument();
   });
 

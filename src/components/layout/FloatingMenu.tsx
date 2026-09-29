@@ -11,6 +11,7 @@ import {
 import { Language, Theme } from '../../types/recipe';
 import { AppPage } from '../../types/navigation';
 import { UiTranslations } from '../../i18n/translations';
+import { useBackStep } from '../../hooks/useBackStep';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 
 /** Something to do on the current page (e.g. "Add recipe" on the vault), held in its card. */
@@ -34,7 +35,7 @@ interface FloatingMenuProps {
   onIncreaseFont: () => void;
   onDecreaseFont: () => void;
   /** A back button grows out of the menu button's left side while this is true. It stays out
-      while the menu is open. */
+      while the menu is open, where it closes the menu instead. */
   showBack: boolean;
   onBack: () => void;
   t: UiTranslations;
@@ -61,6 +62,9 @@ export const FloatingMenu: React.FC<FloatingMenuProps> = (props) => {
     fabRef.current?.focus({ preventScroll: true });
   }, []);
 
+  // The phone's back gesture closes an open menu first, like its back button.
+  useBackStep(isOpen, close);
+
   return (
     <>
       {state !== 'closed' && (
@@ -83,14 +87,17 @@ export const FloatingMenu: React.FC<FloatingMenuProps> = (props) => {
         <button
           type="button"
           className="fab-back"
-          aria-label={t.backToRecipes}
+          aria-label={isOpen ? t.closeMenu : t.backToRecipes}
           aria-hidden={!showBack || undefined}
           inert={!showBack}
           onClick={() => {
+            // With the menu open, back steps out of the menu only, leaving the recipe showing.
+            if (isOpen) {
+              close();
+              return;
+            }
             // It's about to tuck away, so keyboard focus moves to the menu button it merges into.
             fabRef.current?.focus({ preventScroll: true });
-            // From an open menu, the menu furls away as the recipe rolls up.
-            if (state === 'open') setState('closing');
             onBack();
           }}
         >
