@@ -16,10 +16,10 @@ import {
   recipePieces,
 } from '../utils/translationPieces';
 
-// Flash for natural, contextual wording; Flash-Lite (its own free quota) when Flash is busy or
-// over its limit. Both think a little: thinking is billed as output, and translation needs little.
-const PRIMARY_MODEL = 'gemini-3.8-flash';
-const FALLBACK_MODEL = 'gemini-3.5-flash-lite';
+// Flash for natural, contextual wording, thinking a little: thinking is billed as output, and
+// translation needs little. Only Flash: when it's busy the recipe waits rather than getting a
+// lighter model's weaker Polish.
+const MODEL = 'gemini-3.8-flash';
 
 /** Translation runs through Firebase AI Logic, so it needs the Firebase project. */
 export const isTranslationAvailable = isFirebaseConfigured;
@@ -167,23 +167,14 @@ export async function translatePieces(
 
   const { requested, texts, ingredients } = requestPieces(pieces);
   const prompt = buildPrompt(recipe, pieces, texts, ingredients, language);
-  const generate = (model: string) =>
-    getGenerativeModel(ai, {
-      model,
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: schema,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      },
-    }).generateContent(prompt);
-
-  let result;
-  try {
-    result = await generate(PRIMARY_MODEL);
-  } catch (err) {
-    console.warn(`${PRIMARY_MODEL} failed, trying ${FALLBACK_MODEL}:`, err);
-    result = await generate(FALLBACK_MODEL);
-  }
+  const result = await getGenerativeModel(ai, {
+    model: MODEL,
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: schema,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+    },
+  }).generateContent(prompt);
 
   let raw: unknown;
   try {

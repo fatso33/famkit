@@ -17,7 +17,7 @@ Deployable directly as a zero-server static Single Page Application (SPA) to **G
 - **☁️ Cloud Sync & Multi-Device Sharing**: Powered by Cloud Firestore with IndexedDB multi-tab offline persistence. Recipes saved on one phone or tablet instantly appear across all family devices.
 - **🔒 Family Google Authentication & Guest List**: Private heirloom vault protected by Google Sign-In with a family list kept in Firestore that only the project owner can change, in the Firebase console.
 - **📝 Step Builder, Photos & Version Archiving**: Add step-by-step consistency notes, photo thumbnails, and automatic version incrementing (`v1`, `v2`, `v3`) with historical archive snapshots.
-- **🤖 Two-way Family Translation via Gemini 3.5 / 3.8 Flash**: Bundled with verified offline translations for heirloom recipes. New and edited recipes are translated automatically between English and Polish through Firebase AI Logic (Gemini 3.5 Flash Lite, with Gemini 3.8 Flash fallback), protected by App Check. No Gemini key ships in the app.
+- **🤖 Two-way Family Translation via Gemini 3.8 Flash**: Bundled with verified offline translations for heirloom recipes. New and edited recipes are translated automatically between English and Polish through Firebase AI Logic (Gemini 3.8 Flash only, never a lighter model; an unusable answer is asked for once more straight away), protected by App Check. No Gemini key ships in the app.
 
 ---
 

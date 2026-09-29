@@ -159,24 +159,31 @@ describe('translatePieces', () => {
     expect(prompt).not.toContain('"id":"p2"');
   });
 
-  it('uses Gemini 3.8 Flash thinking lightly, and falls back to Flash-Lite when it fails', async () => {
+  it('uses Gemini 3.8 Flash thinking lightly', async () => {
     const { translatePieces } = await load();
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-    generateContent
-      .mockRejectedValueOnce(new Error('overloaded'))
-      .mockResolvedValueOnce(reply({ detectedLanguage: 'en', texts: [{ id: 'p1', text: 'Pie' }] }));
+    generateContent.mockResolvedValue(
+      reply({ detectedLanguage: 'en', texts: [{ id: 'p1', text: 'Pie' }] }),
+    );
 
-    await expect(translatePieces(testRecipe, pendingPieces(testRecipe))).resolves.toMatchObject({
-      detectedLanguage: 'en',
-    });
+    await translatePieces(testRecipe, pendingPieces(testRecipe));
     const models = getGenerativeModel.mock.calls.map((call) => (call as unknown[])[1]);
     expect(models).toMatchObject([
       {
         model: 'gemini-3.8-flash',
         generationConfig: { thinkingConfig: { thinkingLevel: 'LOW' } },
       },
-      { model: 'gemini-3.5-flash-lite' },
     ]);
+  });
+
+  it('never hands a busy Flash’s work to a lighter model (the recipe waits for Flash)', async () => {
+    const { translatePieces } = await load();
+    generateContent.mockRejectedValue(new Error('overloaded'));
+
+    await expect(translatePieces(testRecipe, pendingPieces(testRecipe))).rejects.toThrow(
+      'overloaded',
+    );
+    const models = getGenerativeModel.mock.calls.map((call) => (call as unknown[])[1]);
+    expect(models).toMatchObject([{ model: 'gemini-3.8-flash' }]);
   });
 
   it.each([

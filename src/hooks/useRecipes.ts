@@ -35,7 +35,7 @@ import {
   sourceLanguageOf,
   translationFitsRecipe,
 } from '../utils/recipeTranslation';
-import { fnv1a, pieceHash } from '../utils/translationPieces';
+import { Piece, fnv1a, pieceHash } from '../utils/translationPieces';
 
 export function getLocalizedRecipe(
   recipe: Recipe | null | undefined,
@@ -52,6 +52,34 @@ function canSaveOver(existing: Recipe | undefined): boolean {
   if (!existing || !hasLeftOutPhotos(existing)) return true;
   console.warn(`Not saving recipe ${existing.id}: its photos haven't loaded on this device yet`);
   return false;
+}
+
+/**
+ * Asks for the pieces' translation, checking a new recipe's language. An unusable answer
+ * (blocked, garbled, or naming the wrong language) is often a one-off, so it's asked for once
+ * more straight away, from the same model, before the longer wait (retryDelayMs).
+ */
+async function requestTranslation(
+  recipe: Recipe,
+  pieces: Piece[],
+  language: Language | undefined,
+): Promise<PieceTranslation> {
+  const ask = async () => {
+    const result = await translatePieces(recipe, pieces, language);
+    if (!language && !translationFitsRecipe(recipe, result)) {
+      throw new TranslationRejectedError(
+        `A translation of recipe ${recipe.id} named the wrong language`,
+      );
+    }
+    return result;
+  };
+  try {
+    return await ask();
+  } catch (err) {
+    if (!(err instanceof TranslationRejectedError)) throw err;
+    console.warn(`Unusable translation of recipe ${recipe.id}, asking once more:`, err);
+    return ask();
+  }
 }
 
 /** The vault, kept in sync with Firestore. `currentUser` owns the recipes added here. */
@@ -83,7 +111,8 @@ export function useRecipes(currentUser: CurrentUser | null) {
 
   // Translates new and edited recipes into their other language, one at a time, and only the
   // pieces that have no translation yet. Each request is tried once per session; coming back
-  // online or reopening the app retries lost connections, and an unusable answer waits longer.
+  // online or reopening the app retries lost connections, and an unusable answer is asked for
+  // once more at once (requestTranslation), then waits longer.
   useEffect(() => {
     if (!isTranslationAvailable || translationInFlight.current) return;
 
@@ -132,16 +161,11 @@ export function useRecipes(currentUser: CurrentUser | null) {
     // Every piece already translated (e.g. steps only moved): rebuilt here, with no request.
     const work: Promise<PieceTranslation> =
       pieces.length > 0
-        ? translatePieces(recipe, pieces, language)
+        ? requestTranslation(recipe, pieces, language)
         : Promise.resolve({ detectedLanguage: sourceLanguageOf(recipe), values: new Map() });
 
     work
       .then((result) => {
-        if (!language && !translationFitsRecipe(recipe, result)) {
-          throw new TranslationRejectedError(
-            `A translation of recipe ${recipe.id} named the wrong language`,
-          );
-        }
         // Edited or synced meanwhile: the new text gets its own translation.
         const current = latestRecipes.current.find((r) => r.id === recipe.id);
         if (!current || sourceHash(current) !== hash) return;

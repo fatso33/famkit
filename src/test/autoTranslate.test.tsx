@@ -5,7 +5,7 @@ import { translatePieces } from '../services/gemini';
 import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 import { Recipe } from '../types/recipe';
 import { UI_TEXT } from '../i18n/translations';
-import { sourceHash } from '../utils/recipeTranslation';
+import { TranslationRejectedError, sourceHash } from '../utils/recipeTranslation';
 import { answerFrom, dictionaryTranslator } from './translator';
 
 // Firebase is off in tests, so recipes stay local; only the translation call is mocked.
@@ -98,11 +98,49 @@ describe('background recipe translation', () => {
     render(<App />);
     await settle();
 
-    expect(translate).toHaveBeenCalledTimes(1);
+    // Asked once more straight away, like any unusable answer, then left for later.
+    expect(translate).toHaveBeenCalledTimes(2);
     expect(screen.getByText("Wanda's Cheese Bread")).toBeInTheDocument();
     const stored = JSON.parse(localStorage.getItem('wandas_recipes')!) as Recipe[];
     expect(stored[0].sourceLanguage).not.toBe('pl');
     expect(stored[0].translations).toBeUndefined();
+  });
+
+  it('asks once more straight away when an answer is unusable, so one bad reply costs no wait', async () => {
+    // Potato wedges: a blocked or garbled reply left it in English for hours behind the wait.
+    seed(customRecipe);
+    translate
+      .mockRejectedValueOnce(new TranslationRejectedError('Translation response is not JSON'))
+      .mockImplementation(dictionaryTranslator(POLISH, 'en'));
+    localStorage.setItem('wandas_language', 'pl');
+    render(<App />);
+    await settle();
+
+    expect(translate).toHaveBeenCalledTimes(2);
+    expect(translate.mock.calls[1]).toEqual(translate.mock.calls[0]);
+    expect(screen.getByText('Pierogi cioci Oli')).toBeInTheDocument();
+    expect(localStorage.getItem('family_kitchen_translation_failures')).toBeNull();
+  });
+
+  it('waits before asking again when the second answer is unusable too', async () => {
+    seed(customRecipe);
+    translate.mockRejectedValue(new TranslationRejectedError('Translation response is not JSON'));
+    render(<App />);
+    await settle();
+
+    expect(translate).toHaveBeenCalledTimes(2);
+    const failures = JSON.parse(localStorage.getItem('family_kitchen_translation_failures')!);
+    expect(Object.values(failures)).toMatchObject([{ count: 1 }]);
+  });
+
+  it('asks only once when the connection is lost (that retries when back online)', async () => {
+    seed(customRecipe);
+    translate.mockImplementation(offline);
+    render(<App />);
+    await settle();
+
+    expect(translate).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem('family_kitchen_translation_failures')).toBeNull();
   });
 
   it('asks once more for only the pieces an answer left out', async () => {
