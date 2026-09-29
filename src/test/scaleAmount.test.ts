@@ -89,6 +89,10 @@ describe('scaleAmountText', () => {
     expect(x('1 large', 0.5)).toBe('½ large');
     expect(x('13-16', 0.5)).toBe('6-8');
     expect(x('½ block', 3)).toBe('1 ½ blocks');
+    // Measures are not whole things, even when the app has no tidier unit for them.
+    expect(x('3 dl', 0.5)).toBe('1.5 dl');
+    expect(x('3 pints', 0.5)).toBe('1 ½ pints');
+    expect(x('3 fl oz', 0.5)).toBe('1 ½ fl oz');
   });
 
   it('makes English units agree with the new amount', () => {

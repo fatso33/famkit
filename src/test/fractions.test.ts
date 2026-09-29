@@ -109,6 +109,11 @@ describe('parseIngredientRow', () => {
     expect(amountAt(10)).toBe('5 szklanek posiekanych');
   });
 
+  it('scales a stored quantity that has no kitchen fraction', () => {
+    const ing: Ingredient = { text: 'Milk - 2.2 cups', qty: 2.2, unit: 'cups', prefix: 'Milk - ' };
+    expect(parseIngredientRow(ing, 2, 'en').amount).toBe('4.4 cups');
+  });
+
   it('keeps the stored Polish forms for a unit it does not know', () => {
     const ing: Ingredient = {
       text: 'Bazylia - 2 doniczki',

@@ -111,6 +111,10 @@ export function parseIngredientRow(
     // Written out as the recipe gives it; scaling happens below, the same as for typed amounts.
     const currentQty = Number(ing.qty);
     const formattedQty = formatFraction(currentQty);
+    // A decimal with no kitchen fraction reads "2 .2", which scaling can't read back: give it
+    // "2.2" when scaled. At 1x the amount shows as it always has.
+    const writtenQty =
+      scaleRatio !== 1 && formattedQty.includes('.') ? String(currentQty) : formattedQty;
 
     let unitText = ing.unit || '';
     if (lang === 'pl') {
@@ -142,7 +146,7 @@ export function parseIngredientRow(
     }
 
     const separator = unitText && !['g', 'ml', 'kg', 'oz', 'lb'].includes(unitText) ? ' ' : '';
-    amount = `${formattedQty}${separator}${unitText}${altString}${cleanSuffix}`.trim();
+    amount = `${writtenQty}${separator}${unitText}${altString}${cleanSuffix}`.trim();
   } else if (ownNote && ing.name !== undefined && rawText.startsWith(ing.name)) {
     // Saved as "name - amount" with the name alongside, so a hyphen in the name stays put.
     name = ing.name.trim();

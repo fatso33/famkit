@@ -144,6 +144,8 @@ const UNITS: Record<string, UnitInfo> = {
   grams: { kind: 'metric', family: 'g' },
   gramów: { kind: 'metric', family: 'g' },
   ml: { kind: 'metric', family: 'ml' },
+  dl: { kind: 'metric' },
+  cl: { kind: 'metric' },
   kg: { kind: 'bigMetric', family: 'kg' },
   l: { kind: 'bigMetric', family: 'l' },
   tsp: { kind: 'spoon', family: 'tsp' },
@@ -164,7 +166,14 @@ const UNITS: Record<string, UnitInfo> = {
   szklanka: { kind: 'spoon' },
   szklanki: { kind: 'spoon' },
   szklanek: { kind: 'spoon' },
+  pint: { kind: 'spoon' },
+  pints: { kind: 'spoon' },
+  quart: { kind: 'spoon' },
+  quarts: { kind: 'spoon' },
+  gallon: { kind: 'spoon' },
+  gallons: { kind: 'spoon' },
   oz: { kind: 'imperial' },
+  fl: { kind: 'imperial' }, // "fl oz"
   ounce: { kind: 'imperial' },
   ounces: { kind: 'imperial' },
   lb: { kind: 'imperial' },
@@ -293,7 +302,7 @@ function tidyUnit(value: number, unit: string, lang: Language): { value: number;
     case 'l':
       if (value < 1) return { value: value * 1000, unit: 'ml' };
       break;
-    case undefined: // szklanka, oz, lb: no better unit to move to
+    case undefined: // szklanka, dl, pint, oz, lb: no better unit to move to
       break;
   }
   return { value, unit };
