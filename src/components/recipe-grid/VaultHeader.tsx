@@ -1,5 +1,8 @@
 import React, { useLayoutEffect, useRef } from 'react';
 import { UiTranslations } from '../../i18n/translations';
+import { condenseGeometry, condenseSnap } from '../../utils/vaultCondense';
+import { prefersReducedMotion } from '../../utils/viewTransition';
+import { HeartFlourish } from '../common/HeartFlourish';
 
 interface VaultHeaderProps {
   counts: { recipes: number; cooks: number };
@@ -17,9 +20,11 @@ const SHOW_AFTER_PX = 6;
 
 /**
  * The vault's banner: "Recipe Vault" over the splash's heart flourish and a count of recipes
- * and cooks. As the page scrolls it sinks away (a scroll-driven animation in index.css), and
- * when the bar holding the toolbar reaches the top it pins there, gaining a background and a
- * small "Recipe Vault" title.
+ * and cooks. When the bar holding the toolbar reaches the top it pins there, gaining a
+ * background and a small "Recipe Vault" title. Where the browser has scroll-driven animations,
+ * the big title shrinks into the small one as the page scrolls, tracking the finger (index.css,
+ * from the geometry measured here), and grows back out of it on the way up. A scroll that stops
+ * halfway settles onward, so the title is never left between sizes.
  *
  * Pinned, the toolbar tucks away under the title while the page scrolls down, leaving only the
  * title strip with a small heart flourish, and comes back on any scroll up. The banner's own
@@ -31,15 +36,60 @@ const SHOW_AFTER_PX = 6;
  */
 export const VaultHeader: React.FC<VaultHeaderProps> = ({ counts, entering, children, t }) => {
   const mastheadRef = useRef<HTMLElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const titleRef = useRef<HTMLSpanElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const nameRef = useRef<HTMLSpanElement>(null);
 
   // A layout effect, so the bar is already right on the first frame: coming back from a
   // recipe restores a scrolled-down vault inside the page transition's snapshot.
   useLayoutEffect(() => {
     const bar = barRef.current;
     const masthead = mastheadRef.current;
-    if (!bar || !masthead) return;
+    const heading = headingRef.current;
+    const title = titleRef.current;
+    const strip = stripRef.current;
+    const name = nameRef.current;
+    if (!bar || !masthead || !heading || !title || !strip || !name) return;
     let frame = 0;
+    // The scroll at which the bar pins, where the title has fully condensed.
+    let pin = 0;
+    const condenses =
+      typeof CSS !== 'undefined' &&
+      CSS.supports?.('animation-timeline: scroll()') === true &&
+      !prefersReducedMotion();
+
+    // Where the title starts and ends, for the scroll-driven condense. Measured again whenever
+    // any of it changes size (fonts arriving, the language or text size changing).
+    const measure = () => {
+      const y = window.scrollY;
+      const box = heading.getBoundingClientRect();
+      const stripBox = strip.getBoundingClientRect();
+      const geometry = condenseGeometry({
+        heading: { left: box.left, top: box.top + y, width: box.width, height: box.height },
+        title: {
+          width: title.offsetWidth,
+          height: title.offsetHeight,
+          fontSize: parseFloat(getComputedStyle(title).fontSize) || 0,
+        },
+        name: {
+          width: name.offsetWidth,
+          height: name.offsetHeight,
+          fontSize: parseFloat(getComputedStyle(name).fontSize) || 0,
+        },
+        strip: { left: stripBox.left, width: stripBox.width, height: stripBox.height },
+        mastheadBottom: masthead.getBoundingClientRect().bottom + y,
+        stuckAt: parseFloat(getComputedStyle(bar).top) || 0,
+      });
+      pin = geometry.pin;
+      for (const el of [masthead, bar]) {
+        el.style.setProperty('--vault-pin', `${geometry.pin.toFixed(1)}px`);
+      }
+      masthead.style.setProperty('--vault-title-dx', `${geometry.dx.toFixed(1)}px`);
+      masthead.style.setProperty('--vault-title-dy', `${geometry.dy.toFixed(1)}px`);
+      masthead.style.setProperty('--vault-title-scale', geometry.scale.toFixed(4));
+    };
     let lastY = window.scrollY;
     // Distance travelled in the current direction: positive down, negative up.
     let travel = 0;
@@ -70,11 +120,23 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({ counts, entering, chil
     const onScroll = () => {
       if (!frame) frame = requestAnimationFrame(update);
     };
+    // Came to rest halfway through the condense: carry on to the end the page was moving
+    // towards.
+    const onScrollEnd = () => {
+      const maxY = document.documentElement.scrollHeight - window.innerHeight;
+      const target = condenseSnap(window.scrollY, pin, maxY, travel < 0);
+      if (target !== null) window.scrollTo({ top: target, behavior: 'smooth' });
+    };
+    const onResize = () => {
+      measure();
+      onScroll();
+    };
     // Keyboard focus reaching the tucked toolbar brings it back.
     const onFocusIn = () => {
       travel = 0;
       bar.toggleAttribute('data-tucked', false);
     };
+    measure();
     update();
     // Only now may their states animate: the first reading applies at once. Styles are flushed
     // first, so the first reading can't be taken for a change.
@@ -82,12 +144,19 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({ counts, entering, chil
     bar.toggleAttribute('data-ready', true);
     masthead.toggleAttribute('data-ready', true);
     window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
+    window.addEventListener('resize', onResize);
+    if (condenses) window.addEventListener('scrollend', onScrollEnd);
     bar.addEventListener('focusin', onFocusIn);
+    // The page holding the banner too: something appearing above it (the install card) moves
+    // the banner without resizing it, and the page grows or shrinks with it.
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    for (const el of [masthead, title, name, masthead.parentElement]) if (el) observer?.observe(el);
     return () => {
       window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scrollend', onScrollEnd);
       bar.removeEventListener('focusin', onFocusIn);
+      observer?.disconnect();
       cancelAnimationFrame(frame);
     };
   }, []);
@@ -98,8 +167,8 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({ counts, entering, chil
     <>
       <header ref={mastheadRef} className={`vault-masthead${entering ? ' is-entering' : ''}`}>
         <div className="vault-masthead-inner">
-          <h1 className="vault-heading">
-            <span className="vault-title">
+          <h1 ref={headingRef} className="vault-heading">
+            <span ref={titleRef} className="vault-title">
               {words.map((word, i) => (
                 <React.Fragment key={`${t.vaultTitle}-${i}`}>
                   {i > 0 && ' '}
@@ -110,41 +179,25 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({ counts, entering, chil
               ))}
             </span>
           </h1>
-          <Flourish className="vault-flourish" />
-          {counts.recipes > 0 && (
-            <p className="vault-caption">{t.vaultCaption(counts.recipes, counts.cooks)}</p>
-          )}
+          <div className="vault-masthead-extras">
+            <HeartFlourish className="vault-flourish" />
+            {counts.recipes > 0 && (
+              <p className="vault-caption">{t.vaultCaption(counts.recipes, counts.cooks)}</p>
+            )}
+          </div>
         </div>
       </header>
 
       <div ref={barRef} className="vault-bar">
         {/* The pinned title repeats the heading for sighted users only. */}
-        <div className="vault-bar-title" aria-hidden="true">
-          <span className="vault-bar-name">{t.vaultTitle}</span>
-          <Flourish className="vault-bar-flourish" />
+        <div ref={stripRef} className="vault-bar-title" aria-hidden="true">
+          <span ref={nameRef} className="vault-bar-name">
+            {t.vaultTitle}
+          </span>
+          <HeartFlourish className="vault-bar-flourish" />
         </div>
         <div className="vault-bar-tools">{children}</div>
       </div>
     </>
   );
 };
-
-/** The splash's heart flourish: a line drawn out to each side of a small heart. */
-const Flourish: React.FC<{ className: string }> = ({ className }) => (
-  <svg className={className} viewBox="0 0 160 14" aria-hidden="true" focusable="false">
-    <path
-      className="vault-flourish-line"
-      pathLength={1}
-      d="M70 7.5C56 3.5 42 11 26 7.5C18 5.8 11 5.8 4 7.5"
-    />
-    <path
-      className="vault-flourish-line"
-      pathLength={1}
-      d="M90 7.5C104 3.5 118 11 134 7.5C142 5.8 149 5.8 156 7.5"
-    />
-    <path
-      className="vault-flourish-heart"
-      d="M80 12.5C77 10.5 74.5 8.3 74.5 6C74.5 4.2 75.8 3 77.3 3C78.5 3 79.5 3.7 80 4.7C80.5 3.7 81.5 3 82.7 3C84.2 3 85.5 4.2 85.5 6C85.5 8.3 83 10.5 80 12.5Z"
-    />
-  </svg>
-);

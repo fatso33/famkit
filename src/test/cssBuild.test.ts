@@ -25,4 +25,14 @@ describe('production CSS', () => {
     const blurring = blocks.filter((b) => /(^|;)backdrop-filter:/.test(b));
     expect(blurring.every((b) => b.includes('-webkit-backdrop-filter:'))).toBe(true);
   });
+
+  // It expands a shorthand listing two animations into longhands with a 0s duration. A
+  // scroll-driven animation with a 0s duration is finished before it starts, which left the
+  // vault's big title shrunk and hidden at the top of the page.
+  it('leaves scroll-driven animations their automatic duration', () => {
+    const scrollDriven = blocks.filter((b) => b.includes('animation-timeline:scroll('));
+    expect(scrollDriven.length).toBeGreaterThan(0);
+    const zeroLength = scrollDriven.filter((b) => /animation(-duration)?:[^;]*\b0s\b/.test(b));
+    expect(zeroLength).toEqual([]);
+  });
 });

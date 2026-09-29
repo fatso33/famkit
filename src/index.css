@@ -1139,9 +1139,9 @@
          The banner ("Recipe Vault", the splash's heart flourish, a count), then the bar holding
          the toolbar. The bar is sticky, --vault-bar-title below the top, with that space above
          it drawn by the bar itself: once it pins (VaultHeader sets data-condensed), its
-         background fades in and a small title rises into the space. As the page scrolls the
-         banner sinks and fades, driven by the scroll itself where the browser can
-         (animation-timeline), so it tracks the finger with no script. Pinned and scrolling down,
+         background fades in and a small title appears in the space. Where the browser can
+         (animation-timeline), the banner's title condenses into that small title as the page
+         scrolls, driven by the scroll itself so it tracks the finger. Pinned and scrolling down,
          the toolbar rolls up under the title (data-tucked) and a small flourish appears there.
          Only transform, opacity, filter and stroke-dashoffset animate. */
       .vault-page {
@@ -1193,7 +1193,11 @@
         stroke: var(--accent-gold);
         stroke-width: 2.2;
         stroke-linecap: round;
-        stroke-dasharray: 1;
+        /* One dash the length of the line, then a longer gap. Hidden, the line is moved just
+           past its dash (--flourish-hidden), not exactly to its end: a dash ending exactly on
+           the line's end is a zero-length dash, which a round cap still draws as a gold dot. */
+        stroke-dasharray: 1 2;
+        --flourish-hidden: 1.02;
       }
 
       .vault-flourish-heart {
@@ -1228,7 +1232,7 @@
           transform 0.6s var(--ease-glide) 0.4s;
       }
       .vault-masthead[data-away] .vault-flourish .vault-flourish-line {
-        stroke-dashoffset: 1;
+        stroke-dashoffset: var(--flourish-hidden);
         transition: stroke-dashoffset 0.3s ease-in;
       }
       .vault-masthead[data-away] .vault-flourish .vault-flourish-heart {
@@ -1329,7 +1333,8 @@
 
       .vault-bar-name {
         font: var(--weight-heading) 1.3rem/1 var(--font-serif);
-        letter-spacing: -0.01em;
+        /* The big title's spacing, so it condenses exactly onto this one. */
+        letter-spacing: -0.015em;
         color: var(--text-primary);
         opacity: 0;
         transform: translateY(0.4rem) scale(0.94);
@@ -1370,7 +1375,7 @@
 
       .vault-bar-flourish .vault-flourish-line {
         stroke-width: 2.6;
-        stroke-dashoffset: 1;
+        stroke-dashoffset: var(--flourish-hidden);
         transition: stroke-dashoffset 0.2s ease-in;
       }
 
@@ -2357,13 +2362,6 @@
         }
       }
 
-      @keyframes vault-recede {
-        to {
-          opacity: 0;
-          transform: translateY(38%) scale(0.9);
-        }
-      }
-
       @media (prefers-reduced-motion: no-preference) {
         /* Arriving: the title word by word coming into focus (as on the splash), the flourish
            drawing out from its heart, the count, the tools, and the
@@ -2393,17 +2391,73 @@
         }
       }
 
-      /* The banner sinks and fades as it scrolls away, tracking the scroll on the compositor. */
-      @supports (animation-timeline: view()) {
+      /* The big title condenses into the pinned bar's small one as the page scrolls, tracking
+         the scroll on the compositor: it moves and shrinks until it lies exactly on the small
+         title (VaultHeader measures --vault-pin and --vault-title-*), and the two swap in the
+         frame the bar pins. Scrolling back up, the small title grows back into the big one.
+         The pinned bar's backgrounds then fade in over the gap before the list reaches them,
+         and the flourish and count fade with the first touch of scroll, so they never crowd
+         the shrinking title (they also fold away on their own, data-away).
+         Longhands only: the build writes a 0s duration into a shorthand listing two animations,
+         and a scroll-driven animation needs its duration left auto. */
+      @supports (animation-timeline: scroll()) {
         @media (prefers-reduced-motion: no-preference) {
-          .vault-masthead {
-            view-timeline-name: --vault-masthead;
+          .vault-title,
+          .vault-bar-name,
+          .vault-bar[data-condensed] .vault-bar-name,
+          .vault-bar::before,
+          .vault-bar-title::before,
+          .vault-masthead-extras {
+            animation-duration: auto;
+            animation-fill-mode: both;
+            animation-timeline: scroll(root);
           }
-          .vault-masthead-inner {
-            animation: vault-recede linear both;
-            animation-timeline: --vault-masthead;
-            animation-range: exit 0% exit 80%;
+          .vault-title {
+            animation-name: vault-title-condense, vault-swap-out;
+            animation-timing-function: linear, steps(1, jump-end);
+            animation-range: 0px var(--vault-pin, 1px);
           }
+          .vault-bar-name,
+          .vault-bar[data-condensed] .vault-bar-name {
+            transform: none;
+            filter: none;
+            animation-name: vault-swap-in;
+            animation-timing-function: steps(1, jump-end);
+            animation-range: 0px var(--vault-pin, 1px);
+          }
+          .vault-bar::before,
+          .vault-bar-title::before {
+            animation-name: vault-swap-in;
+            animation-timing-function: linear;
+            animation-range: var(--vault-pin, 1px) calc(var(--vault-pin, 1px) + 1.25rem);
+          }
+          .vault-masthead-extras {
+            animation-name: vault-swap-out;
+            animation-timing-function: linear;
+            animation-range: 0px 1.5rem;
+          }
+        }
+      }
+
+      @keyframes vault-title-condense {
+        to {
+          transform: translate(var(--vault-title-dx, 0px), var(--vault-title-dy, 0px))
+            scale(var(--vault-title-scale, 1));
+        }
+      }
+
+      @keyframes vault-swap-in {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      @keyframes vault-swap-out {
+        to {
+          opacity: 0;
         }
       }
 

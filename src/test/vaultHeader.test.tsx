@@ -84,6 +84,43 @@ describe('the vault header', () => {
     expect(bar).toHaveAttribute('data-tucked');
   });
 
+  it('measures the title again when something above moves the banner without resizing it', () => {
+    const observed: Element[] = [];
+    let notify = () => {};
+    class FakeObserver {
+      constructor(callback: () => void) {
+        notify = callback;
+      }
+      observe(el: Element) {
+        observed.push(el);
+      }
+      disconnect() {}
+    }
+    vi.stubGlobal('ResizeObserver', FakeObserver);
+    let bannerBottom = 200;
+    const rect = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        const bottom = this.classList.contains('vault-masthead') ? bannerBottom : 0;
+        return { top: 0, left: 0, width: 0, height: 0, right: 0, bottom } as DOMRect;
+      });
+    try {
+      const { masthead } = renderHeader();
+      const pin = () => masthead.style.getPropertyValue('--vault-pin');
+      expect(pin()).toBe('200.0px');
+
+      // The install card appears above: the banner moves down, its size unchanged, and the
+      // page holding it grows.
+      expect(observed).toContain(masthead.parentElement);
+      bannerBottom = 320;
+      act(() => notify());
+      expect(pin()).toBe('320.0px');
+    } finally {
+      rect.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('brings the toolbar back when keyboard focus reaches it', () => {
     const { bar, getByRole } = renderHeader();
     scrollTo(400);
