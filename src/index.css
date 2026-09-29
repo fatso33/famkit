@@ -3311,7 +3311,6 @@
         z-index: 100;
         background: rgba(0, 0, 0, 0.55);
         backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
         align-items: center;
         justify-content: center;
         padding: 1rem;
@@ -4061,7 +4060,6 @@
         border-radius: inherit;
         background: color-mix(in srgb, var(--bg-card) 95%, transparent);
         backdrop-filter: blur(16px) saturate(1.4);
-        -webkit-backdrop-filter: blur(16px) saturate(1.4);
         border: 1px solid var(--border-strong);
         box-shadow: inset 0 1px 0 color-mix(in srgb, var(--bg-surface) 70%, transparent);
       }
@@ -4218,49 +4216,19 @@
 
       /* Menu layer: the page behind softens into a blur + panel that blooms out of the button.
          Blurred, not dimmed: a darker page would part from the status bar, which keeps the
-         page's own colour. The frost is that same colour (--bg-main is theme-color).
-         The blur itself grows in, never the layer's opacity: Chrome on Android drops a
-         backdrop blur whose element fades (the page stayed sharp on a Pixel). Filled backwards
-         only, so once open the layer is a plain, still blur. The frost fades on its own
-         pseudo-element, so both run on the compositor. */
+         page's own colour. The faint frost is that same colour (--bg-main is theme-color). */
       .fk-menu-layer {
         position: fixed;
         inset: 0;
         z-index: 61;
-        backdrop-filter: blur(12px) saturate(1.1);
-        -webkit-backdrop-filter: blur(12px) saturate(1.1);
-        animation: fk-blur-in 0.3s ease backwards;
-      }
-
-      .fk-menu-layer::before {
-        content: '';
-        position: absolute;
-        inset: 0;
         background: color-mix(in srgb, var(--bg-main) 14%, transparent);
-        animation: fk-fade-in 0.3s ease backwards;
+        backdrop-filter: blur(12px) saturate(1.1);
+        animation: fk-fade-in 0.3s ease both;
       }
 
       .fk-menu-layer.is-closing {
         pointer-events: none;
-        animation: fk-blur-out 0.2s ease both;
-      }
-
-      .fk-menu-layer.is-closing::before {
         animation: fk-fade-out 0.2s ease both;
-      }
-
-      @keyframes fk-blur-in {
-        from {
-          backdrop-filter: blur(0) saturate(1);
-          -webkit-backdrop-filter: blur(0) saturate(1);
-        }
-      }
-
-      @keyframes fk-blur-out {
-        to {
-          backdrop-filter: blur(0) saturate(1);
-          -webkit-backdrop-filter: blur(0) saturate(1);
-        }
       }
 
       .fk-menu-panel {
@@ -4990,7 +4958,6 @@
         z-index: -1;
         background: color-mix(in srgb, var(--bg-main) 86%, transparent);
         backdrop-filter: blur(18px) saturate(1.5);
-        -webkit-backdrop-filter: blur(18px) saturate(1.5);
         transition: box-shadow 0.25s ease;
       }
 
@@ -5572,7 +5539,6 @@
         border-radius: var(--radius-full);
         background: rgba(20, 16, 14, 0.48);
         backdrop-filter: blur(12px) saturate(1.4);
-        -webkit-backdrop-filter: blur(12px) saturate(1.4);
         color: #ffffff;
         font: inherit;
         font-size: 0.9375rem;
@@ -7134,7 +7100,6 @@
         border-radius: var(--radius-full);
         background: color-mix(in srgb, var(--bg-card) 90%, transparent);
         backdrop-filter: blur(16px) saturate(1.4);
-        -webkit-backdrop-filter: blur(16px) saturate(1.4);
         animation: editor-back-in 0.7s var(--spring-soft) 0.12s backwards;
       }
 
