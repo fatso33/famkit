@@ -53,6 +53,14 @@ describe('sign-in splash', () => {
     vi.useRealTimers();
   });
 
+  it('waits for the sign-in check on a quiet launch screen, not the old icon picture', () => {
+    renderSplash({ isLoading: true });
+
+    expect(screen.getByRole('status')).toHaveTextContent(en.appLoading);
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.queryByText('App Content')).not.toBeInTheDocument();
+  });
+
   it('shows the welcome, the pot, the preferences and the Google button', () => {
     renderSplash();
 

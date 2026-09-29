@@ -11,9 +11,11 @@ const __dirname = path.dirname(__filename);
 
 /**
  * The installed app's splash screen and task-switcher bar take their colours from the
- * manifest, which can't change at runtime. Each build writes in the page background of the
+ * manifest, which can't change at runtime. Each build writes in the dark page background of the
  * season it's built in, and deploy.yml rebuilds on the first day of every season; Android
- * picks the new colours up when it next refreshes the installed app.
+ * picks the new colours up when it next refreshes the installed app. The manifest can't follow
+ * each person's light/dark choice (Chrome never shipped dark manifest colours), and Peter chose
+ * dark: no bright flash before a dark vault.
  */
 function seasonalManifest(): Plugin {
   let outDir = 'dist';
@@ -27,7 +29,7 @@ function seasonalManifest(): Plugin {
     closeBundle() {
       const file = path.join(outDir, 'manifest.webmanifest');
       const manifest = JSON.parse(readFileSync(file, 'utf8'));
-      const color = PAGE_BACKGROUND[seasonOn(new Date())].light;
+      const color = PAGE_BACKGROUND[seasonOn(new Date())].dark;
       manifest.theme_color = color;
       manifest.background_color = color;
       writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`);

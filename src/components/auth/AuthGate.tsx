@@ -5,6 +5,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useLanguage } from '../../hooks/useLanguage';
 import { ThemeToggle } from '../common/ThemeToggle';
 import { SplashScreen } from './SplashScreen';
+import { LaunchScreen } from './LaunchScreen';
 import { memberDisplayName } from '../../utils/ownership';
 import { LogOut, ShieldAlert } from 'lucide-react';
 
@@ -35,22 +36,8 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     [email, memberName, displayName],
   );
 
-  // 1. Loading Screen (Warm Heirloom Style)
-  if (isLoading) {
-    return (
-      <div
-        className="min-h-screen flex flex-col items-center justify-center p-6 text-center select-none transition-colors duration-200"
-        style={{
-          backgroundColor: 'var(--bg-main)',
-          color: 'var(--text-primary)',
-        }}
-      >
-        <div className="w-24 h-24 flex items-center justify-center mb-4 animate-pulse">
-          <img src="./Emblem.png" alt="Family Kitchen" className="w-full h-full object-contain" />
-        </div>
-      </div>
-    );
-  }
+  // 1. Finding out who is signed in
+  if (isLoading) return <LaunchScreen label={t.appLoading} />;
 
   // 2. Signed out: the animated splash with sign-in
   if (!user) {

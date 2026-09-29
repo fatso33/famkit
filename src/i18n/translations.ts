@@ -276,6 +276,8 @@ export interface UiTranslations {
   welcomeKitchen: string;
   connectWithGoogle: string;
   liftTheLid: string;
+  /** Read out while the app finds out who is signed in. */
+  appLoading: string;
   familyListUnavailable: string;
   // Floating menu, pages and settings
   menu: string;
@@ -575,6 +577,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     welcomeKitchen: 'Family Kitchen',
     connectWithGoogle: 'Connect with Google',
     liftTheLid: 'Lift the lid',
+    appLoading: 'Opening Family Kitchen…',
     familyListUnavailable:
       "We couldn't check the family list. Check your connection and try again.",
     menu: 'Menu',
@@ -883,6 +886,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     welcomeKitchen: 'Rodzinnej Kuchni',
     connectWithGoogle: 'Połącz przez Google',
     liftTheLid: 'Podnieś pokrywkę',
+    appLoading: 'Otwieranie Rodzinnej Kuchni…',
     familyListUnavailable:
       'Nie udało się sprawdzić listy rodziny. Sprawdź połączenie i spróbuj ponownie.',
     menu: 'Menu',

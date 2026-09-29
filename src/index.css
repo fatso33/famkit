@@ -1254,6 +1254,76 @@
         transition: none;
       }
 
+      /* ── Launch ──
+         While the app finds out who is signed in: at first only the season's page colour (it's
+         usually over in a blink, and the vault or splash then makes its own entrance). If it
+         takes longer, the heart flourish draws out and the heart beats softly until it's done. */
+      .launch-screen {
+        min-height: 100vh;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        background: var(--bg-main);
+      }
+
+      .launch-flourish {
+        width: 10rem;
+        height: auto;
+        /* A little above the middle, where the eye rests. */
+        margin-bottom: 8vh;
+        overflow: visible;
+        opacity: 0;
+        animation: launch-show 0.5s ease 0.7s both;
+      }
+
+      .launch-flourish .vault-flourish-line {
+        stroke-dashoffset: var(--flourish-hidden);
+        animation: launch-draw 1.1s cubic-bezier(0.5, 0.05, 0.25, 1) 0.8s both;
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .launch-flourish .vault-flourish-heart {
+          animation:
+            fk-splash-pop 0.55s var(--ease-decelerate) 0.7s both,
+            launch-beat 1.5s ease-in-out 1.7s infinite;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .launch-flourish .vault-flourish-line {
+          animation: none;
+          stroke-dashoffset: 0;
+        }
+      }
+
+      @keyframes launch-show {
+        to {
+          opacity: 1;
+        }
+      }
+
+      @keyframes launch-draw {
+        to {
+          stroke-dashoffset: 0;
+        }
+      }
+
+      /* A heartbeat: two quick swells, then a rest. */
+      @keyframes launch-beat {
+        0%,
+        20%,
+        44%,
+        100% {
+          transform: none;
+        }
+        10% {
+          transform: scale(1.18);
+        }
+        30% {
+          transform: scale(1.12);
+        }
+      }
+
       .vault-bar {
         position: sticky;
         top: var(--vault-bar-title);
