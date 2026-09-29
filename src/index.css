@@ -4218,20 +4218,49 @@
 
       /* Menu layer: the page behind softens into a blur + panel that blooms out of the button.
          Blurred, not dimmed: a darker page would part from the status bar, which keeps the
-         page's own colour. The faint frost is that same colour (--bg-main is theme-color). */
+         page's own colour. The frost is that same colour (--bg-main is theme-color).
+         The blur itself grows in, never the layer's opacity: Chrome on Android drops a
+         backdrop blur whose element fades (the page stayed sharp on a Pixel). Filled backwards
+         only, so once open the layer is a plain, still blur. The frost fades on its own
+         pseudo-element, so both run on the compositor. */
       .fk-menu-layer {
         position: fixed;
         inset: 0;
         z-index: 61;
-        background: color-mix(in srgb, var(--bg-main) 14%, transparent);
         backdrop-filter: blur(12px) saturate(1.1);
         -webkit-backdrop-filter: blur(12px) saturate(1.1);
-        animation: fk-fade-in 0.3s ease both;
+        animation: fk-blur-in 0.3s ease backwards;
+      }
+
+      .fk-menu-layer::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: color-mix(in srgb, var(--bg-main) 14%, transparent);
+        animation: fk-fade-in 0.3s ease backwards;
       }
 
       .fk-menu-layer.is-closing {
         pointer-events: none;
+        animation: fk-blur-out 0.2s ease both;
+      }
+
+      .fk-menu-layer.is-closing::before {
         animation: fk-fade-out 0.2s ease both;
+      }
+
+      @keyframes fk-blur-in {
+        from {
+          backdrop-filter: blur(0) saturate(1);
+          -webkit-backdrop-filter: blur(0) saturate(1);
+        }
+      }
+
+      @keyframes fk-blur-out {
+        to {
+          backdrop-filter: blur(0) saturate(1);
+          -webkit-backdrop-filter: blur(0) saturate(1);
+        }
       }
 
       .fk-menu-panel {
