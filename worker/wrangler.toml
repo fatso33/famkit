@@ -1,5 +1,6 @@
 # Family Kitchen's import worker. Setup: docs/recipe-import-worker.md.
-name = "famkit-recipe-import"
+# Must match the application's name in the Cloudflare dashboard, which deploys it from GitHub.
+name = "famkit"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"
 

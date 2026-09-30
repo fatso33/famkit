@@ -16,7 +16,7 @@ Private family recipe vault PWA. React 19 + TypeScript (strict) + Vite 6 + Tailw
 - `src/components/{auth,common,layout,recipe-detail,recipe-form,recipe-grid}`: UI, one component per file
 - `src/hooks/`: state and side effects (`useRecipes` = local + Firestore sync + versioning; `useAuth` = Google sign-in + family allowlist)
 - `src/services/`: I/O only (`firebase`, `firestore`, `storage` = localStorage, `gemini`, `recipeImport` = the import worker)
-- `worker/`: the Cloudflare Worker that fetches recipe pages for "Paste → Website". Its pure parts (`worker/src/lib.ts`) are tested from `src/test/importWorker.test.ts`. It deploys separately (`npx wrangler deploy` in `worker/`). Setup and safeguards: `docs/recipe-import-worker.md`
+- `worker/`: the Cloudflare Worker that fetches recipe pages for "Paste → Website". Its pure parts (`worker/src/lib.ts`) are tested from `src/test/importWorker.test.ts`. Cloudflare deploys it from GitHub on every push to `main` that touches `worker/` (the dashboard application `famkit`, which `name` in `wrangler.toml` must match), so a worker change is live as soon as it's pushed. Setup and safeguards: `docs/recipe-import-worker.md`
 - `src/utils/`: pure logic (`fractions` = scaling/formatting, `timeEstimator`)
 - `src/i18n/translations.ts`: all UI strings, typed by the `UiTranslations` interface
 - `src/test/fixtures/wandasCheeseBread.ts`: test copy of Wanda's Cheese Bread, which lives in Firestore like any recipe (Peter owns it). Its content is **verbatim heirloom text**. Never paraphrase it.

@@ -33,26 +33,25 @@ The recipe is read in this order, stopping at the first that has both ingredient
 1. **Make a Cloudflare account** at <https://dash.cloudflare.com/sign-up>. The free plan is
    enough. Turn on two-step sign-in (My Profile → Authentication): whoever holds this account can
    change the worker.
-2. **Tell the worker which Firebase project is ours.** In
-   [worker/wrangler.toml](../worker/wrangler.toml), replace `REPLACE_WITH_FIREBASE_PROJECT_ID`
-   with the project ID (Firebase console → Project settings → Project ID; the same value as the
-   `VITE_FIREBASE_PROJECT_ID` secret). It isn't a secret: it's already in the public app.
-3. **Deploy it.** From the repo:
+2. **Tell the worker which Firebase project is ours.** `FIREBASE_PROJECT_ID` in
+   [worker/wrangler.toml](../worker/wrangler.toml) is the project ID (Firebase console → Project
+   settings → Project ID; the same value as the `VITE_FIREBASE_PROJECT_ID` secret). It isn't a
+   secret: it's already in the public app.
+3. **Let Cloudflare deploy it from GitHub.** In the Cloudflare dashboard: Workers & Pages →
+   Create → import the `fatso33/famkit` repository (authorise Cloudflare's GitHub app for that
+   one repository only). The application is named `famkit`, which must match `name` in
+   `wrangler.toml`. Then, in the application's Settings → Build:
+   - Root directory: `worker`
+   - Deploy command: `npx wrangler deploy`
+   - Build watch paths: `worker/*`, so pushes that only touch the app don't redeploy it
 
-   ```bash
-   cd worker
-   ```
+   Cloudflare then builds and deploys the worker on every push to `main` that changes `worker/`.
+   Its address is shown on the application's page, like
+   `https://famkit.<your-subdomain>.workers.dev`.
 
-   ```bash
-   npx wrangler login
-   ```
-
-   ```bash
-   npx wrangler deploy
-   ```
-
-   The first deploy asks you to pick a `workers.dev` subdomain. It ends by printing the worker's
-   address, like `https://famkit-recipe-import.<your-subdomain>.workers.dev`.
+   (Deploying by hand also works, with `npx wrangler deploy` in `worker/` after
+   `npx wrangler login`, or with a `CLOUDFLARE_API_TOKEN` made from the "Edit Cloudflare Workers"
+   template.)
 
 4. **Tell the app where the worker is.** GitHub → the repo → Settings → Secrets and variables →
    Actions → New repository secret: name `VITE_RECIPE_IMPORT_URL`, value the address from step 3
@@ -61,27 +60,28 @@ The recipe is read in this order, stopping at the first that has both ingredient
    **Website | Text**.
 6. **Check the locks** (next section), then try a real recipe on your phone.
 
-Changing the worker later is the same `npx wrangler deploy`. It deploys separately from the app,
-like the Firestore rules: deploy the worker **before** an app change that depends on it.
+A later change to the worker goes live with the push that carries it: Cloudflare's build and the
+app's GitHub Pages build start together, and either can finish first. For an app change that
+needs a new worker, push the worker change on its own first and wait for Cloudflare's build.
 
 ## Checking the locks
 
 Replace the address with yours. Each of these must be refused:
 
 ```bash
-curl -i -X POST https://famkit-recipe-import.YOUR-SUBDOMAIN.workers.dev/page -H "Content-Type: application/json" -d '{"url":"https://example.com/"}'
+curl -i -X POST https://famkit.YOUR-SUBDOMAIN.workers.dev/page -H "Content-Type: application/json" -d '{"url":"https://example.com/"}'
 ```
 
 → `403 {"error":"forbidden"}`: not called from our app's address.
 
 ```bash
-curl -i -X POST https://famkit-recipe-import.YOUR-SUBDOMAIN.workers.dev/page -H "Origin: https://fatso33.github.io" -H "Content-Type: application/json" -d '{"url":"https://example.com/"}'
+curl -i -X POST https://famkit.YOUR-SUBDOMAIN.workers.dev/page -H "Origin: https://fatso33.github.io" -H "Content-Type: application/json" -d '{"url":"https://example.com/"}'
 ```
 
 → `401 {"error":"signed-out"}`: no family sign-in.
 
 ```bash
-curl -i -X POST https://famkit-recipe-import.YOUR-SUBDOMAIN.workers.dev/page -H "Origin: https://fatso33.github.io" -H "Authorization: Bearer made.up.token" -H "Content-Type: application/json" -d '{"url":"https://example.com/"}'
+curl -i -X POST https://famkit.YOUR-SUBDOMAIN.workers.dev/page -H "Origin: https://fatso33.github.io" -H "Authorization: Bearer made.up.token" -H "Content-Type: application/json" -d '{"url":"https://example.com/"}'
 ```
 
 → `401 {"error":"signed-out"}`: a forged sign-in.
