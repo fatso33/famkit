@@ -3,6 +3,7 @@ import { render, screen, fireEvent, within, act, waitFor } from '@testing-librar
 import App from '../App';
 import { UI_TEXT } from '../i18n/translations';
 import { Recipe } from '../types/recipe';
+import { goFromMenu } from './menu';
 
 vi.mock('../services/gemini', () => ({
   isTranslationAvailable: false,
@@ -58,13 +59,7 @@ const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 20))
 /** Waits for the app to line history up, which can take a few traversals. */
 const historyAt = (entries: number) => waitFor(() => expect(depth()).toBe(entries));
 
-function openMenuItem(name: string) {
-  fireEvent.click(screen.getByRole('button', { name: t.openMenu }));
-  const menu = screen.getByRole('dialog', { name: t.menu });
-  fireEvent.click(within(menu).getByRole('button', { name }));
-  const panel = document.querySelector('.fk-menu-panel');
-  if (panel) fireEvent.animationEnd(panel);
-}
+const openMenuItem = (name: string) => goFromMenu(name, t);
 
 const openBabka = () => fireEvent.click(screen.getByRole('button', { name: 'Babka' }));
 
@@ -94,7 +89,7 @@ describe('back gesture', () => {
 
   it('leaves the app from Makes, since it is a main page', async () => {
     render(<App />);
-    openMenuItem(t.makes);
+    await openMenuItem(t.makes);
     await settle();
 
     expect(heading()).toHaveTextContent(t.makes);
@@ -103,8 +98,8 @@ describe('back gesture', () => {
 
   it('goes from Settings back to Makes when it was opened from Makes', async () => {
     render(<App />);
-    openMenuItem(t.makes);
-    openMenuItem(t.settings);
+    await openMenuItem(t.makes);
+    await openMenuItem(t.settings);
     expect(heading()).toHaveTextContent(t.settings);
     // The menu's own entry gives way to Settings'.
     await settle();
@@ -117,7 +112,7 @@ describe('back gesture', () => {
   it('goes from Settings back to the vault, not the recipe it was opened from', async () => {
     render(<App />);
     openBabka();
-    openMenuItem(t.settings);
+    await openMenuItem(t.settings);
     await historyAt(1);
 
     await swipeBack();
@@ -189,7 +184,7 @@ describe('back gesture', () => {
   it('asks before going back from an edit with changes, keeping them meanwhile', async () => {
     render(<App />);
     openBabka();
-    openMenuItem(t.editRecipe);
+    await openMenuItem(t.editRecipe);
     fireEvent.change(within(editor()!).getByLabelText(t.recipeTitle), {
       target: { value: 'Babka Wielkanocna' },
     });
@@ -221,7 +216,7 @@ describe('back gesture', () => {
 
   it('closes a new recipe on back, keeping what was typed on this phone', async () => {
     render(<App />);
-    openMenuItem(t.addRecipe);
+    await openMenuItem(t.addRecipe);
     fireEvent.change(within(editor()!).getByLabelText(t.recipeTitle), {
       target: { value: 'Pierniczki' },
     });

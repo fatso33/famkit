@@ -11,6 +11,7 @@ import {
 import { UiTranslations } from '../../i18n/translations';
 import { getLocalizedRecipe } from '../../hooks/useRecipes';
 import { transitionView } from '../../utils/viewTransition';
+import { shelfFollowsScroll, shelfTimeline } from '../../utils/vaultShelf';
 import {
   NO_FILTER,
   filterCounts,
@@ -79,12 +80,27 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
   t,
 }) => {
   const listRef = useRef<HTMLDivElement>(null);
+  // Each divider tab drives its twin in the pinned shelf by the scroll alone, where it can.
+  const [tabTimelines] = useState(shelfFollowsScroll);
+  const pageRef = useRef<HTMLElement>(null);
   const [entering, setEntering] = useState(animateIn);
   useEffect(() => {
     if (!entering) return;
-    // Recipes that appear later (a filter changing) don't play the entrance.
-    const timer = window.setTimeout(() => setEntering(false), ENTRANCE_MS);
-    return () => window.clearTimeout(timer);
+    // The entrance plays once the vault's first frame is on screen (index.css): building the
+    // vault takes a moment, and animations begun in that frame would be well under way, their
+    // start skipped, before anything showed.
+    let timer = 0;
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => {
+        pageRef.current?.setAttribute('data-entrance', '');
+        // Recipes that appear later (a filter changing) don't play the entrance.
+        timer = window.setTimeout(() => setEntering(false), ENTRANCE_MS);
+      });
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
   }, [entering]);
 
   const entries: VaultEntry[] = recipes.map((recipe) => ({
@@ -149,6 +165,8 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
 
   let itemIndex = 0;
   const enterIndex = () => (entering ? Math.min(itemIndex++, ENTRANCE_ITEMS) : undefined);
+  // A group's divider tab arrives with the group's first card.
+  const nextEnterIndex = () => (entering ? Math.min(itemIndex, ENTRANCE_ITEMS) : undefined);
 
   // Each group's divider tab: its category or cook. Under the drafts, the recipes get one of
   // their own even when the sort gives them none.
@@ -197,6 +215,7 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
               count: shownDrafts.length,
               kind: 'drafts',
             } as VaultTab,
+            enterAt: nextEnterIndex(),
             cards: shownDrafts.map((draft) => {
               const recipe = draftRecipe(draft);
               return card(recipe, recipe, true);
@@ -207,15 +226,26 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
     ...groups.map((group) => ({
       key: group.key || 'all',
       tab: tabFor(group),
+      enterAt: nextEnterIndex(),
       cards: group.entries.map(({ recipe, shown: text }) => card(recipe, text)),
     })),
   ];
   const tabs = sections.flatMap((section) => (section.tab ? [section.tab] : []));
+  // The shelf's tabs live in the bar, so the page lets them see the list's tabs' timelines.
+  const timelineScope =
+    tabTimelines && tabs.length > 0
+      ? ({
+          '--vault-timelines': tabs.map((_, i) => shelfTimeline(i)).join(', '),
+        } as React.CSSProperties)
+      : undefined;
+  let tabIndex = 0;
 
   return (
     <section
+      ref={pageRef}
       id="viewGrid"
       className={`recipe-grid-view vault-page${entering ? ' is-entering' : ''}`}
+      style={timelineScope}
     >
       {banner}
 
@@ -263,11 +293,26 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
             </button>
           </div>
         )}
-        {sections.map(({ key, tab, cards }) => (
+        {sections.map(({ key, tab, cards, enterAt }) => (
           <section key={key} className="vault-group">
             {tab && (
-              <div className="vault-divider">
-                <h2 className="vault-tab">
+              <div
+                className="vault-divider"
+                // Joins the entrance with its first card, so the tabs never arrive alone.
+                style={
+                  enterAt === undefined
+                    ? undefined
+                    : ({ '--enter-i': enterAt } as React.CSSProperties)
+                }
+              >
+                <h2
+                  className="vault-tab"
+                  style={
+                    tabTimelines
+                      ? ({ '--tab-timeline': shelfTimeline(tabIndex++) } as React.CSSProperties)
+                      : undefined
+                  }
+                >
                   <VaultTabLabel tab={tab} />
                 </h2>
                 <div className="vault-tab-edge" aria-hidden="true" />

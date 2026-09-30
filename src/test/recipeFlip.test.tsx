@@ -121,6 +121,11 @@ describe('a recipe card flipping open and shut', () => {
     expect(card()).toHaveAttribute('data-lifted', 'landing');
 
     await transitions[1].finish();
+    // Settling back behind the card in front, then at rest.
+    expect(card()).toHaveAttribute('data-lifted', 'dropping');
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
     expect(card()).not.toHaveAttribute('data-lifted');
   });
 

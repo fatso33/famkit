@@ -1,7 +1,6 @@
 import React, { useLayoutEffect, useRef } from 'react';
 import { UiTranslations } from '../../i18n/translations';
-import { condenseGeometry, condenseSnap } from '../../utils/vaultCondense';
-import { prefersReducedMotion } from '../../utils/viewTransition';
+import { condenseGeometry } from '../../utils/vaultCondense';
 import { HeartFlourish } from '../common/HeartFlourish';
 
 interface VaultHeaderProps {
@@ -25,8 +24,8 @@ const SHOW_AFTER_PX = 6;
  * and cooks. When the bar holding the toolbar reaches the top it pins there, gaining a
  * background and a small "Recipe Box" title. Where the browser has scroll-driven animations,
  * the big title shrinks into the small one as the page scrolls, tracking the finger (index.css,
- * from the geometry measured here), and grows back out of it on the way up. A scroll that stops
- * halfway settles onward, so the title is never left between sizes.
+ * from the geometry measured here), and grows back out of it on the way up. Wherever the page
+ * comes to rest, the title stays as the scroll left it: the page never scrolls itself.
  *
  * Pinned, the toolbar tucks away under the title while the page scrolls down, leaving only the
  * title strip with a small heart flourish, and comes back on any scroll up. The banner's own
@@ -50,6 +49,7 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({
   const headingRef = useRef<HTMLHeadingElement>(null);
   const titleRef = useRef<HTMLSpanElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
+  const toolsRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLSpanElement>(null);
 
@@ -60,20 +60,14 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({
     const masthead = mastheadRef.current;
     const heading = headingRef.current;
     const title = titleRef.current;
+    const tools = toolsRef.current;
     const strip = stripRef.current;
     const name = nameRef.current;
-    if (!bar || !masthead || !heading || !title || !strip || !name) return;
+    if (!bar || !masthead || !heading || !title || !tools || !strip || !name) return;
     let frame = 0;
-    // The scroll at which the bar pins, where the title has fully condensed.
-    let pin = 0;
     // How far below the top the bar sticks (the pinned title's height), read once per layout
     // change rather than on every frame of a scroll.
     let stuckAt = 0;
-    const condenses =
-      typeof CSS !== 'undefined' &&
-      CSS.supports?.('animation-timeline: scroll()') === true &&
-      !prefersReducedMotion();
-
     // Where the title starts and ends, for the scroll-driven condense. Measured again whenever
     // any of it changes size (fonts arriving, the language or text size changing).
     const measure = () => {
@@ -97,13 +91,15 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({
         mastheadBottom: masthead.getBoundingClientRect().bottom + y,
         stuckAt,
       });
-      pin = geometry.pin;
       for (const el of [masthead, bar]) {
         el.style.setProperty('--vault-pin', `${geometry.pin.toFixed(1)}px`);
       }
       masthead.style.setProperty('--vault-title-dx', `${geometry.dx.toFixed(1)}px`);
       masthead.style.setProperty('--vault-title-dy', `${geometry.dy.toFixed(1)}px`);
       masthead.style.setProperty('--vault-title-scale', geometry.scale.toFixed(4));
+      // How far the toolbar holds the pinned divider tab below the title, while it shows: the
+      // list's tabs hand over to the pinned one there (index.css, the shelf).
+      masthead.parentElement?.style.setProperty('--vault-tools-height', `${tools.offsetHeight}px`);
     };
     let lastY = window.scrollY;
     // Distance travelled in the current direction: positive down, negative up.
@@ -134,13 +130,6 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({
     const onScroll = () => {
       if (!frame) frame = requestAnimationFrame(update);
     };
-    // Came to rest halfway through the condense: carry on to the end the page was moving
-    // towards.
-    const onScrollEnd = () => {
-      const maxY = document.documentElement.scrollHeight - window.innerHeight;
-      const target = condenseSnap(window.scrollY, pin, maxY, travel < 0);
-      if (target !== null) window.scrollTo({ top: target, behavior: 'smooth' });
-    };
     const onResize = () => {
       measure();
       onScroll();
@@ -159,16 +148,16 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({
     masthead.toggleAttribute('data-ready', true);
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onResize);
-    if (condenses) window.addEventListener('scrollend', onScrollEnd);
     bar.addEventListener('focusin', onFocusIn);
     // The page holding the banner too: something appearing above it (the install card) moves
     // the banner without resizing it, and the page grows or shrinks with it.
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
-    for (const el of [masthead, title, name, masthead.parentElement]) if (el) observer?.observe(el);
+    for (const el of [masthead, title, name, tools, masthead.parentElement]) {
+      if (el) observer?.observe(el);
+    }
     return () => {
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onResize);
-      window.removeEventListener('scrollend', onScrollEnd);
       bar.removeEventListener('focusin', onFocusIn);
       observer?.disconnect();
       cancelAnimationFrame(frame);
@@ -210,7 +199,7 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({
           </span>
           <HeartFlourish className="vault-bar-flourish" />
         </div>
-        <div className="vault-bar-tools">
+        <div ref={toolsRef} className="vault-bar-tools">
           <div className="vault-bar-toolset">{children}</div>
           <div className="vault-bar-shelf">{shelf}</div>
         </div>

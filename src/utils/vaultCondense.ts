@@ -51,19 +51,3 @@ export function condenseGeometry(layout: CondenseLayout): Condense {
   const scale = !wrapped && title.width > 0 ? name.width / title.width : fontRatio;
   return { pin, dx: toX - fromX, dy: toY - fromY, scale };
 }
-
-/**
- * Where a scroll that came to rest halfway through the condense should settle, so the title is
- * never left stranded between sizes: onward in the direction the page was moving (fully grown
- * at the top, or fully condensed at the pin). Null when it's already at one end.
- */
-export function condenseSnap(
-  y: number,
-  pin: number,
-  maxY: number,
-  movingUp: boolean,
-): number | null {
-  const end = Math.min(pin, maxY);
-  if (y <= 1 || y >= end - 1) return null;
-  return movingUp ? 0 : end;
-}

@@ -13,6 +13,7 @@ import { AppPage } from '../../types/navigation';
 import { UiTranslations } from '../../i18n/translations';
 import { useBackStep } from '../../hooks/useBackStep';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
+import { transitionStarted } from '../../utils/viewTransition';
 
 /** Something to do on the current page (e.g. "Add recipe" on the vault), held in its card. */
 export interface MenuAction {
@@ -181,9 +182,9 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
   onFocusLeave,
   onClosed,
   fabGroupRef,
-  page,
+  page: livePage,
   onNavigate,
-  actions,
+  actions: liveActions,
   language,
   onToggleLanguage,
   theme,
@@ -194,6 +195,11 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
   t,
 }) => {
   const backdropProps = useDialogDismiss(onClose);
+  // A page chosen here changes the app's page while the menu is still up (it closes as the new
+  // page fades in beneath it), so it keeps showing the page it opened on, not rearranging mid-fade.
+  const [opened] = useState({ page: livePage, actions: liveActions });
+  const { page, actions } =
+    livePage === opened.page ? { page: livePage, actions: liveActions } : opened;
   const currentPageId = useId();
   const prefsDrawerId = useId();
   const darkLabelId = useId();
@@ -214,9 +220,11 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
     if (isClosing && panelRef.current) unfurlReach(panelRef.current);
   }, [isClosing]);
 
+  // The new page cross-fades in under the scrim (App, motion 'menu'), and only once it has
+  // started does the menu close, so its blur clears over the new page rather than vanishing.
   const go = (target: AppPage) => {
     onNavigate(target);
-    onClose();
+    void transitionStarted().then(onClose);
   };
 
   const settingsPage = { id: 'settings' as const, label: t.settings, icon: Settings };

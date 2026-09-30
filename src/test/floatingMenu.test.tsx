@@ -3,6 +3,7 @@ import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import App from '../App';
 import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 import { UI_TEXT } from '../i18n/translations';
+import { finishMenuClosing } from './menu';
 
 vi.mock('../services/gemini', () => ({
   isTranslationAvailable: false,
@@ -67,10 +68,10 @@ describe('floating menu', () => {
     expect(screen.getByRole('dialog', { name: t.editorTitleNew })).toBeInTheDocument();
   });
 
-  it('switches to the Makes page and swaps the page action', () => {
+  it('switches to the Makes page and swaps the page action', async () => {
     render(<App />);
     fireEvent.click(within(openMenu()).getByRole('button', { name: t.makes }));
-    finishClosing();
+    await finishMenuClosing();
 
     expect(screen.getByRole('heading', { name: t.makes, level: 1 })).toBeInTheDocument();
     expect(screen.getByText(t.makesEmptyTitle)).toBeInTheDocument();
@@ -144,12 +145,12 @@ describe('floating menu', () => {
     expect(drawer).toHaveAttribute('inert');
   });
 
-  it('shows Settings as the current page while on it, not in the preferences', () => {
+  it('shows Settings as the current page while on it, not in the preferences', async () => {
     render(<App />);
     let menu = openMenu();
     openPreferences(menu);
     fireEvent.click(within(menu).getByRole('button', { name: t.settings }));
-    finishClosing();
+    await finishMenuClosing();
 
     menu = openMenu();
     const pages = within(menu).getByRole('navigation', { name: t.pages });

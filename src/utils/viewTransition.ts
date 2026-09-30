@@ -5,12 +5,14 @@ import { flushSync } from 'react-dom';
  * - forward: into a sub-page (a recipe, Settings), which slides in from the right
  * - back: out of one, sliding back to the left
  * - fade: between main pages, or pages at the same depth
+ * - menu: a page chosen from the open menu, cross-fading under its blurring scrim as it clears
  * - zoom: a photo opening over the page, or closing
  * - vault: the vault's recipes re-filtered, re-sorted or re-laid out, gliding to their new places
  * - flip-open: a recipe card lifted out of the box flips over, and the recipe unfolds from its
  *   back; flip-close folds the recipe away and the card flips back into its place (setFlipAxis)
  */
-export type NavMotion = 'forward' | 'back' | 'fade' | 'zoom' | 'vault' | 'flip-open' | 'flip-close';
+export type NavMotion =
+  'forward' | 'back' | 'fade' | 'menu' | 'zoom' | 'vault' | 'flip-open' | 'flip-close';
 
 /** A photo that morphs between its old and new place: a step photo and the full-screen viewer. */
 export type Morph = 'photo';

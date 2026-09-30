@@ -71,12 +71,13 @@
         --radius-full: 9999px;
         /* The light catching an index card's top edge in the Recipe Box: bright on cream paper;
            at night only a faint edge in the page's own ink colour, so it shows the card's edge
-           without drawing the eye. */
+           without drawing the eye. Opaque (it only ever lies on a card), so where the two halves
+           of a card's face overlap it isn't drawn twice as bright. */
         --card-sheen: rgb(255 255 255 / 0.9);
       }
       [data-theme="dark"] {
         --weight-body: 400;
-        --card-sheen: color-mix(in srgb, var(--text-primary) 10%, transparent);
+        --card-sheen: color-mix(in srgb, var(--text-primary) 10%, var(--bg-surface));
       }
 
       /* ── Seasons ──
@@ -419,36 +420,40 @@
         animation: vt-fade-through 0.38s var(--ease-soft) both;
       }
 
+      /* A page chosen from the menu: under the menu's blurring scrim, the old page cross-fades
+         into the new one while the scrim clears, so the new page comes into focus. */
+      :root[data-nav='menu']::view-transition-old(root) {
+        animation: vt-fade-out 0.3s var(--ease-soft) both;
+      }
+      :root[data-nav='menu']::view-transition-new(root) {
+        animation: fk-fade-in 0.3s var(--ease-soft) both;
+      }
+
       /* A photo opening or closing: the page cross-fades under the photo's morph. */
       :root[data-nav='zoom']::view-transition-old(root),
       :root[data-nav='zoom']::view-transition-new(root) {
         animation-duration: 0.32s;
       }
 
-      /* The floating button, its menu and the toast stay put while the page moves:
-         only their live selves show, never a sliding snapshot. */
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='vault'], [data-nav='zoom'], [data-nav='flip-open'], [data-nav='flip-close'])
+      /* The floating button and the toast stay put while the page moves: only their live
+         selves show, never a sliding snapshot. (The open menu isn't lifted out like them: its
+         scrim blurs the page behind, which a separate snapshot can't carry, so the blur would
+         vanish at once. A page chosen from it cross-fades under the scrim instead, see above.) */
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='menu'], [data-nav='vault'], [data-nav='zoom'], [data-nav='flip-open'], [data-nav='flip-close'])
         .fab-group {
         view-transition-name: fk-fab;
       }
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'])
-        .fk-menu-layer {
-        view-transition-name: fk-menu;
-      }
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'])
         .app-toast {
         view-transition-name: fk-toast;
       }
       ::view-transition-group(fk-fab),
-      ::view-transition-group(fk-menu),
       ::view-transition-group(fk-toast),
       ::view-transition-new(fk-fab),
-      ::view-transition-new(fk-menu),
       ::view-transition-new(fk-toast) {
         animation: none;
       }
       ::view-transition-old(fk-fab),
-      ::view-transition-old(fk-menu),
       ::view-transition-old(fk-toast) {
         display: none;
       }
@@ -2062,9 +2067,9 @@
 
       /* ── The Recipe Box ──
          The recipes are index cards filed in a box, each in front of the one above it: they
-         overlap, and each casts a soft shadow up onto the card behind. A card's face (::before)
-         leans towards the reader, its top edge a little wider than its bottom, while its words
-         and photo stay flat and crisp. Groups sit behind gold divider tabs, always at the left;
+         overlap, and each casts a soft shadow up onto the card behind. A card's face leans
+         towards the reader, its top edge a little wider than its bottom, while its words and
+         photo stay flat and crisp. Groups sit behind gold divider tabs, always at the left;
          the one being read is pinned under the bar (VaultShelf). As cards reach that pinned tab
          they lean back and slip under it, driven by the scroll (see the lean further down). */
       .vault-box {
@@ -2072,6 +2077,9 @@
         --card-overlap: 1.15rem;
         --card-face-radius: var(--radius-md);
         --card-face-lean: perspective(700px) rotateX(-9deg);
+        /* How far a card face's sides lean in per pixel down, as a 9° tilt at this perspective
+           and width draws them. */
+        --face-slope: 0.0415;
         max-width: 36rem;
         margin: 0 auto;
       }
@@ -2080,6 +2088,7 @@
         --card-overlap: 2rem;
         --card-face-radius: var(--radius-lg);
         --card-face-lean: perspective(1100px) rotateX(-9deg);
+        --face-slope: 0.0264;
       }
 
       .vault-group + .vault-group {
@@ -2171,46 +2180,77 @@
       }
 
       .vault-item {
+        /* How far the face's sides lean in, per pixel down the card (see the face below):
+           squared up to the reader, not at all. */
+        --face-lean: var(--face-slope);
         position: relative;
         isolation: isolate;
         display: flex;
         width: 100%;
         border: 0;
+        border-radius: var(--card-face-radius);
         background: none;
+        /* A soft shadow cast up onto the card behind. */
+        box-shadow: 0 -0.55rem 1rem -0.8rem var(--scrim);
         color: inherit;
         text-align: left;
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
-        transition: translate 0.5s var(--spring-soft);
-      }
-
-      /* The card's face, leaning towards the reader, lit along its top edge. */
-      .vault-item::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        z-index: -1;
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--card-face-radius);
-        background: var(--bg-surface);
-        box-shadow:
-          0 -0.55rem 1rem -0.8rem var(--scrim),
-          inset 0 1px 0 var(--card-sheen);
-        transform: var(--card-face-lean);
         transition:
-          transform 0.3s var(--ease-soft),
+          translate 0.5s var(--spring-soft),
           box-shadow 0.3s ease;
       }
 
+      /* The card's face, leaning towards the reader: its top edge a little wider than the card
+         and its bottom a little narrower, lit along the top. It's drawn as two halves, each
+         sheared outward by a slight skew and overlapping in the middle, so its sides slope
+         evenly, as a real tilt's would, however tall the card: the photo inside can then follow
+         the same slope. A 3D tilt drew this before, but it made every card (and the cards over
+         it) a GPU layer of its own, which a phone had to paint on its first fling. */
+      .vault-item::before,
+      .vault-item::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        z-index: -1;
+        border: 1px solid var(--border-subtle);
+        background: var(--bg-surface);
+        box-shadow: inset 0 1px 0 var(--card-sheen);
+        transition: transform 0.3s var(--ease-soft);
+      }
+
+      .vault-item::before {
+        left: 0;
+        right: 40%;
+        border-right: 0;
+        border-radius: var(--card-face-radius) 0 0 var(--card-face-radius);
+        transform: skewX(atan(var(--face-lean)));
+      }
+
+      .vault-item::after {
+        left: 40%;
+        right: 0;
+        border-left: 0;
+        border-radius: 0 var(--card-face-radius) var(--card-face-radius) 0;
+        transform: skewX(calc(-1 * atan(var(--face-lean))));
+      }
+
+      /* A draft is a plain dashed outline, tilted in 3D (there are only ever a few). */
       .vault-item.is-draft::before {
-        border-style: dashed;
-        border-color: var(--border-strong);
+        right: 0;
+        border: 1px dashed var(--border-strong);
+        border-radius: var(--card-face-radius);
+        transform: var(--card-face-lean);
+      }
+
+      .vault-item.is-draft::after {
+        display: none;
       }
 
       .vault-item:focus-visible {
         outline: 3px solid var(--accent);
         outline-offset: 2px;
-        border-radius: var(--card-face-radius);
       }
 
       @media (hover: hover) {
@@ -2221,22 +2261,86 @@
 
       /* Lifted out of the box on its way to flipping open (App), squared up to the reader. As
          the recipe closes it's shown lifted at once ('landing'), then drops back into place. */
-      .vault-item[data-lifted] {
+      .vault-item[data-lifted]:not([data-lifted='dropping']) {
+        --face-lean: 0;
         translate: 0 -0.75rem;
-        transition: translate 0.2s var(--ease-soft);
-      }
-
-      .vault-item[data-lifted]::before {
-        transform: none;
         box-shadow:
           0 -0.55rem 1rem -0.8rem var(--scrim),
-          0 1rem 1.5rem -1rem var(--scrim),
-          inset 0 1px 0 var(--card-sheen);
+          0 1rem 1.5rem -1rem var(--scrim);
+        transition:
+          translate 0.2s var(--ease-soft),
+          box-shadow 0.2s ease;
+      }
+
+      .vault-item.is-draft[data-lifted]:not([data-lifted='dropping'])::before {
+        transform: none;
+      }
+
+      /* Lifting, the card comes forward out of the stack, in front of the card below it: the
+         lower edge that card covered comes into view as it rises, rather than all at once (as
+         it would the moment the card flips). Settling back ('dropping', App), it tucks behind
+         that card again as it lands. */
+      .vault-slot:has(> .vault-item[data-lifted]) {
+        z-index: 2;
+      }
+
+      .vault-slot:not(:last-child) > .vault-item[data-lifted=''] {
+        animation: vault-card-forward 0.2s var(--ease-soft) both;
+      }
+
+      .vault-item[data-lifted='dropping'] {
+        transition:
+          translate 0.2s var(--ease-soft),
+          box-shadow 0.2s ease;
+      }
+
+      .vault-slot:not(:last-child) > .vault-item[data-lifted='dropping'] {
+        animation: vault-card-back 0.2s var(--ease-soft) both;
+      }
+
+      @keyframes vault-card-forward {
+        from {
+          clip-path: inset(-3rem -1.5rem var(--card-overlap) -1.5rem);
+        }
+        to {
+          clip-path: inset(-3rem -1.5rem -3rem -1.5rem);
+        }
+      }
+      @keyframes vault-card-back {
+        from {
+          clip-path: inset(-3rem -1.5rem -3rem -1.5rem);
+        }
+        to {
+          clip-path: inset(-3rem -1.5rem var(--card-overlap) -1.5rem);
+        }
       }
 
       .vault-item[data-lifted='landing'],
-      .vault-item[data-lifted='landing']::before {
+      .vault-item[data-lifted='landing'] :is(.card-media, .vault-row-photo),
+      .vault-item[data-lifted='landing']::before,
+      .vault-item[data-lifted='landing']::after {
         transition: none;
+      }
+
+      /* A card's photo leans with it: its sides slope as the face's do, so they run parallel to
+         the card's edges. It keeps its width along the top and tucks in a little towards the
+         bottom (--photo-height is how tall it is), clipped rather than distorted. */
+      .card-media,
+      .vault-row-photo {
+        --photo-lean: calc(var(--face-lean) * var(--photo-height));
+        clip-path: shape(
+          from var(--photo-radius) 0,
+          hline to calc(100% - var(--photo-radius)),
+          arc to 100% var(--photo-radius) of var(--photo-radius) cw,
+          line to calc(100% - var(--photo-lean)) calc(100% - var(--photo-radius)),
+          arc to calc(100% - var(--photo-lean) - var(--photo-radius)) 100% of var(--photo-radius) cw,
+          hline to calc(var(--photo-lean) + var(--photo-radius)),
+          arc to var(--photo-lean) calc(100% - var(--photo-radius)) of var(--photo-radius) cw,
+          line to 0 var(--photo-radius),
+          arc to var(--photo-radius) 0 of var(--photo-radius) cw,
+          close
+        );
+        transition: clip-path 0.3s var(--ease-soft);
       }
 
       /* A list card: the name over a ruled line, the cook and time, and the photo beside. Every
@@ -2302,12 +2406,14 @@
       }
 
       .vault-row-photo {
+        --photo-height: 3.5rem;
+        --photo-radius: calc(var(--radius-md) - 4px);
         position: relative;
         flex: none;
         width: 3.5rem;
-        height: 3.5rem;
+        height: var(--photo-height);
         overflow: hidden;
-        border-radius: calc(var(--radius-md) - 4px);
+        border-radius: var(--photo-radius);
         background: var(--bg-card);
       }
 
@@ -2330,10 +2436,13 @@
       }
 
       .card-media {
+        /* Its height, along its width (where the lean is measured): 9/16 of it. */
+        --photo-height: 56.25%;
+        --photo-radius: calc(var(--radius-lg) - 7px);
         position: relative;
         aspect-ratio: 16 / 9;
         overflow: hidden;
-        border-radius: calc(var(--radius-lg) - 7px);
+        border-radius: var(--photo-radius);
         background: var(--bg-card);
       }
 
@@ -2367,14 +2476,14 @@
 
       /* The pinned divider tab (VaultShelf). It hangs under the toolbar inside the bar, reaching
          the bar's full width so the cards slip under it everywhere, and rides up with the
-         toolbar as it tucks. It appears at once, exactly over the list's first tab, as if that
-         tab had stuck there, and fades as the list goes back down below it. */
+         toolbar as it tucks. It holds a twin of each tab in the list, one showing at a time:
+         the list's tabs flow up into it, each pushing the one before out of the top. */
       .vault-bar-shelf {
         position: absolute;
         top: 100%;
         left: 0;
         right: 0;
-        /* Sized and contained, so a name rolling over re-lays out only the shelf. */
+        /* Sized and contained, so nothing in it lays out the page again. */
         height: var(--vault-shelf-height);
         contain: size layout style;
         pointer-events: none;
@@ -2386,12 +2495,6 @@
         background: var(--bg-main);
         box-shadow: 0 0.8rem 1rem -0.9rem var(--scrim);
         opacity: 0;
-        transition: opacity 0.2s ease;
-      }
-
-      .vault-shelf[data-shown] {
-        opacity: 1;
-        transition: none;
       }
 
       .vault-shelf-inner {
@@ -2399,98 +2502,93 @@
         margin: 0 auto;
       }
 
-      /* The pinned tab spans the shelf, and draws its outline from two pieces: its left end,
-         which stays put, and a strip ending in its right end, which slides (a transform, on the
-         compositor) to the width of the name it shows. So the tab eases between names' widths
-         without anything being laid out again, its corners and edge exact all the way. */
-      .vault-tab.is-pinned {
+      /* Where the tabs pass: a tab arrives just under the shelf, exactly over its twin in the
+         list as that one meets the shelf, rises over the shelf's edge and shadow into place,
+         and leaves through the top, clipped there (so it never crosses the toolbar). The band
+         reaches below the shelf for the arriving tab without taking up room. */
+      .vault-shelf-tabs {
         position: relative;
-        display: block;
-        width: 100%;
-        padding: 0;
-        border: 0;
-        background: none;
-        overflow: hidden;
+        z-index: 1;
+        height: calc(var(--vault-tab-height) + var(--vault-shelf-height));
+        margin-bottom: calc(-1 * var(--vault-shelf-height));
+        overflow: clip;
       }
 
-      .vault-tab-cap,
-      .vault-tab-strip {
+      .vault-tab.is-pinned {
         position: absolute;
         top: 0;
-        bottom: 0;
         left: 0;
-        border: 1px solid var(--border-subtle);
-        border-bottom: 0;
-        background: var(--accent-gold-subtle);
-      }
-
-      .vault-tab-cap {
-        z-index: 1;
-        width: var(--radius-md);
-        border-right: 0;
-        border-radius: var(--radius-md) 0 0 0;
-      }
-
-      .vault-tab-strip {
-        width: 100%;
-        border-left: 0;
-        border-radius: 0 var(--radius-md) 0 0;
-        transform: translateX(calc(var(--tab-width, 0px) - 100%));
-        transition: transform 0.42s var(--ease-glide);
+        white-space: nowrap;
       }
 
       .vault-shelf .vault-tab-edge {
         height: 0.25rem;
       }
 
-      /* Each name on the pinned tab, rolling up the way the list moves (down on the way back). */
-      .vault-shelf-label {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        left: 0;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.45rem;
-        max-width: min(36rem, calc(100vw - 2.5rem));
-        padding: 0 0.85rem 0 0.75rem;
-        white-space: nowrap;
+      /* Driven by the scroll, on the compositor. Each tab in the list is a view timeline
+         (VaultShelf) whose line is the top of the shelf: under the title, or under the toolbar
+         while it shows. The shelf appears the moment the first tab reaches that line, exactly
+         over it. A pinned tab rises into place as its twin in the list slides under the shelf,
+         matching it pixel for pixel (it appears only as that one meets the shelf, so the swap
+         can't be seen), and is pushed up and out as the next one arrives. Longhands
+         only (see the title's condense below). */
+      .vault-page {
+        timeline-scope: var(--vault-timelines, none);
+      }
+      .vault-box .vault-tab {
+        view-timeline-name: var(--tab-timeline, none);
+        view-timeline-axis: block;
+        view-timeline-inset: calc(var(--vault-bar-title) + var(--vault-tools-height, 0px)) 0px;
+      }
+      .vault-bar[data-tucked] ~ .vault-box .vault-tab {
+        view-timeline-inset: var(--vault-bar-title) 0px;
+      }
+      .vault-shelf.follows-scroll {
+        animation-name: vault-shelf-show;
+        animation-timeline: --vault-tab-0;
+        animation-duration: auto;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-range: exit -1px exit 0%;
+      }
+      .vault-shelf.follows-scroll .vault-tab.is-pinned {
+        animation-name: vault-shelf-arrive, vault-shelf-rise, vault-shelf-push;
+        animation-timeline: var(--shelf-timelines);
+        animation-duration: auto, auto, auto;
+        animation-timing-function: linear, linear, linear;
+        animation-fill-mode: both, both, both;
+        animation-range:
+          exit calc(-1 * var(--vault-shelf-height) - 1px) exit calc(-1 * var(--vault-shelf-height)),
+          exit calc(-1 * var(--vault-shelf-height)) exit 0%,
+          exit calc(-1 * var(--vault-tab-height)) exit 0%;
+      }
+      .vault-shelf.follows-scroll .vault-tab.is-pinned:last-child {
+        animation-name: vault-shelf-arrive, vault-shelf-rise;
       }
 
-      @media (prefers-reduced-motion: no-preference) {
-        .vault-shelf-label.is-arriving {
-          animation: vault-shelf-in 0.42s var(--ease-glide) both;
-        }
-        .vault-shelf-label.is-leaving {
-          animation: vault-shelf-out 0.34s var(--ease-glide) both;
-        }
-        .vault-shelf-label.is-arriving[data-direction='-1'] {
-          animation-name: vault-shelf-in-down;
-        }
-        .vault-shelf-label.is-leaving[data-direction='-1'] {
-          animation-name: vault-shelf-out-down;
-        }
+      /* Found from the scroll instead (VaultShelf), where the browser can't drive it. */
+      .vault-shelf[data-shown] {
+        opacity: 1;
+      }
+      .vault-shelf:not(.follows-scroll) .vault-tab.is-pinned:not([data-current]) {
+        visibility: hidden;
       }
 
-      .vault-shelf-label.is-leaving {
-        opacity: 0;
+      @keyframes vault-shelf-show {
+        from { opacity: 0; }
+        to { opacity: 1; }
       }
-
-      @keyframes vault-shelf-in {
-        from { opacity: 0; transform: translateY(100%); }
-        to { opacity: 1; transform: none; }
+      @keyframes vault-shelf-arrive {
+        from { opacity: 0; }
+        to { opacity: 1; }
       }
-      @keyframes vault-shelf-out {
-        from { opacity: 1; transform: none; }
-        to { opacity: 0; transform: translateY(-100%); }
+      @keyframes vault-shelf-rise {
+        from { translate: 0 var(--vault-shelf-height); }
+        to { translate: 0 0; }
       }
-      @keyframes vault-shelf-in-down {
-        from { opacity: 0; transform: translateY(-100%); }
-        to { opacity: 1; transform: none; }
-      }
-      @keyframes vault-shelf-out-down {
-        from { opacity: 1; transform: none; }
-        to { opacity: 0; transform: translateY(100%); }
+      @keyframes vault-shelf-push {
+        from { transform: none; }
+        to { transform: translateY(-100%); }
       }
 
       /* As a card reaches the pinned tab, it leans back on its bottom edge and fades, slipping
@@ -2572,7 +2670,7 @@
       @media (prefers-reduced-motion: no-preference) {
         /* Arriving: the title word by word coming into focus (as on the splash), the flourish
            drawing out from its heart, the count, the tools, and the
-           first recipes rising into place. */
+           first recipes rising into place, each group's divider tab with its first card. */
         .vault-masthead.is-entering .vault-word {
           animation: fk-splash-unblur 1s var(--ease-decelerate) calc(0.1s + var(--i, 0) * 0.11s)
             both;
@@ -2592,9 +2690,15 @@
         .vault-page.is-entering .vault-tools > :nth-child(2) { animation-delay: 0.56s; }
         .vault-page.is-entering .vault-tools > :nth-child(3) { animation-delay: 0.62s; }
         .vault-page.is-entering .vault-search { animation-delay: 0.68s; }
-        .vault-page.is-entering .vault-item {
+        .vault-page.is-entering :is(.vault-item, .vault-divider) {
           animation: vault-item-in 0.85s var(--ease-glide) calc(0.55s + var(--enter-i, 0) * 70ms)
             both;
+        }
+        /* Held until the page's first frame is drawn (RecipeGridView sets data-entrance), each
+           showing where it starts from. */
+        .vault-page.is-entering:not([data-entrance])
+          :is(.vault-word, .vault-flourish-line, .vault-flourish-heart, .vault-caption, .vault-search, .vault-tools > *, .vault-item, .vault-divider) {
+          animation-play-state: paused;
         }
       }
 
@@ -8211,6 +8315,34 @@
         -webkit-user-select: none;
         user-select: none;
         -webkit-tap-highlight-color: transparent;
+      }
+
+      /* Signed in: the splash lies over the page arriving beneath it, then (once that page has
+         been drawn) fades away, lifting a little towards the reader (SplashScreen, leaving). */
+      .fk-splash.is-leaving {
+        position: fixed;
+        inset: 0;
+        z-index: 90;
+        overflow: hidden;
+        pointer-events: none;
+      }
+
+      .fk-splash.is-leaving.is-fading {
+        animation: fk-splash-leave 0.5s var(--ease-soft) both;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .fk-splash.is-leaving.is-fading {
+          animation: none;
+          opacity: 0;
+        }
+      }
+
+      @keyframes fk-splash-leave {
+        to {
+          opacity: 0;
+          transform: scale(1.04);
+        }
       }
       .fk-splash-stage {
         /* Between the two layers of seasonal particles. */

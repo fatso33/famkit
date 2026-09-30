@@ -28,33 +28,56 @@ function Box() {
   );
 }
 
-const realRect = Element.prototype.getBoundingClientRect;
+const shelf = () => document.querySelector('.vault-shelf')!;
+const pinned = () => [...document.querySelectorAll<HTMLElement>('.vault-tab.is-pinned')];
+const named = () => pinned().find((tab) => tab.hasAttribute('data-current'))?.textContent;
 
-/** Moves the dividers and lets the shelf's next frame see it. */
-const scrollTo = (next: number[]) =>
-  act(() => {
-    tops = next;
-    window.dispatchEvent(new Event('scroll'));
-    vi.advanceTimersByTime(20);
+describe('the pinned divider tab, driven by the scroll', () => {
+  beforeEach(() => {
+    vi.stubGlobal('CSS', { supports: () => true });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
-const shelf = () => document.querySelector('.vault-shelf')!;
-const named = () =>
-  document.querySelector('.vault-shelf-label:not(.is-leaving) .vault-tab-name')?.textContent;
-const leaving = () =>
-  document.querySelector('.vault-shelf-label.is-leaving .vault-tab-name')?.textContent;
+  it("holds a twin of each list tab, rising with its own and pushed out by the next's", () => {
+    render(<Box />);
+    expect(shelf()).toHaveClass('follows-scroll');
+    expect(pinned().map((tab) => tab.textContent)).toEqual(['Breakfast2', 'Soups3', 'Mains5']);
+    const timelines = pinned().map((tab) => tab.style.getPropertyValue('--shelf-timelines'));
+    expect(timelines).toEqual([
+      '--vault-tab-0, --vault-tab-0, --vault-tab-1',
+      '--vault-tab-1, --vault-tab-1, --vault-tab-2',
+      // The last is never pushed out.
+      '--vault-tab-2, --vault-tab-2',
+    ]);
+  });
 
-describe('the pinned divider tab', () => {
-  beforeEach(() => {
-    vi.useFakeTimers({
-      toFake: [
-        'setTimeout',
-        'clearTimeout',
-        'requestAnimationFrame',
-        'cancelAnimationFrame',
-        'performance',
-      ],
+  it('leaves the scroll to the compositor, never measuring it', () => {
+    const measured = vi.spyOn(Element.prototype, 'getBoundingClientRect');
+    render(<Box />);
+    act(() => {
+      window.dispatchEvent(new Event('scroll'));
     });
+    expect(measured).not.toHaveBeenCalled();
+    expect(shelf()).not.toHaveAttribute('data-shown');
+    measured.mockRestore();
+  });
+});
+
+describe('the pinned divider tab, where the browser cannot drive it', () => {
+  const realRect = Element.prototype.getBoundingClientRect;
+
+  /** Moves the dividers and lets the shelf's next frame see it. */
+  const scrollTo = (next: number[]) =>
+    act(() => {
+      tops = next;
+      window.dispatchEvent(new Event('scroll'));
+      vi.advanceTimersByTime(20);
+    });
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
     tops = [400, 700, 1000];
     Element.prototype.getBoundingClientRect = function (this: Element) {
       if (this.classList.contains('vault-shelf')) return { ...SHELF, bottom: 140 } as DOMRect;
@@ -65,143 +88,58 @@ describe('the pinned divider tab', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
     Element.prototype.getBoundingClientRect = realRect;
   });
 
   it('appears over the first tab exactly as it reaches the shelf', () => {
     render(<Box />);
+    expect(shelf()).not.toHaveClass('follows-scroll');
     expect(shelf()).not.toHaveAttribute('data-shown');
     scrollTo([101, 400, 700]);
     expect(shelf()).not.toHaveAttribute('data-shown');
     scrollTo([100, 399, 699]);
     expect(shelf()).toHaveAttribute('data-shown');
-    expect(named()).toBe('Breakfast');
-    // Taking over from the tab under it, not rolling in.
-    expect(leaving()).toBeUndefined();
+    expect(named()).toBe('Breakfast2');
   });
 
-  it('rolls on to the next tab once that one is halfway under it', () => {
+  it('names the next section once its tab is halfway under the shelf', () => {
     render(<Box />);
     scrollTo([-200, 121, 400]);
-    expect(named()).toBe('Breakfast');
-    vi.advanceTimersByTime(300);
+    expect(named()).toBe('Breakfast2');
     scrollTo([-220, 120, 380]);
-    expect(named()).toBe('Soups');
-    expect(leaving()).toBe('Breakfast');
-    expect(document.querySelector('.is-arriving')).toHaveAttribute('data-direction', '1');
+    expect(named()).toBe('Soups3');
   });
 
-  it('skips the tabs a fast scroll flies past, naming where it lands', () => {
+  it('names where a fast scroll lands, and goes once the list is back below it', () => {
     render(<Box />);
-    scrollTo([-200, 121, 400]);
-    vi.advanceTimersByTime(300);
-    scrollTo([-400, -100, 300]); // Soups, straight after Breakfast...
-    scrollTo([-800, -500, 100]); // ...then Mains, all within a moment.
-    expect(named()).toBe('Soups');
-    act(() => {
-      vi.advanceTimersByTime(300);
-    });
-    expect(named()).toBe('Mains');
-    expect(leaving()).toBe('Soups');
-  });
-
-  it('rolls back down on the way up, and goes once the list is back below it', () => {
-    render(<Box />);
-    scrollTo([-400, -100, 110]);
-    vi.advanceTimersByTime(300);
-    scrollTo([-300, 0, 300]);
-    expect(named()).toBe('Soups');
-    expect(document.querySelector('.is-arriving')).toHaveAttribute('data-direction', '-1');
-
+    scrollTo([-800, -500, 100]);
+    expect(named()).toBe('Mains5');
     scrollTo([150, 450, 750]);
     expect(shelf()).not.toHaveAttribute('data-shown');
-    // Fading out, it keeps the name it had.
-    expect(named()).toBe('Soups');
-  });
-});
-
-describe('the pinned divider tab, as the page reflows', () => {
-  // What a browser's ResizeObservers would hear about: each resize, on cue.
-  let observers: { callback: () => void; targets: Element[] }[] = [];
-  let labelWidth = 120;
-  const resize = () =>
-    act(() => {
-      for (const o of observers) if (o.targets.length) o.callback();
-      vi.advanceTimersByTime(20);
-    });
-
-  beforeEach(() => {
-    vi.useFakeTimers({
-      toFake: [
-        'setTimeout',
-        'clearTimeout',
-        'requestAnimationFrame',
-        'cancelAnimationFrame',
-        'performance',
-      ],
-    });
-    observers = [];
-    labelWidth = 120;
-    vi.stubGlobal(
-      'ResizeObserver',
-      class {
-        entry: { callback: () => void; targets: Element[] };
-        constructor(callback: () => void) {
-          this.entry = { callback, targets: [] };
-          observers.push(this.entry);
-        }
-        observe(el: Element) {
-          this.entry.targets.push(el);
-        }
-        disconnect() {
-          this.entry.targets = [];
-        }
-      },
-    );
-    Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
-      configurable: true,
-      get() {
-        return (this as HTMLElement).classList.contains('vault-shelf-label') ? labelWidth : 0;
-      },
-    });
-    tops = [-200, 400, 700];
-    Element.prototype.getBoundingClientRect = function (this: Element) {
-      if (this.classList.contains('vault-shelf')) return { ...SHELF, bottom: 140 } as DOMRect;
-      const i = (this as HTMLElement).dataset.i;
-      return { top: i === undefined ? 0 : tops[Number(i)], height: 40 } as DOMRect;
-    };
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.unstubAllGlobals();
-    Reflect.deleteProperty(HTMLElement.prototype, 'offsetWidth');
-    Element.prototype.getBoundingClientRect = realRect;
-  });
-
-  const tabWidth = () =>
-    (document.querySelector('.vault-tab.is-pinned') as HTMLElement).style.getPropertyValue(
-      '--tab-width',
-    );
-
-  it('fits its outline to the name again when the name resizes (the text size changing)', () => {
-    render(<Box />);
-    expect(named()).toBe('Breakfast');
-    expect(tabWidth()).toBe('120px');
-    labelWidth = 150;
-    resize();
-    expect(tabWidth()).toBe('150px');
   });
 
   it('names the right section after the list reflows, without waiting for a scroll', () => {
+    const observers: (() => void)[] = [];
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: () => void) {
+          observers.push(callback);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    tops = [-200, 400, 700];
     render(<Box />);
-    expect(named()).toBe('Breakfast');
-    act(() => {
-      vi.advanceTimersByTime(300);
-    });
+    expect(named()).toBe('Breakfast2');
     // Bigger text: the Soups tab is now halfway under the shelf, though nothing scrolled.
     tops = [-400, 110, 500];
-    resize();
-    expect(named()).toBe('Soups');
+    act(() => {
+      for (const callback of observers) callback();
+      vi.advanceTimersByTime(20);
+    });
+    expect(named()).toBe('Soups3');
   });
 });

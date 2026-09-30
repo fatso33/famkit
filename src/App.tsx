@@ -288,9 +288,20 @@ export default function App() {
     delete card.dataset.lifted;
     return false;
   };
-  const dropFlippedCard = () => {
+  // At once where another card is about to lift; otherwise it settles back ('dropping', as long
+  // as the lift), tucking behind the card in front of it again.
+  const dropFlippedCard = (settle = false) => {
     const card = document.querySelector<HTMLElement>('.vault-item[data-lifted]');
-    if (card) delete card.dataset.lifted;
+    if (!card) return;
+    if (!settle) {
+      delete card.dataset.lifted;
+      return;
+    }
+    card.dataset.lifted = 'dropping';
+    // A little past the drop, so it has fully settled when the card goes back behind.
+    window.setTimeout(() => {
+      if (card.dataset.lifted === 'dropping') delete card.dataset.lifted;
+    }, CARD_LIFT_MS + 100);
   };
 
   const navigateTo = (
@@ -326,7 +337,11 @@ export default function App() {
         if (motion === 'flip-close' && !landFlippedCard())
           document.documentElement.dataset.nav = 'fade';
       },
-      { motion, animated, onFinished: motion === 'flip-close' ? dropFlippedCard : undefined },
+      {
+        motion,
+        animated,
+        onFinished: motion === 'flip-close' ? () => dropFlippedCard(true) : undefined,
+      },
     );
   };
 
@@ -537,7 +552,9 @@ export default function App() {
 
       <FloatingMenu
         page={page}
-        onNavigate={(target) => navigateTo(target)}
+        // Under the menu's blurring scrim, the page cross-fades as the scrim clears. Never the
+        // card flip back from a recipe: the scrim and menu would fold away with the recipe.
+        onNavigate={(target) => navigateTo(target, { motion: 'menu', morph: false })}
         actions={pageActions}
         language={language}
         onToggleLanguage={toggleLanguage}

@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Moon, ShieldAlert, Sun } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useFontScale } from '../../hooks/useFontScale';
-import { transitionTheme } from '../../utils/viewTransition';
+import { prefersReducedMotion, transitionTheme } from '../../utils/viewTransition';
 import { resolveSeason, Season, SEASONS } from '../../utils/season';
 import { getStoredSeasonPreference } from '../../services/storage';
 import { SplashEmblem } from './SplashEmblem';
@@ -64,14 +64,25 @@ const GoogleLogo: React.FC = () => (
 interface SplashScreenProps {
   error: string | null;
   onSignIn: () => void;
+  /** Signed in: it fades away over the page arriving beneath it, then onLeft says it's gone. */
+  leaving?: boolean;
+  onLeft?: () => void;
 }
+
+// Longer than its fade (index.css, .fk-splash.is-leaving).
+const LEAVE_MS = 600;
 
 /**
  * The signed-out page: the emblem draws itself, "Welcome to Family Kitchen" arrives, then the
  * language, theme and text-size pills and the Google button. It reads the stored preferences
  * each time it mounts, so they're current after a sign-out.
  */
-export const SplashScreen: React.FC<SplashScreenProps> = ({ error, onSignIn }) => {
+export const SplashScreen: React.FC<SplashScreenProps> = ({
+  error,
+  onSignIn,
+  leaving = false,
+  onLeft,
+}) => {
   const { theme, toggleTheme } = useTheme();
   const { language, toggleLanguage, t } = useLanguage();
   const { percent, increaseScale, decreaseScale } = useFontScale();
@@ -80,6 +91,25 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ error, onSignIn }) =
   // After a language change the words swap with a quick blur instead of replaying the intro.
   const [swapped, setSwapped] = useState(false);
   const [tick, setTick] = useState<'up' | 'down' | null>(null);
+
+  // The fade waits until the page beneath has been drawn: building it takes a moment, and a fade
+  // started first would already be half over when the next frame finally shows. Time, not the
+  // fade's end, then decides when it's gone (a backgrounded page runs no animations).
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!leaving || !onLeft) return;
+    let timer = 0;
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => {
+        rootRef.current?.classList.add('is-fading');
+        timer = window.setTimeout(onLeft, prefersReducedMotion() ? 0 : LEAVE_MS);
+      });
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
+  }, [leaving, onLeft]);
 
   const skipIntro = () => setPhase((p) => (p === 'intro' ? 'skipped' : p));
 
@@ -109,7 +139,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ error, onSignIn }) =
     // by moving focus to any control (onFocus), which also makes the controls usable.
     // eslint-disable-next-line jsx-a11y-x/no-static-element-interactions, jsx-a11y-x/click-events-have-key-events
     <div
-      className={`fk-splash is-${phase}`}
+      ref={rootRef}
+      className={`fk-splash is-${phase}${leaving ? ' is-leaving' : ''}`}
+      aria-hidden={leaving || undefined}
+      inert={leaving}
       onClick={skipIntro}
       onFocus={(e) => {
         if (isKeyboardFocus(e.target)) skipIntro();

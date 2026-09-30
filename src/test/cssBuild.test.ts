@@ -44,8 +44,12 @@ describe('production CSS', () => {
   // scroll-driven animation with a 0s duration is finished before it starts, which left the
   // vault's big title shrunk and hidden at the top of the page.
   it('leaves scroll-driven animations their automatic duration', () => {
-    const scrollDriven = blocks.filter((b) => b.includes('animation-timeline:scroll('));
-    expect(scrollDriven.length).toBeGreaterThan(0);
+    // The title's condense (scroll()), the cards' lean (view()), and the pinned tab following
+    // the list's tabs (named timelines).
+    const scrollDriven = blocks.filter((b) =>
+      /animation-timeline:(scroll\(|view\(|--|var\()/.test(b),
+    );
+    expect(scrollDriven.length).toBeGreaterThanOrEqual(4);
     const zeroLength = scrollDriven.filter((b) => /animation(-duration)?:[^;]*\b0s\b/.test(b));
     expect(zeroLength).toEqual([]);
   });

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import type { User } from 'firebase/auth';
 import { AuthGate } from '../components/auth/AuthGate';
 import * as authHook from '../hooks/useAuth';
@@ -155,6 +155,48 @@ describe('sign-in splash', () => {
 
     expect(auth.signInWithGoogle).toHaveBeenCalledOnce();
     expect(screen.getByRole('alert')).toHaveTextContent('The sign-in popup was blocked.');
+  });
+
+  it('fades away over the app once signed in, instead of vanishing', () => {
+    vi.useFakeTimers();
+    const useAuth = vi.spyOn(authHook, 'useAuth').mockReturnValue(signedOut());
+    const { rerender } = render(gate());
+    const splash = screen.getByRole('button', { name: en.connectWithGoogle }).closest('.fk-splash');
+
+    useAuth.mockReturnValue(
+      signedOut({
+        user: { email: 'mom@example.com', displayName: 'Mom' } as User,
+        isFamilyMember: true,
+      }),
+    );
+    rerender(gate());
+    // The app arrives beneath the same splash (not a fresh one replaying its intro), which is
+    // leaving and out of reach.
+    expect(screen.getByText('App Content')).toBeInTheDocument();
+    expect(document.querySelector('.fk-splash')).toBe(splash);
+    expect(splash).toHaveClass('is-leaving');
+    expect(screen.queryByRole('button', { name: en.connectWithGoogle })).not.toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(700);
+    });
+    expect(document.querySelector('.fk-splash')).toBeNull();
+    expect(screen.getByText('App Content')).toBeInTheDocument();
+  });
+
+  it('stays up, not swapped for the launch screen, while a new sign-in is checked', () => {
+    const useAuth = vi.spyOn(authHook, 'useAuth').mockReturnValue(signedOut());
+    const { rerender } = render(gate());
+    const splash = document.querySelector('.fk-splash');
+
+    // Signed in with Google; the family list is still being checked.
+    useAuth.mockReturnValue(
+      signedOut({ user: { email: 'mom@example.com' } as User, isLoading: true }),
+    );
+    rerender(gate());
+    expect(document.querySelector('.fk-splash')).toBe(splash);
+    expect(splash).not.toHaveClass('is-leaving');
+    expect(screen.queryByText(en.appLoading)).toBeNull();
   });
 
   it('uses preferences changed while signed in once the family member signs out', () => {
