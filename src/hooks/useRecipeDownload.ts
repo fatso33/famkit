@@ -16,7 +16,12 @@ type ShowToast = (message: string, tone?: ToastTone, action?: ToastAction) => vo
  * whether they go in (the sheet this returns `sheetFor`); one without is made at once. The file
  * is saved as the recipe's name, in the language it's shown in.
  */
-export function useRecipeDownload(language: Language, t: UiTranslations, showToast: ShowToast) {
+export function useRecipeDownload(
+  language: Language,
+  t: UiTranslations,
+  showToast: ShowToast,
+  hideToast: () => void,
+) {
   const [sheetFor, setSheetFor] = useState<Recipe | null>(null);
 
   const deliver = async (bytes: Uint8Array<ArrayBuffer>, fileName: string): Promise<void> => {
@@ -30,6 +35,8 @@ export function useRecipeDownload(language: Language, t: UiTranslations, showToa
           onAction: () => void deliver(bytes, fileName),
         });
       }
+      // The share sheet took it, or was closed: nothing is being prepared any more.
+      else hideToast();
     } catch (err) {
       console.warn('Recipe PDF: the file could not be saved', err);
       showToast(t.pdfFailed, 'error');

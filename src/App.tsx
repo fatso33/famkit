@@ -121,7 +121,7 @@ export default function App() {
     usePWAInstall();
 
   const { toast, visible: isToastVisible, showToast, hideToast, clearToast } = useToast();
-  const download = useRecipeDownload(language, t, showToast);
+  const download = useRecipeDownload(language, t, showToast, hideToast);
   const currentUser = useCurrentUser();
   const { seen, markSeen } = useSeenRecipes(currentUser?.email ?? '');
 

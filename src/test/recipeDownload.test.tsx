@@ -106,6 +106,21 @@ describe('downloading a recipe as a PDF', () => {
     expect(buildRecipePdf.mock.calls[0][0].photo).toBeUndefined();
   });
 
+  it('clears the preparing toast once the share sheet has taken the file', async () => {
+    saveFile.mockResolvedValueOnce('shared');
+    openRecipe({
+      ...WANDAS_CHEESE_BREAD,
+      heroImage: '',
+      steps: WANDAS_CHEESE_BREAD.steps.map(({ hasImage: _h, imageSrc: _s, ...step }) => step),
+    });
+    chooseFromMenu(t.downloadRecipe);
+    expect(screen.getByText(t.pdfPreparing).closest('.app-toast')).toHaveClass('show');
+    await waitFor(() => expect(saveFile).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.getByText(t.pdfPreparing).closest('.app-toast')).not.toHaveClass('show'),
+    );
+  });
+
   it('says so when the PDF cannot be made', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     buildRecipePdf.mockRejectedValueOnce(new Error('font fetch failed'));
