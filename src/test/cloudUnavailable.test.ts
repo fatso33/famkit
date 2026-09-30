@@ -8,7 +8,7 @@ import { Recipe } from '../types/recipe';
 vi.mock('../services/firebase', () => ({ isFirebaseConfigured: true, db: null }));
 vi.mock('../services/gemini', () => ({
   isTranslationAvailable: false,
-  translatePieces: vi.fn(() => new Promise(() => {})),
+  translateDocuments: vi.fn(() => new Promise(() => {})),
 }));
 
 const owner = { email: 'raye@example.com', name: 'Raye' };

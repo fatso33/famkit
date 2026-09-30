@@ -2885,6 +2885,67 @@
         }
       }
 
+      /* Under the byline while some of the recipe waits for its translation: a quiet line, not
+         a control. Its dots breathe while the words are on their way. */
+      .detail-translating {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        margin-top: 0.7rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        color: var(--text-muted);
+        animation: fk-rise-in 0.4s var(--ease-glide) both;
+      }
+
+      .detail-translating > svg {
+        flex: none;
+        color: var(--accent);
+      }
+
+      /* Trailing the words like an ellipsis, not a separate item. */
+      .detail-translating-dots {
+        display: inline-flex;
+        gap: 0.2rem;
+        align-self: flex-end;
+        margin-left: -0.2rem;
+        padding-bottom: 0.4em;
+      }
+
+      .detail-translating-dots > span {
+        width: 0.25rem;
+        height: 0.25rem;
+        border-radius: 50%;
+        background: var(--accent);
+        opacity: 0.35;
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .detail-translating-dots > span {
+          animation: fk-translating-dot 1.6s ease-in-out infinite;
+        }
+        .detail-translating-dots > span:nth-child(2) {
+          animation-delay: 0.2s;
+        }
+        .detail-translating-dots > span:nth-child(3) {
+          animation-delay: 0.4s;
+        }
+      }
+
+      @keyframes fk-translating-dot {
+        0%,
+        60%,
+        100% {
+          opacity: 0.25;
+          transform: translateY(0);
+        }
+        30% {
+          opacity: 1;
+          transform: translateY(-0.12rem);
+        }
+      }
+
       /* Compact pill buttons (the editor's version banner, Settings' restore) */
       .btn-meta-pill {
         padding: 0.35rem 0.9rem;

@@ -1,5 +1,5 @@
 import React, { useImperativeHandle, useRef, useState, type Ref } from 'react';
-import { ChevronRight, FilePen } from 'lucide-react';
+import { ChevronRight, FilePen, Languages } from 'lucide-react';
 import { flushSync } from 'react-dom';
 import { Recipe, Language } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
@@ -12,7 +12,7 @@ import { StepsList } from './StepsList';
 import { BakingOptionsView } from './BakingOptionsView';
 import { ImageZoomModal } from './ImageZoomModal';
 import { RecipeSubheader } from './RecipeSubheader';
-import { getLocalizedRecipe } from '../../hooks/useRecipes';
+import { awaitsTranslation, getLocalizedRecipe } from '../../hooks/useRecipes';
 import { addedByName } from '../../utils/ownership';
 import { transitionView } from '../../utils/viewTransition';
 import { useUnroll } from '../../hooks/useUnroll';
@@ -168,6 +168,18 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                 ⏱️ <NumberRoll value={timeText} />
               </span>
             </div>
+            {/* Some of it is still in the original language: its translation is coming. */}
+            {awaitsTranslation(rawRecipe, language) && (
+              <p className="detail-translating">
+                <Languages size="1.05em" aria-hidden="true" />
+                <span>{t.translationOnItsWay}</span>
+                <span className="detail-translating-dots" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+              </p>
+            )}
             {/* The owner's unfinished edit, ready to carry on with. */}
             {draftVersion !== undefined && onContinueDraft && (
               <button

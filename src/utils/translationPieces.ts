@@ -88,6 +88,29 @@ export function pieceHash(piece: Piece): string {
     : fnv1a(`t${piece.text}`);
 }
 
+/**
+ * Words as a change that can't alter a translation leaves them: spacing, line breaks and
+ * punctuation at the end don't count. Letters and numbers always do ("1 tsp" vs "1 tbsp").
+ */
+const tidyWords = (text: string) =>
+  text
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[\s.!;,:…]+$/u, '');
+
+/**
+ * Fingerprint of what a piece says, ignoring changes that can't alter its translation (see
+ * tidyWords): an edit that only tidies a piece keeps the piece's translation.
+ */
+export function tidyPieceHash(piece: Piece): string {
+  if (piece.kind !== 'ingredient') return fnv1a(`t${tidyWords(piece.text)}`);
+  const words = ingredientWords(piece.ingredient);
+  const tidy = Object.fromEntries(
+    Object.entries(words).map(([key, value]) => [key, tidyWords(value ?? '')]),
+  );
+  return fnv1a(`i${JSON.stringify(tidy)}`);
+}
+
 export const pieceValue = (piece: Piece): PieceValue =>
   piece.kind === 'ingredient' ? piece.ingredient : piece.text;
 

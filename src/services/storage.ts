@@ -59,6 +59,27 @@ export function recordTranslationFailure(key: string, now: number): void {
   }
 }
 
+// Until when Gemini said the family's translation allowance is used up (see TranslationQuotaError).
+const TRANSLATION_PAUSE_KEY = 'family_kitchen_translation_paused_until';
+
+/** When this device may ask for translations again; 0 when it may now. */
+export function getTranslationPause(): number {
+  try {
+    const until = Number(localStorage.getItem(TRANSLATION_PAUSE_KEY));
+    return Number.isFinite(until) ? until : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function setTranslationPause(until: number): void {
+  try {
+    localStorage.setItem(TRANSLATION_PAUSE_KEY, String(until));
+  } catch (e) {
+    console.warn('Could not note the translation pause on this device (storage full?):', e);
+  }
+}
+
 /** This device's copy of the vault. Every recipe was added by a family member; none is built in. */
 export function getStoredRecipes(): Recipe[] {
   if (typeof window === 'undefined') return [];

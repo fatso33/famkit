@@ -309,6 +309,8 @@ export interface UiTranslations {
   /** The recipe page's way back into its draft. */
   continueDraft: string;
   continueDraftLabel: (version: number) => string;
+  /** Under a recipe's byline while some of it waits to be translated into the reader's language. */
+  translationOnItsWay: string;
   yourDrafts: string;
   /** Over the vault's recipes, when drafts are shown above them. */
   familyRecipes: string;
@@ -663,6 +665,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     draftSaveFailed: "Couldn't save the draft",
     continueDraft: 'Continue',
     continueDraftLabel: (version: number) => `Continue draft v${version}`,
+    translationOnItsWay: 'The translation is on its way',
     yourDrafts: 'Your drafts',
     familyRecipes: 'Family recipes',
     draftRibbon: 'Draft',
@@ -1021,6 +1024,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     draftSaveFailed: 'Nie udało się zapisać szkicu',
     continueDraft: 'Kontynuuj',
     continueDraftLabel: (version: number) => `Kontynuuj szkic wersji ${version}`,
+    translationOnItsWay: 'Tłumaczenie jest w drodze',
     yourDrafts: 'Twoje szkice',
     familyRecipes: 'Przepisy rodziny',
     draftRibbon: 'Szkic',

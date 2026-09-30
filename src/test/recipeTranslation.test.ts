@@ -2,23 +2,22 @@ import { describe, it, expect } from 'vitest';
 import { Recipe } from '../types/recipe';
 import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 import {
-  TRANSLATION_GRACE_MS,
   applyTranslation,
   displayedLanguage,
+  editingLanguage,
   localizeRecipe,
   needsTranslation,
   overlayTranslation,
-  parsePieceResponse,
   pendingPieces,
   recipeForEditing,
   resolveEdit,
-  shouldTranslateNow,
   sourceHash,
   translatableContent,
   translationFitsRecipe,
+  translationPending,
   translationStatus,
 } from '../utils/recipeTranslation';
-import { Piece, pieceHash } from '../utils/translationPieces';
+import { pieceHash } from '../utils/translationPieces';
 import { answerFrom } from './translator';
 
 const PHOTO = 'data:image/jpeg;base64,AAAA';
@@ -189,14 +188,6 @@ describe('translationFitsRecipe', () => {
   });
 });
 
-describe('shouldTranslateNow', () => {
-  it('translates at once on the saving device, and after a grace period elsewhere', () => {
-    expect(shouldTranslateNow(recipe, 1_000, true)).toBe(true);
-    expect(shouldTranslateNow(recipe, 1_000 + TRANSLATION_GRACE_MS - 1, false)).toBe(false);
-    expect(shouldTranslateNow(recipe, 1_000 + TRANSLATION_GRACE_MS, false)).toBe(true);
-  });
-});
-
 describe('resolveEdit', () => {
   const original = translated(recipe);
 
@@ -300,81 +291,6 @@ describe('resolveEdit', () => {
   });
 });
 
-describe('parsePieceResponse', () => {
-  const title: Piece = { key: 'name', kind: 'title', text: 'Apple Pie' };
-  const flour: Piece = { key: 'ingredients:0', kind: 'ingredient', ingredient: { text: 'Flour' } };
-  const step: Piece = { key: 'steps:0:text', kind: 'step', text: 'Mix.' };
-  const requested = new Map<string, Piece>([
-    ['p1', title],
-    ['p2', flour],
-    ['p3', step],
-  ]);
-
-  it('keeps only asked-for pieces of the right kind, by id, and drops the rest', () => {
-    const parsed = parsePieceResponse(
-      {
-        detectedLanguage: 'en',
-        texts: [
-          { id: 'p1', text: 'Szarlotka' },
-          { id: 'p2', text: 'not an ingredient' },
-          { id: 'p9', text: 'never asked' },
-          { id: 'p3', text: 42 },
-          'junk',
-        ],
-        ingredients: [{ id: 'p2', text: 'Mąka', unit: 'g', onclick: 'x', renderUnit: 'gramy' }],
-        extra: 'ignored',
-      },
-      requested,
-    );
-    expect(parsed.detectedLanguage).toBe('en');
-    expect(parsed.values).toEqual(
-      new Map<string, unknown>([
-        [pieceHash(title), 'Szarlotka'],
-        [pieceHash(flour), { text: 'Mąka', unit: 'g', renderUnit: 'gramy' }],
-      ]),
-    );
-  });
-
-  it('keeps each piece in its place when another comes back malformed', () => {
-    // The old whole-recipe answer shifted every later step onto the wrong one.
-    const { translations: _t, ...recipe } = WANDAS_CHEESE_BREAD;
-    const pieces = pendingPieces(recipe);
-    const ids = new Map(pieces.map((p, i) => ['p' + (i + 1), p]));
-    const texts = pieces.flatMap((p, i) =>
-      p.kind === 'ingredient' ? [] : [{ id: 'p' + (i + 1), text: 'PL ' + p.text } as object],
-    );
-    const broken = pieces.findIndex(
-      (p) => p.kind !== 'ingredient' && p.text.startsWith('Add water'),
-    );
-    const withBroken = texts.map((t) =>
-      (t as { id: string }).id === 'p' + (broken + 1) ? { id: 'p' + (broken + 1), text: 42 } : t,
-    );
-    const parsed = parsePieceResponse({ detectedLanguage: 'en', texts: withBroken }, ids);
-    const done = applyTranslation(recipe, parsed, sourceHash(recipe));
-    const shown = localizeRecipe(done, 'pl');
-    expect(shown.steps[2].text).toBe(recipe.steps[2].text);
-    expect(shown.steps[3].text).toBe('PL ' + recipe.steps[3].text);
-    // The malformed step and the unanswered ingredients are asked for again.
-    expect(pendingPieces(done).map((p) => p.key)).toEqual([
-      ...recipe.ingredients.map((_, i) => 'ingredients:' + i),
-      'steps:2:text',
-    ]);
-  });
-
-  it('keeps the recipe’s settled language over the model’s guess', () => {
-    const raw = { detectedLanguage: 'pl', texts: [{ id: 'p1', text: 'Szarlotka' }] };
-    expect(parsePieceResponse(raw, requested, 'en').detectedLanguage).toBe('en');
-  });
-
-  it.each([
-    ['not an object', 'text'],
-    ['an unknown language', { detectedLanguage: 'de', texts: [{ id: 'p1', text: 'Kuchen' }] }],
-    ['nothing usable', { detectedLanguage: 'en', texts: [{ id: 'p1', text: ' ' }] }],
-  ])('rejects %s', (_label, raw) => {
-    expect(() => parsePieceResponse(raw, requested)).toThrow();
-  });
-});
-
 describe('the method, translated', () => {
   const method: Recipe = {
     ...recipe,
@@ -466,5 +382,148 @@ describe('a legacy translation over a recipe whose blocks are now steps', () => 
     );
     expect(legacy.laminationDirective).toBe('Powtórz kroki.');
     expect(legacy.bakingOptions).toEqual({ option1: 'Piecz.' });
+  });
+});
+
+describe('while an edit waits for its translation', () => {
+  const pie: Recipe = {
+    id: 'pie',
+    name: 'Apple Pie',
+    author: 'Ola',
+    category: 'cakes',
+    heroImage: '',
+    yieldHeader: 'For 1 pie:',
+    tips: 'Use tart apples.',
+    ingredients: [
+      { text: 'Flour - 2 cups', name: 'Flour', note: '' },
+      { text: 'Apples - 6', name: 'Apples', note: '' },
+    ],
+    steps: [{ num: 1, text: 'Mix.' }],
+  };
+  const polish = {
+    name: 'Szarlotka',
+    yieldHeader: 'Na 1 szarlotkę:',
+    tips: 'Użyj kwaśnych jabłek.',
+    ingredients: [
+      { text: 'Mąka - 2 szklanki', name: 'Mąka', note: '' },
+      { text: 'Jabłka - 6', name: 'Jabłka', note: '' },
+    ],
+    steps: [{ num: 1, text: 'Wymieszaj.' }],
+  };
+  const translated = applyTranslation(pie, answerFrom(pie, polish, 'en'), sourceHash(pie), 42);
+  const edit = (changes: Partial<Recipe>) =>
+    resolveEdit(translated, { ...translated, ...changes }, 'en', true);
+
+  it('stamps when the translation was made', () => {
+    expect(translated.translations?.pl?.translatedAt).toBe(42);
+  });
+
+  it('shows the unchanged pieces translated and the edited ones as written, never the old words', () => {
+    const edited = edit({
+      ingredients: [pie.ingredients[0], { text: 'Apples - 8', name: 'Apples', note: '' }],
+    });
+    expect(translationStatus(edited, 'pl')).toBe('stale');
+    const shown = localizeRecipe(edited, 'pl');
+    expect(shown.name).toBe('Szarlotka');
+    expect(shown.ingredients.map((i) => i.text)).toEqual(['Mąka - 2 szklanki', 'Apples - 8']);
+    expect(shown.steps[0].text).toBe('Wymieszaj.');
+    expect(translationPending(edited, 'pl')).toBe(true);
+    // The reader of the original waits for nothing.
+    expect(translationPending(edited, 'en')).toBe(false);
+  });
+
+  it('opens the editor in the original until the translation is whole again', () => {
+    const edited = edit({ name: 'Apple Pie from Ola' });
+    expect(editingLanguage(edited, 'pl')).toBe('en');
+    // Current but missing a piece (a reply left it out): editing it in Polish would store the
+    // piece's English as Polish.
+    const partial = applyTranslation(
+      pie,
+      { detectedLanguage: 'en', values: new Map([[pieceHash(title()), 'Szarlotka']]) },
+      sourceHash(pie),
+    );
+    expect(translationStatus(partial, 'pl')).toBe('fresh');
+    expect(editingLanguage(partial, 'pl')).toBe('en');
+    expect(editingLanguage(translated, 'pl')).toBe('pl');
+  });
+
+  it('keeps the translation current through an edit that only tidies spacing and full stops', () => {
+    const tidied = edit({ name: '  Apple Pie ', steps: [{ num: 1, text: 'Mix' }] });
+    expect(translationStatus(tidied, 'pl')).toBe('fresh');
+    expect(needsTranslation(tidied)).toBe(false);
+    expect(localizeRecipe(tidied, 'pl').steps[0].text).toBe('Wymieszaj.');
+  });
+
+  it('asks again after an edit that changes a letter or a number', () => {
+    expect(pendingPieces(edit({ steps: [{ num: 1, text: 'Mix!' }] }))).toEqual([]);
+    expect(pendingPieces(edit({ steps: [{ num: 1, text: 'Fix.' }] })).map((p) => p.key)).toEqual([
+      'steps:0:text',
+    ]);
+    const row = { text: 'Flour - 3 cups', name: 'Flour', note: '' };
+    expect(
+      pendingPieces(edit({ ingredients: [row, pie.ingredients[1]] })).map((p) => p.key),
+    ).toEqual(['ingredients:0']);
+  });
+
+  it('drops the translation of a field the edit cleared', () => {
+    const cleared = edit({ tips: undefined });
+    expect(cleared.translations?.pl?.tips).toBeUndefined();
+    expect(localizeRecipe(cleared, 'pl').tips).toBeUndefined();
+  });
+
+  function title() {
+    return { key: 'name', kind: 'title' as const, text: 'Apple Pie' };
+  }
+});
+
+describe('a piece the translator got wrong twice', () => {
+  const soup: Recipe = {
+    id: 'soup',
+    name: 'Soup',
+    author: 'Ola',
+    category: 'soups',
+    heroImage: '',
+    yieldHeader: '',
+    ingredients: [{ text: 'Water - 2 cups', name: 'Water', note: '' }],
+    steps: [{ num: 1, text: 'Simmer 30 minutes.' }],
+  };
+  const [water, simmer] = pendingPieces(soup).slice(1);
+  const done = applyTranslation(
+    soup,
+    {
+      detectedLanguage: 'en',
+      values: new Map([[pieceHash(pendingPieces(soup)[0]), 'Zupa']]),
+      gaveUp: [simmer],
+    },
+    sourceHash(soup),
+  );
+
+  it('keeps the original’s words and isn’t asked for again', () => {
+    expect(localizeRecipe(done, 'pl').steps[0].text).toBe('Simmer 30 minutes.');
+    expect(pendingPieces(done)).toEqual([water]);
+    // Still given up after the rest is translated.
+    const rest = applyTranslation(
+      done,
+      {
+        detectedLanguage: 'en',
+        values: new Map([
+          [pieceHash(water), { text: 'Woda - 2 szklanki', name: 'Woda', note: '' }],
+        ]),
+      },
+      sourceHash(done),
+    );
+    expect(pendingPieces(rest)).toEqual([]);
+    expect(needsTranslation(rest)).toBe(false);
+    expect(translationPending(rest, 'pl')).toBe(false);
+  });
+
+  it('is asked for again once its words change', () => {
+    const edited = resolveEdit(
+      done,
+      { ...done, steps: [{ num: 1, text: 'Simmer 40 minutes.' }] },
+      'en',
+      true,
+    );
+    expect(pendingPieces(edited).map((p) => p.key)).toContain('steps:0:text');
   });
 });

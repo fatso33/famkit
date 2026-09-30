@@ -17,7 +17,7 @@ Deployable directly as a zero-server static Single Page Application (SPA) to **G
 - **☁️ Cloud Sync & Multi-Device Sharing**: Powered by Cloud Firestore with IndexedDB multi-tab offline persistence. Recipes saved on one phone or tablet instantly appear across all family devices.
 - **🔒 Family Google Authentication & Guest List**: Private heirloom vault protected by Google Sign-In with a family list kept in Firestore that only the project owner can change, in the Firebase console.
 - **📝 Step Builder, Photos & Version Archiving**: Add step-by-step consistency notes, photo thumbnails, and automatic version incrementing (`v1`, `v2`, `v3`) with historical archive snapshots.
-- **🤖 Two-way Family Translation via Gemini 3.8 Flash**: Bundled with verified offline translations for heirloom recipes. New and edited recipes are translated automatically between English and Polish through Firebase AI Logic (Gemini 3.8 Flash only, never a lighter model; an unusable answer is asked for once more straight away), protected by App Check. No Gemini key ships in the app.
+- **🤖 Two-way Family Translation via Gemini 3.8 Flash**: Bundled with verified offline translations for heirloom recipes. New and edited recipes are translated automatically between English and Polish through Firebase AI Logic (Gemini 3.8 Flash only, never a lighter model), protected by App Check. Every piece is checked: one left out, still untranslated, or with a changed amount is asked for once more straight away, and an amount is never allowed to change. No Gemini key ships in the app.
 
 ---
 
@@ -243,7 +243,7 @@ To enable Cloud Sync and recipe translation on GitHub Pages, navigate to **Setti
 
 ### 3. Enable Recipe Translation (Firebase AI Logic + App Check)
 
-Translation calls Gemini through Firebase AI Logic, which holds the Gemini key on Google's side, so no Gemini key is ever in the public bundle. It runs on the free Spark plan.
+Translation calls Gemini through Firebase AI Logic, which holds the Gemini key on Google's side, so no Gemini key is ever in the public bundle. It runs on the free Spark plan, whose Gemini allowance is small (20 requests a day for Gemini 3.8 Flash in September 2026, shared by the whole family, reset at midnight Pacific time). The app spends it carefully: a new recipe is translated at once, an edit once it has had no saves for 30 minutes, and whatever else is waiting goes in the same request. When the allowance is used up, phones stop asking until it resets, and the recipe page says the translation is on its way.
 
 - **Firebase console → AI Logic**: get started with the **Gemini Developer API**.
 - **reCAPTCHA Enterprise** ([Google Cloud console → Security → reCAPTCHA](https://console.cloud.google.com/security/recaptcha), same project as Firebase): create a **Website** key for `fatso33.github.io` and `localhost`, with **Use checkbox challenge** off. Free up to 10,000 checks a month; no billing account needed.

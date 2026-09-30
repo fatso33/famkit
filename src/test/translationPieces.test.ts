@@ -116,15 +116,11 @@ describe('only what changed is translated again', () => {
     const steps = [...translated.steps];
     [steps[4], steps[5]] = [steps[5], steps[4]];
     const moved = resolveEdit(translated, { ...translated, steps }, 'en', true);
-    expect(needsTranslation(moved)).toBe(true); // rebuilt for the new order...
-    expect(pendingPieces(moved)).toEqual([]); // ...without asking the translator
-    const rebuilt = applyTranslation(
-      moved,
-      { detectedLanguage: 'en', values: new Map() },
-      sourceHash(moved),
-    );
-    expect(localizeRecipe(rebuilt, 'pl').steps[4].text).toBe(`PL ${steps[4].text}`);
-    expect(needsTranslation(rebuilt)).toBe(false);
+    // Every piece still has its words, so the translation is current straight away.
+    expect(needsTranslation(moved)).toBe(false);
+    expect(pendingPieces(moved)).toEqual([]);
+    expect(localizeRecipe(moved, 'pl').steps[4].text).toBe(`PL ${steps[4].text}`);
+    expect(localizeRecipe(moved, 'pl').steps[5].text).toBe(`PL ${steps[5].text}`);
   });
 
   it("translates a fork path's own tip and caption, and keeps its photo and a restart", () => {

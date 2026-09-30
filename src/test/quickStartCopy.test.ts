@@ -9,7 +9,7 @@ import { leavePhotosOut } from '../utils/deviceCopy';
 vi.mock('../services/firebase', () => ({ isFirebaseConfigured: true }));
 vi.mock('../services/gemini', () => ({
   isTranslationAvailable: false,
-  translatePieces: vi.fn(() => new Promise(() => {})),
+  translateDocuments: vi.fn(() => new Promise(() => {})),
 }));
 
 const firestore = vi.hoisted(() => ({ push: (_recipes: Recipe[]) => {} }));

@@ -1,20 +1,13 @@
-import { Language, Recipe } from '../types/recipe';
 import { app, isFirebaseConfigured } from './firebase';
+import { TranslationQuotaError, TranslationRejectedError } from '../utils/recipeTranslation';
+import { nextDailyReset } from '../utils/translationQueue';
 import {
-  PieceRequest,
-  PieceTranslation,
-  TranslationRejectedError,
-  parsePieceResponse,
-  translatableContent,
-  translationMemory,
-} from '../utils/recipeTranslation';
-import {
-  Piece,
-  TextKind,
-  buildTranslation,
-  pieceHash,
-  recipePieces,
-} from '../utils/translationPieces';
+  DocReply,
+  ReplyShape,
+  TranslationDoc,
+  buildRequest,
+  parseReply,
+} from '../utils/translationRequest';
 
 // Flash for natural, contextual wording, thinking a little: thinking is billed as output, and
 // translation needs little. Only Flash: when it's busy the recipe waits rather than getting a
@@ -24,78 +17,10 @@ const MODEL = 'gemini-3.8-flash';
 /** Translation runs through Firebase AI Logic, so it needs the Firebase project. */
 export const isTranslationAvailable = isFirebaseConfigured;
 
-const LANGUAGE_NAMES: Record<Language, string> = { en: 'English', pl: 'Polish' };
+function buildPrompt(payload: object): string {
+  return `You translate a family's recipes, and their notes on what they cooked, between English and Polish for their private cookbook. Write the way a skilled home cook writes in the target language: natural, warm and idiomatic, never word for word.
 
-const KIND_NAMES: Record<TextKind, string> = {
-  title: 'recipe title',
-  description: 'short description for the recipe card',
-  yield: 'yield line, like "For 1 loaf:"',
-  tips: 'tips',
-  notes: 'notes',
-  step: 'step',
-  stepTip: 'tip for the step',
-  caption: 'photo caption',
-  heading: 'section heading (a few words)',
-  substep: 'part of a step',
-  pathLabel: 'name on a switch between ways of doing a step (1-3 words)',
-  pathText: 'step, done this way',
-  pathStep: 'step, done this way',
-};
-
-/** What's sent: each piece with a short id, the ids mapped back to the pieces. */
-function requestPieces(pieces: Piece[]) {
-  const requested: PieceRequest = new Map();
-  const texts: { id: string; kind: string; text: string }[] = [];
-  const ingredients: ({ id: string } & Record<string, string>)[] = [];
-  pieces.forEach((piece, i) => {
-    const id = `p${i + 1}`;
-    requested.set(id, piece);
-    if (piece.kind === 'ingredient') {
-      ingredients.push({ id, ...(piece.ingredient as Record<string, string>) });
-    } else {
-      texts.push({ id, kind: KIND_NAMES[piece.kind], text: piece.text });
-    }
-  });
-  return { requested, texts, ingredients };
-}
-
-// Translating only some pieces: the whole recipe is context, with its current translation so
-// new wording matches. Translating all of them: the pieces are the recipe.
-function promptContext(recipe: Recipe, pieces: Piece[], from?: string, to?: string): string {
-  const all = new Set(recipePieces(translatableContent(recipe)).map(pieceHash));
-  if (pieces.length >= all.size) return '';
-  let context = `\nThe whole recipe, for context:\n${JSON.stringify(translatableContent(recipe))}\n`;
-  const memory = translationMemory(recipe);
-  if (memory.size > 0 && from && to) {
-    const current = buildTranslation(translatableContent(recipe), (p) => memory.get(pieceHash(p)));
-    context +=
-      `\nIts current ${to} version. Keep the new pieces consistent with its wording (parts still in ${from} are the ones being translated now):\n` +
-      `${JSON.stringify(current.content)}\n`;
-  }
-  return context;
-}
-
-function buildPrompt(
-  recipe: Recipe,
-  pieces: Piece[],
-  texts: object[],
-  ingredients: object[],
-  language?: Language,
-): string {
-  const from = language && LANGUAGE_NAMES[language];
-  const to = language && LANGUAGE_NAMES[language === 'en' ? 'pl' : 'en'];
-  const languageRule = language
-    ? `The recipe is written in ${from}. Translate the pieces into ${to}, and put "${language}" in "detectedLanguage".`
-    : 'The recipe is written in English or Polish. Put the language it is written in ("en" or "pl") in "detectedLanguage", and translate the pieces into the other one.';
-  // The recipe page picks the Polish unit form by amount; English adds its own plural "s".
-  const unitRule =
-    language === 'pl'
-      ? ''
-      : ' When translating into Polish and a row has "unit", also give "renderUnit" (the form for amounts up to 1 and for 2-4, e.g. "łyżeczki") and "renderUnitPlural" (for 5 and more, e.g. "łyżeczek").';
-
-  return `You translate a family's recipes between English and Polish for their private cookbook. Write the way a skilled home cook writes in the target language: natural, warm and idiomatic, never word for word.
-
-${languageRule}
+Each document below is translated on its own, into its other language: English into Polish, Polish into English. Its "from" names the language it's written in. Where "from" is "unknown", decide whether it's written in English or Polish, put "en" or "pl" in its "detectedLanguage", and translate it into the other one.
 
 Rules:
 1. Translate cooking terms the way cooks say them, e.g. "sloppy dough" = "luźne, klejące ciasto" (not "niechlujne ciasto"), "Dutch oven" = "garnek żeliwny" (not "holenderski piec").
@@ -104,25 +29,50 @@ Rules:
 4. Keep people's names; a possessive takes the natural form ("Wanda's Cheese Bread" = "Chleb serowy Wandy").
 5. Instructions: in Polish, the informal imperative ("Dodaj", "Wymieszaj"); in English, the imperative ("Add", "Mix").
 6. Polish needs correct grammar and number agreement ("2 łyżeczki", "5 łyżeczek").
-7. Each piece has a "kind" saying what it is; word it to fit (a switch name stays very short, a heading is a heading).
-8. Ingredients: translate "text" (the whole line) and each other field given, returning the same fields. Keep the spacing and dashes of "prefix" and "suffix".${unitRule}
-9. Return every piece, with its id, and only valid JSON matching the schema.
-${promptContext(recipe, pieces, from, to)}
-Pieces to translate:
-${JSON.stringify({ texts, ingredients })}
+7. Each text has a "kind" saying what it is; word it to fit (a switch name stays very short, a heading is a heading).
+8. Ingredients: translate every field given and return the same fields. "name" is the ingredient, "amount" how much of it, "text" a whole ingredient line. Keep the spacing and dashes of "prefix" and "suffix". When translating into Polish and a row has "unit", also give "renderUnit" (the unit's form for amounts up to 1 and for 2-4, e.g. "łyżeczki") and "renderUnitPlural" (for 5 and more, e.g. "łyżeczek").
+9. A document with "context" is partly translated already: "whole" is all of its text, and "current" its present translation. Translate only its "texts" and "ingredients", consistent with the wording of "current" (the parts of "current" still in the original language are the ones being translated now).
+10. Return every piece under its document and id, as valid JSON matching the schema.
+
+Documents:
+${JSON.stringify(payload)}
 `;
 }
 
+type Detail = { retryDelay?: unknown };
+
 /**
- * Translates the given pieces of the recipe (see utils/translationPieces). `language` is the
- * recipe's language when it's settled; otherwise the model detects it. The response is
- * validated before it's returned; the caller decides what to do on failure.
+ * Google's "too many requests" as a pause: the daily allowance until it resets (midnight
+ * Pacific), a per-minute one for as long as Google says. Anything else is passed on as it is.
  */
-export async function translatePieces(
-  recipe: Recipe,
-  pieces: Piece[],
-  language?: Language,
-): Promise<PieceTranslation> {
+function asQuotaError(err: unknown): unknown {
+  const data = (err as { customErrorData?: { status?: number; errorDetails?: unknown } })
+    .customErrorData;
+  if (data?.status !== 429) return err;
+  const details: Detail[] = Array.isArray(data.errorDetails) ? data.errorDetails : [];
+  const now = Date.now();
+  if (/PerDay/i.test(JSON.stringify(details))) {
+    return new TranslationQuotaError('Gemini’s daily allowance is used up', nextDailyReset(now), {
+      cause: err,
+    });
+  }
+  const seconds = details
+    .map((d) => parseFloat(String(d.retryDelay ?? '')))
+    .find((s) => Number.isFinite(s) && s > 0);
+  return new TranslationQuotaError(
+    'Gemini asked to wait before the next request',
+    now + Math.max(5, seconds ?? 60) * 1000,
+    { cause: err },
+  );
+}
+
+/**
+ * Translates the documents' pieces in one request (see utils/translationRequest), each into its
+ * other language. What comes back is read against what was asked; checking each piece's words
+ * is the caller's (reviewReply). Throws TranslationRejectedError when the answer is unusable
+ * (blocked, not JSON, nothing translated), TranslationQuotaError when the allowance is used up.
+ */
+export async function translateDocuments(docs: TranslationDoc[]): Promise<DocReply[]> {
   if (!isTranslationAvailable || !app) {
     throw new Error('Translation is unavailable: Firebase is not configured.');
   }
@@ -132,55 +82,74 @@ export async function translatePieces(
     await import('firebase/ai');
   const ai = getAI(app, { backend: new GoogleAIBackend() });
 
+  // Every piece asked for is a required field of its own list, so none can be left out or
+  // answered in the wrong place.
   const text = Schema.string();
-  const ingredientFields = [
-    'name',
-    'prefix',
-    'unit',
-    'renderUnit',
-    'renderUnitPlural',
-    'altUnit',
-    'suffix',
-    'note',
-    'substitute',
-    'substituteAmount',
-  ];
+  const fields = (names: string[]) => Object.fromEntries(names.map((name) => [name, text]));
+  const documentSchema = (doc: ReplyShape['documents'][number]) =>
+    Schema.object({
+      properties: {
+        ...(doc.detect ? { detectedLanguage: Schema.enumString({ enum: ['en', 'pl'] }) } : {}),
+        ...(doc.texts.length > 0
+          ? { texts: Schema.object({ properties: fields(doc.texts) }) }
+          : {}),
+        ...(doc.ingredients.length > 0
+          ? {
+              ingredients: Schema.object({
+                properties: Object.fromEntries(
+                  doc.ingredients.map((row) => [
+                    row.id,
+                    Schema.object({
+                      properties: fields([...row.required, ...row.optional]),
+                      optionalProperties: row.optional,
+                    }),
+                  ]),
+                ),
+              }),
+            }
+          : {}),
+      },
+    });
+
+  const request = buildRequest(docs);
   const schema = Schema.object({
     properties: {
-      detectedLanguage: Schema.enumString({ enum: ['en', 'pl'] }),
-      texts: Schema.array({
-        items: Schema.object({ properties: { id: text, text } }),
-      }),
-      ingredients: Schema.array({
-        items: Schema.object({
-          properties: {
-            id: text,
-            text,
-            ...Object.fromEntries(ingredientFields.map((field) => [field, text])),
-          },
-          optionalProperties: ingredientFields,
-        }),
+      documents: Schema.object({
+        properties: Object.fromEntries(
+          request.shape.documents.map((doc) => [doc.key, documentSchema(doc)]),
+        ),
       }),
     },
-    optionalProperties: ['texts', 'ingredients'],
   });
 
-  const { requested, texts, ingredients } = requestPieces(pieces);
-  const prompt = buildPrompt(recipe, pieces, texts, ingredients, language);
-  const result = await getGenerativeModel(ai, {
-    model: MODEL,
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema: schema,
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-    },
-  }).generateContent(prompt);
-
-  let raw: unknown;
+  let answer: string;
   try {
-    raw = JSON.parse(result.response.text());
+    const result = await getGenerativeModel(ai, {
+      model: MODEL,
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: schema,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      },
+    }).generateContent(buildPrompt(request.payload));
+    answer = result.response.text();
   } catch (err) {
-    throw new TranslationRejectedError('Translation response is not JSON', { cause: err });
+    // A reply Gemini blocked (e.g. for "recitation") is an answer, just an unusable one.
+    if ((err as { code?: string }).code === 'response-error') {
+      throw new TranslationRejectedError('Translation response was blocked', { cause: err });
+    }
+    throw asQuotaError(err);
   }
-  return parsePieceResponse(raw, requested, language);
+
+  let replies: DocReply[];
+  try {
+    replies = parseReply(JSON.parse(answer), docs, request);
+  } catch (err) {
+    throw new TranslationRejectedError('Translation response is not usable JSON', { cause: err });
+  }
+  // A document whose language the reply got wrong has nothing usable either.
+  if (replies.every((reply) => reply.values.size === 0 || !reply.detectedLanguage)) {
+    throw new TranslationRejectedError('Translation response translated nothing');
+  }
+  return replies;
 }

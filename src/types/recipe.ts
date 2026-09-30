@@ -162,6 +162,13 @@ export interface LocalizedRecipeContent {
    * once more (see utils/recipeTranslation).
    */
   unitsTranslated?: boolean;
+  /** When the translator last added to it. Other phones leave a follow-up to this phone first. */
+  translatedAt?: number;
+  /**
+   * Pieces the translator got wrong twice (their amounts changed), by key, with the fingerprint
+   * of their words: they keep the original's words, and aren't asked for again until they change.
+   */
+  untranslated?: Record<string, string>;
 }
 
 export interface RecipeTranslations {

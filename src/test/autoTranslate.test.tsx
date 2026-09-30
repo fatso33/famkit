@@ -1,23 +1,31 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import App from '../App';
-import { translatePieces } from '../services/gemini';
+import { translateDocuments } from '../services/gemini';
 import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 import { Recipe } from '../types/recipe';
 import { UI_TEXT } from '../i18n/translations';
-import { TranslationRejectedError, sourceHash } from '../utils/recipeTranslation';
-import { answerFrom, dictionaryTranslator } from './translator';
+import {
+  TranslationQuotaError,
+  TranslationRejectedError,
+  resolveEdit,
+  sourceHash,
+} from '../utils/recipeTranslation';
+import { EDIT_SETTLE_MS } from '../utils/translationQueue';
+import { dictionaryTranslator, replyFrom } from './translator';
 
 // Firebase is off in tests, so recipes stay local; only the translation call is mocked.
 vi.mock('../services/gemini', () => ({
   isTranslationAvailable: true,
-  translatePieces: vi.fn(),
+  translateDocuments: vi.fn(),
 }));
 
-const translate = vi.mocked(translatePieces);
+const translate = vi.mocked(translateDocuments);
 const offline = () =>
   new Promise<never>((_, reject) => setTimeout(() => reject(new Error('offline')), 5));
 const settle = () => act(() => new Promise((r) => setTimeout(r, 50)));
+// Moves the clock on (in tests using fake timers).
+const later = (ms: number) => act(() => vi.advanceTimersByTimeAsync(ms));
 
 // Last saved in the past, so this device may translate it straight away.
 const customRecipe: Recipe = {
@@ -76,6 +84,9 @@ describe('background recipe translation', () => {
     window.scrollTo = vi.fn();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   it("translates an untranslated recipe once, and never sends Wanda's", async () => {
     seed(customRecipe);
@@ -85,7 +96,7 @@ describe('background recipe translation', () => {
     await settle();
 
     expect(translate).toHaveBeenCalledTimes(1);
-    expect(translate.mock.calls[0][0].id).toBe('custom-1');
+    expect(translate.mock.calls[0][0].map((doc) => doc.ref)).toEqual(['custom-1']);
     expect(screen.getByText('Pierogi cioci Oli')).toBeInTheDocument();
   });
 
@@ -94,7 +105,7 @@ describe('background recipe translation', () => {
     // original Polish, which once stored her English as "Polish" and her Polish as "English".
     const { translations, ...untranslated } = WANDAS_CHEESE_BREAD;
     localStorage.setItem('wandas_recipes', JSON.stringify([untranslated]));
-    translate.mockResolvedValue(answerFrom(untranslated as Recipe, translations!.pl!, 'pl'));
+    translate.mockImplementation(replyFrom(untranslated as Recipe, translations!.pl!, 'pl'));
     render(<App />);
     await settle();
 
@@ -154,8 +165,9 @@ describe('background recipe translation', () => {
 
     // The left-out step, alone, once; the model leaving it out again doesn't loop.
     expect(translate).toHaveBeenCalledTimes(2);
-    expect(translate.mock.calls[1][1].map((p) => p.key)).toEqual(['steps:0:text']);
-    expect(translate.mock.calls[1][2]).toBe('en');
+    const [[retry]] = translate.mock.calls[1];
+    expect(retry.pieces.map((p) => p.key)).toEqual(['steps:0:text']);
+    expect(retry.language).toBe('en');
   });
 
   it('tries a failing translation once, then again when the phone comes back online', async () => {
@@ -172,7 +184,8 @@ describe('background recipe translation', () => {
     expect(translate).toHaveBeenCalledTimes(2);
   });
 
-  it('quietly re-translates a recipe after its text is edited', async () => {
+  it('quietly re-translates a recipe once its edit has settled', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     seed(withPolish(customRecipe));
     translate.mockImplementation(dictionaryTranslator({ "Aunt Ola's Pierogi": 'Pierogi Oli' }));
     render(<App />);
@@ -182,13 +195,15 @@ describe('background recipe translation', () => {
     fireEvent.click(screen.getByText('Aunt Ola Pierogi'));
     editOpenRecipe('en', { 'Aunt Ola Pierogi': "Aunt Ola's Pierogi" });
     await settle();
+    // Edits wait, so a cook fixing things as they go costs one request, not one per save.
+    expect(translate).not.toHaveBeenCalled();
+    await later(EDIT_SETTLE_MS);
 
     expect(translate).toHaveBeenCalledTimes(1);
-    expect(translate.mock.calls[0][0].name).toBe("Aunt Ola's Pierogi");
-    // Only the changed title is sent; the rest keeps its translation.
-    expect(translate.mock.calls[0][1]).toEqual([
-      { key: 'name', kind: 'title', text: "Aunt Ola's Pierogi" },
-    ]);
+    const [[sent]] = translate.mock.calls[0];
+    // Only the changed title is sent; the rest keeps its translation, and is context.
+    expect(sent.pieces).toEqual([{ key: 'name', kind: 'title', text: "Aunt Ola's Pierogi" }]);
+    expect(sent.context?.whole).toMatchObject({ name: "Aunt Ola's Pierogi" });
     const stored = JSON.parse(localStorage.getItem('wandas_recipes')!) as Recipe[];
     const saved = stored.find((r) => r.id === 'custom-1')!;
     expect(saved.translations?.pl).toMatchObject({
@@ -200,7 +215,8 @@ describe('background recipe translation', () => {
     expect(screen.getByRole('status').textContent).toBe('');
   });
 
-  it('makes a Polish edit the new original and asks for English', async () => {
+  it('makes a Polish edit the new original and asks for English once it has settled', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     seed(withPolish(customRecipe));
     translate.mockImplementation(offline);
     localStorage.setItem('wandas_language', 'pl');
@@ -210,15 +226,18 @@ describe('background recipe translation', () => {
     fireEvent.click(screen.getByText('Pierogi cioci Oli'));
     editOpenRecipe('pl', { 'Pierogi cioci Oli': 'Pierogi ruskie cioci Oli' });
     await settle();
+    expect(translate).not.toHaveBeenCalled();
+    await later(EDIT_SETTLE_MS);
 
     expect(translate).toHaveBeenCalledTimes(1);
-    const sent = translate.mock.calls[0][0];
-    expect(sent.sourceLanguage).toBe('pl');
-    expect(sent.name).toBe('Pierogi ruskie cioci Oli');
-    expect(sent.steps[0].text).toBe('Wymieszaj.');
+    const [[sent]] = translate.mock.calls[0];
+    expect(sent.language).toBe('pl');
+    expect(sent.context?.whole).toMatchObject({
+      name: 'Pierogi ruskie cioci Oli',
+      steps: [{ text: 'Wymieszaj.' }],
+    });
     // Only the edited title needs English; the rest keeps its original English words.
-    expect(translate.mock.calls[0][1].map((p) => p.key)).toEqual(['name']);
-    expect(translate.mock.calls[0][2]).toBe('pl');
+    expect(sent.pieces.map((p) => p.key)).toEqual(['name']);
     // A failed background translation is logged, not shown; the reader still sees their edit.
     expect(screen.getByRole('status').textContent).toBe('');
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Pierogi ruskie cioci Oli');
@@ -240,6 +259,187 @@ describe('background recipe translation', () => {
     expect(saved.name).toBe('Aunt Ola Pierogi');
     expect(saved.author).toBe('Ciocia Ola');
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Pierogi cioci Oli');
+  });
+});
+
+describe('translation that holds up', () => {
+  beforeEach(() => {
+    translate.mockReset();
+    localStorage.clear();
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+    window.scrollTo = vi.fn();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // Simple Turkey Chili as the website import saved it (editor rows: "name - amount").
+  const chili: Recipe = {
+    id: 'chili',
+    name: 'Simple Turkey Chili',
+    author: 'Allrecipes',
+    category: 'mains',
+    heroImage: '',
+    yieldHeader: 'For 8 servings:',
+    sourceLanguage: 'en',
+    ingredients: [
+      { text: 'olive oil - 1.5 teaspoons', name: 'olive oil', note: '' },
+      { text: 'water - 2 cups', name: 'water', note: '' },
+    ],
+    steps: [{ num: 1, text: 'Gather all ingredients.' }],
+    createdAt: 1,
+    updatedAt: 1,
+  };
+  const CHILI_TEXTS = {
+    'Simple Turkey Chili': 'Proste chili z indykiem',
+    'For 8 servings:': 'Na 8 porcji:',
+    'Gather all ingredients.': 'Przygotuj wszystkie składniki.',
+  };
+  const CHILI_ROWS = {
+    'olive oil - 1.5 teaspoons': {
+      text: 'oliwa z oliwek - 1,5 łyżeczki',
+      name: 'oliwa z oliwek',
+      note: '',
+    },
+    'water - 2 cups': { text: 'woda - 2 szklanki', name: 'woda', note: '' },
+  };
+  const tableText = () =>
+    screen
+      .getAllByRole('row')
+      .map((row) => row.textContent)
+      .join(' ');
+
+  it('asks again at once for ingredients a reply left out (Simple Turkey Chili)', async () => {
+    seed(chili);
+    translate
+      .mockImplementationOnce(dictionaryTranslator(CHILI_TEXTS, 'en'))
+      .mockImplementation(dictionaryTranslator({ ...CHILI_TEXTS, ...CHILI_ROWS }, 'en'));
+    localStorage.setItem('wandas_language', 'pl');
+    render(<App />);
+    await settle();
+
+    // Its left-out rows, straight away, alone, in its now settled language.
+    expect(translate).toHaveBeenCalledTimes(2);
+    const [[retry]] = translate.mock.calls[1];
+    expect(retry.pieces.map((p) => p.key)).toEqual(['ingredients:0', 'ingredients:1']);
+    expect(retry.language).toBe('en');
+
+    fireEvent.click(screen.getByText('Proste chili z indykiem'));
+    expect(tableText()).toContain('oliwa z oliwek');
+    expect(tableText()).toContain('woda');
+    expect(screen.queryByText(UI_TEXT.pl.translationOnItsWay)).not.toBeInTheDocument();
+  });
+
+  it('translates several waiting recipes in one request', async () => {
+    seed(customRecipe, chili);
+    translate.mockImplementation(
+      dictionaryTranslator({ ...POLISH, ...CHILI_TEXTS, ...CHILI_ROWS }, 'en'),
+    );
+    render(<App />);
+    await settle();
+
+    expect(translate).toHaveBeenCalledTimes(1);
+    expect(translate.mock.calls[0][0].map((doc) => doc.ref).sort()).toEqual(['chili', 'custom-1']);
+  });
+
+  it('takes an edit that is still settling along with a new recipe’s request', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const translated = withPolish(customRecipe);
+    // Edited a minute ago: its own turn is half an hour away.
+    const edited = resolveEdit(
+      translated,
+      { ...translated, name: "Aunt Ola's Pierogi", updatedAt: Date.now() - 60_000 },
+      'en',
+      true,
+    );
+    seed(edited, chili);
+    translate.mockImplementation(
+      dictionaryTranslator(
+        { ...CHILI_TEXTS, ...CHILI_ROWS, "Aunt Ola's Pierogi": 'Pierogi Oli' },
+        'en',
+      ),
+    );
+    render(<App />);
+    await settle();
+
+    expect(translate).toHaveBeenCalledTimes(1);
+    expect(translate.mock.calls[0][0].map((doc) => doc.ref)).toEqual(['chili', 'custom-1']);
+    await later(EDIT_SETTLE_MS);
+    // Nothing left for its own turn.
+    expect(translate).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops asking when the day’s allowance is used up, until it resets', async () => {
+    seed(customRecipe);
+    const resets = Date.now() + 3 * 60 * 60 * 1000;
+    translate.mockRejectedValue(new TranslationQuotaError('used up', resets));
+    const { unmount } = render(<App />);
+    await settle();
+    expect(translate).toHaveBeenCalledTimes(1);
+    expect(Number(localStorage.getItem('family_kitchen_translation_paused_until'))).toBe(resets);
+    unmount();
+
+    // Opening the app again before the reset asks for nothing.
+    render(<App />);
+    await settle();
+    expect(translate).toHaveBeenCalledTimes(1);
+    // Not an unusable answer: no longer wait once the allowance is back.
+    expect(localStorage.getItem('family_kitchen_translation_failures')).toBeNull();
+  });
+
+  it('keeps the original’s amount when a reply changes it twice, and asks no more', async () => {
+    seed(customRecipe);
+    translate.mockImplementation(
+      dictionaryTranslator({ ...POLISH, 'Flour - 2 cups': { text: 'Mąka - 3 szklanki' } }, 'en'),
+    );
+    localStorage.setItem('wandas_language', 'pl');
+    render(<App />);
+    await settle();
+
+    // Asked once more for just that row, then left in its own words.
+    expect(translate).toHaveBeenCalledTimes(2);
+    expect(translate.mock.calls[1][0][0].pieces.map((p) => p.key)).toEqual(['ingredients:0']);
+    fireEvent.click(screen.getByText('Pierogi cioci Oli'));
+    expect(tableText()).toContain('Flour');
+    expect(tableText()).not.toContain('Mąka');
+    await settle();
+    expect(translate).toHaveBeenCalledTimes(2);
+  });
+
+  it('tells a reader, at the top of the recipe, when some of it is still to be translated', async () => {
+    seed(customRecipe);
+    translate.mockImplementation(offline);
+    localStorage.setItem('wandas_language', 'pl');
+    render(<App />);
+    await settle();
+
+    fireEvent.click(screen.getByText('Aunt Ola Pierogi'));
+    const header = screen.getByRole('heading', { level: 1 }).closest('header')!;
+    expect(within(header).getByText(UI_TEXT.pl.translationOnItsWay)).toBeInTheDocument();
+  });
+
+  it('shows an edited recipe’s unchanged parts translated while the edit waits', async () => {
+    const translated = withPolish(customRecipe);
+    const edited = resolveEdit(
+      translated,
+      { ...translated, name: "Aunt Ola's Pierogi", updatedAt: Date.now() },
+      'en',
+      true,
+    );
+    seed(edited);
+    translate.mockImplementation(offline);
+    localStorage.setItem('wandas_language', 'pl');
+    render(<App />);
+    await settle();
+
+    // The new title as written, the rest in Polish, and the note.
+    fireEvent.click(screen.getByText("Aunt Ola's Pierogi"));
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent("Aunt Ola's Pierogi");
+    expect(screen.getByText('Wymieszaj.')).toBeInTheDocument();
+    expect(tableText()).toContain('Mąka');
+    expect(screen.getByText(UI_TEXT.pl.translationOnItsWay)).toBeInTheDocument();
+    expect(translate).not.toHaveBeenCalled();
   });
 });
 

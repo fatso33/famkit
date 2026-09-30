@@ -8,7 +8,7 @@ import { leavePhotosOut } from '../utils/deviceCopy';
 
 vi.mock('../services/gemini', () => ({
   isTranslationAvailable: false,
-  translatePieces: vi.fn(() => new Promise(() => {})),
+  translateDocuments: vi.fn(() => new Promise(() => {})),
 }));
 
 const t = UI_TEXT.en;

@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useRecipes } from '../hooks/useRecipes';
-import { translatePieces } from '../services/gemini';
+import { translateDocuments } from '../services/gemini';
 import { saveTranslationToCloud } from '../services/firestore';
 import { Recipe } from '../types/recipe';
-import { PieceTranslation, sourceHash } from '../utils/recipeTranslation';
+import { resolveEdit, sourceHash } from '../utils/recipeTranslation';
+import { EDIT_SETTLE_MS } from '../utils/translationQueue';
+import { DocReply } from '../utils/translationRequest';
 import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 import { answerFrom } from './translator';
 
@@ -12,7 +14,7 @@ import { answerFrom } from './translator';
 vi.mock('../services/firebase', () => ({ isFirebaseConfigured: true }));
 vi.mock('../services/gemini', () => ({
   isTranslationAvailable: true,
-  translatePieces: vi.fn(() => new Promise(() => {})),
+  translateDocuments: vi.fn(() => new Promise(() => {})),
 }));
 
 const firestore = vi.hoisted(() => ({ push: (_recipes: Recipe[]) => {} }));
@@ -55,7 +57,7 @@ const translated: Recipe = {
 
 describe('translation grace period across phones', () => {
   beforeEach(() => {
-    vi.mocked(translatePieces).mockClear();
+    vi.mocked(translateDocuments).mockClear();
     vi.mocked(saveTranslationToCloud).mockClear();
     localStorage.clear();
     localStorage.setItem('wandas_recipes', JSON.stringify([translated]));
@@ -68,7 +70,7 @@ describe('translation grace period across phones', () => {
     act(() => {
       result.current.updateRecipe({ ...translated, author: 'Ciocia Ola' });
     });
-    expect(translatePieces).not.toHaveBeenCalled();
+    expect(translateDocuments).not.toHaveBeenCalled();
 
     // Moments later, another phone edits the text and it syncs in.
     await act(async () => {
@@ -76,17 +78,42 @@ describe('translation grace period across phones', () => {
     });
 
     // Leave it to the phone that made the edit.
-    expect(translatePieces).not.toHaveBeenCalled();
+    expect(translateDocuments).not.toHaveBeenCalled();
   });
 
-  it('translates its own text edit straight away', async () => {
-    const { result } = renderHook(() => useRecipes(null));
+  it('translates an edit once its text has settled for half an hour, one request for every save', async () => {
+    vi.useFakeTimers();
+    try {
+      const { result } = renderHook(() => useRecipes(null));
+      const save = async (name: string) => {
+        await act(async () => {
+          const current = result.current.recipes[0];
+          // As the editor saves it (App runs resolveEdit on every save).
+          result.current.updateRecipe(resolveEdit(current, { ...current, name }, 'en', true));
+        });
+      };
+      const wait = async (ms: number) => {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(ms);
+        });
+      };
 
-    await act(async () => {
-      result.current.updateRecipe({ ...translated, name: "Aunt Ola's Pierogi" });
-    });
+      await save("Aunt Ola's Pierogi");
+      await wait(EDIT_SETTLE_MS - 60_000);
+      expect(translateDocuments).not.toHaveBeenCalled();
 
-    expect(translatePieces).toHaveBeenCalledTimes(1);
+      // Fixing something else while cooking starts the wait again.
+      await save("Aunt Ola's Best Pierogi");
+      await wait(EDIT_SETTLE_MS - 1_000);
+      expect(translateDocuments).not.toHaveBeenCalled();
+
+      await wait(2_000);
+      expect(translateDocuments).toHaveBeenCalledTimes(1);
+      const [[doc]] = vi.mocked(translateDocuments).mock.calls[0];
+      expect(doc.pieces).toEqual([{ key: 'name', kind: 'title', text: "Aunt Ola's Best Pierogi" }]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("doesn't translate a copy cached from before recipes had owners", async () => {
@@ -100,30 +127,36 @@ describe('translation grace period across phones', () => {
     );
     renderHook(() => useRecipes(null));
     await act(async () => {});
-    expect(translatePieces).not.toHaveBeenCalled();
+    expect(translateDocuments).not.toHaveBeenCalled();
 
     // The adopted recipe arrives from the cloud, with its Polish current: still nothing to do.
     await act(async () => {
       firestore.push([WANDAS_CHEESE_BREAD]);
     });
-    expect(translatePieces).not.toHaveBeenCalled();
+    expect(translateDocuments).not.toHaveBeenCalled();
   });
 
   it('drops a translation of text that changed while it was being made', async () => {
     // This phone starts translating its cached copy...
     localStorage.setItem('wandas_recipes', JSON.stringify([base]));
-    let finish: (result: PieceTranslation) => void = () => {};
-    vi.mocked(translatePieces).mockImplementationOnce(() => new Promise((r) => (finish = r)));
+    let finish: (result: DocReply[]) => void = () => {};
+    vi.mocked(translateDocuments).mockImplementationOnce(() => new Promise((r) => (finish = r)));
     const { result } = renderHook(() => useRecipes(null));
     await act(async () => {});
-    expect(translatePieces).toHaveBeenCalledTimes(1);
+    expect(translateDocuments).toHaveBeenCalledTimes(1);
 
     // ...but the cloud has newer text by the time the translation comes back.
     await act(async () => {
       firestore.push([{ ...base, name: "Aunt Ola's Pierogi" }]);
     });
     await act(async () => {
-      finish(answerFrom(base, { name: 'Pierogi cioci Oli' }, 'en'));
+      finish([
+        {
+          ref: base.id,
+          detectedLanguage: 'en',
+          values: answerFrom(base, { name: 'Pierogi cioci Oli' }).values,
+        },
+      ]);
     });
 
     expect(result.current.recipes[0].translations).toBeUndefined();

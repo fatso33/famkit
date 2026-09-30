@@ -7,8 +7,6 @@ import {
   StepFork,
 } from '../types/recipe';
 import {
-  INGREDIENT_WORD_KEYS,
-  IngredientWords,
   Piece,
   PieceValue,
   buildTranslation,
@@ -16,7 +14,9 @@ import {
   pieceHash,
   pieceValue,
   recipePieces,
+  tidyPieceHash,
 } from './translationPieces';
+import type { TranslationDoc } from './translationRequest';
 
 export const LANGUAGES: readonly Language[] = ['en', 'pl'];
 
@@ -33,6 +33,8 @@ export type TranslationMemory = Map<string, PieceValue>;
 export interface PieceTranslation {
   detectedLanguage: Language;
   values: TranslationMemory;
+  /** Pieces the translator got wrong twice: they keep the original's words (see reviewReply). */
+  gaveUp?: Piece[];
 }
 
 export function otherLanguage(lang: Language): Language {
@@ -199,21 +201,53 @@ function checksUnits(recipe: Recipe): boolean {
 
 /**
  * The recipe's pieces that have no translation yet, or one that kept its original's units (see
- * checksUnits), each once (same words, one piece).
+ * checksUnits), each once (same words, one piece). A piece the translator got wrong twice isn't
+ * asked for again until its words change (LocalizedRecipeContent.untranslated).
  */
 export function pendingPieces(recipe: Recipe): Piece[] {
   const memory = translationMemory(recipe);
   const source = sourceLanguageOf(recipe);
   const recheck = checksUnits(recipe);
+  const gaveUp = recipe.translations?.[otherLanguage(source)]?.untranslated ?? {};
   const seen = new Set<string>();
   return recipePieces(translatableContent(recipe)).filter((piece) => {
     const hash = pieceHash(piece);
     const known = memory.get(hash);
     const done = known !== undefined && !(recheck && keepsSourceUnits(known, source));
-    if (done || seen.has(hash)) return false;
+    if (done || gaveUp[piece.key] === hash || seen.has(hash)) return false;
     seen.add(hash);
     return true;
   });
+}
+
+/** Whether every piece of the recipe has words in its other language. */
+function translationComplete(recipe: Recipe): boolean {
+  const memory = translationMemory(recipe);
+  return recipePieces(translatableContent(recipe)).every((p) => memory.has(pieceHash(p)));
+}
+
+/**
+ * The recipe as a translation request: its pending pieces, its language once settled, and, when
+ * only some pieces are asked for, all its text and its current translation for context.
+ */
+export function recipeTranslationDoc(recipe: Recipe, pieces: Piece[]): TranslationDoc {
+  const content = translatableContent(recipe);
+  const all = new Set(recipePieces(content).map(pieceHash));
+  const doc: TranslationDoc = {
+    ref: recipe.id,
+    pieces,
+    language: languageSettled(recipe) ? sourceLanguageOf(recipe) : undefined,
+  };
+  if (pieces.length < all.size) {
+    const memory = translationMemory(recipe);
+    doc.context = {
+      whole: defined(content),
+      ...(memory.size > 0
+        ? { current: buildTranslation(content, (p) => memory.get(pieceHash(p))).content }
+        : {}),
+    };
+  }
+  return doc;
 }
 
 /**
@@ -240,12 +274,6 @@ export function languageSettled(recipe: Recipe): boolean {
 export function retryDelayMs(failures: number): number {
   const hour = 60 * 60 * 1000;
   return Math.min(24 * hour, hour * 2 ** Math.max(0, failures - 1));
-}
-
-export function shouldTranslateNow(recipe: Recipe, now: number, savedOnThisDevice: boolean) {
-  if (savedOnThisDevice) return true;
-  const changedAt = recipe.updatedAt ?? recipe.createdAt ?? 0;
-  return now - changedAt >= TRANSLATION_GRACE_MS;
 }
 
 /** Language a viewer actually sees: theirs if a usable translation exists, else the original. */
@@ -307,13 +335,33 @@ export function overlayTranslation(recipe: Recipe, tr: LocalizedRecipeContent): 
   };
 }
 
-/** The recipe as a viewer in `lang` should see it. */
+/**
+ * The recipe as a viewer in `lang` should see it. After an edit, while its translation waits
+ * (see utils/translationQueue), every piece the edit didn't change stays in the viewer's language
+ * and the changed ones show the original's words: never the old translation of a changed piece,
+ * which could give an amount the edit corrected.
+ */
 export function localizeRecipe(recipe: Recipe, lang: Language): Recipe {
   const status = translationStatus(recipe, lang);
   const tr = recipe.translations?.[lang];
-  return tr && (status === 'fresh' || status === 'legacy')
-    ? overlayTranslation(recipe, tr)
-    : recipe;
+  if (!tr) return recipe;
+  if (status === 'fresh' || status === 'legacy') return overlayTranslation(recipe, tr);
+  if (status === 'stale' && tr.pieceSources) {
+    const memory = storedMemory(tr);
+    const { content } = buildTranslation(translatableContent(recipe), (p) =>
+      memory.get(pieceHash(p)),
+    );
+    return overlayTranslation(recipe, content);
+  }
+  return recipe;
+}
+
+/**
+ * Whether a viewer in `lang` is waiting for some of the recipe's words: it's written in the
+ * other language, and its translation isn't finished (new, edited, or missing pieces).
+ */
+export function translationPending(recipe: Recipe, lang: Language): boolean {
+  return lang !== sourceLanguageOf(recipe) && needsTranslation(recipe);
 }
 
 // --- Checking the language ------------------------------------------------------------------
@@ -351,22 +399,43 @@ export function translationFitsRecipe(recipe: Recipe, result: PieceTranslation):
 
 // --- Storing a translation ------------------------------------------------------------------
 
-/** The recipe with its other language rebuilt from `memory`, stamped as current. */
+/**
+ * The recipe with its other language rebuilt from `memory`, stamped as current. `gaveUp`: pieces
+ * the translator got wrong twice, recorded (with those recorded before whose words are the same)
+ * so they aren't asked for again until they change.
+ */
 export function withTranslation(
   recipe: Recipe,
   memory: TranslationMemory,
   language: Language = sourceLanguageOf(recipe),
+  { now = Date.now(), gaveUp = [] as Piece[] } = {},
 ): Recipe {
-  const { content, pieceSources } = buildTranslation(translatableContent(recipe), (piece) =>
+  const content = translatableContent(recipe);
+  const { content: translated, pieceSources } = buildTranslation(content, (piece) =>
     memory.get(pieceHash(piece)),
   );
+  const before =
+    language === sourceLanguageOf(recipe)
+      ? recipe.translations?.[otherLanguage(language)]?.untranslated
+      : undefined;
+  const untranslated: Record<string, string> = {};
+  for (const piece of recipePieces(content)) {
+    const hash = pieceHash(piece);
+    if (pieceSources[piece.key] === undefined && before?.[piece.key] === hash) {
+      untranslated[piece.key] = hash;
+    }
+  }
+  for (const piece of gaveUp) untranslated[piece.key] = pieceHash(piece);
+
   const translations = { ...recipe.translations };
   delete translations[language];
   translations[otherLanguage(language)] = {
-    ...content,
+    ...translated,
     pieceSources,
     sourceHash: sourceHash(recipe),
     unitsTranslated: true,
+    translatedAt: now,
+    ...(Object.keys(untranslated).length > 0 ? { untranslated } : {}),
   };
   return { ...recipe, sourceLanguage: language, translations };
 }
@@ -380,19 +449,31 @@ export function applyTranslation(
   recipe: Recipe,
   result: PieceTranslation,
   hashAtRequest: string,
+  now = Date.now(),
 ): Recipe {
   if (sourceHash(recipe) !== hashAtRequest) return recipe;
   const sameLanguage = result.detectedLanguage === sourceLanguageOf(recipe);
   const memory = new Map(sameLanguage ? translationMemory(recipe) : []);
   for (const [hash, value] of result.values) memory.set(hash, value);
-  return withTranslation(recipe, memory, result.detectedLanguage);
+  return withTranslation(recipe, memory, result.detectedLanguage, {
+    now,
+    gaveUp: result.gaveUp,
+  });
 }
 
 // --- Editing --------------------------------------------------------------------------------
 
-/** Language the edit form shows: the viewer's own when a usable translation exists. */
+/**
+ * Language the edit form shows: the viewer's own when its translation is current and complete.
+ * A translation still missing pieces holds the original's words for them, which a save would
+ * store as the viewer's language.
+ */
 export function editingLanguage(recipe: Recipe, viewerLanguage: Language): Language {
-  return displayedLanguage(recipe, viewerLanguage);
+  const shown = displayedLanguage(recipe, viewerLanguage);
+  if (shown === sourceLanguageOf(recipe) || translationStatus(recipe, shown) === 'legacy') {
+    return shown;
+  }
+  return translationComplete(recipe) ? shown : sourceLanguageOf(recipe);
 }
 
 /** The recipe as the edit form should show it. */
@@ -414,6 +495,39 @@ function pairedSources(source: LocalizedRecipeContent, translated: LocalizedReci
 }
 
 /**
+ * The translation carried across an edit in the original's language, rebuilt for the edited
+ * text: every piece keeps its words if its own words are unchanged, or changed only in ways that
+ * can't alter a translation (spacing, a full stop at the end: see tidyPieceHash). When that covers
+ * every piece of a current translation, it stays current, and the edit needs no request at all.
+ */
+function tidiedAcross(
+  original: Recipe,
+  edited: Recipe,
+  shown: LocalizedRecipeContent,
+): LocalizedRecipeContent {
+  const memory = translationMemory(original);
+  const tidy = new Map<string, PieceValue>();
+  for (const piece of recipePieces(translatableContent(original))) {
+    const value = memory.get(pieceHash(piece));
+    if (value !== undefined) tidy.set(tidyPieceHash(piece), value);
+  }
+  const lookup = (piece: Piece) => memory.get(pieceHash(piece)) ?? tidy.get(tidyPieceHash(piece));
+  const content = translatableContent(edited);
+  const { content: translated, pieceSources } = buildTranslation(content, lookup);
+  const current =
+    translationStatus(original, otherLanguage(sourceLanguageOf(original))) === 'fresh';
+  const covered = recipePieces(content).every((piece) => lookup(piece) !== undefined);
+  // Only the words the edited text still has: a field the edit cleared mustn't keep its old words.
+  return {
+    ...translated,
+    pieceSources,
+    sourceHash: current && covered ? sourceHash(edited) : shown.sourceHash,
+    ...(shown.unitsTranslated ? { unitsTranslated: true } : {}),
+    ...(shown.translatedAt !== undefined ? { translatedAt: shown.translatedAt } : {}),
+  };
+}
+
+/**
  * What the edited recipe keeps of its translation, so only the pieces the edit changed are
  * translated again. Stored stale: it's shown only once rebuilt for the new text.
  * - Edited in the original's language: the translation as it was, remembering what it translates.
@@ -422,6 +536,7 @@ function pairedSources(source: LocalizedRecipeContent, translated: LocalizedReci
  */
 function carriedTranslation(
   original: Recipe,
+  edited: Recipe,
   editedIn: Language,
 ): LocalizedRecipeContent | undefined {
   const source = sourceLanguageOf(original);
@@ -430,7 +545,7 @@ function carriedTranslation(
 
   if (editedIn === source) {
     if (!shown) return undefined;
-    if (shown.pieceSources) return shown;
+    if (shown.pieceSources) return tidiedAcross(original, edited, shown);
     // Its pieces can't be matched to the old text: kept, but out of date until translated again.
     if (!current) return { ...shown, sourceHash: sourceHash(original) };
     return { ...shown, pieceSources: pairedSources(translatableContent(original), shown) };
@@ -491,7 +606,7 @@ export function resolveEdit(
     };
   }
   const shownLanguage = editingLanguage(original, viewerLanguage);
-  const carried = carriedTranslation(original, shownLanguage);
+  const carried = carriedTranslation(original, edited, shownLanguage);
   const translations = { ...original.translations };
   delete translations[shownLanguage];
   delete translations[otherLanguage(shownLanguage)];
@@ -506,9 +621,9 @@ export function resolveEdit(
   };
 }
 
-// --- Validation of the untrusted model response -------------------------------------------
+// --- Failures -------------------------------------------------------------------------------
 
-/** The model answered, but not usably (bad JSON, wrong shape, nothing translated). */
+/** The model answered, but not usably (bad JSON, wrong shape, blocked, nothing translated). */
 export class TranslationRejectedError extends Error {
   constructor(message: string, options?: { cause?: unknown }) {
     super(message, options);
@@ -516,66 +631,17 @@ export class TranslationRejectedError extends Error {
   }
 }
 
-type Json = Record<string, unknown>;
-
-const isObject = (v: unknown): v is Json =>
-  typeof v === 'object' && v !== null && !Array.isArray(v);
-
-/** Pieces sent to the translator, by the id it was given. */
-export type PieceRequest = Map<string, Piece>;
-
-function parseIngredient(raw: Json): IngredientWords | undefined {
-  if (typeof raw.text !== 'string' || !raw.text.trim()) return undefined;
-  const words: IngredientWords = { text: raw.text };
-  for (const key of INGREDIENT_WORD_KEYS) {
-    const value = raw[key];
-    if (typeof value === 'string') words[key] = value;
-  }
-  return words;
-}
-
 /**
- * Validates a translation response against what was asked. Keeps only the pieces that were
- * asked for, with words of the right kind; anything else is dropped, and a missing piece is
- * simply asked for again later. `language`: the recipe's language when it's settled (the
- * model's guess is then ignored).
+ * The family's translation allowance is used up for now: nothing is asked for until
+ * `retryAt` (the daily allowance resets at midnight Pacific time; a per-minute one sooner).
  */
-export function parsePieceResponse(
-  raw: unknown,
-  requested: PieceRequest,
-  language?: Language,
-): PieceTranslation {
-  if (!isObject(raw)) throw new TranslationRejectedError('Translation response is not an object');
-  const detected = language ?? raw.detectedLanguage;
-  if (detected !== 'en' && detected !== 'pl') {
-    throw new TranslationRejectedError('Translation response has no valid detectedLanguage');
+export class TranslationQuotaError extends Error {
+  constructor(
+    message: string,
+    readonly retryAt: number,
+    options?: { cause?: unknown },
+  ) {
+    super(message, options);
+    this.name = 'TranslationQuotaError';
   }
-
-  const values: TranslationMemory = new Map();
-  const entries = (list: unknown) => (Array.isArray(list) ? list.filter(isObject) : []);
-  for (const entry of entries(raw.texts)) {
-    const piece = typeof entry.id === 'string' ? requested.get(entry.id) : undefined;
-    if (
-      piece &&
-      piece.kind !== 'ingredient' &&
-      typeof entry.text === 'string' &&
-      entry.text.trim()
-    ) {
-      values.set(pieceHash(piece), entry.text);
-    }
-  }
-  for (const entry of entries(raw.ingredients)) {
-    const piece = typeof entry.id === 'string' ? requested.get(entry.id) : undefined;
-    const words = piece?.kind === 'ingredient' ? parseIngredient(entry) : undefined;
-    if (!piece || !words) continue;
-    // Polish unit forms by amount; English reads renderUnit as its plural (utils/fractions).
-    if (detected === 'pl') {
-      delete words.renderUnit;
-      delete words.renderUnitPlural;
-    }
-    values.set(pieceHash(piece), words);
-  }
-  if (values.size === 0)
-    throw new TranslationRejectedError('Translation response translated nothing');
-  return { detectedLanguage: detected, values };
 }
