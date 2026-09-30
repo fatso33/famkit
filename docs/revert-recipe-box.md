@@ -4,12 +4,13 @@ Hand this file to an agent with: "Revert the Recipe Box redesign using docs/reve
 
 ## What changed, and what to keep
 
-Two commits, September 2026:
+Three commits, September 2026 (plus this note, `a333ba0`, which can stay):
 
 | Commit                              | What                                                                                                                                                                 | Revert?                                       |
 | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
 | `78277c9` (tagged `pre-recipe-box`) | Page renamed Recipe Box / Przepiśnik, PL "Makes" page renamed Popisy, sort by category by default, "Date added" and "Last changed" folded into one "Last added" sort | **No, keep it.** It isn't part of the design. |
 | `28be500`                           | The Recipe Box design: stacked index cards, divider tabs, rolling pinned tab, lean-back on scroll, card-flip open/close                                              | **Yes.** This is the redesign.                |
+| `dff7f82`                           | Photo cards show their description again, clamped to three lines; the fallback line moved into the translations (`cardDescriptionFallback`)                          | **Yes**, with the redesign (revert it first). |
 
 The tag `pre-recipe-box` points at the last commit with the old design (it already has the renames and the new sort).
 
@@ -18,7 +19,7 @@ The tag `pre-recipe-box` points at the last commit with the old design (it alrea
 1. **Try the plain revert first.**
 
    ```bash
-   git revert 28be500
+   git revert dff7f82 28be500
    ```
 
    If it applies cleanly, run `npm run check`, check the vault in the preview browser (light and dark, EN and PL, phone width, list and cards, open and close a recipe), and you're done.
