@@ -7,6 +7,7 @@ import { useLanguage } from './hooks/useLanguage';
 import { usePWAInstall } from './hooks/usePWAInstall';
 import { useRecipes, getLocalizedRecipe } from './hooks/useRecipes';
 import { useToast } from './hooks/useToast';
+import { useRecipeDownload } from './hooks/useRecipeDownload';
 import { useCurrentUser } from './hooks/useCurrentUser';
 import { useBackStep } from './hooks/useBackStep';
 import { useSeenRecipes } from './hooks/useSeenRecipes';
@@ -52,7 +53,7 @@ import {
   remixStart,
   remixesOf,
 } from './utils/recipeRemix';
-import { PencilLine, Plus, Shuffle } from 'lucide-react';
+import { Download, PencilLine, Plus, Shuffle } from 'lucide-react';
 import { FloatingMenu, MenuAction } from './components/layout/FloatingMenu';
 import { InstallCard } from './components/layout/InstallCard';
 import { RecipeGridView } from './components/recipe-grid/RecipeGridView';
@@ -62,6 +63,7 @@ import {
 } from './components/recipe-detail/RecipeDetailView';
 import { AddRecipeModal, type DraftContent } from './components/recipe-form/AddRecipeModal';
 import { IOSInstallModal } from './components/layout/IOSInstallModal';
+import { DownloadSheet } from './components/recipe-detail/DownloadSheet';
 import { MakesView } from './components/makes/MakesView';
 import { SettingsView } from './components/settings/SettingsView';
 import { Toast } from './components/common/Toast';
@@ -119,6 +121,7 @@ export default function App() {
     usePWAInstall();
 
   const { toast, visible: isToastVisible, showToast, hideToast, clearToast } = useToast();
+  const download = useRecipeDownload(language, t, showToast);
   const currentUser = useCurrentUser();
   const { seen, markSeen } = useSeenRecipes(currentUser?.email ?? '');
 
@@ -513,22 +516,32 @@ export default function App() {
         ];
         break;
       }
-      // Only the family member who added a recipe can edit it.
+      pageActions.push(
+        {
+          id: 'download-recipe',
+          label: t.downloadRecipe,
+          icon: Download,
+          onSelect: () => download.start(selectedRecipe),
+        },
+        // Anyone can remix any recipe, their own too.
+        {
+          id: 'remix-recipe',
+          label: t.remixRecipe,
+          icon: Shuffle,
+          onSelect: () => remixRecipe(selectedRecipe),
+        },
+      );
+      // Only the family member who added a recipe can edit it. Their Edit key has the bottom
+      // row to itself, under Download and Remix.
       if (canEditRecipe(selectedRecipe, currentUser, isFirebaseConfigured)) {
         pageActions.push({
           id: 'edit-recipe',
           label: t.editRecipe,
           icon: PencilLine,
           onSelect: () => editRecipe(selectedRecipe),
+          wide: true,
         });
       }
-      // Anyone can remix any recipe, their own too.
-      pageActions.push({
-        id: 'remix-recipe',
-        label: t.remixRecipe,
-        icon: Shuffle,
-        onSelect: () => remixRecipe(selectedRecipe),
-      });
       break;
     case 'makes':
       pageActions = [
@@ -689,6 +702,17 @@ export default function App() {
             if (editingDraft) void dropDraft(editingDraft);
             // The editor then closes itself, and closeEditor clears it once it has slid away.
           }}
+          t={t}
+        />
+      )}
+
+      {download.sheet && (
+        <DownloadSheet
+          key={download.sheet.recipe.id}
+          fileName={download.sheet.fileName}
+          photo={download.sheet.photo}
+          onChoose={download.choose}
+          onClose={download.close}
           t={t}
         />
       )}

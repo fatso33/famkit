@@ -141,6 +141,29 @@ export interface UiTranslations {
   increaseTextSize: string;
   /** The menu's action on a recipe page: start a remix of it. */
   remixRecipe: string;
+  /** The menu's action on a recipe page: save it as a PDF. */
+  downloadRecipe: string;
+  downloadTitle: string;
+  /** Under the download sheet's title: the file it saves. */
+  downloadFileName: (fileName: string) => string;
+  downloadWithPhotos: string;
+  downloadTextOnly: string;
+  downloadTextOnlyHint: string;
+  downloadPreparing: string;
+  /** While a recipe with no photos is being made into a PDF. */
+  pdfPreparing: string;
+  /** The PDF was handed to the phone's downloads. */
+  pdfDownloading: (fileName: string) => string;
+  /** The PDF is made, and the share sheet needs a tap to open. */
+  pdfReady: (fileName: string) => string;
+  savePdf: string;
+  pdfFailed: string;
+  /** The file name when a recipe's name has no letters a file name can hold. */
+  pdfFallbackName: string;
+  /** The PDF's credit line for the time, given the time as the recipe page shows it. */
+  pdfTime: (time: string) => string;
+  /** At the foot of every PDF page. */
+  pdfFooter: string;
   installBannerLabel: string;
   dismissBanner: string;
   closeDialog: string;
@@ -515,6 +538,21 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     decreaseTextSize: 'Decrease text size',
     increaseTextSize: 'Increase text size',
     remixRecipe: 'Remix Recipe',
+    downloadRecipe: 'Download Recipe',
+    downloadTitle: 'Download recipe',
+    downloadFileName: (fileName: string) => `Saves as “${fileName}”`,
+    downloadWithPhotos: 'With photos',
+    downloadTextOnly: 'Text only',
+    downloadTextOnlyHint: 'Uses less ink',
+    downloadPreparing: 'Preparing…',
+    pdfPreparing: 'Preparing the PDF…',
+    pdfDownloading: (fileName: string) => `Downloading ${fileName}`,
+    pdfReady: (fileName: string) => `${fileName} is ready`,
+    savePdf: 'Save',
+    pdfFailed: "Couldn't make the PDF. Try again.",
+    pdfFallbackName: 'Recipe',
+    pdfTime: (time: string) => `Time: ${time}`,
+    pdfFooter: 'Family Kitchen',
     installBannerLabel: 'Install app banner',
     dismissBanner: 'Dismiss banner',
     closeDialog: 'Close',
@@ -877,6 +915,21 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     decreaseTextSize: 'Zmniejsz tekst',
     increaseTextSize: 'Powiększ tekst',
     remixRecipe: 'Zremiksuj Przepis',
+    downloadRecipe: 'Pobierz Przepis',
+    downloadTitle: 'Pobierz przepis',
+    downloadFileName: (fileName: string) => `Zapisze się jako „${fileName}”`,
+    downloadWithPhotos: 'Ze zdjęciami',
+    downloadTextOnly: 'Bez zdjęć',
+    downloadTextOnlyHint: 'Zużywa mniej tuszu',
+    downloadPreparing: 'Przygotowuję…',
+    pdfPreparing: 'Przygotowuję plik PDF…',
+    pdfDownloading: (fileName: string) => `Pobieranie pliku ${fileName}`,
+    pdfReady: (fileName: string) => `Plik ${fileName} jest gotowy`,
+    savePdf: 'Zapisz',
+    pdfFailed: 'Nie udało się utworzyć pliku PDF. Spróbuj ponownie.',
+    pdfFallbackName: 'Przepis',
+    pdfTime: (time: string) => `Czas: ${time}`,
+    pdfFooter: 'Rodzinna Kuchnia',
     installBannerLabel: 'Baner instalacji aplikacji',
     dismissBanner: 'Zamknij baner',
     closeDialog: 'Zamknij',

@@ -46,9 +46,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for images & fonts (static media)
+  // Cache-first for images & fonts (static media). The .ttf fonts are the recipe PDF's, whose
+  // names change with their contents.
   if (
-    url.pathname.match(/\.(png|jpg|jpeg|svg|webp|woff2|ico)$/) ||
+    url.pathname.match(/\.(png|jpg|jpeg|svg|webp|woff2|ttf|ico)$/) ||
     url.hostname.includes('unsplash.com') ||
     url.hostname.includes('fonts.gstatic.com')
   ) {

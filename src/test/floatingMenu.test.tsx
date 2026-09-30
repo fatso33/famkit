@@ -215,18 +215,21 @@ describe('floating menu', () => {
     expect(screen.getByRole('heading', { name: heading, level: 1 })).toBeInTheDocument();
   });
 
-  it("holds Edit with Remix in the recipe page's card, not on the page itself", () => {
+  it("holds Download, Remix and (last, on its own row) Edit in the recipe page's card", () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: WANDAS_CHEESE_BREAD.name }));
     expect(screen.queryByRole('button', { name: t.editRecipe })).toBeNull();
 
     const pages = within(openMenu()).getByRole('navigation', { name: t.pages });
     const actions = within(pages).getByRole('list', { name: t.recipeVault });
-    expect(
-      within(actions)
-        .getAllByRole('button')
-        .map((b) => b.textContent),
-    ).toEqual([t.editRecipe, t.remixRecipe]);
+    const keys = within(actions).getAllByRole('button');
+    expect(keys.map((b) => b.textContent)).toEqual([t.downloadRecipe, t.remixRecipe, t.editRecipe]);
+    // Only Edit takes a row of its own, under the other two.
+    expect(keys.map((b) => b.parentElement!.classList.contains('is-wide'))).toEqual([
+      false,
+      false,
+      true,
+    ]);
 
     fireEvent.click(within(actions).getByRole('button', { name: t.editRecipe }));
     finishClosing();

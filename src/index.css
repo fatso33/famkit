@@ -5841,6 +5841,10 @@
         display: flex;
       }
 
+      .fk-menu-actions > li.is-wide {
+        flex-basis: 100%;
+      }
+
       .fk-menu-action {
         flex: 1;
         min-height: 48px;
@@ -8628,6 +8632,186 @@
         cursor: default;
       }
 
+      /* ── Download sheet: with photos or text only, each shown as its page in small ── */
+      /* Opened from a page, not the editor: over the menu button (.fab-group), under toasts. */
+      .editor-sheet-layer.is-over-page {
+        z-index: 70;
+      }
+
+      .download-file {
+        margin: -0.25rem 0 1.1rem;
+        font-size: 0.9375rem;
+        line-height: 1.45;
+        color: var(--text-secondary);
+        overflow-wrap: anywhere;
+      }
+
+      .download-choices {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin-bottom: 0.9rem;
+      }
+
+      .download-choice {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.2rem;
+        min-width: 0;
+        padding: 1rem 0.75rem 0.9rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        background: var(--bg-card);
+        color: var(--text-primary);
+        font-family: inherit;
+        text-align: center;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          border-color 0.18s ease,
+          background-color 0.18s ease,
+          scale 0.15s ease,
+          opacity 0.2s ease;
+      }
+
+      .download-choice:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .download-choice:active:not(:disabled) {
+        scale: 0.97;
+      }
+
+      .download-choice.is-making {
+        border-color: var(--accent);
+        cursor: progress;
+      }
+
+      .download-choice:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+
+      @media (hover: hover) {
+        .download-choice:hover:not(:disabled) {
+          border-color: var(--border-strong);
+          background: var(--bg-card-hover);
+        }
+        .download-choice:hover:not(:disabled) .pdf-mini {
+          translate: 0 -3px;
+          rotate: -1.5deg;
+        }
+      }
+
+      .download-choice-art {
+        position: relative;
+        width: 5.5rem;
+        aspect-ratio: 8.5 / 11;
+        margin-bottom: 0.65rem;
+      }
+
+      .download-choice-label {
+        font-size: 1rem;
+        font-weight: 650;
+        line-height: 1.25;
+      }
+
+      .download-choice-hint {
+        font-size: 0.8125rem;
+        line-height: 1.3;
+        color: var(--text-muted);
+      }
+
+      .download-choice-spinner {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 3px;
+        background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
+        color: var(--accent);
+        animation: fk-fade-in 0.2s ease both;
+      }
+
+      /* The page in small: a title, a credit line, the photo, and two columns of lines. */
+      .pdf-mini {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        padding: 0.5rem 0.45rem;
+        overflow: hidden;
+        border: 1px solid var(--border-subtle);
+        border-radius: 3px;
+        background: var(--bg-surface);
+        box-shadow: var(--shadow-md);
+        transition:
+          translate 0.3s var(--ease-glide),
+          rotate 0.3s var(--ease-glide);
+      }
+
+      .pdf-mini-title {
+        width: 72%;
+        height: 0.3rem;
+        border-radius: 1px;
+        background: var(--text-secondary);
+      }
+
+      .pdf-mini-credit {
+        width: 42%;
+        height: 0.14rem;
+        margin-bottom: 0.1rem;
+        border-radius: 1px;
+        background: var(--border-strong);
+      }
+
+      .pdf-mini-photo {
+        display: block;
+        align-self: center;
+        width: 74%;
+        aspect-ratio: 3 / 2;
+        border-radius: 1px;
+        background: var(--accent-subtle);
+        object-fit: cover;
+      }
+
+      .pdf-mini-columns {
+        display: flex;
+        gap: 0.28rem;
+        margin-top: 0.15rem;
+      }
+
+      .pdf-mini-column {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.17rem;
+      }
+
+      .pdf-mini-column.is-narrow {
+        flex: 0.6;
+      }
+
+      .pdf-mini-column > span {
+        height: 0.11rem;
+        border-radius: 1px;
+        background: var(--border-strong);
+      }
+
+      .pdf-mini-column > span:first-child {
+        width: 64%;
+        margin-bottom: 0.08rem;
+        background: var(--accent);
+      }
+
+      .pdf-mini-column > span:nth-child(3n) {
+        width: 78%;
+      }
+
       .btn-danger {
         border-color: #b3261e;
         background: #b3261e;
@@ -8745,6 +8929,8 @@
         .editor-bar-banner > *,
         .editor-bar-actions,
         .editor-sheet,
+        .download-choice,
+        .pdf-mini,
         .choice-pill-thumb,
         .fork-line-lit,
         .fork-switch-option::before,

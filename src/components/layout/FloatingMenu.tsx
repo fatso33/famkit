@@ -21,6 +21,8 @@ export interface MenuAction {
   label: string;
   icon: LucideIcon;
   onSelect: () => void;
+  /** Takes a row of its own, under the keys before it. */
+  wide?: boolean;
 }
 
 interface FloatingMenuProps {
@@ -414,8 +416,8 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
                     style={stagger()}
                     aria-labelledby={currentPageId}
                   >
-                    {actions.map(({ id: actionId, label, icon: Icon, onSelect }) => (
-                      <li key={actionId}>
+                    {actions.map(({ id: actionId, label, icon: Icon, onSelect, wide }) => (
+                      <li key={actionId} className={wide ? 'is-wide' : undefined}>
                         <button
                           type="button"
                           className="fk-menu-action"
