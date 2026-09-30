@@ -615,6 +615,7 @@ export function resolveEdit(
     ...edited,
     ownerEmail: original.ownerEmail,
     ownerName: original.ownerName,
+    ownerNameAsTyped: original.ownerNameAsTyped,
     createdAt: original.createdAt,
     // Not in the form: a remix stays one through its edits.
     ...(original.remixOf ? { remixOf: original.remixOf } : {}),

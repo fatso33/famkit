@@ -112,6 +112,21 @@ describe('vault filter', () => {
     // Unseen: Zosia's soups not yet opened.
     expect(counts.unseen).toBe(1);
   });
+
+  it('lists and heads a member credited as themselves by first name and last initial', () => {
+    const own = [
+      entry(recipe('chleb', { author: 'Peter Gzowski', authorMode: 'auto' })),
+      entry(recipe('babka', { author: 'Babcia Zosia', authorMode: 'custom' })),
+    ];
+    const peter = authorKey({ author: 'Peter Gzowski', authorMode: 'auto' });
+    expect(filterCounts(own, NO_FILTER, 'en').authors.map((a) => a.name)).toEqual([
+      'Babcia Zosia',
+      'Peter G.',
+    ]);
+    const mine = filterEntries(own, { ...NO_FILTER, author: peter });
+    expect(names(mine)).toEqual(['chleb']);
+    expect(groupEntries(mine, 'name', { ...NO_FILTER, author: peter })[0].cook).toBe('Peter G.');
+  });
 });
 
 describe('vault sort', () => {

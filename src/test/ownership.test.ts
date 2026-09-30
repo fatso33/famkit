@@ -4,8 +4,11 @@ import {
   addedByName,
   authorModeOf,
   canEditRecipe,
+  creditName,
   familyMemberName,
   memberDisplayName,
+  memberName,
+  ownerCredit,
   resolveAuthor,
   shortName,
 } from '../utils/ownership';
@@ -64,8 +67,25 @@ describe('authors', () => {
 
   it("shows who added a recipe only when it's credited to someone else", () => {
     expect(addedByName(recipe)).toBeNull();
-    expect(addedByName(WANDAS_CHEESE_BREAD)).toBe('Peter Gzowski');
+    expect(addedByName(WANDAS_CHEESE_BREAD)).toBe('Peter G.');
     expect(addedByName({ ...recipe, authorMode: 'custom', author: 'Ola Nowak' })).toBeNull();
+    expect(addedByName({ ...recipe, authorMode: 'custom', author: 'Ola N.' })).toBeNull();
+  });
+
+  it('shows a member credited as themselves by first name and last initial', () => {
+    expect(creditName(recipe)).toBe('Ola N.');
+    // A name typed for someone else shows as typed, as do older records without a mode.
+    expect(creditName({ author: 'Babcia Zosia', authorMode: 'custom' })).toBe('Babcia Zosia');
+    expect(creditName({ author: 'Ola Nowak' })).toBe('Ola Nowak');
+  });
+
+  it('shows a name from the family list as written, as author and as "added by"', () => {
+    const listed = { ...recipe, author: 'Ciocia Zosia', ownerName: 'Ciocia Zosia' };
+    expect(creditName({ ...listed, ownerNameAsTyped: true })).toBe('Ciocia Zosia');
+    expect(creditName(listed)).toBe('Ciocia Z.');
+    const heirloom = { ...listed, author: 'Babcia Wanda', authorMode: 'custom' as const };
+    expect(addedByName({ ...heirloom, ownerNameAsTyped: true })).toBe('Ciocia Zosia');
+    expect(addedByName(heirloom)).toBe('Ciocia Z.');
   });
 });
 
@@ -88,6 +108,39 @@ describe('names from the family list', () => {
     expect(memberDisplayName(null, 'Krystyna Nowak', 'k@example.com')).toBe('Krystyna Nowak');
     expect(memberDisplayName(null, '  ', 'k@example.com')).toBe('k@example.com');
     expect(memberDisplayName(null, null, 'k@example.com')).toBe('k@example.com');
+  });
+});
+
+describe('memberName', () => {
+  it('shortens a Google name and leaves a family list name as written', () => {
+    expect(memberName('Peter Gzowski')).toBe('Peter G.');
+    expect(memberName(' Ciocia Zosia ', true)).toBe('Ciocia Zosia');
+  });
+});
+
+describe('ownerCredit', () => {
+  const listed = { ...ola, name: 'Ciocia Ola', nameAsTyped: true };
+
+  it('credits the saver on a new recipe or one of their own, as they are named now', () => {
+    expect(ownerCredit(undefined, ola)).toEqual({
+      ownerName: 'Ola Nowak',
+      ownerNameAsTyped: undefined,
+    });
+    expect(ownerCredit(recipe, listed)).toEqual({
+      ownerName: 'Ciocia Ola',
+      ownerNameAsTyped: true,
+    });
+    expect(ownerCredit({ ...recipe, ownerNameAsTyped: true }, ola)).toEqual({
+      ownerName: 'Ola Nowak',
+      ownerNameAsTyped: undefined,
+    });
+  });
+
+  it("keeps the owner's name on anyone else's recipe", () => {
+    expect(ownerCredit({ ...recipe, ownerNameAsTyped: true }, peter)).toEqual({
+      ownerName: 'Ola Nowak',
+      ownerNameAsTyped: true,
+    });
   });
 });
 

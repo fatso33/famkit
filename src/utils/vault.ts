@@ -7,6 +7,7 @@ import {
   VaultSortKey,
 } from '../types/recipe';
 import { recipeTime } from './timeEstimator';
+import { creditName } from './ownership';
 
 /** Every category, in the order the filter lists them. */
 export const RECIPE_CATEGORIES: readonly RecipeCategory[] = [
@@ -106,17 +107,22 @@ export function findMatch(text: string, query: string): { start: number; end: nu
 }
 
 function matchesQuery({ shown }: VaultEntry, query: string): boolean {
-  const texts = [shown.name, shown.author, ...(shown.ingredients ?? []).map((i) => i.text)];
+  const texts = [
+    shown.name,
+    shown.author,
+    creditName(shown),
+    ...(shown.ingredients ?? []).map((i) => i.text),
+  ];
   return texts.some((text) => text && findMatch(text, query));
 }
 
 const changedAt = (r: Recipe) => r.updatedAt ?? r.createdAt ?? 0;
 
-/** The cook's name, trimmed. Cloud records aren't checked, so one may have none. */
-const cookOf = (r: Pick<Recipe, 'author'>) => (r.author ?? '').trim();
+/** The cook's name as shown, trimmed. Cloud records aren't checked, so one may have none. */
+const cookOf = creditName;
 
 /** An author's name as the author filter matches it: case and accents aside ("ola" = "Ola"). */
-export function authorKey(recipe: Pick<Recipe, 'author'>): string {
+export function authorKey(recipe: Pick<Recipe, 'author' | 'authorMode'>): string {
   return foldText(cookOf(recipe));
 }
 

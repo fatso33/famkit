@@ -20,7 +20,7 @@ describe('recipe page in Polish', () => {
     const meta = container.querySelector<HTMLElement>('.detail-meta');
     expect(meta).not.toBeNull();
     expect(within(meta!).getByText('Autor: Wanda G.')).toBeInTheDocument();
-    expect(within(meta!).getByText('Dodane przez: Peter Gzowski')).toBeInTheDocument();
+    expect(within(meta!).getByText('Dodane przez: Peter G.')).toBeInTheDocument();
     expect(meta!.textContent).toMatch(/~(\d+g \d\dm|\d+m)/);
     expect(meta!.textContent).not.toMatch(/\b(By|hrs?|mins)\b/);
 

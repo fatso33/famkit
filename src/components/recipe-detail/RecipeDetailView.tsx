@@ -13,7 +13,7 @@ import { BakingOptionsView } from './BakingOptionsView';
 import { ImageZoomModal } from './ImageZoomModal';
 import { RecipeSubheader } from './RecipeSubheader';
 import { awaitsTranslation, getLocalizedRecipe } from '../../hooks/useRecipes';
-import { addedByName } from '../../utils/ownership';
+import { addedByName, creditName } from '../../utils/ownership';
 import { transitionView } from '../../utils/viewTransition';
 import { useUnroll } from '../../hooks/useUnroll';
 import { recipePhoto } from '../../utils/vault';
@@ -188,7 +188,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                 className="detail-meta-item"
                 style={{ fontWeight: 600, color: 'var(--text-primary)' }}
               >
-                {t.byAuthor(recipe.author)}
+                {t.byAuthor(creditName(recipe))}
               </span>
               {addedBy && <span className="detail-meta-item added-by">{t.addedBy(addedBy)}</span>}
               <span id="detailEstimatedTime" className="detail-meta-item detail-time">

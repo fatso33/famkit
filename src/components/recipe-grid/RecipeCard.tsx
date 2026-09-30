@@ -6,6 +6,7 @@ import { recipeTime } from '../../utils/timeEstimator';
 import { getLocalizedRecipe } from '../../hooks/useRecipes';
 import { vaultItemKey } from '../../utils/viewTransition';
 import { recipePhoto } from '../../utils/vault';
+import { creditName } from '../../utils/ownership';
 import { photoPending } from '../../utils/deviceCopy';
 import { CategoryTile } from './CategoryTile';
 import { RemixBadge, RemixMark } from './RemixMarks';
@@ -96,7 +97,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
         </div>
         <span className="vault-card-rule" aria-hidden="true" />
         <div className="card-meta">
-          <span className="card-cook">{recipe.author}</span>
+          <span className="card-cook">{creditName(recipe)}</span>
           <span className="card-time">
             <Timer className="time-icon" size="1.05em" strokeWidth={2.1} aria-hidden="true" />
             {estimatedTime}

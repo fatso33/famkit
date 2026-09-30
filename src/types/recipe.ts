@@ -189,8 +189,13 @@ export interface Recipe {
   authorMode?: AuthorMode;
   /** Google email of the family member who added the recipe. Only they may edit it. */
   ownerEmail?: string;
-  /** Their Google name when they added it, shown as "added by" on someone else's recipe. */
+  /** Their name as they last saved it, shown as "added by" on someone else's recipe. */
   ownerName?: string;
+  /**
+   * Their name is the family list's, shown as written (as ownerName, and as the author in 'auto'
+   * mode). Otherwise it's their Google name, shown as first name and last initial.
+   */
+  ownerNameAsTyped?: boolean;
   /**
    * A RecipeCategory. Older records hold 'family' or 'heirloom', which the vault files under
    * 'other' until the owner picks a category (utils/vault).

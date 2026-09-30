@@ -5,6 +5,8 @@ export interface CurrentUser {
   email: string;
   /** The family list's name for them, else their Google display name, else the email. */
   name: string;
+  /** The name is the family list's, shown as written rather than shortened like a Google name. */
+  nameAsTyped?: boolean;
 }
 
 /** Provided by AuthGate once someone is signed in; null elsewhere (e.g. isolated tests). */

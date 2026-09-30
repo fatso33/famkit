@@ -30,16 +30,53 @@ export function authorModeOf(recipe: Recipe): AuthorMode {
   return 'custom';
 }
 
-/** The owner's name to show as "added by", when the recipe is credited to someone else. */
+/**
+ * The owner's name to show as "added by", when the recipe is credited to someone else. It's a
+ * family member's name, so it's shown like theirs are everywhere (memberName).
+ */
 export function addedByName(recipe: Recipe): string | null {
   if (authorModeOf(recipe) !== 'custom' || !recipe.ownerName) return null;
-  return recipe.ownerName.trim() === recipe.author.trim() ? null : recipe.ownerName;
+  const owner = memberName(recipe.ownerName, recipe.ownerNameAsTyped);
+  const author = recipe.author.trim();
+  return author === recipe.ownerName.trim() || author === owner ? null : owner;
 }
 
 /**
- * A name as the author choice shows it: first name and last initial ("Peter G."). A single
- * name, or an email standing in for one, stays as it is.
+ * The author as a recipe shows them. A family member credited as themselves is shown as
+ * memberName has it; a name typed for someone else shows as it was typed. The full name stays
+ * stored, so this is only how it's shown.
  */
+export function creditName(
+  recipe: Pick<Recipe, 'author' | 'authorMode' | 'ownerNameAsTyped'>,
+): string {
+  const author = (recipe.author ?? '').trim();
+  return recipe.authorMode === 'auto' ? memberName(author, recipe.ownerNameAsTyped) : author;
+}
+
+/**
+ * A family member's name as the app shows it. A Google name is shortened to save room
+ * ("Peter G."); a name the family list gives them is shown as written ("Ciocia Zosia").
+ */
+export function memberName(name: string, asTyped?: boolean): string {
+  return asTyped ? name.trim() : shortName(name);
+}
+
+/**
+ * The owner's name fields a save by `user` writes. A new recipe, or one of their own, takes
+ * their name as it's credited now (the family list may have named them since); anyone else's
+ * keeps its owner's.
+ */
+export function ownerCredit(
+  existing: Pick<Recipe, 'ownerEmail' | 'ownerName' | 'ownerNameAsTyped'> | null | undefined,
+  user: CurrentUser | null,
+): Pick<Recipe, 'ownerName' | 'ownerNameAsTyped'> {
+  if (existing && !sameEmail(existing.ownerEmail, user?.email)) {
+    return { ownerName: existing.ownerName, ownerNameAsTyped: existing.ownerNameAsTyped };
+  }
+  return { ownerName: user?.name, ownerNameAsTyped: user?.nameAsTyped || undefined };
+}
+
+/** A name shortened to first name and last initial. A single name, or an email, stays as is. */
 export function shortName(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
   if (words.length < 2) return name.trim();

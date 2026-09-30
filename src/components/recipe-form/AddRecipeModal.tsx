@@ -8,7 +8,7 @@ import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { keepStillBelow } from '../../hooks/useListMotion';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import type { ToastAction } from '../../hooks/useToast';
-import { resolveAuthor, shortName } from '../../utils/ownership';
+import { memberName, ownerCredit, resolveAuthor } from '../../utils/ownership';
 import { formatVersionDate, RecipeChanges, RestorableField } from '../../utils/recipeVersions';
 import { draftVersion } from '../../utils/recipeDrafts';
 import {
@@ -306,6 +306,8 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
         ...content,
         author: resolveAuthor(authorMode, form.author, currentUser),
         authorMode,
+        // So the draft's card shows the author as the saved recipe will.
+        ownerNameAsTyped: currentUser?.nameAsTyped || undefined,
         baseYield: initialRecipe?.baseYield ?? 1,
       },
       changeNote,
@@ -682,13 +684,17 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
                       checked={authorMode === mode}
                       onChange={() => set('authorMode', mode)}
                     />
-                    {mode === 'auto' ? shortName(currentUser.name) : t.authorSomeoneElse}
+                    {mode === 'auto'
+                      ? memberName(currentUser.name, currentUser.nameAsTyped)
+                      : t.authorSomeoneElse}
                   </label>
                 ))}
               </div>
             )}
             {authorMode === 'auto' && currentUser ? (
-              <p className="author-hint">{t.authorShownAs(currentUser.name)}</p>
+              <p className="author-hint">
+                {t.authorShownAs(memberName(currentUser.name, currentUser.nameAsTyped))}
+              </p>
             ) : (
               <div className="author-custom">
                 <label className="form-label is-small" htmlFor="recipeAuthorInput">
@@ -879,7 +885,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             ...recipeFromForm(),
             id: initialRecipe?.id || 'preview',
             ownerEmail: initialRecipe?.ownerEmail ?? currentUser?.email,
-            ownerName: initialRecipe?.ownerName ?? currentUser?.name,
+            ...ownerCredit(isEditMode ? initialRecipe : undefined, currentUser),
             createdAt: initialRecipe?.createdAt,
           }}
           language={language}

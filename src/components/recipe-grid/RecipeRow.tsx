@@ -5,6 +5,7 @@ import { UiTranslations } from '../../i18n/translations';
 import { recipeTime } from '../../utils/timeEstimator';
 import { vaultItemKey } from '../../utils/viewTransition';
 import { recipePhoto } from '../../utils/vault';
+import { creditName } from '../../utils/ownership';
 import { photoPending } from '../../utils/deviceCopy';
 import { CategoryTile } from './CategoryTile';
 import { RemixBadge, RemixMark } from './RemixMarks';
@@ -71,7 +72,7 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
               {t.draftRibbon}
             </span>
           )}
-          <span className="vault-row-cook">{shown.author}</span>
+          <span className="vault-row-cook">{creditName(shown)}</span>
           <span className="vault-row-time">
             <Timer className="time-icon" size="1.05em" strokeWidth={2.1} aria-hidden="true" />
             {t.totalTime(recipeTime(shown).minutes)}

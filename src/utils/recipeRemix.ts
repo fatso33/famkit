@@ -53,6 +53,7 @@ export function remixStart(original: Recipe, viewerLanguage: Language): Recipe {
     id: _id,
     ownerEmail: _ownerEmail,
     ownerName: _ownerName,
+    ownerNameAsTyped: _ownerNameAsTyped,
     version: _version,
     changeNote: _changeNote,
     versionIndex: _versionIndex,

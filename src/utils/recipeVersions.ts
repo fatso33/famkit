@@ -97,6 +97,7 @@ export function recipeAtVersion(current: Recipe, version: RecipeVersion): Recipe
     id: current.id,
     ownerEmail: current.ownerEmail,
     ownerName: current.ownerName,
+    ownerNameAsTyped: current.ownerNameAsTyped,
     createdAt: current.createdAt,
     updatedAt: current.updatedAt,
     version: current.version,

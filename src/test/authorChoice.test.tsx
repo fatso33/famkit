@@ -50,11 +50,18 @@ describe('recipe author choice', () => {
 
     // Shown by first name and initial, so the switch stays short.
     expect(screen.getByRole('radio', { name: 'Ola N.' })).toBeChecked();
-    expect(screen.getByText(t.authorShownAs('Ola Nowak'))).toBeInTheDocument();
+    expect(screen.getByText(t.authorShownAs('Ola N.'))).toBeInTheDocument();
     expect(screen.queryByLabelText(t.authorNameLabel)).not.toBeInTheDocument();
 
     fillAndSave();
     expect(onSave.mock.calls[0][0]).toMatchObject({ author: 'Ola Nowak', authorMode: 'auto' });
+  });
+
+  it('shows a name from the family list as written, not shortened', () => {
+    renderForm({ email: 'zosia@example.com', name: 'Ciocia Zosia', nameAsTyped: true });
+
+    expect(screen.getByRole('radio', { name: 'Ciocia Zosia' })).toBeChecked();
+    expect(screen.getByText(t.authorShownAs('Ciocia Zosia'))).toBeInTheDocument();
   });
 
   it("takes a typed name for someone else's recipe", () => {

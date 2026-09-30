@@ -41,6 +41,7 @@ import {
 import { QueueItem, mayRideAlong, pickBatch, translationDueAt } from '../utils/translationQueue';
 import { DocReply, ReviewedReply, TranslationDoc, reviewReply } from '../utils/translationRequest';
 import { Piece, fnv1a, pieceHash } from '../utils/translationPieces';
+import { ownerCredit } from '../utils/ownership';
 export function getLocalizedRecipe(
   recipe: Recipe | null | undefined,
   lang: Language = 'en',
@@ -336,7 +337,7 @@ export function useRecipes(currentUser: CurrentUser | null) {
       const recipeWithId: Recipe = {
         ...newRecipe,
         ownerEmail: currentUser?.email,
-        ownerName: currentUser?.name,
+        ...ownerCredit(undefined, currentUser),
         id: newRecipeId(),
         version: 1,
         createdAt: Date.now(),
@@ -369,29 +370,33 @@ export function useRecipes(currentUser: CurrentUser | null) {
    * so the owner can restore it later. `note` is the optional "what changed". Returns null, saving
    * nothing, while the recipe is this device's copy without its photos.
    */
-  const updateRecipe = useCallback((recipeUpdates: Recipe, note = ''): Recipe | null => {
-    const existing = latestRecipes.current.find((r) => r.id === recipeUpdates.id);
-    if (!canSaveOver(existing) || !canSaveOver(recipeUpdates)) return null;
-    savedOnThisDevice.current.set(recipeUpdates.id, sourceHash(recipeUpdates));
+  const updateRecipe = useCallback(
+    (edited: Recipe, note = ''): Recipe | null => {
+      const existing = latestRecipes.current.find((r) => r.id === edited.id);
+      if (!canSaveOver(existing) || !canSaveOver(edited)) return null;
+      const recipeUpdates = { ...edited, ...ownerCredit(existing ?? edited, currentUser) };
+      savedOnThisDevice.current.set(recipeUpdates.id, sourceHash(recipeUpdates));
 
-    const now = Date.now();
-    const { recipe: finalRecipe, newVersions } = existing
-      ? prepareEdit(existing, recipeUpdates, note, now)
-      : { recipe: { ...recipeUpdates, updatedAt: now }, newVersions: [] };
+      const now = Date.now();
+      const { recipe: finalRecipe, newVersions } = existing
+        ? prepareEdit(existing, recipeUpdates, note, now)
+        : { recipe: { ...recipeUpdates, updatedAt: now }, newVersions: [] };
 
-    setRecipes((prev) => {
-      const updated = prev.map((r) => (r.id === finalRecipe.id ? finalRecipe : r));
-      saveRecipes(updated, { photosInCloud: hasCloud });
-      return updated;
-    });
+      setRecipes((prev) => {
+        const updated = prev.map((r) => (r.id === finalRecipe.id ? finalRecipe : r));
+        saveRecipes(updated, { photosInCloud: hasCloud });
+        return updated;
+      });
 
-    // Async sync to Cloud Firestore in background
-    saveRecipeToCloud(finalRecipe, newVersions).catch((err) => {
-      console.warn('Failed to sync updated recipe to cloud (retained locally):', err);
-    });
+      // Async sync to Cloud Firestore in background
+      saveRecipeToCloud(finalRecipe, newVersions).catch((err) => {
+        console.warn('Failed to sync updated recipe to cloud (retained locally):', err);
+      });
 
-    return finalRecipe;
-  }, []);
+      return finalRecipe;
+    },
+    [currentUser],
+  );
 
   /** One earlier version of a recipe, for the owner to restore. Rejects when it can't be loaded. */
   const loadVersion = useCallback(

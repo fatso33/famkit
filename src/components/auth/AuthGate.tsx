@@ -32,7 +32,14 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const email = user?.email ?? '';
   const displayName = user?.displayName;
   const currentUser = useMemo<CurrentUser | null>(
-    () => (email ? { email, name: memberDisplayName(memberName, displayName, email) } : null),
+    () =>
+      email
+        ? {
+            email,
+            name: memberDisplayName(memberName, displayName, email),
+            nameAsTyped: Boolean(memberName),
+          }
+        : null,
     [email, memberName, displayName],
   );
 

@@ -7,6 +7,7 @@ import { useBackStep } from '../../hooks/useBackStep';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { useExitAnimation } from '../../hooks/useExitAnimation';
 import { recipePhoto } from '../../utils/vault';
+import { creditName } from '../../utils/ownership';
 import { CategoryTile } from '../recipe-grid/CategoryTile';
 
 interface RemixPopoverProps {
@@ -118,7 +119,7 @@ export const RemixPopover: React.FC<RemixPopoverProps> = ({
                     </span>
                     <span className="remix-pop-text">
                       <span className="remix-pop-name">{recipe.name}</span>
-                      <span className="remix-pop-cook">{t.byAuthor(recipe.author)}</span>
+                      <span className="remix-pop-cook">{t.byAuthor(creditName(recipe))}</span>
                     </span>
                     <ChevronRight
                       className="remix-pop-chevron"
