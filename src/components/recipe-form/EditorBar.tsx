@@ -177,12 +177,12 @@ export const EditorBar: React.FC<EditorBarProps> = ({
         <button
           type="button"
           className="editor-save"
+          aria-label={t.save}
           aria-haspopup={saveMenu !== undefined ? 'dialog' : undefined}
           aria-expanded={saveMenu !== undefined ? Boolean(saveMenuOpen) : undefined}
           onClick={onSave}
         >
-          <Check className="editor-save-icon" size="1.25rem" strokeWidth={2.6} aria-hidden="true" />
-          <span className="editor-save-label">{t.save}</span>
+          <Check className="editor-save-icon" size="1.35rem" strokeWidth={2.6} aria-hidden="true" />
         </button>
       </div>
       {/* Outside the rows, which slide: a moving row would trap the menus' tap catchers. */}

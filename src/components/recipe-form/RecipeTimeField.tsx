@@ -76,11 +76,11 @@ export const RecipeTimeField: React.FC<RecipeTimeFieldProps> = ({
             <div className="time-stepper">
               <button
                 type="button"
-                className="time-key"
+                className="scaler-btn"
                 aria-label={t.hourLess}
                 onClick={() => setTo(minutes - 60)}
               >
-                <Minus size="1.1em" aria-hidden="true" />
+                <Minus size="1.15rem" strokeWidth={2.4} aria-hidden="true" />
               </button>
               <span className="time-stepper-value">
                 <NumberRoll value={hours} />
@@ -88,21 +88,21 @@ export const RecipeTimeField: React.FC<RecipeTimeFieldProps> = ({
               </span>
               <button
                 type="button"
-                className="time-key"
+                className="scaler-btn"
                 aria-label={t.hourMore}
                 onClick={() => setTo(minutes + 60)}
               >
-                <Plus size="1.1em" aria-hidden="true" />
+                <Plus size="1.15rem" strokeWidth={2.4} aria-hidden="true" />
               </button>
             </div>
             <div className="time-stepper">
               <button
                 type="button"
-                className="time-key"
+                className="scaler-btn"
                 aria-label={t.minutesLess}
                 onClick={() => setTo(minutes - STEP)}
               >
-                <Minus size="1.1em" aria-hidden="true" />
+                <Minus size="1.15rem" strokeWidth={2.4} aria-hidden="true" />
               </button>
               <span className="time-stepper-value">
                 <NumberRoll value={mins} />
@@ -110,11 +110,11 @@ export const RecipeTimeField: React.FC<RecipeTimeFieldProps> = ({
               </span>
               <button
                 type="button"
-                className="time-key"
+                className="scaler-btn"
                 aria-label={t.minutesMore}
                 onClick={() => setTo(minutes + STEP)}
               >
-                <Plus size="1.1em" aria-hidden="true" />
+                <Plus size="1.15rem" strokeWidth={2.4} aria-hidden="true" />
               </button>
             </div>
           </div>

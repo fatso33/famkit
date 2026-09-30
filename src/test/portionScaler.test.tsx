@@ -68,6 +68,21 @@ describe('portion scaler', () => {
     expect(yieldLine()).toHaveTextContent('Servings: 4×½');
   });
 
+  it('lights the scaler up while the recipe is scaled, up or down', () => {
+    render(<Scaled ingredients={mapoTofu} yieldHeader="Servings: 4" />);
+    const scaler = screen.getByRole('group', { name: t.scaleIngredients });
+    expect(scaler).not.toHaveClass('is-scaled');
+
+    fireEvent.click(screen.getByRole('button', { name: t.increasePortion }));
+    expect(scaler).toHaveClass('is-scaled');
+
+    fireEvent.click(screen.getByRole('button', { name: t.decreasePortion }));
+    expect(scaler).not.toHaveClass('is-scaled');
+
+    fireEvent.click(screen.getByRole('button', { name: t.decreasePortion }));
+    expect(scaler).toHaveClass('is-scaled');
+  });
+
   it('shows only the mark for a scaled recipe that gives no yield', () => {
     render(<Scaled ingredients={mapoTofu} yieldHeader="" />);
     expect(document.getElementById('yieldHeaderDisplay')).toBeNull();

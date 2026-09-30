@@ -11,7 +11,10 @@ interface PortionScalerProps {
   t: UiTranslations;
 }
 
-/** How many times the recipe is made: the text size stepper's pill, − and + as raised keys. */
+/**
+ * How many times the recipe is made: the text size stepper's pill, − and + as raised keys.
+ * Scaled to anything but 1×, the pill takes the accent, so it's plain the amounts are changed.
+ */
 export const PortionScaler: React.FC<PortionScalerProps> = ({
   scale,
   onIncrease,
@@ -19,7 +22,11 @@ export const PortionScaler: React.FC<PortionScalerProps> = ({
   t,
 }) => {
   return (
-    <div className="scaler-control" role="group" aria-label={t.scaleIngredients}>
+    <div
+      className={`scaler-control${scale !== 1 ? ' is-scaled' : ''}`}
+      role="group"
+      aria-label={t.scaleIngredients}
+    >
       <button
         type="button"
         className="scaler-btn"

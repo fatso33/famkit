@@ -3416,6 +3416,21 @@
         border: 1px solid var(--border-subtle);
         border-radius: var(--radius-full);
         background: var(--menu-well);
+        transition:
+          background-color 0.3s ease,
+          border-color 0.3s ease,
+          box-shadow 0.3s ease;
+      }
+
+      /* Scaled (anything but 1×): the well takes the accent, a soft ring round it. */
+      .scaler-control.is-scaled {
+        border-color: color-mix(in srgb, var(--accent) 55%, var(--border-subtle));
+        background: var(--accent-subtle);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+      }
+
+      .scaler-control.is-scaled .scaler-display {
+        color: var(--accent);
       }
 
       .scaler-btn {
@@ -3470,6 +3485,7 @@
         font-weight: 600;
         color: var(--text-secondary);
         font-variant-numeric: tabular-nums;
+        transition: color 0.3s ease;
       }
 
       .yield-text {
@@ -6291,19 +6307,18 @@
         rotate: 180deg;
       }
 
+      /* A round tick, the Close key's size, across the row from it. */
       .editor-save {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        min-height: 44px;
-        padding: 0.5rem 1.1rem 0.5rem 0.85rem;
+        flex: none;
+        width: 44px;
+        height: 44px;
+        display: grid;
+        place-items: center;
+        padding: 0;
         border: 0;
         border-radius: var(--radius-full);
         background: var(--accent);
         color: var(--on-accent);
-        font: inherit;
-        font-size: 1rem;
-        font-weight: 700;
         box-shadow: var(--fab-shadow);
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
@@ -6380,7 +6395,7 @@
       }
 
       :is(.editor-bar-close, .editor-version, .editor-save, .editor-chip, .glass-chip, .icon-button,
-        .tool-strip-button, .step-move-button, .step-number-remove, .step-number-add, .time-key,
+        .tool-strip-button, .step-move-button, .step-number-remove, .step-number-add,
         .ingredient-add, .method-add-step, .method-add-section, .fork-add-path, .fork-add-step,
         .fork-remove-path, .fork-switch-option, .category-option,
         .image-delete-badge):focus-visible {
@@ -6466,7 +6481,8 @@
         border-radius: var(--radius-lg);
         background: var(--elev-menu);
         box-shadow: var(--shadow-lg);
-        transform-origin: calc(100% - 2.5rem) 0;
+        /* Grows from the round Save key above it. */
+        transform-origin: calc(100% - 22px) 0;
         animation: vault-popover-in 0.5s var(--spring-soft) both;
       }
 
@@ -7099,15 +7115,15 @@
         padding-top: 0.85rem;
       }
 
+      /* The portion scaler's pill: round raised keys (.scaler-btn) set into a well. */
       .time-stepper {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 0.35rem;
-        padding: 0.25rem;
         border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-md);
-        background: var(--bg-card);
+        border-radius: var(--radius-full);
+        background: var(--menu-well);
       }
 
       .time-stepper-value {
@@ -7124,36 +7140,6 @@
         font-size: 0.8125rem;
         font-weight: 600;
         color: var(--text-muted);
-      }
-
-      /* Raised keys, like the portion scaler's */
-      .time-key {
-        width: 44px;
-        height: 44px;
-        display: grid;
-        place-items: center;
-        padding: 0;
-        border: 1px solid var(--key-edge);
-        border-radius: 6px;
-        background: var(--key-face);
-        box-shadow: var(--key-lift);
-        color: var(--text-primary);
-        cursor: pointer;
-        -webkit-tap-highlight-color: transparent;
-        transition:
-          border-color 0.15s ease,
-          scale 0.15s ease;
-      }
-
-      .time-key:active {
-        scale: 0.93;
-        box-shadow: none;
-      }
-
-      @media (hover: hover) {
-        .time-key:hover {
-          border-color: color-mix(in srgb, var(--accent) 50%, var(--key-edge));
-        }
       }
 
       /* ── Tools that open under a tapped row or step ── */
