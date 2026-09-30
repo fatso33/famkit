@@ -3,5 +3,6 @@ coverage
 node_modules
 package-lock.json
 public
+.wrangler
 # Hand-written design tokens; a full reformat would be ~3.6k lines of churn.
 src/index.css

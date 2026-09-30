@@ -1,0 +1,25 @@
+# Family Kitchen's import worker. Setup: docs/recipe-import-worker.md.
+name = "famkit-recipe-import"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+# No public *.workers.dev preview addresses for old versions, and no request logs kept.
+preview_urls = false
+
+[observability]
+enabled = false
+
+[vars]
+# The Firebase project the family signs in to (Firebase console → Project settings → Project ID).
+FIREBASE_PROJECT_ID = "family-kitchen-419d8"
+# The app's own addresses. Only pages served from these may call the worker.
+ALLOWED_ORIGINS = "https://fatso33.github.io"
+
+# Each signed-in person: at most 20 imports (pages and pictures) a minute.
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 20
+  period = 60
