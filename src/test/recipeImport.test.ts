@@ -45,7 +45,8 @@ describe('reading a recipe from a page', () => {
     const form = imported!.form;
     expect(form.title).toBe("Mum's Bread & Butter");
     expect(form.cardDescription).toBe('A soft loaf.');
-    expect([form.authorMode, form.author]).toEqual(['custom', 'Jane Baker']);
+    // Credited to whoever adds it, not to the site's author.
+    expect([form.authorMode, form.author]).toEqual(['auto', '']);
     expect(form.yieldHeader).toBe('1 loaf:');
     expect(form.manualMinutes).toBe(90);
     expect(form.category).toBe('breads');
@@ -64,7 +65,7 @@ describe('reading a recipe from a page', () => {
     expect(recipe.sourceUrl).toBe('https://www.example.com/recipes/bread');
   });
 
-  it('finds the recipe inside a graph, following references to its author and picture', () => {
+  it('finds the recipe inside a graph, following references to its picture', () => {
     const graph = {
       '@context': 'https://schema.org',
       '@graph': [
@@ -94,7 +95,6 @@ describe('reading a recipe from a page', () => {
     });
     const form = imported!.form;
     expect(imported!.imageUrl).toBe('https://www.example.com/uploads/zupa.jpg');
-    expect(form.author).toBe('Ania');
     expect(form.yieldHeader).toBe('Na 4 porcje:');
     expect(form.manualMinutes).toBe(60);
     // Two categories named: no guess.
@@ -139,8 +139,7 @@ describe('reading a recipe from a page', () => {
       ],
     };
     const imported = recipeFromPage(pageOf(recipe), labels)!;
-    // No author named: credited to the site. No picture named: the page's share picture.
-    expect(imported.form.author).toBe('Example Kitchen');
+    // No picture named: the page's share picture.
     expect(imported.imageUrl).toBe('https://www.example.com/share.jpg');
 
     const [dough, ...rest] = imported.form.sections;
@@ -218,11 +217,7 @@ describe('reading a recipe from a page’s markup', () => {
     expect(imported.guessed).toBe(false);
     expect(imported.imageUrl).toBe('https://cdn.example.com/zurek-1500x1500.jpg');
     const form = imported.form;
-    expect([form.title, form.author, form.category]).toEqual([
-      'Żurek staropolski',
-      'Ania Gotuje',
-      'soups',
-    ]);
+    expect([form.title, form.category]).toEqual(['Żurek staropolski', 'soups']);
     expect([form.yieldHeader, form.manualMinutes]).toEqual(['około 2 litry zupy:', 60]);
     expect(form.ingredientRows.map((r) => [r.name, r.amount])).toEqual([
       ['bulionu', '1 litr'],

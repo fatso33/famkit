@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { AddRecipeModal } from '../components/recipe-form/AddRecipeModal';
 import { UI_TEXT } from '../i18n/translations';
+import { CurrentUser, CurrentUserContext } from '../hooks/useCurrentUser';
 import { ImportError, fetchRecipePage, fetchRecipePhoto } from '../services/recipeImport';
 
 // Only the fetching is mocked: the page that comes back is read by the real code.
@@ -15,6 +16,7 @@ vi.mock('../services/recipeImport', async (original) => ({
 const t = UI_TEXT.en;
 const noop = vi.fn();
 const PHOTO = 'data:image/jpeg;base64,AAAA';
+const ola: CurrentUser = { email: 'ola@example.com', name: 'Ola Nowak' };
 
 const page = {
   url: 'https://www.example.com/pierogi',
@@ -81,7 +83,13 @@ describe('adding a recipe from a website', () => {
     vi.mocked(fetchRecipePhoto).mockResolvedValue(PHOTO);
     const onToast = vi.fn();
     const onSave = vi.fn();
-    render(<AddRecipeModal onClose={noop} onSave={onSave} onToast={onToast} t={t} />);
+    render(
+      <CurrentUserContext value={ola}>
+        <AddRecipeModal onClose={noop} onSave={onSave} onToast={onToast} t={t} />
+      </CurrentUserContext>,
+    );
+    // Typed for someone else before the import: the import credits whoever adds it.
+    fireEvent.click(screen.getByRole('radio', { name: t.authorSomeoneElse }));
 
     const sheet = openSheet();
     fireEvent.change(within(sheet).getByLabelText(t.pasteUrlLabel), {
@@ -93,7 +101,9 @@ describe('adding a recipe from a website', () => {
     expect(fetchRecipePage).toHaveBeenCalledWith('https://www.example.com/pierogi');
     expect(onToast).toHaveBeenCalledWith(t.importDone);
     expect(screen.queryByRole('dialog', { name: t.pasteTitle })).not.toBeInTheDocument();
-    expect(screen.getByLabelText(t.authorNameLabel)).toHaveValue('Babcia Zosia');
+    // Credited to whoever adds it, not to the site's author.
+    expect(screen.getByRole('radio', { name: 'Ola N.' })).toBeChecked();
+    expect(screen.queryByLabelText(t.authorNameLabel)).not.toBeInTheDocument();
     expect(screen.getByLabelText(t.ingredientNameLabel(2))).toHaveValue('potatoes');
     expect(screen.getByDisplayValue('floury')).toBeInTheDocument();
     expect(screen.getByLabelText(t.stepInstructionLabel(2))).toHaveValue('Fill and boil.');
@@ -108,7 +118,8 @@ describe('adding a recipe from a website', () => {
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(onSave.mock.calls[0][0]).toMatchObject({
       name: 'Pierogi Ruskie',
-      author: 'Babcia Zosia',
+      author: 'Ola Nowak',
+      authorMode: 'auto',
       heroImage: PHOTO,
       sourceUrl: 'https://www.example.com/pierogi',
       yieldHeader: '30 pierogi:',

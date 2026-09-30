@@ -162,15 +162,6 @@ function yieldOf(recipe: Json, labels: ImportLabels): string | null {
   return Number.isInteger(count) && count > 0 && count < 1000 ? labels.servings(count) : null;
 }
 
-function nameOf(value: unknown, byId: Map<string, Json>): string {
-  for (const item of asList(value)) {
-    const node = resolve(item, byId);
-    const name = plainText(isObject(node) ? node.name : node);
-    if (name) return name.slice(0, 120);
-  }
-  return '';
-}
-
 /**
  * The picture's address, against the page's own address. Sites often list the same picture in
  * several sizes, thumbnails first ("bread-225x225.jpg"): the largest stated size wins, and a
@@ -416,21 +407,14 @@ export function recipeFromPage(page: ImportedPage, labels: ImportLabels): Import
   }
   if (!best) return null;
   const { recipe, rows, method } = best;
-
-  let host = '';
-  try {
-    host = new URL(page.url).hostname.replace(/^www\./, '');
-  } catch {
-    // readImportedPage has checked the address; without one the author falls back to empty.
-  }
   const form = emptyForm();
   return {
     form: {
       ...form,
       title: plainText(first(recipe.name)).slice(0, 200),
-      // Someone else's recipe: credited to who the site says wrote it, or to the site.
-      authorMode: 'custom',
-      author: nameOf(recipe.author, byId) || page.meta.siteName || host,
+      // Credited to whoever adds it, like a recipe of their own; sourceUrl says where it came from.
+      authorMode: 'auto',
+      author: '',
       category: categoryFrom(recipe.recipeCategory),
       cardDescription: plainText(first(recipe.description)).slice(0, 2000),
       // A page that states no yield gets none, rather than the form's example.
