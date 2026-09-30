@@ -1,5 +1,4 @@
 import React from 'react';
-import { ChevronRight } from 'lucide-react';
 import { Recipe } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
 import { recipeTime } from '../../utils/timeEstimator';
@@ -12,22 +11,25 @@ interface RecipeRowProps {
   recipe: Recipe;
   /** The recipe in the viewer's language. */
   shown: Recipe;
-  /** Its photo morphs into the recipe's hero photo and back, like a card's. */
-  isMorphTarget?: boolean;
+  /** The card that flips open into the recipe, and back shut (the one last opened). */
+  isFlipTarget?: boolean;
   /** Its place in the vault's entrance, when the page is arriving. */
   enterIndex?: number;
   /** A draft: marked and named as one. */
   draft?: boolean;
-  /** Given the row, which a page can open out of. */
+  /** Given the card, which the recipe flips open out of. */
   onSelect: (id: string, from: HTMLElement) => void;
   t: UiTranslations;
 }
 
-/** A recipe in the vault's list layout: photo, name, cook and time, without the description. */
+/**
+ * A recipe in the list layout: an index card filed in the Recipe Box, in front of the one above
+ * it, with its name over a ruled line, the cook and time, and the photo at the side.
+ */
 export const RecipeRow: React.FC<RecipeRowProps> = ({
   recipe,
   shown,
-  isMorphTarget = false,
+  isFlipTarget = false,
   enterIndex,
   draft = false,
   onSelect,
@@ -37,7 +39,7 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
   return (
     <button
       type="button"
-      className={`vault-row vault-item${isMorphTarget ? ' is-morph-target' : ''}${draft ? ' is-draft' : ''}`}
+      className={`vault-row vault-item${isFlipTarget ? ' is-flip-target' : ''}${draft ? ' is-draft' : ''}`}
       data-vault-item={vaultItemKey(recipe.id)}
       style={
         enterIndex === undefined ? undefined : ({ '--enter-i': enterIndex } as React.CSSProperties)
@@ -46,24 +48,11 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
       aria-label={draft ? t.draftNamed(shown.name) : shown.name}
       onClick={(e) => onSelect(recipe.id, e.currentTarget)}
     >
-      <span className="vault-row-photo" data-vault-photo="">
-        {photo ? (
-          <img
-            src={photo}
-            alt=""
-            loading={isMorphTarget ? 'eager' : 'lazy'}
-            data-morph-photo={isMorphTarget ? '' : undefined}
-          />
-        ) : photoPending(recipe) ? (
-          <span className="photo-pending" />
-        ) : (
-          <CategoryTile recipe={recipe} />
-        )}
-      </span>
       <span className="vault-row-text">
         <span className="vault-row-name" data-vault-name="">
           {shown.name}
         </span>
+        <span className="vault-card-rule" aria-hidden="true" />
         <span className="vault-row-meta">
           {draft && (
             <span className="vault-draft-ribbon is-inline" aria-hidden="true">
@@ -75,7 +64,16 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
           <span className="vault-row-time">{t.totalTime(recipeTime(shown).minutes)}</span>
         </span>
       </span>
-      <ChevronRight className="vault-row-chevron" size="1.25em" aria-hidden="true" />
+      <span className="vault-row-photo" data-vault-photo="">
+        {photo ? (
+          // The card flipping open must be whole in the snapshot the flip is made of.
+          <img src={photo} alt="" loading={isFlipTarget ? 'eager' : 'lazy'} />
+        ) : photoPending(recipe) ? (
+          <span className="photo-pending" />
+        ) : (
+          <CategoryTile recipe={recipe} />
+        )}
+      </span>
     </button>
   );
 };

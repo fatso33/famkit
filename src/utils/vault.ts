@@ -223,27 +223,53 @@ export function sortEntries(entries: VaultEntry[], sort: VaultSort, lang: Langua
   );
 }
 
-/** A run of recipes under one heading: a cook's name, or a category. */
+/**
+ * A run of recipes under one heading (the divider tab): a category, a cook, or both, when a
+ * filter narrows the vault to them.
+ */
 export interface VaultGroup {
-  /** The cook's name or the category; '' when the sort has no headings. */
+  /** Tells the groups apart: the cook's name or the category; '' when there's no heading. */
   key: string;
+  /** The category the heading names, if any. */
+  category?: RecipeCategory;
+  /** The cook the heading names, if any (their capitalised spelling). */
+  cook?: string;
   entries: VaultEntry[];
 }
 
-/** Sorted recipes split under headings, for the sorts that have them (by cook, by category). */
-export function groupEntries(sorted: VaultEntry[], sort: VaultSortKey): VaultGroup[] {
-  const keyOf = (entry: VaultEntry) =>
-    sort === 'cook' ? cookOf(entry.shown) : sort === 'category' ? categoryOf(entry.recipe) : '';
+/**
+ * Sorted recipes split under headings. Sorting by cook or by category heads each run with it.
+ * Any other sort has no runs, so a filter to one category or one cook heads the lot with that
+ * instead; with neither, there's no heading.
+ */
+export function groupEntries(
+  sorted: VaultEntry[],
+  sort: VaultSortKey,
+  filter: VaultFilter = NO_FILTER,
+): VaultGroup[] {
+  if (sort !== 'cook' && sort !== 'category') {
+    if (sorted.length === 0) return [];
+    const category = filter.category === 'all' ? undefined : filter.category;
+    // The cook as the recipes spell them, the capitalised spelling where they differ.
+    const spellings = filter.author ? sorted.map((e) => cookOf(e.shown)) : [];
+    const cook = spellings.find((name) => !startsLower(name)) ?? spellings[0];
+    const key = [category, cook].filter(Boolean).join(' · ');
+    return [{ key, ...(category && { category }), ...(cook && { cook }), entries: sorted }];
+  }
   const groups: VaultGroup[] = [];
   for (const entry of sorted) {
-    const key = keyOf(entry);
+    const key = sort === 'cook' ? cookOf(entry.shown) : categoryOf(entry.recipe);
     const last = groups[groups.length - 1];
     if (last && foldText(last.key) === foldText(key)) {
       last.entries.push(entry);
       // The same cook typed two ways heads the group with the capitalised spelling.
-      if (startsLower(last.key) && !startsLower(key)) last.key = key;
+      if (startsLower(last.key) && !startsLower(key)) last.key = last.cook = key;
     } else {
-      groups.push({ key, entries: [entry] });
+      groups.push(
+        sort === 'cook'
+          ? { key, cook: key, entries: [entry] }
+          : { key, category: categoryOf(entry.recipe), entries: [entry] },
+      );
     }
   }
   return groups;

@@ -1,5 +1,4 @@
 import { flushSync } from 'react-dom';
-import { canNestMorphs, uncropMorphPhotos } from './photoMorph';
 
 /**
  * How a view change moves, read by the `::view-transition` rules in index.css:
@@ -8,14 +7,13 @@ import { canNestMorphs, uncropMorphPhotos } from './photoMorph';
  * - fade: between main pages, or pages at the same depth
  * - zoom: a photo opening over the page, or closing
  * - vault: the vault's recipes re-filtered, re-sorted or re-laid out, gliding to their new places
+ * - flip-open: a recipe card lifted out of the box flips over, and the recipe unfolds from its
+ *   back; flip-close folds the recipe away and the card flips back into its place (setFlipAxis)
  */
-export type NavMotion = 'forward' | 'back' | 'fade' | 'zoom' | 'vault';
+export type NavMotion = 'forward' | 'back' | 'fade' | 'zoom' | 'vault' | 'flip-open' | 'flip-close';
 
-/**
- * A photo that morphs between its old and new place: a recipe card's photo and the
- * recipe's hero, or a step photo and the full-screen viewer.
- */
-export type Morph = 'recipe' | 'photo';
+/** A photo that morphs between its old and new place: a step photo and the full-screen viewer. */
+export type Morph = 'photo';
 
 interface Options {
   motion: NavMotion;
@@ -24,6 +22,8 @@ interface Options {
   animated?: boolean;
   /** The vault switches between cards and list, so recipes change shape as they glide. */
   relayout?: boolean;
+  /** Once it has finished (at once where nothing animates). */
+  onFinished?: () => void;
 }
 
 let current: ViewTransition | null = null;
@@ -35,10 +35,11 @@ let current: ViewTransition | null = null;
  */
 export function transitionView(
   update: () => void,
-  { motion, morph, animated = true, relayout = false }: Options,
+  { motion, morph, animated = true, relayout = false, onFinished }: Options,
 ) {
   if (!animated || !document.startViewTransition) {
     update();
+    onFinished?.();
     return;
   }
   const root = document.documentElement;
@@ -46,22 +47,12 @@ export function transitionView(
   if (morph) root.dataset.morph = morph;
   else delete root.dataset.morph;
 
-  // The recipe photo morphs uncropped at both ends (see utils/photoMorph). When both ends are
-  // laid out whole, only the sharper snapshot needs to fly (data-morph-whole, index.css).
-  const uncrop = morph === 'recipe' && canNestMorphs();
-  const from = uncrop ? uncropMorphPhotos() : null;
-  const restore: (() => void)[] = from ? [from.undo] : [];
-  delete root.dataset.morphWhole;
+  const restore: (() => void)[] = [];
   const vault = motion === 'vault';
   const before = vault ? nameVaultItems(relayout) : null;
   if (before) restore.push(before.clear);
   const transition = document.startViewTransition(() => {
     flushSync(update);
-    if (from) {
-      const to = uncropMorphPhotos();
-      restore.push(to.undo);
-      if (from.laidOut && to.laidOut) root.dataset.morphWhole = '';
-    }
     if (before) restore.push(nameVaultItems(relayout, before.keys).clear);
   });
   current = transition;
@@ -72,7 +63,8 @@ export function transitionView(
     current = null;
     delete root.dataset.nav;
     delete root.dataset.morph;
-    delete root.dataset.morphWhole;
+    root.style.removeProperty('--flip-y');
+    onFinished?.();
   };
   void transition.finished.then(cleanUp, cleanUp);
 }
@@ -88,21 +80,15 @@ export function transitionStarted(): Promise<void> {
 const noop = () => {};
 
 /**
- * How long until the recipe photo lands in its new place, in ms from now: when the morph has
- * mostly settled, so what follows it can start. 0 when no photo is morphing.
+ * Where a recipe card flips (index.css, the flip motions): around the line through its middle.
+ * The recipe unfolds from, and folds back onto, that line. Returns false, setting nothing, when
+ * the card is off screen, where a flip would never be seen.
  */
-export function recipePhotoLandsIn(settled = 0.6): number {
-  if (!document.getAnimations) return 0;
-  const flight = document.getAnimations().find((animation) => {
-    const pseudo = (animation.effect as KeyframeEffect | null)?.pseudoElement;
-    return (
-      pseudo === '::view-transition-group(recipe-frame)' ||
-      pseudo === '::view-transition-group(recipe-photo)'
-    );
-  });
-  const timing = flight?.effect?.getComputedTiming();
-  if (!flight || !timing || typeof timing.endTime !== 'number') return 0;
-  return Math.max(0, timing.endTime * settled - Number(flight.currentTime ?? 0));
+export function setFlipAxis(card: Element | null): boolean {
+  if (!card || !isOnScreen(card)) return false;
+  const { top, height } = card.getBoundingClientRect();
+  document.documentElement.style.setProperty('--flip-y', `${Math.round(top + height / 2)}px`);
+  return true;
 }
 
 /** Whether the viewer asked the system for less motion. */

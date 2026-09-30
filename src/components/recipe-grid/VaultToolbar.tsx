@@ -23,6 +23,7 @@ import {
 import { CATEGORY_ICONS, SORT_ICONS } from './vaultIcons';
 import { VaultPopover } from './VaultPopover';
 import { FilterSelect, type FilterOption } from './FilterSelect';
+import { Monogram } from './Monogram';
 
 interface VaultToolbarProps {
   filter: VaultFilter;
@@ -417,19 +418,5 @@ const FilterMenu: React.FC<FilterMenuProps> = ({ filter, counts, onFilterChange,
         <span className="vault-switch" aria-hidden="true" />
       </button>
     </>
-  );
-};
-
-/** An author's initials in a small round, where a category would have its icon. */
-const Monogram: React.FC<{ name: string }> = ({ name }) => {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const initials =
-    words.length > 1
-      ? words[0].charAt(0) + words[words.length - 1].charAt(0)
-      : (words[0] ?? '').charAt(0);
-  return (
-    <span className="vault-monogram" aria-hidden="true">
-      {initials.toUpperCase()}
-    </span>
   );
 };

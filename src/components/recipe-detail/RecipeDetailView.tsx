@@ -22,8 +22,6 @@ import { CategoryTile } from '../recipe-grid/CategoryTile';
 
 /** What App can ask of an open recipe page. */
 export interface RecipePageHandle {
-  /** Rolls the recipe up into its photo; null where nothing would animate. */
-  rollUp: () => Promise<void> | null;
   /** Closes the step photo open full screen (the menu button's back button does this). */
   closePhoto: () => void;
 }
@@ -32,7 +30,12 @@ interface RecipeDetailViewProps {
   recipe: Recipe;
   language: Language;
   /** Once the recipe has (nearly) finished unrolling out of its photo. */
-  onUnrolled: () => void;
+  onUnrolled?: () => void;
+  /**
+   * Whether it unrolls out of its photo as it opens (the editor's preview). Opened from the
+   * Recipe Box, it unfolds from its card instead (utils/viewTransition, the flip motions).
+   */
+  unroll?: boolean;
   /** A step photo opened full screen, or closed: the back button takes the menu button's place. */
   onPhotoOpenChange: (open: boolean) => void;
   /** The version the owner's draft of it becomes, when they have one. */
@@ -43,10 +46,13 @@ interface RecipeDetailViewProps {
   t: UiTranslations;
 }
 
+const noop = () => {};
+
 export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   recipe: rawRecipe,
   language,
   onUnrolled,
+  unroll = true,
   onPhotoOpenChange,
   draftVersion,
   onContinueDraft,
@@ -57,9 +63,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   const heroRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const rollRef = useRef<HTMLDivElement>(null);
-  const { rollUp } = useUnroll({ photo: heroRef, body: bodyRef, roll: rollRef }, onUnrolled);
-  // Set once the recipe starts rolling up to leave, so the pinned subheader tucks away with it.
-  const [leaving, setLeaving] = useState(false);
+  useUnroll({ photo: heroRef, body: bodyRef, roll: rollRef }, onUnrolled ?? noop, unroll);
 
   const [scale, setScale] = useState(1);
   // The path each fork is on, remembered per recipe on this phone.
@@ -94,10 +98,6 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
     );
 
   useImperativeHandle(ref, () => ({
-    rollUp: () => {
-      setLeaving(true);
-      return rollUp();
-    },
     closePhoto: () => closeZoom(),
   }));
 
@@ -117,7 +117,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
 
   return (
     <article ref={pageRef} id="viewDetail" className="recipe-detail active">
-      <RecipeSubheader page={pageRef} hidden={leaving} />
+      <RecipeSubheader page={pageRef} />
 
       {/* Hero Photo */}
       <div ref={heroRef} className="detail-hero-frame">
@@ -125,7 +125,6 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
           <img
             id="detailHeroImg"
             className="detail-hero-img"
-            data-morph-photo=""
             src={recipePhoto(recipe)}
             alt={recipe.name}
           />

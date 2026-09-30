@@ -72,6 +72,7 @@
       }
       [data-theme="dark"] {
         --weight-body: 400;
+        --card-sheen: rgb(255 255 255 / 0.05);
       }
 
       /* ── Seasons ──
@@ -370,17 +371,17 @@
         --ease-soft: cubic-bezier(0.25, 0.8, 0.25, 1);
         /* A damped spring (ζ 0.65, ~7% overshoot), sampled: things that pop out of a button. */
         --spring-soft: linear(0, 0.0922, 0.2933, 0.5193, 0.721, 0.876, 0.9799, 1.0391, 1.0644, 1.0672, 1.0575, 1.0427, 1.0276, 1.0149, 1.0056, 0.9996, 0.9965, 0.9954, 0.9956, 0.9964, 1);
-        /* The recipe photo's flight between its card and the recipe page. hooks/useUnroll
-           reads the real duration from the running animation, so this is the only copy. */
+        /* A step photo's flight between its step and the full-screen viewer. */
         --morph-duration: 0.56s;
+        /* How long a recipe card takes to flip over before the recipe unfolds from its back. */
+        --flip-turn: 0.28s;
+        /* The light catching an index card's top edge in the Recipe Box. */
+        --card-sheen: rgb(255 255 255 / 0.9);
         /* The floating menu button (and the back button beside it). The menu panel, the toast
            and the page's bottom padding are placed from it. */
         --fab-size: 4rem;
-        /* The two ends of the recipe photo morph, so its corners can reshape in flight:
-           the hero's rounded frame, and a card's photo (rounded top inside the card's 1px
-           border, square bottom where the card's text begins). */
+        /* The recipe page's hero photo corners. */
         --hero-radius: var(--radius-lg);
-        --card-photo-corners: calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px) 0 0;
       }
       @media (max-width: 768px) {
         :root {
@@ -424,15 +425,15 @@
 
       /* The floating button, its menu and the toast stay put while the page moves:
          only their live selves show, never a sliding snapshot. */
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='vault'], [data-nav='zoom'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='vault'], [data-nav='zoom'], [data-nav='flip-open'], [data-nav='flip-close'])
         .fab-group {
         view-transition-name: fk-fab;
       }
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='vault'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'])
         .fk-menu-layer {
         view-transition-name: fk-menu;
       }
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='vault'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'])
         .app-toast {
         view-transition-name: fk-toast;
       }
@@ -497,6 +498,10 @@
       ::view-transition-old(*.vault-kept) {
         display: none;
       }
+      /* A kept card glides whole, its leaning face and shadow reaching past its edges. */
+      ::view-transition-group(*.vault-kept) {
+        overflow: visible;
+      }
       ::view-transition-new(*.vault-kept) {
         animation: none;
       }
@@ -516,126 +521,85 @@
         animation-duration: 0.4s;
       }
 
-      /* Morphs: a recipe card's photo grows into the recipe's hero photo (and shrinks back),
-         and a step photo grows into the full-screen viewer (and back into its step). */
-      :root[data-morph='recipe'] .recipe-card.is-morph-target .card-media > :is(img, .category-tile),
-      :root[data-morph='recipe'] .vault-row.is-morph-target .vault-row-photo > :is(img, .category-tile),
-      :root[data-morph='recipe'] :is(.detail-hero-img, .detail-hero-tile) {
-        view-transition-name: recipe-photo;
-      }
+      /* A step photo grows into the full-screen viewer, and back into its step. */
       :root[data-morph='photo'] .step-visual-frame.is-zoom-source .step-visual-img,
       :root[data-morph='photo'] .zoomable-image {
         view-transition-name: zoom-photo;
       }
-      ::view-transition-group(recipe-photo),
       ::view-transition-group(zoom-photo) {
         animation-duration: var(--morph-duration);
         animation-timing-function: var(--ease-glide);
       }
       /* The two ends crop the photo differently, so both fill the moving frame, cropped. */
-      ::view-transition-old(recipe-photo),
-      ::view-transition-new(recipe-photo),
       ::view-transition-old(zoom-photo),
       ::view-transition-new(zoom-photo) {
         height: 100%;
         object-fit: cover;
         overflow: clip;
+        border-radius: var(--radius-sm);
         animation-duration: var(--morph-duration);
         animation-timing-function: var(--ease-glide);
       }
-      /* The photo's corners reshape in flight, so it lands with exactly the corners of where
-         it's going. A clip-path, not border-radius: the compositor animates it, so it never
-         waits on the page's main thread. */
-      :root[data-nav='forward']::view-transition-image-pair(recipe-photo) {
-        animation: vt-clip-to-hero var(--morph-duration) var(--ease-glide) both;
-      }
-      :root[data-nav='back']::view-transition-image-pair(recipe-photo) {
-        animation: vt-clip-to-card var(--morph-duration) var(--ease-glide) both;
-      }
-      @keyframes vt-clip-to-hero {
-        from { clip-path: inset(0 round var(--card-photo-corners)); }
-        to { clip-path: inset(0 round var(--hero-radius)); }
-      }
-      @keyframes vt-clip-to-card {
-        from { clip-path: inset(0 round var(--hero-radius)); }
-        to { clip-path: inset(0 round var(--card-photo-corners)); }
-      }
-      ::view-transition-old(zoom-photo),
-      ::view-transition-new(zoom-photo) {
-        border-radius: var(--radius-sm);
-      }
 
-      /* Where the browser can nest morphs, the photo flies uncropped (utils/photoMorph) inside
-         its frame: the frame morphs from the card's photo area to the hero's and clips the
-         whole photo, so there is only ever one picture in flight, never two crops fading. */
-      @supports (view-transition-group: nearest) and selector(::view-transition-group-children(a)) {
-        :root[data-morph='recipe'] .recipe-card.is-morph-target .card-media,
-        :root[data-morph='recipe'] .vault-row.is-morph-target .vault-row-photo,
-        :root[data-morph='recipe'] .detail-hero-frame {
-          view-transition-name: recipe-frame;
-        }
-        :root[data-morph='recipe'] .recipe-card.is-morph-target .card-media > :is(img, .category-tile),
-        :root[data-morph='recipe'] .vault-row.is-morph-target .vault-row-photo > :is(img, .category-tile),
-        :root[data-morph='recipe'] :is(.detail-hero-img, .detail-hero-tile) {
-          view-transition-group: nearest;
-        }
-        ::view-transition-group(recipe-frame) {
-          animation-duration: var(--morph-duration);
-          animation-timing-function: var(--ease-glide);
-        }
-        ::view-transition-old(recipe-frame),
-        ::view-transition-new(recipe-frame) {
-          height: 100%;
-          animation-duration: var(--morph-duration);
-          animation-timing-function: var(--ease-glide);
-        }
-        ::view-transition-group-children(recipe-frame) {
-          overflow: clip;
-        }
-        /* The corners now reshape on the frame's clip instead of the photo's. */
-        :root[data-nav]::view-transition-image-pair(recipe-photo) {
-          animation: none;
-        }
-        /* Both ends are the same whole photo, so only the sharper snapshot flies: the hero's,
-           both ways. A list row's thumbnail blown up to the hero's size would smear, then
-           cross-fade to sharp part way, which reads as the photo resizing before it moves. */
-        :root[data-morph-whole][data-nav='forward']::view-transition-old(recipe-photo),
-        :root[data-morph-whole][data-nav='back']::view-transition-new(recipe-photo) {
-          animation: none;
-          opacity: 0;
-        }
-        :root[data-morph-whole][data-nav='forward']::view-transition-new(recipe-photo),
-        :root[data-morph-whole][data-nav='back']::view-transition-old(recipe-photo) {
-          animation: none;
-          opacity: 1;
-        }
-        :root[data-nav='forward']::view-transition-group-children(recipe-frame) {
-          animation: vt-clip-to-hero var(--morph-duration) var(--ease-glide) both;
-        }
-        :root[data-nav='back']::view-transition-group-children(recipe-frame) {
-          animation: vt-clip-to-card var(--morph-duration) var(--ease-glide) both;
-        }
+      /* Opening a recipe from the Recipe Box (App, the flip motions): its card, already lifted
+         out of the box, flips over on its middle line (--flip-y, set by utils/viewTransition
+         setFlipAxis), and the recipe unfolds from the card's back around that same line as the
+         box recedes. Closing plays it back: the recipe folds onto the line, the box comes
+         forward, and the card, shown still lifted, flips back over; App then drops it into its
+         place. Only snapshots turn, so it all runs on the compositor. The page on top covers an
+         opaque one below, blended normally, so nothing dips or flashes mid-turn. */
+      :root:is([data-nav='flip-open'], [data-nav='flip-close']) .vault-item.is-flip-target {
+        view-transition-name: flip-card;
       }
-
-      /* Opening a recipe, the vault recedes and fades as the photo flies up; going back, it
-         comes forward as the photo flies home. The page on top fades over an opaque one below,
-         blended normally, so the background never dips or flashes mid-fade. */
+      ::view-transition-group(flip-card) {
+        animation: none;
+      }
       @media (prefers-reduced-motion: no-preference) {
-        :root[data-morph='recipe'][data-nav]::view-transition-image-pair(root) {
+        :root:is([data-nav='flip-open'], [data-nav='flip-close'])::view-transition-image-pair(root) {
           isolation: auto;
         }
-        :root[data-morph='recipe'][data-nav]::view-transition-old(root),
-        :root[data-morph='recipe'][data-nav]::view-transition-new(root) {
+        :root:is([data-nav='flip-open'], [data-nav='flip-close'])::view-transition-old(root),
+        :root:is([data-nav='flip-open'], [data-nav='flip-close'])::view-transition-new(root) {
           mix-blend-mode: normal;
           animation: none;
+          transform-origin: 50% var(--flip-y, 50%);
+          backface-visibility: hidden;
         }
-        :root[data-morph='recipe'][data-nav='forward']::view-transition-old(root) {
+        :root[data-nav='flip-open']::view-transition-old(flip-card) {
+          animation: vt-card-flip-away var(--flip-turn) cubic-bezier(0.5, 0, 0.9, 0.5) both;
+        }
+        :root[data-nav='flip-open']::view-transition-old(root) {
+          animation: vt-recede 0.5s var(--ease-soft) 0.06s both;
+        }
+        :root[data-nav='flip-open']::view-transition-new(root) {
+          animation: vt-page-unfold 0.62s cubic-bezier(0.15, 0.55, 0.2, 1) var(--flip-turn) both;
+        }
+        :root[data-nav='flip-close']::view-transition-old(root) {
           z-index: 1;
-          animation: vt-recede 0.42s var(--ease-soft) both;
+          animation: vt-page-fold 0.34s cubic-bezier(0.6, 0, 0.9, 0.45) both;
         }
-        :root[data-morph='recipe'][data-nav='back']::view-transition-new(root) {
-          animation: vt-come-forward var(--morph-duration) var(--ease-soft) both;
+        :root[data-nav='flip-close']::view-transition-new(root) {
+          animation: vt-come-forward 0.46s var(--ease-soft) 0.14s both;
         }
+        :root[data-nav='flip-close']::view-transition-new(flip-card) {
+          animation: vt-card-flip-home 0.4s cubic-bezier(0.15, 0.6, 0.25, 1) 0.34s both;
+        }
+      }
+      @keyframes vt-card-flip-away {
+        from { transform: perspective(900px) rotateX(0deg); }
+        to { transform: perspective(900px) rotateX(90deg); }
+      }
+      @keyframes vt-card-flip-home {
+        from { transform: perspective(900px) rotateX(90deg); }
+        to { transform: perspective(900px) rotateX(0deg); }
+      }
+      @keyframes vt-page-unfold {
+        from { transform: perspective(1300px) rotateX(-90deg); }
+        to { transform: perspective(1300px) rotateX(0deg); }
+      }
+      @keyframes vt-page-fold {
+        from { transform: perspective(1300px) rotateX(0deg); }
+        to { transform: perspective(1300px) rotateX(-90deg); }
       }
       @keyframes vt-recede {
         to { opacity: 0; transform: scale(0.96); }
@@ -676,26 +640,15 @@
       /* Reduced motion: nothing slides or morphs; pages and photos just cross-fade quickly. */
       @media (prefers-reduced-motion: reduce) {
         :root[data-nav]::view-transition-old(root),
-        ::view-transition-old(recipe-photo),
         ::view-transition-old(zoom-photo) {
           animation: vt-fade-out 0.15s linear both;
         }
         :root[data-nav]::view-transition-new(root),
-        ::view-transition-new(recipe-photo),
         ::view-transition-new(zoom-photo) {
           animation: fk-fade-in 0.15s linear both;
         }
-        ::view-transition-group(recipe-photo),
-        ::view-transition-group(recipe-frame),
-        ::view-transition-group(zoom-photo),
-        ::view-transition-group-children(recipe-frame) {
+        ::view-transition-group(zoom-photo) {
           animation: none;
-        }
-        ::view-transition-old(recipe-frame) {
-          animation: vt-fade-out 0.15s linear both;
-        }
-        ::view-transition-new(recipe-frame) {
-          animation: fk-fade-in 0.15s linear both;
         }
       }
 
@@ -909,54 +862,6 @@
         max-width: 580px;
       }
 
-      /* Grid Layout */
-      .recipe-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-        gap: 1.75rem;
-      }
-
-      /* Recipe Card */
-      .recipe-card {
-        background: var(--bg-surface);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-md);
-        overflow: hidden;
-        cursor: pointer;
-        display: flex;
-        flex-direction: column;
-        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-        position: relative;
-        text-decoration: none;
-        color: inherit;
-      }
-
-      .recipe-card:focus-visible {
-        transform: translateY(-4px);
-        box-shadow: var(--shadow-md);
-        border-color: var(--border-strong);
-      }
-      @media (hover: hover) {
-        .recipe-card:hover {
-          transform: translateY(-4px);
-          box-shadow: var(--shadow-md);
-          border-color: var(--border-strong);
-        }
-      }
-
-      .recipe-card:focus-visible {
-        outline: 3px solid var(--accent);
-        outline-offset: 3px;
-      }
-
-      .card-media {
-        position: relative;
-        aspect-ratio: 16/10;
-        background: var(--bg-card);
-        overflow: hidden;
-        /* The card clips these corners anyway; the photo's frame carries them into its morph. */
-        border-radius: var(--card-photo-corners);
-      }
 
       /* A draft in the vault (only its writer's): a ribbon on its photo, or before its cook. */
       .vault-draft-ribbon {
@@ -981,18 +886,6 @@
         padding: 0.1rem 0.5rem;
         font-size: 0.6875rem;
         box-shadow: none;
-      }
-
-      .recipe-card.is-draft,
-      .vault-row.is-draft {
-        border-style: dashed;
-      }
-
-      .card-media img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transition: transform 0.35s ease;
       }
 
       /* A photo still on its way (left out of this device's quick-start copy): the frame stays
@@ -1045,61 +938,6 @@
         width: max(1.6rem, 28cqmin);
         height: max(1.6rem, 28cqmin);
         filter: drop-shadow(0 1px 0 color-mix(in srgb, var(--bg-surface) 70%, transparent));
-      }
-
-      /* Only where hover is real: a tap on a phone would leave the photo zoomed, and the morph
-         would start from the zoomed photo, a visible jump. */
-      @media (hover: hover) {
-        .recipe-card:hover .card-media img {
-          transform: scale(1.03);
-        }
-      }
-
-      .card-body {
-        padding: 1.25rem;
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-      }
-
-      .card-title {
-        /* As wide as its text, so it glides and scales as one piece between layouts. */
-        width: fit-content;
-        max-width: 100%;
-        font-family: var(--font-serif);
-        font-size: 1.375rem;
-        font-weight: var(--weight-heading);
-        margin-bottom: 0.4rem;
-        line-height: 1.25;
-        letter-spacing: -0.01em;
-      }
-
-      .card-meta {
-        font-size: 0.875rem;
-        color: var(--text-muted);
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-        margin-bottom: 0.85rem;
-      }
-
-      .card-desc {
-        font-size: 0.9375rem;
-        color: var(--text-secondary);
-        line-height: 1.5;
-        margin-bottom: 1.25rem;
-        flex: 1;
-      }
-
-      .card-footer {
-        padding-top: 0.75rem;
-        border-top: 1px solid var(--border-subtle);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: var(--accent);
       }
 
       /* ── The vault ──
@@ -1324,18 +1162,22 @@
 
       .vault-bar-tools {
         position: relative;
-        transition:
-          transform 0.5s var(--ease-glide),
-          opacity 0.3s ease 0.05s;
+        transition: transform 0.5s var(--ease-glide);
+      }
+
+      .vault-bar-toolset {
+        transition: opacity 0.3s ease 0.05s;
       }
 
       .vault-bar[data-tucked] .vault-bar-tools {
         transform: translateY(-100%);
+        transition: transform 0.42s var(--ease-glide);
+      }
+
+      .vault-bar[data-tucked] .vault-bar-toolset {
         opacity: 0;
         pointer-events: none;
-        transition:
-          transform 0.42s var(--ease-glide),
-          opacity 0.25s ease 0.12s;
+        transition: opacity 0.25s ease 0.12s;
       }
 
       .vault-bar-title {
@@ -2203,16 +2045,6 @@
         color: var(--text-muted);
       }
 
-      .vault-group-heading {
-        grid-column: 1 / -1;
-        margin: 0.35rem 0.3rem -0.6rem;
-        font-size: 0.8rem;
-        font-weight: 700;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: var(--accent-gold);
-      }
-
       .vault-empty-reset {
         margin-top: 0.9rem;
         min-height: 44px;
@@ -2226,81 +2058,195 @@
         cursor: pointer;
       }
 
-      /* The list layout: rows on one rounded card per group, photo, name, cook and time. */
-      .vault-list {
-        display: flex;
-        flex-direction: column;
-        gap: 1.4rem;
+      /* ── The Recipe Box ──
+         The recipes are index cards filed in a box, each in front of the one above it: they
+         overlap, and each casts a soft shadow up onto the card behind. A card's face (::before)
+         leans towards the reader, its top edge a little wider than its bottom, while its words
+         and photo stay flat and crisp. Groups sit behind gold divider tabs, always at the left;
+         the one being read is pinned under the bar (VaultShelf). As cards reach that pinned tab
+         they lean back and slip under it, driven by the scroll (see the lean further down). */
+      .vault-box {
+        /* How much of each card the one in front of it covers. */
+        --card-overlap: 1.15rem;
+        --card-face-radius: var(--radius-md);
+        --card-face-lean: perspective(700px) rotateX(-9deg);
+        max-width: 36rem;
+        margin: 0 auto;
       }
 
-      .vault-list-group .vault-group-heading {
-        margin: 0 0.3rem 0.55rem;
+      .vault-box.is-cards {
+        --card-overlap: 2rem;
+        --card-face-radius: var(--radius-lg);
+        --card-face-lean: perspective(1100px) rotateX(-9deg);
       }
 
-      .vault-list-card {
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-lg);
-        background: var(--bg-surface);
-        overflow: hidden;
+      .vault-group + .vault-group {
+        margin-top: 0.85rem;
       }
 
-      .vault-row {
-        position: relative;
-        display: flex;
+      /* A divider: its tab, and the top edge of the divider card the tab belongs to. The first
+         group's has no room above it, so it lines up exactly with the pinned tab it becomes. */
+      .vault-group + .vault-group .vault-divider {
+        padding-top: 0.35rem;
+      }
+
+      .vault-tab {
+        display: inline-flex;
         align-items: center;
-        gap: 0.9rem;
+        gap: 0.45rem;
+        max-width: 100%;
+        height: var(--vault-tab-height);
+        margin: 0;
+        padding: 0 0.85rem 0 0.75rem;
+        border: 1px solid var(--border-subtle);
+        border-bottom: 0;
+        border-radius: var(--radius-md) var(--radius-md) 0 0;
+        background: var(--accent-gold-subtle);
+        font: var(--weight-heading) 1rem/1.2 var(--font-serif);
+        letter-spacing: -0.005em;
+        color: var(--text-primary);
+      }
+
+      .vault-page {
+        --vault-tab-height: 2.35rem;
+        /* The pinned tab and the thin edge under it. */
+        --vault-shelf-height: calc(var(--vault-tab-height) + 0.25rem);
+      }
+
+      .vault-tab-icon {
+        flex: none;
+        color: var(--accent-gold);
+      }
+
+      .vault-tab .vault-monogram {
+        flex: none;
+        width: 1.4rem;
+        height: 1.4rem;
+      }
+
+      .vault-tab-name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .vault-tab-count {
+        flex: none;
+        padding: 0.05rem 0.45rem;
+        border-radius: var(--radius-full);
+        background: color-mix(in srgb, var(--accent-gold) 14%, transparent);
+        font: 700 0.75rem/1.3 var(--font-sans);
+        font-variant-numeric: tabular-nums;
+        color: var(--accent-gold);
+      }
+
+      .vault-tab-edge {
+        height: 0.75rem;
+        margin-top: -1px;
+        border: 1px solid var(--border-subtle);
+        border-bottom: 0;
+        border-radius: 0 var(--radius-md) 0 0;
+        background: var(--accent-gold-subtle);
+      }
+
+      /* The cards, each overlapping the one before. */
+      .vault-slot {
+        position: relative;
+      }
+
+      .vault-slot + .vault-slot {
+        margin-top: calc(-1 * var(--card-overlap));
+      }
+
+      .vault-divider + .vault-slot {
+        margin-top: -0.3rem;
+      }
+
+      /* The focused card comes in front of the one below, so its whole outline shows. */
+      .vault-slot:has(> .vault-item:focus-visible) {
+        z-index: 1;
+      }
+
+      .vault-item {
+        position: relative;
+        isolation: isolate;
+        display: flex;
         width: 100%;
-        padding: 0.75rem 0.6rem 0.75rem 0.75rem;
         border: 0;
         background: none;
         color: inherit;
         text-align: left;
         cursor: pointer;
-        transition: background-color 0.2s ease;
+        -webkit-tap-highlight-color: transparent;
+        transition: translate 0.5s var(--spring-soft);
       }
 
-      .vault-row + .vault-row::before {
+      /* The card's face, leaning towards the reader, lit along its top edge. */
+      .vault-item::before {
         content: '';
         position: absolute;
-        top: 0;
-        right: 0;
-        left: calc(0.75rem + 4rem + 0.9rem);
-        height: 1px;
-        background: var(--border-subtle);
+        inset: 0;
+        z-index: -1;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--card-face-radius);
+        background: var(--bg-surface);
+        box-shadow:
+          0 -0.55rem 1rem -0.8rem var(--scrim),
+          inset 0 1px 0 var(--card-sheen);
+        transform: var(--card-face-lean);
+        transition:
+          transform 0.3s var(--ease-soft),
+          box-shadow 0.3s ease;
+      }
+
+      .vault-item.is-draft::before {
+        border-style: dashed;
+        border-color: var(--border-strong);
+      }
+
+      .vault-item:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: var(--card-face-radius);
       }
 
       @media (hover: hover) {
-        .vault-row:hover {
-          background: var(--bg-card);
+        .vault-item:hover {
+          translate: 0 -0.3rem;
         }
       }
 
-      .vault-row:active {
-        background: var(--bg-card);
+      /* Lifted out of the box on its way to flipping open (App), squared up to the reader. As
+         the recipe closes it's shown lifted at once ('landing'), then drops back into place. */
+      .vault-item[data-lifted] {
+        translate: 0 -0.75rem;
+        transition: translate 0.2s var(--ease-soft);
       }
 
-      .vault-row:focus-visible {
-        outline: 3px solid var(--accent);
-        outline-offset: -3px;
-        border-radius: var(--radius-lg);
+      .vault-item[data-lifted]::before {
+        transform: none;
+        box-shadow:
+          0 -0.55rem 1rem -0.8rem var(--scrim),
+          0 1rem 1.5rem -1rem var(--scrim),
+          inset 0 1px 0 var(--card-sheen);
       }
 
-      .vault-row-photo {
-        /* The photo's frame when it's laid out uncropped for the morph (utils/photoMorph). */
-        position: relative;
-        flex: none;
-        width: 4rem;
-        height: 4rem;
-        overflow: hidden;
-        border-radius: var(--card-photo-corners);
-        background: var(--bg-card);
+      .vault-item[data-lifted='landing'],
+      .vault-item[data-lifted='landing']::before {
+        transition: none;
       }
 
-      .vault-row-photo img {
-        display: block;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
+      /* A list card: the name over a ruled line, the cook and time, and the photo beside. Every
+         card but a group's last is taller by what the next one covers. */
+      .vault-row {
+        align-items: flex-start;
+        gap: 0.9rem;
+        padding: 0.85rem 0.9rem 0.85rem 1.1rem;
+      }
+
+      .vault-slot:not(:last-child) > .vault-row {
+        padding-bottom: calc(0.85rem + var(--card-overlap));
       }
 
       .vault-row-text {
@@ -2308,7 +2254,7 @@
         min-width: 0;
         display: flex;
         flex-direction: column;
-        gap: 0.2rem;
+        padding-top: 0.1rem;
       }
 
       .vault-row-name {
@@ -2319,7 +2265,17 @@
         color: var(--text-primary);
       }
 
-      .vault-row-meta {
+      /* The index card's ruled line under the name. */
+      .vault-card-rule {
+        display: block;
+        height: 1.5px;
+        margin: 0.45rem 0 0.4rem;
+        border-radius: 1px;
+        background: color-mix(in srgb, var(--accent) 38%, transparent);
+      }
+
+      .vault-row-meta,
+      .card-meta {
         display: flex;
         align-items: center;
         gap: 0.35rem;
@@ -2328,27 +2284,231 @@
         color: var(--text-muted);
       }
 
-      .vault-row-cook {
+      .vault-row-cook,
+      .card-cook {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
 
-      .vault-row-time {
+      .vault-row-time,
+      .card-time {
         flex: none;
         white-space: nowrap;
         font-weight: 600;
         color: var(--accent);
       }
 
-      .vault-row-chevron {
+      .vault-row-photo {
+        position: relative;
         flex: none;
-        color: var(--text-muted);
+        width: 3.5rem;
+        height: 3.5rem;
+        overflow: hidden;
+        border-radius: calc(var(--radius-md) - 4px);
+        background: var(--bg-card);
       }
 
-      /* A list row's photo has four round corners; the photo morph reads this (see Morphs). */
-      :root[data-vault-view='list'] {
-        --card-photo-corners: calc(var(--radius-md) - 2px);
+      .vault-row-photo img,
+      .card-media img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      /* A photo card: the photo mounted at its top, then the name over a ruled line. */
+      .recipe-card {
+        flex-direction: column;
+        padding: 0.7rem 0.7rem 0.95rem;
+      }
+
+      .vault-slot:not(:last-child) > .recipe-card {
+        padding-bottom: calc(0.95rem + var(--card-overlap));
+      }
+
+      .card-media {
+        position: relative;
+        aspect-ratio: 16 / 9;
+        overflow: hidden;
+        border-radius: calc(var(--radius-lg) - 7px);
+        background: var(--bg-card);
+      }
+
+      .card-body {
+        padding: 0.75rem 0.3rem 0;
+      }
+
+      .card-title {
+        /* As wide as its text, so it glides and scales as one piece between layouts. */
+        width: fit-content;
+        max-width: 100%;
+        margin: 0;
+        font: var(--weight-heading) 1.3rem/1.22 var(--font-serif);
+        letter-spacing: -0.01em;
+        color: var(--text-primary);
+      }
+
+      /* The pinned divider tab (VaultShelf). It hangs under the toolbar inside the bar, reaching
+         the bar's full width so the cards slip under it everywhere, and rides up with the
+         toolbar as it tucks. It appears at once, exactly over the list's first tab, as if that
+         tab had stuck there, and fades as the list goes back down below it. */
+      .vault-bar-shelf {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        /* Sized and contained, so a name rolling over re-lays out only the shelf. */
+        height: var(--vault-shelf-height);
+        contain: size layout style;
+        pointer-events: none;
+      }
+
+      .vault-shelf {
+        margin: 0 -1.25rem;
+        padding: 0 1.25rem;
+        background: var(--bg-main);
+        box-shadow: 0 0.8rem 1rem -0.9rem var(--scrim);
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+
+      .vault-shelf[data-shown] {
+        opacity: 1;
+        transition: none;
+      }
+
+      .vault-shelf-inner {
+        max-width: 36rem;
+        margin: 0 auto;
+      }
+
+      /* The pinned tab spans the shelf, and draws its outline from two pieces: its left end,
+         which stays put, and a strip ending in its right end, which slides (a transform, on the
+         compositor) to the width of the name it shows. So the tab eases between names' widths
+         without anything being laid out again, its corners and edge exact all the way. */
+      .vault-tab.is-pinned {
+        position: relative;
+        display: block;
+        width: 100%;
+        padding: 0;
+        border: 0;
+        background: none;
+        overflow: hidden;
+      }
+
+      .vault-tab-cap,
+      .vault-tab-strip {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        border: 1px solid var(--border-subtle);
+        border-bottom: 0;
+        background: var(--accent-gold-subtle);
+      }
+
+      .vault-tab-cap {
+        z-index: 1;
+        width: var(--radius-md);
+        border-right: 0;
+        border-radius: var(--radius-md) 0 0 0;
+      }
+
+      .vault-tab-strip {
+        width: 100%;
+        border-left: 0;
+        border-radius: 0 var(--radius-md) 0 0;
+        transform: translateX(calc(var(--tab-width, 0px) - 100%));
+        transition: transform 0.42s var(--ease-glide);
+      }
+
+      .vault-shelf .vault-tab-edge {
+        height: 0.25rem;
+      }
+
+      /* Each name on the pinned tab, rolling up the way the list moves (down on the way back). */
+      .vault-shelf-label {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        max-width: min(36rem, calc(100vw - 2.5rem));
+        padding: 0 0.85rem 0 0.75rem;
+        white-space: nowrap;
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .vault-shelf-label.is-arriving {
+          animation: vault-shelf-in 0.42s var(--ease-glide) both;
+        }
+        .vault-shelf-label.is-leaving {
+          animation: vault-shelf-out 0.34s var(--ease-glide) both;
+        }
+        .vault-shelf-label.is-arriving[data-direction='-1'] {
+          animation-name: vault-shelf-in-down;
+        }
+        .vault-shelf-label.is-leaving[data-direction='-1'] {
+          animation-name: vault-shelf-out-down;
+        }
+      }
+
+      .vault-shelf-label.is-leaving {
+        opacity: 0;
+      }
+
+      @keyframes vault-shelf-in {
+        from { opacity: 0; transform: translateY(100%); }
+        to { opacity: 1; transform: none; }
+      }
+      @keyframes vault-shelf-out {
+        from { opacity: 1; transform: none; }
+        to { opacity: 0; transform: translateY(-100%); }
+      }
+      @keyframes vault-shelf-in-down {
+        from { opacity: 0; transform: translateY(-100%); }
+        to { opacity: 1; transform: none; }
+      }
+      @keyframes vault-shelf-out-down {
+        from { opacity: 1; transform: none; }
+        to { opacity: 0; transform: translateY(100%); }
+      }
+
+      /* As a card reaches the pinned tab, it leans back on its bottom edge and fades, slipping
+         under the tab like a card thumbed past in the box. The scroll drives it, on the
+         compositor, so it tracks the finger both ways. The line it leans at is where the tab
+         sits once the toolbar has tucked away, as it does whenever the list is read downwards;
+         with the toolbar back (scrolling up), cards come out from under it already upright. A
+         line that moved with the toolbar would need a transition on every card, which keeps
+         the lean off the compositor. Photo cards lean less: they're taller, and the full lean
+         on them was too much. Longhands only (see the title's condense below). */
+      @supports (animation-timeline: view()) {
+        @media (prefers-reduced-motion: no-preference) {
+          .vault-slot {
+            transform-origin: 50% 100%;
+            animation-name: vault-card-lean;
+            animation-duration: auto;
+            animation-timing-function: linear;
+            animation-fill-mode: both;
+            animation-timeline: view(block calc(var(--vault-bar-title) + var(--vault-shelf-height)) 0px);
+            animation-range: exit -1.9rem exit 100%;
+          }
+          .vault-box.is-cards .vault-slot {
+            animation-name: vault-card-lean-soft;
+          }
+        }
+      }
+
+      @keyframes vault-card-lean {
+        from { transform: perspective(600px) rotateX(0deg); opacity: 1; }
+        to { transform: perspective(600px) rotateX(46deg); opacity: 0.2; }
+      }
+      @keyframes vault-card-lean-soft {
+        from { transform: perspective(900px) rotateX(0deg); opacity: 1; }
+        to { transform: perspective(900px) rotateX(20deg); opacity: 0.5; }
       }
 
       @keyframes vault-popover-in {
@@ -2389,7 +2549,7 @@
       @keyframes vault-item-in {
         from {
           opacity: 0;
-          translate: 0 1.5rem;
+          translate: 0 -1.4rem;
         }
       }
 

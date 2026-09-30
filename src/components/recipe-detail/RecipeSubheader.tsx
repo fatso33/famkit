@@ -5,8 +5,6 @@ import { SubheaderAt, SubheaderSection, sameSubheader, subheaderAt } from '../..
 interface RecipeSubheaderProps {
   /** The recipe page, whose [data-subheader] sections the bar names. */
   page: RefObject<HTMLElement | null>;
-  /** Tucked away regardless, e.g. while the recipe rolls up to leave. */
-  hidden: boolean;
 }
 
 // Only where the page is one column: side by side, both columns' headings are in view.
@@ -44,7 +42,7 @@ function measureSections(page: HTMLElement, barBottom: number): SubheaderSection
  * the heading goes under it and back up when the section ends; the names roll the way the page
  * moves. Decorative for screen readers, which have the real headings.
  */
-export const RecipeSubheader: React.FC<RecipeSubheaderProps> = ({ page, hidden }) => {
+export const RecipeSubheader: React.FC<RecipeSubheaderProps> = ({ page }) => {
   const barRef = useRef<HTMLDivElement>(null);
   const [at, setAt] = useState<SubheaderAt | null>(null);
   // What the bar last named, kept on it as it slides away.
@@ -90,7 +88,7 @@ export const RecipeSubheader: React.FC<RecipeSubheaderProps> = ({ page, hidden }
     <div
       ref={barRef}
       className="recipe-subheader"
-      data-shown={(at && !hidden) || undefined}
+      data-shown={at ? true : undefined}
       aria-hidden="true"
     >
       <div className="recipe-subheader-inner">

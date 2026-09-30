@@ -11,21 +11,25 @@ import { CategoryTile } from './CategoryTile';
 interface RecipeCardProps {
   recipe: Recipe;
   language: Language;
-  /** Its photo morphs into the recipe's hero photo and back (see transitionView). */
-  isMorphTarget?: boolean;
+  /** The card that flips open into the recipe, and back shut (the one last opened). */
+  isFlipTarget?: boolean;
   /** Its place in the vault's entrance, when the page is arriving (see VaultHeader). */
   enterIndex?: number;
   /** A draft: marked as one, named as one, and it's carried on with rather than viewed. */
   draft?: boolean;
-  /** Given the card, which a page can open out of. */
+  /** Given the card, which the recipe flips open out of. */
   onSelect: (id: string, from: HTMLElement) => void;
   t: UiTranslations;
 }
 
+/**
+ * A recipe in the cards layout: a photo card filed in the Recipe Box, in front of the one above
+ * it, with the photo mounted at its top and the name over a ruled line.
+ */
 export const RecipeCard: React.FC<RecipeCardProps> = ({
   recipe: rawRecipe,
   language,
-  isMorphTarget = false,
+  isFlipTarget = false,
   enterIndex,
   draft = false,
   onSelect,
@@ -34,20 +38,11 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
   const recipe = getLocalizedRecipe(rawRecipe, language) || rawRecipe;
   const time = recipeTime(recipe);
   const estimatedTime = time.manual ? t.totalTime(time.minutes) : t.estimatedTime(time.minutes);
-
   const photo = recipePhoto(recipe);
-  const ingCountText = t.ingredientsCount(recipe.ingredients ? recipe.ingredients.length : 0);
-
-  const defaultDesc =
-    language === 'pl'
-      ? 'Tradycyjny, sprawdzony przepis rodzinny.'
-      : 'A time-tested family favorite.';
-
-  const cardDesc = recipe.cardDescription || recipe.tips || recipe.notes || defaultDesc;
 
   return (
     <div
-      className={`recipe-card vault-item${isMorphTarget ? ' is-morph-target' : ''}${draft ? ' is-draft' : ''}`}
+      className={`recipe-card vault-item${isFlipTarget ? ' is-flip-target' : ''}${draft ? ' is-draft' : ''}`}
       data-vault-item={vaultItemKey(rawRecipe.id)}
       style={
         enterIndex === undefined ? undefined : ({ '--enter-i': enterIndex } as React.CSSProperties)
@@ -73,10 +68,8 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
           <img
             src={photo}
             alt={recipe.name}
-            // The photo coming back from the recipe must be ready to land in its card.
-            loading={isMorphTarget ? 'eager' : 'lazy'}
-            // Laid out uncropped while it morphs (utils/photoMorph).
-            data-morph-photo={isMorphTarget ? '' : undefined}
+            // The card flipping open must be whole in the snapshot the flip is made of.
+            loading={isFlipTarget ? 'eager' : 'lazy'}
           />
         ) : photoPending(rawRecipe) ? (
           <div className="photo-pending" />
@@ -88,15 +81,11 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
         <h3 className="card-title" data-vault-name="">
           {recipe.name}
         </h3>
+        <span className="vault-card-rule" aria-hidden="true" />
         <div className="card-meta">
-          <span>{t.byAuthor(recipe.author)}</span>
+          <span className="card-cook">{recipe.author}</span>
           <span aria-hidden="true">·</span>
-          <span style={{ color: 'var(--accent)', fontWeight: 600 }}>⏱️ {estimatedTime}</span>
-        </div>
-        <p className="card-desc">{cardDesc}</p>
-        <div className="card-footer">
-          <span>{draft ? t.continueDraft : t.viewRecipe}</span>
-          <span>{ingCountText}</span>
+          <span className="card-time">{estimatedTime}</span>
         </div>
       </div>
     </div>

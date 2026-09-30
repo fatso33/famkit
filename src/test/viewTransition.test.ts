@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
+  setFlipAxis,
   themeSpreadKeyframes,
   transitionTheme,
   transitionView,
@@ -32,7 +33,7 @@ describe('transitionView', () => {
 
   it('just applies the change where view transitions are unsupported', () => {
     const update = vi.fn();
-    transitionView(update, { motion: 'forward', morph: 'recipe' });
+    transitionView(update, { motion: 'forward' });
     expect(update).toHaveBeenCalledOnce();
     expect(root.dataset.nav).toBeUndefined();
   });
@@ -40,17 +41,31 @@ describe('transitionView', () => {
   it('marks how the page moves and what morphs, until the transition ends', async () => {
     const { start, finish } = fakeViewTransitions();
     const update = vi.fn();
-    transitionView(update, { motion: 'back', morph: 'recipe' });
+    transitionView(update, { motion: 'zoom', morph: 'photo' });
 
     expect(start).toHaveBeenCalledOnce();
     expect(update).toHaveBeenCalledOnce();
-    expect(root.dataset.nav).toBe('back');
-    expect(root.dataset.morph).toBe('recipe');
+    expect(root.dataset.nav).toBe('zoom');
+    expect(root.dataset.morph).toBe('photo');
 
     finish(0);
     await settle();
     expect(root.dataset.nav).toBeUndefined();
     expect(root.dataset.morph).toBeUndefined();
+  });
+
+  it('says when it has finished: once it ends, or at once where nothing animates', async () => {
+    const done = vi.fn();
+    transitionView(() => {}, { motion: 'forward', onFinished: done });
+    expect(done).toHaveBeenCalledOnce();
+
+    const { finish } = fakeViewTransitions();
+    const later = vi.fn();
+    transitionView(() => {}, { motion: 'flip-open', onFinished: later });
+    expect(later).not.toHaveBeenCalled();
+    finish(0);
+    await settle();
+    expect(later).toHaveBeenCalledOnce();
   });
 
   it('skips the animation when the browser already animated the gesture', () => {
@@ -63,7 +78,7 @@ describe('transitionView', () => {
 
   it("keeps a newer transition's markers when an interrupted one ends", async () => {
     const { finish } = fakeViewTransitions();
-    transitionView(() => {}, { motion: 'forward', morph: 'recipe' });
+    transitionView(() => {}, { motion: 'forward' });
     transitionView(() => {}, { motion: 'zoom', morph: 'photo' });
 
     finish(0);
@@ -288,57 +303,36 @@ describe('vault transitions', () => {
   });
 });
 
-describe('recipe photo morph', () => {
-  beforeEach(() => {
-    // jsdom can't nest morphs; the browsers this path is for can.
-    vi.stubGlobal('CSS', { supports: () => true });
-  });
+describe('the card flip', () => {
   afterEach(() => {
-    vi.unstubAllGlobals();
     Reflect.deleteProperty(document, 'startViewTransition');
-    document.body.innerHTML = '';
-    delete root.dataset.nav;
-    delete root.dataset.morph;
+    root.style.removeProperty('--flip-y');
   });
 
-  /** A photo in its frame, as a list row or the recipe's hero lays it out. */
-  const framedPhoto = (loaded: boolean) => {
-    const frame = document.createElement('div');
-    frame.getBoundingClientRect = () => ({ width: 56, height: 56 }) as DOMRect;
-    const img = document.createElement('img');
-    img.dataset.morphPhoto = '';
-    Object.defineProperty(img, 'naturalWidth', { value: loaded ? 800 : 0 });
-    Object.defineProperty(img, 'naturalHeight', { value: loaded ? 600 : 0 });
-    frame.appendChild(img);
-    document.body.appendChild(frame);
-    return frame;
+  const cardAt = (top: number, height: number) => {
+    const card = document.createElement('div');
+    card.getBoundingClientRect = () =>
+      ({ top, bottom: top + height, height, width: 320 }) as DOMRect;
+    return card;
   };
 
-  const open = (heroLoaded: boolean) => {
-    const row = framedPhoto(true);
-    transitionView(
-      () => {
-        row.remove();
-        framedPhoto(heroLoaded);
-      },
-      { motion: 'forward', morph: 'recipe' },
-    );
-  };
+  it('turns a card on its middle line', () => {
+    expect(setFlipAxis(cardAt(300, 90))).toBe(true);
+    expect(root.style.getPropertyValue('--flip-y')).toBe('345px');
+  });
 
-  // A list row's thumbnail blown up to the hero's size smears, then sharpens part way.
-  it('flies only the sharper snapshot when both ends are the whole photo', async () => {
+  it('declines a card off screen, where the flip would never be seen', () => {
+    expect(setFlipAxis(cardAt(-400, 90))).toBe(false);
+    expect(setFlipAxis(null)).toBe(false);
+    expect(root.style.getPropertyValue('--flip-y')).toBe('');
+  });
+
+  it('lets go of the line once the flip is over', async () => {
     const { finish } = fakeViewTransitions();
-    open(true);
-    expect(root.dataset.morphWhole).toBe('');
-
+    setFlipAxis(cardAt(300, 90));
+    transitionView(() => {}, { motion: 'flip-open' });
     finish(0);
     await settle();
-    expect(root.dataset.morphWhole).toBeUndefined();
-  });
-
-  it('keeps the cross-fade while the hero photo is still loading', () => {
-    fakeViewTransitions();
-    open(false);
-    expect(root.dataset.morphWhole).toBeUndefined();
+    expect(root.style.getPropertyValue('--flip-y')).toBe('');
   });
 });

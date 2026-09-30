@@ -204,6 +204,35 @@ describe('vault sort', () => {
     expect(groupEntries(byName, 'name')).toEqual([{ key: '', entries: byName }]);
   });
 
+  it('heads the other sorts with the category or cook filtered to', () => {
+    const byName = sortEntries(entries, { by: 'name', reversed: false }, 'pl');
+    const soups = byName.filter((e) => e.recipe.category === 'soups');
+    expect(groupEntries(soups, 'name', { ...NO_FILTER, category: 'soups' })).toEqual([
+      { key: 'soups', category: 'soups', entries: soups },
+    ]);
+    // Typed "kasia " on one recipe and "Kasia" on another: headed by the capitalised spelling.
+    const kasia = byName.filter((e) => authorKey(e.recipe) === 'kasia');
+    expect(groupEntries(kasia, 'changed', { ...NO_FILTER, author: 'kasia' })).toEqual([
+      { key: 'Kasia', cook: 'Kasia', entries: kasia },
+    ]);
+    const both = { ...NO_FILTER, category: 'mains' as const, author: 'kasia' };
+    expect(groupEntries(kasia, 'time', both)[0]).toMatchObject({
+      category: 'mains',
+      cook: 'Kasia',
+    });
+    expect(groupEntries([], 'name', both)).toEqual([]);
+  });
+
+  it('keeps the sort’s own headings when a filter narrows it too', () => {
+    const byCategory = sortEntries(entries, { by: 'category', reversed: false }, 'pl');
+    const groups = groupEntries(byCategory, 'category', { ...NO_FILTER, author: 'kasia' });
+    expect(groups.map((g) => [g.category, g.cook])).toEqual([
+      ['soups', undefined],
+      ['mains', undefined],
+      ['cakes', undefined],
+    ]);
+  });
+
   it('keeps a sort on the device as text, reading the first version’s sorts too', () => {
     expect(formatVaultSort(DEFAULT_SORT)).toBe('category');
     expect(formatVaultSort({ by: 'time', reversed: true })).toBe('time:reversed');

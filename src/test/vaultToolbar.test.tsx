@@ -318,20 +318,33 @@ describe('the vault toolbar', () => {
   it('heads each cook’s recipes with their name when sorted by cook', () => {
     render(<App />);
     fireEvent.click(choice(openMenu(t.sortRecipes), t.vaultSorts.cook));
-    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    expect(headings).toEqual(['Babcia Zosia', 'Kasia', 'Ola']);
+    const tabs = screen.getAllByRole('heading', { level: 2 });
+    expect(tabs).toHaveLength(3);
+    ['Babcia Zosia', 'Kasia', 'Ola'].forEach((name, i) =>
+      expect(tabs[i]).toHaveAccessibleName(name),
+    );
+  });
+
+  it('heads the recipes with the category or cook filtered to, whatever the sort', () => {
+    render(<App />);
+    fireEvent.click(choice(openMenu(t.sortRecipes), t.vaultSorts.name));
+    expect(screen.queryByRole('heading', { level: 2 })).toBeNull();
+
+    const filter = openMenu(t.filterRecipes);
+    fireEvent.click(option(unfold(filter, t.categoryLabel), t.recipeCategories.soups));
+    expect(screen.getByRole('heading', { level: 2 })).toHaveAccessibleName(
+      t.recipeCategories.soups,
+    );
   });
 
   it('starts as a list, switching to cards and back with a tap anywhere on the switch', () => {
     const { unmount } = render(<App />);
     const layout = screen.getByRole('button', { name: `${t.recipeLayout}: ${t.layoutList}` });
     expect(document.querySelectorAll('.vault-row')).toHaveLength(3);
-    expect(document.documentElement.dataset.vaultView).toBe('list');
     // Its list half is the one showing, so a tap there switches too.
     fireEvent.click(layout.querySelector('.vault-layout-icon.is-active')!);
     expect(layout).toHaveAccessibleName(`${t.recipeLayout}: ${t.layoutCards}`);
     expect(document.querySelectorAll('.vault-row')).toHaveLength(0);
-    expect(document.documentElement.dataset.vaultView).toBe('cards');
 
     unmount();
     render(<App />);

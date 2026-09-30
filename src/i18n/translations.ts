@@ -48,7 +48,6 @@ export interface UiTranslations {
   recipesShown: (n: number) => string;
   noMatches: string;
   showAllRecipes: string;
-  viewRecipe: string;
   ingredientsCount: (n: number) => string;
   thIngredient: string;
   thAmount: string;
@@ -391,7 +390,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     recipesShown: (n: number) => `${n} recipe${n === 1 ? '' : 's'}`,
     noMatches: 'No recipes match that.',
     showAllRecipes: 'Show all recipes',
-    viewRecipe: 'View Recipe →',
     ingredientsCount: (n: number) => `${n} ingredient${n === 1 ? '' : 's'}`,
     thIngredient: 'Ingredient',
     thAmount: 'Amount',
@@ -715,7 +713,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     recipesShown: (n: number) => `${n} ${plPlural(n, 'przepis', 'przepisy', 'przepisów')}`,
     noMatches: 'Żaden przepis tu nie pasuje.',
     showAllRecipes: 'Pokaż wszystkie przepisy',
-    viewRecipe: 'Zobacz przepis →',
     ingredientsCount: (n: number) => `${n} ${plPlural(n, 'składnik', 'składniki', 'składników')}`,
     thIngredient: 'Składnik',
     thAmount: 'Ilość',

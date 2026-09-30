@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useTheme } from './hooks/useTheme';
 import { useFontScale } from './hooks/useFontScale';
@@ -38,6 +38,8 @@ import {
 } from './services/storage';
 import {
   isOnScreen,
+  prefersReducedMotion,
+  setFlipAxis,
   transitionTheme,
   transitionView,
   type NavMotion,
@@ -77,10 +79,16 @@ const centreOf = (el: Element | null) => {
   return { x: left + width / 2, y: top + height / 2 };
 };
 
+// How long a tapped card takes to lift out of the box before it flips (index.css, data-lifted).
+const CARD_LIFT_MS = 200;
+
+/** Whether a recipe card can flip open and shut (a view transition, and motion welcome). */
+const canFlip = () => !!document.startViewTransition && !prefersReducedMotion();
+
 interface NavigateOptions {
   /** False when the browser already animated it (the iOS back swipe). */
   animated?: boolean;
-  /** False when the open recipe's card won't be there to morph into. */
+  /** False when the open recipe's card won't be there to flip back into. */
   morph?: boolean;
   /** How the page moves, when not the usual for where it's going. */
   motion?: NavMotion;
@@ -143,7 +151,7 @@ export default function App() {
   // Settings slides back to reveal it.
   const [vaultEntrance, setVaultEntrance] = useState(true);
   const mainScroll = useRef<Record<MainPage, number>>({ recipes: 0, makes: 0 });
-  // The recipe last opened from the vault: its card is where the photo morphs to and from.
+  // The recipe last opened from the vault: its card is the one that flips open and shut.
   const [lastRecipeId, setLastRecipeId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
@@ -158,15 +166,15 @@ export default function App() {
   const [restoredVersion, setRestoredVersion] = useState<RecipeVersion | null>(null);
   // Switching versions remounts the editor, which shouldn't slide in again.
   const [editorReopened, setEditorReopened] = useState(false);
-  // The open recipe page, which unrolls out of its photo and rolls back up into it.
+  // The open recipe page (its step photo viewer).
   const recipePage = useRef<RecipePageHandle>(null);
-  // Set once the recipe has unrolled: a back button grows out of the menu button.
+  // Set once the recipe has opened: a back button grows out of the menu button.
   const [backShown, setBackShown] = useState(false);
   // The recipe whose step photo is open full screen, if any: the back button takes the menu
   // button's place and closes it. Kept by id, so it can't outlive that recipe's page.
   const [photoOpenFor, setPhotoOpenFor] = useState<string | null>(null);
-  // While the recipe rolls up on its way back to the vault.
-  const leavingRecipe = useRef(false);
+  // A card lifting out of the box before it flips open: a second tap waits for it.
+  const liftingCard = useRef(false);
 
   // What the editor starts from: the recipe, or an earlier version's content on it.
   const editBase =
@@ -236,19 +244,53 @@ export default function App() {
   // Sub-pages (a recipe, Settings) sit one level above the main pages.
   const onSubPage = page === 'settings' || (page === 'recipes' && !!selectedRecipe);
 
-  const handleSelectRecipe = (id: string) => {
+  // Opening a recipe: its card lifts out of the box, flips over on its middle, and the recipe
+  // unfolds from the card's back (the flip motions in index.css). Then the back button springs
+  // out of the menu button.
+  const handleSelectRecipe = (id: string, card?: HTMLElement) => {
+    if (liftingCard.current) return;
+    // A card left lifted by a return cut short (another page change took over) drops back first.
+    dropFlippedCard();
     mainScroll.current.recipes = window.scrollY;
     markSeen(id);
     // Marks the tapped card before the browser snapshots the vault.
     flushSync(() => setLastRecipeId(id));
-    transitionView(
-      () => {
-        setBackShown(false);
-        setSelectedRecipeId(id);
-        jumpTo(0);
-      },
-      { motion: 'forward', morph: 'recipe' },
-    );
+    const open = (motion: NavMotion) =>
+      transitionView(
+        () => {
+          setBackShown(false);
+          setSelectedRecipeId(id);
+          jumpTo(0);
+        },
+        { motion, onFinished: () => setBackShown(true) },
+      );
+    if (!card || !canFlip() || !isOnScreen(card)) {
+      open('forward');
+      return;
+    }
+    liftingCard.current = true;
+    card.dataset.lifted = '';
+    window.setTimeout(() => {
+      liftingCard.current = false;
+      // The vault has gone meanwhile (the menu took the page elsewhere).
+      if (!card.isConnected) return;
+      open(setFlipAxis(card) ? 'flip-open' : 'forward');
+    }, CARD_LIFT_MS);
+  };
+
+  // Closing a recipe, its card is shown lifted, as it left, while the recipe folds onto it; it
+  // then flips back and drops into its place in the box. False where it isn't on screen.
+  const landFlippedCard = (): boolean => {
+    const card = document.querySelector<HTMLElement>('.vault-item.is-flip-target');
+    if (!card) return false;
+    card.dataset.lifted = 'landing';
+    if (setFlipAxis(card)) return true;
+    delete card.dataset.lifted;
+    return false;
+  };
+  const dropFlippedCard = () => {
+    const card = document.querySelector<HTMLElement>('.vault-item[data-lifted]');
+    if (card) delete card.dataset.lifted;
   };
 
   const navigateTo = (
@@ -259,22 +301,20 @@ export default function App() {
     const toDepth = target === 'settings' ? 1 : 0;
     const goingBack = toDepth < fromDepth;
     if (page !== 'settings' && !onSubPage) mainScroll.current[page] = window.scrollY;
-    // The recipe's photo shrinks back into its card, when it's in view to be seen doing so.
-    const morphsBack =
-      morph &&
-      target === 'recipes' &&
-      !!selectedRecipe &&
-      isOnScreen(document.querySelector('.detail-hero-img, .detail-hero-tile'));
-    const motion: NavMotion = morphsBack
-      ? 'back'
-      : (motionOverride ?? (toDepth > fromDepth ? 'forward' : goingBack ? 'back' : 'fade'));
+    // The recipe folds away onto its card, which flips back into the box (landFlippedCard).
+    const flipsBack =
+      morph && animated && target === 'recipes' && page === 'recipes' && !!selectedRecipe;
+    const motion: NavMotion =
+      flipsBack && canFlip()
+        ? 'flip-close'
+        : (motionOverride ?? (toDepth > fromDepth ? 'forward' : goingBack ? 'back' : 'fade'));
 
     transitionView(
       () => {
         flushSync(() => {
           alongside?.();
           setBackShown(false);
-          setVaultEntrance(!goingBack && !morphsBack);
+          setVaultEntrance(!goingBack && !flipsBack);
           setPage(target);
           if (target !== 'settings') setMainPage(target);
           setSelectedRecipeId(null);
@@ -282,8 +322,11 @@ export default function App() {
         // Only once the page is there: a shorter page it replaces (a recipe) can't scroll as
         // far, and the jump would land short of the spot.
         jumpTo(goingBack && target !== 'settings' ? mainScroll.current[target] : 0);
+        // Only now is the card there to measure. Out of sight, the vault simply fades in.
+        if (motion === 'flip-close' && !landFlippedCard())
+          document.documentElement.dataset.nav = 'fade';
       },
-      { motion, morph: morphsBack ? 'recipe' : undefined, animated },
+      { motion, animated, onFinished: motion === 'flip-close' ? dropFlippedCard : undefined },
     );
   };
 
@@ -301,37 +344,11 @@ export default function App() {
     setVaultView(view);
     setStoredVaultView(view);
   };
-  // The photo morph reads the layout from here (index.css): a list row's photo has its own
-  // corners, and the recipe's photo flies back into it after the vault has been unmounted.
-  useEffect(() => {
-    document.documentElement.dataset.vaultView = vaultView;
-  }, [vaultView]);
-
-  const latestNavigateTo = useRef(navigateTo);
-  const onRecipePage = useRef(false);
-  useEffect(() => {
-    latestNavigateTo.current = navigateTo;
-    onRecipePage.current = page === 'recipes' && !!selectedRecipe;
-  });
-
-  // Back from a recipe: it rolls up into its photo (as the back button tucks into the menu
-  // button), then the photo flies home to its card as the vault fades in.
+  // Back from a recipe: it folds away onto its card, as the back button tucks into the menu
+  // button, and the card flips back into its place in the box.
   const leaveRecipe = (animated = true) => {
-    if (leavingRecipe.current) return;
     setBackShown(false);
-    const rolling = animated ? recipePage.current?.rollUp() : null;
-    if (!rolling) {
-      navigateTo('recipes', { animated });
-      return;
-    }
-    leavingRecipe.current = true;
-    void rolling.then(() => {
-      leavingRecipe.current = false;
-      // Something else already left the recipe while it rolled up.
-      if (!onRecipePage.current) return;
-      // Where the photo can't fly home (scrolled off screen), the vault simply fades in.
-      latestNavigateTo.current('recipes', { motion: 'fade' });
-    });
+    navigateTo('recipes', { animated });
   };
 
   // From a recipe or Settings, the phone's back gesture returns to the last main page.
@@ -480,7 +497,7 @@ export default function App() {
             recipe={selectedRecipe}
             language={language}
             ref={recipePage}
-            onUnrolled={() => setBackShown(true)}
+            unroll={false}
             onPhotoOpenChange={(open) => setPhotoOpenFor(open ? selectedRecipe.id : null)}
             draftVersion={
               draftFor(drafts, selectedRecipe.id) ? draftVersion(selectedRecipe) : undefined
@@ -500,7 +517,7 @@ export default function App() {
             onViewChange={changeVaultView}
             isSeen={(recipe) => vaultSeen.has(recipe.id) || isOwnRecipe(recipe, currentUser)}
             animateIn={vaultEntrance}
-            morphRecipeId={lastRecipeId}
+            flipRecipeId={lastRecipeId}
             onSelectRecipe={handleSelectRecipe}
             drafts={newRecipeDrafts(drafts)}
             onOpenDraft={(draft, from) => openEditor(null, draft, from)}

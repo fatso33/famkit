@@ -10,6 +10,8 @@ interface VaultHeaderProps {
   entering: boolean;
   /** The toolbar, pinned under the title while the vault scrolls. */
   children: React.ReactNode;
+  /** The pinned divider tab (VaultShelf), under the toolbar and tucking up with it. */
+  shelf?: React.ReactNode;
   t: UiTranslations;
 }
 
@@ -31,10 +33,19 @@ const SHOW_AFTER_PX = 6;
  * flourish and count fold away once the page leaves the top, and draw in again only when it is
  * back at the very top, not while the banner is still sliding into place.
  *
+ * Under the toolbar hangs the pinned divider tab (the shelf), which rides up with the toolbar
+ * as it tucks. The list's cards lean back and slip under it (index.css).
+ *
  * All of this is set on the elements directly (data attributes), not in React state, so
  * scrolling never re-renders the vault.
  */
-export const VaultHeader: React.FC<VaultHeaderProps> = ({ counts, entering, children, t }) => {
+export const VaultHeader: React.FC<VaultHeaderProps> = ({
+  counts,
+  entering,
+  children,
+  shelf,
+  t,
+}) => {
   const mastheadRef = useRef<HTMLElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const titleRef = useRef<HTMLSpanElement>(null);
@@ -55,6 +66,9 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({ counts, entering, chil
     let frame = 0;
     // The scroll at which the bar pins, where the title has fully condensed.
     let pin = 0;
+    // How far below the top the bar sticks (the pinned title's height), read once per layout
+    // change rather than on every frame of a scroll.
+    let stuckAt = 0;
     const condenses =
       typeof CSS !== 'undefined' &&
       CSS.supports?.('animation-timeline: scroll()') === true &&
@@ -64,6 +78,7 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({ counts, entering, chil
     // any of it changes size (fonts arriving, the language or text size changing).
     const measure = () => {
       const y = window.scrollY;
+      stuckAt = parseFloat(getComputedStyle(bar).top) || 0;
       const box = heading.getBoundingClientRect();
       const stripBox = strip.getBoundingClientRect();
       const geometry = condenseGeometry({
@@ -80,7 +95,7 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({ counts, entering, chil
         },
         strip: { left: stripBox.left, width: stripBox.width, height: stripBox.height },
         mastheadBottom: masthead.getBoundingClientRect().bottom + y,
-        stuckAt: parseFloat(getComputedStyle(bar).top) || 0,
+        stuckAt,
       });
       pin = geometry.pin;
       for (const el of [masthead, bar]) {
@@ -103,7 +118,6 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({ counts, entering, chil
       masthead.toggleAttribute('data-away', y > 1);
 
       // Pinned once the bar has reached its sticky offset (the pinned title's height).
-      const stuckAt = parseFloat(getComputedStyle(bar).top) || 0;
       const pinned = bar.getBoundingClientRect().top <= stuckAt + 0.5;
       bar.toggleAttribute('data-condensed', pinned);
 
@@ -196,7 +210,10 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({ counts, entering, chil
           </span>
           <HeartFlourish className="vault-bar-flourish" />
         </div>
-        <div className="vault-bar-tools">{children}</div>
+        <div className="vault-bar-tools">
+          <div className="vault-bar-toolset">{children}</div>
+          <div className="vault-bar-shelf">{shelf}</div>
+        </div>
       </div>
     </>
   );
