@@ -69,10 +69,14 @@
         --radius-lg: 20px;
         --radius-xl: 24px;
         --radius-full: 9999px;
+        /* The light catching an index card's top edge in the Recipe Box: bright on cream paper;
+           at night only a faint edge in the page's own ink colour, so it shows the card's edge
+           without drawing the eye. */
+        --card-sheen: rgb(255 255 255 / 0.9);
       }
       [data-theme="dark"] {
         --weight-body: 400;
-        --card-sheen: rgb(255 255 255 / 0.05);
+        --card-sheen: color-mix(in srgb, var(--text-primary) 10%, transparent);
       }
 
       /* ── Seasons ──
@@ -375,8 +379,6 @@
         --morph-duration: 0.56s;
         /* How long a recipe card takes to flip over before the recipe unfolds from its back. */
         --flip-turn: 0.28s;
-        /* The light catching an index card's top edge in the Recipe Box. */
-        --card-sheen: rgb(255 255 255 / 0.9);
         /* The floating menu button (and the back button beside it). The menu panel, the toast
            and the page's bottom padding are placed from it. */
         --fab-size: 4rem;

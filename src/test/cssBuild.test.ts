@@ -26,6 +26,20 @@ describe('production CSS', () => {
     expect(blurring.every((b) => b.includes('-webkit-backdrop-filter:'))).toBe(true);
   });
 
+  // `:root` and `[data-theme="dark"]` weigh the same, so whichever comes last wins. The light
+  // card edge once came after the dark one, and dark mode drew a bright white line on every card.
+  it('lets dark mode override the light card edge', () => {
+    const sheens = [...built.matchAll(/([^{}]+)\{([^{}]*--card-sheen:[^{}]*)\}/g)].map((m) => ({
+      dark: m[1].includes('data-theme'),
+      at: m.index ?? 0,
+    }));
+    const light = sheens.filter((s) => !s.dark);
+    const dark = sheens.filter((s) => s.dark);
+    expect(light.length).toBeGreaterThan(0);
+    expect(dark.length).toBeGreaterThan(0);
+    expect(Math.max(...light.map((s) => s.at))).toBeLessThan(Math.min(...dark.map((s) => s.at)));
+  });
+
   // It expands a shorthand listing two animations into longhands with a 0s duration. A
   // scroll-driven animation with a 0s duration is finished before it starts, which left the
   // vault's big title shrunk and hidden at the top of the page.
