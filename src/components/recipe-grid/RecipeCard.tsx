@@ -24,7 +24,7 @@ interface RecipeCardProps {
 
 /**
  * A recipe in the cards layout: a photo card filed in the Recipe Box, in front of the one above
- * it, with the photo mounted at its top and the name over a ruled line.
+ * it, with the photo mounted at its top, the name over a ruled line, and a few lines about it.
  */
 export const RecipeCard: React.FC<RecipeCardProps> = ({
   recipe: rawRecipe,
@@ -39,6 +39,8 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
   const time = recipeTime(recipe);
   const estimatedTime = time.manual ? t.totalTime(time.minutes) : t.estimatedTime(time.minutes);
   const photo = recipePhoto(recipe);
+  const description =
+    recipe.cardDescription || recipe.tips || recipe.notes || t.cardDescriptionFallback;
 
   return (
     <div
@@ -87,6 +89,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
           <span aria-hidden="true">·</span>
           <span className="card-time">{estimatedTime}</span>
         </div>
+        <p className="card-desc">{description}</p>
       </div>
     </div>
   );

@@ -2349,6 +2349,20 @@
         color: var(--text-primary);
       }
 
+      /* A few lines about the recipe, at most three, so the cards in the stack keep an even
+         rhythm however long a recipe's tip or note runs. */
+      .card-desc {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+        line-clamp: 3;
+        overflow: hidden;
+        margin: 0.55rem 0 0;
+        font-size: 0.9375rem;
+        line-height: 1.5;
+        color: var(--text-secondary);
+      }
+
       /* The pinned divider tab (VaultShelf). It hangs under the toolbar inside the bar, reaching
          the bar's full width so the cards slip under it everywhere, and rides up with the
          toolbar as it tucks. It appears at once, exactly over the list's first tab, as if that

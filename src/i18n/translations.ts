@@ -48,6 +48,8 @@ export interface UiTranslations {
   recipesShown: (n: number) => string;
   noMatches: string;
   showAllRecipes: string;
+  /** On a photo card whose recipe has no description, tip or note to show. */
+  cardDescriptionFallback: string;
   ingredientsCount: (n: number) => string;
   thIngredient: string;
   thAmount: string;
@@ -390,6 +392,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     recipesShown: (n: number) => `${n} recipe${n === 1 ? '' : 's'}`,
     noMatches: 'No recipes match that.',
     showAllRecipes: 'Show all recipes',
+    cardDescriptionFallback: 'A time-tested family favorite.',
     ingredientsCount: (n: number) => `${n} ingredient${n === 1 ? '' : 's'}`,
     thIngredient: 'Ingredient',
     thAmount: 'Amount',
@@ -713,6 +716,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     recipesShown: (n: number) => `${n} ${plPlural(n, 'przepis', 'przepisy', 'przepisów')}`,
     noMatches: 'Żaden przepis tu nie pasuje.',
     showAllRecipes: 'Pokaż wszystkie przepisy',
+    cardDescriptionFallback: 'Tradycyjny, sprawdzony przepis rodzinny.',
     ingredientsCount: (n: number) => `${n} ${plPlural(n, 'składnik', 'składniki', 'składników')}`,
     thIngredient: 'Składnik',
     thAmount: 'Ilość',
