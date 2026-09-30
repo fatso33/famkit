@@ -125,6 +125,18 @@ export interface FormState {
   sections: SectionState[];
   /** The first numbered step's number: 1, or 0 for a recipe that starts at 0. */
   numberFrom: number;
+  /** The web page the recipe was brought in from; empty when it was typed. */
+  sourceUrl: string;
+}
+
+/** A web address as kept with a recipe: http(s) only, else empty. */
+export function webAddress(text: string): string {
+  try {
+    const url = new URL(text.trim());
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : '';
+  } catch {
+    return '';
+  }
 }
 
 /** Words the editor needs to turn an older recipe's extra blocks into steps. */
@@ -221,6 +233,7 @@ export const emptyForm = (): FormState => ({
   ingredientRows: [emptyRow()],
   sections: [emptySection()],
   numberFrom: 1,
+  sourceUrl: '',
 });
 
 // --- From a recipe --------------------------------------------------------------------------
@@ -397,6 +410,7 @@ export function formFromRecipe(recipe: Recipe, labels: LegacyLabels): FormState 
         : [emptyRow()],
     sections,
     numberFrom: firstStepNumber(steps),
+    sourceUrl: webAddress(recipe.sourceUrl ?? ''),
   };
 }
 
@@ -488,6 +502,7 @@ export function formFromDraft(raw: unknown): FormState | null {
   form.manualMinutes =
     typeof raw.manualMinutes === 'number' && raw.manualMinutes > 0 ? raw.manualMinutes : null;
   form.numberFrom = raw.numberFrom === 0 ? 0 : 1;
+  form.sourceUrl = webAddress(str(raw.sourceUrl));
 
   const rows = list(raw.ingredientRows).map(draftRow);
   if (rows.length > 0) form.ingredientRows = rows;
@@ -677,6 +692,7 @@ export function formToRecipe(form: FormState) {
     notes: form.notes.trim() || undefined,
     steps: methodToSteps(form.sections, form.numberFrom),
     manualMinutes: form.manualMinutes ?? undefined,
+    sourceUrl: form.sourceUrl || undefined,
     // Now steps in the method, so the old blocks go.
     laminationDirective: undefined,
     bakingOptions: undefined,
@@ -876,47 +892,322 @@ export function editorNumbers(sections: SectionState[], numberFrom: number) {
 
 const lines = (text: string) =>
   text
-    .split('\n')
+    .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
 
+// A list marker at the start of a line, tick boxes from recipe sites included.
+const BULLET = /^[-•*·–—▢☐□✓]\s+/;
+// A line that only names what follows: "For the sauce:".
+const HEADING = /^(?!\d)([^:]{1,60}):$/;
+
+const UNITS =
+  'cups?|tsp|teaspoons?|tbsp|tablespoons?|g|grams?|ml|kg|l|lit(?:er|re)s?|oz|ounces?|lbs?|pounds?|' +
+  'cloves?|slices?|pinch(?:es)?|handfuls?|cans?|sticks?|bunch(?:es)?|sprigs?|packages?|' +
+  'szklank[aiy]?|łyżeczk[aiy]|łyżeczek|łyż(?:ka|ki|ek)|sztuk[aiy]?|szt\\.?|dag|kostk[aiy]|' +
+  'opakowani[ae]|szczypt[ay]?|ząbk(?:i|ów)|ząbek|puszk[aiy]|pęcz(?:ek|ki|ków)|garś(?:ć|ci)|' +
+  'litr(?:y|ów|a)?|dozen';
+// A number ("300", "1 1/2", "2-3", "½") with its unit, if it has one.
+const QUANTITY = String.raw`(?:\d|[¼-¾⅐-⅞])[\d\s/.,¼-¾⅐-⅞–-]*(?:\s*(?:${UNITS})(?![\p{L}\d]))?`;
+// "300 g flour", "1 1/2 cups milk", "1/2 to 2/3 cup water", "1 cup plus 2 tbsp sugar": the
+// amount (one quantity, or several joined by "to", "and", "plus"), then the name.
+const LEADING_AMOUNT = new RegExp(
+  String.raw`^(${QUANTITY}(?:\s*(?:to|and|plus|or|do|i|lub)\s+${QUANTITY})*)\s+(.+)$`,
+  'iu',
+);
+
+// Tidies what taking brackets out of a name leaves behind: "milk , whole" and a trailing comma.
+const tidyName = (name: string) =>
+  name
+    .replace(/\s+([,;])/g, '$1')
+    .replace(/[,;]\s*$/, '')
+    .trim();
+
 /**
- * Ingredient rows from pasted lines: "Flour - 300 g", "Flour: 300 g" or "300 g flour". A line's
- * list marker ("- ", "• ") is dropped.
+ * Where the text's outermost brackets open and close ("(a (b) c)" is one pair), or null when
+ * its brackets don't pair up, in which case nothing about them is assumed.
+ */
+function bracketPairs(text: string): { start: number; end: number }[] | null {
+  const pairs: { start: number; end: number }[] = [];
+  const closers: string[] = [];
+  let start = 0;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === '(' || char === '[') {
+      if (closers.length === 0) start = i;
+      closers.push(char === '(' ? ')' : ']');
+    } else if (char === ')' || char === ']') {
+      if (closers.pop() !== char) return null;
+      if (closers.length === 0) pairs.push({ start, end: i + 1 });
+    }
+  }
+  return closers.length === 0 ? pairs : null;
+}
+
+/** A note without the brackets some sites double up ("((optional))") or a comma left in front. */
+function unwrapped(note: string): string {
+  const text = note.trim().replace(/^[,;]\s*/, '');
+  const pairs = bracketPairs(text);
+  return pairs?.length === 1 && pairs[0].start === 0 && pairs[0].end === text.length
+    ? unwrapped(text.slice(1, -1))
+    : text;
+}
+
+/** The text with what's in brackets blanked out, so a ":" or " - " inside them isn't a divider. */
+function outsideBrackets(text: string): string {
+  let bare = text;
+  for (const { start, end } of bracketPairs(text) ?? []) {
+    bare = bare.slice(0, start) + ' '.repeat(end - start) + bare.slice(end);
+  }
+  return bare;
+}
+
+/**
+ * One ingredient row from a line. A line that starts with a quantity is "300 g flour": the
+ * amount, then the name. Otherwise "Flour - 300 g" or "Flour: 300 g" is the name, then the
+ * amount (`strict`, for lines a website wrote rather than the cook: only when what follows
+ * starts with a quantity, since sites use dashes and colons for anything). What's in brackets
+ * after the name becomes the row's note ("Flour (sifted)"); brackets straight after the amount
+ * stay with it ("1 can (400 g)"). Nothing is dropped or reworded.
+ */
+export function ingredientFromLine(line: string, strict = false): IngredientRowState {
+  const clean = line.trim().replace(BULLET, '');
+  const bare = outsideBrackets(clean);
+  const row = emptyRow();
+  const leading = clean.match(LEADING_AMOUNT);
+  const dash = bare.indexOf(' - ');
+  const colon = bare.indexOf(':');
+  const divider = dash > 0 ? { at: dash, length: 3 } : colon > 0 ? { at: colon, length: 1 } : null;
+  const after = divider ? clean.slice(divider.at + divider.length).trim() : '';
+  if (leading) {
+    row.amount = leading[1].trim();
+    row.name = leading[2].trim();
+    // "1 can (400 g) tomatoes": the size belongs to the amount.
+    const size = bracketPairs(row.name)?.[0];
+    if (size?.start === 0 && row.name.slice(size.end).trim()) {
+      row.amount = `${row.amount} ${row.name.slice(0, size.end)}`;
+      row.name = row.name.slice(size.end).trim();
+    }
+  } else if (divider && after && (!strict || /^(?:\d|[¼-¾⅐-⅞])/.test(after))) {
+    row.name = clean.slice(0, divider.at).trim();
+    row.amount = after;
+  } else {
+    row.name = clean;
+  }
+
+  const pairs = bracketPairs(row.name) ?? [];
+  let name = row.name;
+  for (const { start, end } of [...pairs].reverse()) name = name.slice(0, start) + name.slice(end);
+  name = tidyName(name.replace(/\s{2,}/g, ' '));
+  // A name that is all brackets stays as written.
+  if (name && pairs.length > 0) {
+    row.note = pairs
+      .map(({ start, end }) => unwrapped(row.name.slice(start + 1, end - 1)))
+      .filter(Boolean)
+      .join(', ');
+    row.name = name;
+    row.showNote = Boolean(row.note);
+  }
+  return row;
+}
+
+/**
+ * Ingredient rows from pasted lines (see ingredientFromLine). A line that only names a part of
+ * the list ("For the sauce:") becomes a heading.
  */
 export function pastedIngredients(text: string): IngredientRowState[] {
   return lines(text).map((line) => {
-    const clean = line.replace(/^[-•*·]\s+/, '');
-    const row = emptyRow();
-    const dash = clean.split(' - ');
-    const colon = clean.indexOf(':');
-    const leading = clean.match(
-      /^([\d\s/.,¼-¾⅐-⅞]+(?:\s*(?:cups?|tsp|teaspoons?|tbsp|tablespoons?|g|ml|kg|l|oz|lbs?|cloves?|slices?|pinch(?:es)?|handfuls?|szklank[aiy]?|łyżeczk[aiy]|łyżeczek|łyż(?:ka|ki|ek)|sztuk[aiy]?|szt\.?|dag|kostk[aiy]|opakowani[ae])\b)?)\s+(.+)$/i,
-    );
-    if (dash.length > 1) {
-      row.name = dash[0].trim();
-      row.amount = dash.slice(1).join(' - ').trim();
-    } else if (colon > 0) {
-      row.name = clean.slice(0, colon).trim();
-      row.amount = clean.slice(colon + 1).trim();
-    } else if (leading) {
-      row.amount = leading[1].trim();
-      row.name = leading[2].trim();
-    } else {
-      row.name = clean;
-    }
-    return row;
+    const heading = line.replace(BULLET, '').match(HEADING);
+    return heading ? headingRow(heading[1].trim()) : ingredientFromLine(line);
   });
 }
 
-/** Steps from pasted lines, without the numbering they came with ("1.", "2)", "Step 3:"). */
-export function pastedSteps(text: string): StepState[] {
-  return lines(text).map((line) =>
-    emptyStep(
-      line
-        .replace(/^(?:step|krok)\s*\d+\s*[:.)-]?\s*/i, '')
-        .replace(/^\d+\s*[.)]\s*/, '')
-        .replace(/^[-•*·]\s+/, ''),
-    ),
-  );
+interface LineMark {
+  /** "part" is a lettered part of a numbered step: "1a)". */
+  kind: 'number' | 'part' | 'letter' | 'bullet' | 'none';
+  text: string;
+}
+
+/** What a method line starts with, and its text without it. */
+function markOf(line: string): LineMark {
+  const part = line.match(/^\d{1,2}[a-z]\s*[.)]\s*(?=\S)/i);
+  if (part) return { kind: 'part', text: line.slice(part[0].length) };
+  const number =
+    line.match(/^(?:step|krok)\s*\d{1,2}\s*[:.)–-]?\s*/i) ??
+    // "1. Mix", "2) Knead", "3.Bake", but not "1.5 cups".
+    line.match(/^\d{1,2}\s*[.):]\s+/) ??
+    line.match(/^\d{1,2}[.)](?=[^\d\s])/);
+  if (number) return { kind: 'number', text: line.slice(number[0].length) };
+  const letter = line.match(/^[a-z]\s*[.)]\s+/i);
+  if (letter) return { kind: 'letter', text: line.slice(letter[0].length) };
+  const bullet = line.match(BULLET);
+  if (bullet) return { kind: 'bullet', text: line.slice(bullet[0].length) };
+  return { kind: 'none', text: line };
+}
+
+/**
+ * One step from text known to be a single step (a recipe site marks its steps itself): its
+ * number is dropped, lettered or bulleted lines under it become substeps, and other lines are
+ * the rest of its text. Null when there's nothing in it.
+ */
+export function stepFromText(text: string): StepState | null {
+  const [first, ...rest] = lines(text);
+  if (!first) return null;
+  const head = markOf(first);
+  const step = emptyStep(head.kind === 'number' || head.kind === 'bullet' ? head.text : first);
+  for (const line of rest) {
+    const mark = markOf(line);
+    const last = step.substeps.at(-1);
+    if (mark.kind !== 'none' && step.substeps.length < MAX_SUBSTEPS) {
+      step.substeps.push(textItem(mark.text));
+    } else if (last) last.text = `${last.text} ${line}`;
+    else step.text = `${step.text} ${line}`;
+  }
+  return step.text.trim() ? step : null;
+}
+
+/** A pasted run of steps, under its heading (empty for none). */
+export interface PastedSection {
+  title: string;
+  steps: StepState[];
+}
+
+/**
+ * The method from pasted text. It reads how the text is laid out: numbered steps ("1.", "2)",
+ * "Step 3:"), lettered parts under them ("a)", "1a.") as substeps, dashes and bullets (steps on
+ * their own, substeps under a numbered step), a line that only names what follows ("For the
+ * icing:") as a section heading, and a line with no marker as the rest of the step above it.
+ * Text with no markers at all is one step per line. The words stay as written.
+ */
+export function pastedMethod(text: string): PastedSection[] {
+  const marked = lines(text).map(markOf);
+  const kinds = new Set(marked.map((m) => m.kind));
+  const numbered = kinds.has('number') || kinds.has('part');
+  // One marked line among plain ones is a stray dash or number, not a layout.
+  const structured = marked.filter((m) => m.kind !== 'none').length >= 2;
+
+  const sections: PastedSection[] = [{ title: '', steps: [] }];
+  const steps = () => sections.at(-1)!.steps;
+  // The step that lines are being added to, and whether a numbered line began it.
+  const at: { open: StepState | null; byNumber: boolean } = { open: null, byNumber: false };
+  const start = (stepText: string, byNumber = false) => {
+    at.open = emptyStep(stepText);
+    at.byNumber = byNumber;
+    steps().push(at.open);
+  };
+  const addPart = (partText: string) => {
+    if (at.open && at.open.substeps.length < MAX_SUBSTEPS) {
+      at.open.substeps.push(textItem(partText));
+    } else start(partText);
+  };
+
+  for (const mark of marked) {
+    if (!structured) {
+      start(mark.text);
+      continue;
+    }
+    // In a numbered list only numbers start steps; otherwise the bullets do, or the letters.
+    const startsStep =
+      mark.kind === 'number' ||
+      (!numbered && (mark.kind === 'bullet' || (mark.kind === 'letter' && !kinds.has('bullet'))));
+    if (startsStep) {
+      start(mark.text, mark.kind === 'number');
+    } else if (mark.kind === 'part') {
+      // "1a" under a "1." line is its substep; with no such line, each part is a step.
+      if (at.byNumber) addPart(mark.text);
+      else start(mark.text);
+    } else if (mark.kind === 'letter' || mark.kind === 'bullet') {
+      addPart(mark.text);
+    } else if (HEADING.test(mark.text) || (mark.text.length <= 60 && ALTERNATIVE.test(mark.text))) {
+      const title = mark.text.replace(/:$/, '').trim();
+      if (steps().length === 0) sections.at(-1)!.title = title;
+      else sections.push({ title, steps: [] });
+      at.open = null;
+      at.byNumber = false;
+    } else if (at.open) {
+      // A wrapped line: the rest of the step (or substep) above it.
+      const last = at.open.substeps.at(-1);
+      if (last) last.text = `${last.text} ${mark.text}`;
+      else at.open.text = `${at.open.text} ${mark.text}`;
+    } else {
+      // Words before the first step: unnumbered text.
+      steps().push({ ...emptyStep(mark.text), plain: true });
+    }
+  }
+  return foldForks(sections.filter((section) => section.steps.length > 0));
+}
+
+// "Option 1: Oven", "Wariant B", "Method 2 - Air fryer": one of several ways to do the same thing.
+const ALTERNATIVE =
+  /^(?:option|opcja|wariant|method|metoda|sposób|version|wersja)\s*(\d|[a-c])\s*(?:[:.)–-]\s*(.*))?$/i;
+const MAX_LABEL = 24;
+
+/**
+ * Sections headed as alternatives of each other ("Option 1", "Option 2") become one step with
+ * a path for each, which is how the recipe page offers a choice. Only a run of two or three,
+ * counted from 1 (or A), of plain steps: anything else stays as the sections it was.
+ */
+export function foldForks(sections: PastedSection[]): PastedSection[] {
+  const result: PastedSection[] = [];
+  for (let i = 0; i < sections.length; i++) {
+    const run: { label: string; steps: StepState[] }[] = [];
+    while (i + run.length < sections.length) {
+      const section = sections[i + run.length];
+      const match = section.title.match(ALTERNATIVE);
+      const expected = [String(run.length + 1), 'abc'[run.length]];
+      if (!match || !expected.includes(match[1].toLowerCase())) break;
+      if (section.steps.length === 0) break;
+      if (section.steps.some((s) => s.plain || s.fork || s.substeps.length > 0)) break;
+      const name = (match[2] ?? '').trim();
+      const counted = section.title.slice(0, section.title.length - (match[2] ?? '').length);
+      run.push({
+        label: name && name.length <= MAX_LABEL ? name : counted.replace(/[\s:.)–-]+$/, '') || name,
+        steps: section.steps,
+      });
+    }
+    if (run.length < 2 || run.length > MAX_PATHS) {
+      result.push(sections[i]);
+      continue;
+    }
+    const first = run[0].steps[0];
+    const fork: ForkState = {
+      active: 0,
+      paths: run.map(({ label, steps }) => ({
+        ...emptyPath(steps[0].text),
+        label,
+        steps: steps.slice(1).map((s) => textItem(s.text)),
+      })),
+    };
+    const forked = { ...emptyStep(first.text), fork };
+    // The choice joins the steps above it, in their section.
+    const above = result.at(-1);
+    if (above) above.steps.push(forked);
+    else result.push({ title: '', steps: [forked] });
+    i += run.length - 1;
+  }
+  return result;
+}
+
+/** How many steps a pasted method has, its paths' own steps not counted. */
+export const pastedStepCount = (pasted: PastedSection[]) =>
+  pasted.reduce((n, section) => n + section.steps.length, 0);
+
+/**
+ * The method with pasted sections added after it: steps with no heading carry on the last
+ * section, each heading starts a section, and a section with nothing written yet is filled.
+ */
+export function addPastedMethod(sections: SectionState[], pasted: PastedSection[]): SectionState[] {
+  const next = sections.length > 0 ? [...sections] : [emptySection()];
+  for (const section of pasted) {
+    const last = next[next.length - 1];
+    const blank = last.steps.every((s) => !s.text.trim() && !s.fork);
+    if (blank && (!last.title.trim() || !section.title)) {
+      next[next.length - 1] = { ...last, title: section.title || last.title, steps: section.steps };
+    } else if (!section.title) {
+      next[next.length - 1] = { ...last, steps: [...last.steps, ...section.steps] };
+    } else {
+      next.push({ ...emptySection(section.title), steps: section.steps });
+    }
+  }
+  return next;
 }

@@ -210,6 +210,8 @@ export interface Recipe {
   notes?: string;
   /** The recipe's total time in minutes, when the author set it; otherwise it's estimated. */
   manualMinutes?: number;
+  /** The web page it was brought in from, when it was. Kept for later; not shown. */
+  sourceUrl?: string;
   /** Language of the top-level text fields. Missing on older records, which are English. */
   sourceLanguage?: Language;
   translations?: RecipeTranslations;

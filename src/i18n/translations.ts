@@ -264,6 +264,33 @@ export interface UiTranslations {
   pasteAdd: string;
   pastedIngredients: (n: number) => string;
   pastedSteps: (n: number) => string;
+  /** Pasting both at once: "3 ingredients and 4 steps added". */
+  pastedBoth: (ingredients: number, steps: number) => string;
+  /** The paste sheet's two sources, and the website one's fields. */
+  pasteFrom: string;
+  pasteFromWebsite: string;
+  pasteFromText: string;
+  pasteUrlLabel: string;
+  pasteUrlFromClipboard: string;
+  pasteHelpWebsite: string;
+  /** Shown with it when there's already something written in the form. */
+  pasteWebsiteReplaces: string;
+  clipboardUnavailable: string;
+  importing: string;
+  importDone: string;
+  /** The page doesn't state its recipe as data, so it was read from under its headings. */
+  importDoneGuessed: string;
+  /** The page shares its ingredients without their amounts. */
+  importDoneNoAmounts: string;
+  /** In the photo's place while a page's picture is on its way, and if it never arrives. */
+  importPhotoLoading: string;
+  importPhotoFailed: string;
+  importErrors: Record<
+    'badAddress' | 'offline' | 'refused' | 'busy' | 'notAllowed' | 'noRecipe' | 'failed',
+    string
+  >;
+  /** The yield line of a recipe whose page gives only a number of servings. */
+  importServings: (n: number) => string;
   discardTitle: string;
   discardBody: string;
   discard: string;
@@ -584,12 +611,43 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     pasteTitle: 'Paste a recipe',
     pasteInto: 'Add to',
     stepsHeading: 'Steps',
-    pasteHelpIngredients: 'One ingredient per line, like “Flour - 300 g”.',
-    pasteHelpSteps: 'One step per line. Numbers at the start of a line are left out.',
+    pasteHelpIngredients:
+      'One ingredient per line, like “Flour - 300 g” or “2 cups flour”. Words in brackets after the name become its note, and a line ending in a colon becomes a heading.',
+    pasteHelpSteps:
+      'Numbers, letters and dashes are read for you: “1.” or “2)” starts a step, and “a)”, “1a” or dashes under a step become its substeps. With none of these, each line is a step.',
     pasteTextLabel: 'Text to paste',
     pasteAdd: 'Add',
     pastedIngredients: (n: number) => `${n} ingredient${n === 1 ? '' : 's'} added`,
     pastedSteps: (n: number) => `${n} step${n === 1 ? '' : 's'} added`,
+    pastedBoth: (ingredients: number, steps: number) =>
+      `${ingredients} ingredient${ingredients === 1 ? '' : 's'} and ${steps} step${steps === 1 ? '' : 's'} added`,
+    pasteFrom: 'Paste from',
+    pasteFromWebsite: 'Website',
+    pasteFromText: 'Text',
+    pasteUrlLabel: 'Recipe page address',
+    pasteUrlFromClipboard: 'Paste the address you copied',
+    pasteHelpWebsite:
+      'The name, photo, ingredients and steps are filled in from the page, for you to check before saving.',
+    pasteWebsiteReplaces: 'This replaces what you’ve written so far.',
+    clipboardUnavailable: 'Couldn’t read what you copied. Press and hold the field to paste.',
+    importing: 'Reading…',
+    importDone: 'Recipe filled in. Look it over before saving.',
+    importDoneGuessed:
+      'Recipe filled in from the page’s headings, as this site doesn’t list it the usual way. Check it carefully before saving.',
+    importDoneNoAmounts:
+      'Recipe filled in, but this site doesn’t share its amounts. Add them before saving.',
+    importPhotoLoading: 'Fetching the photo…',
+    importPhotoFailed: 'The page’s photo couldn’t be fetched. You can add one yourself.',
+    importErrors: {
+      badAddress: 'That doesn’t look like a web address.',
+      offline: 'You’re offline. Connect to the internet and try again.',
+      refused: 'That site wouldn’t share the page. Try pasting the recipe as text.',
+      busy: 'Too many recipes at once. Wait a minute and try again.',
+      notAllowed: 'Sign in with your family account to add recipes from websites.',
+      noRecipe: 'No recipe could be read from that page. Try pasting it as text.',
+      failed: 'The recipe couldn’t be fetched. Try again in a moment.',
+    },
+    importServings: (n: number) => `For ${n} serving${n === 1 ? '' : 's'}:`,
     discardTitle: 'Discard your changes?',
     discardBody: "Closing now loses what you've changed since you opened the recipe.",
     discard: 'Discard',
@@ -910,13 +968,44 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     pasteTitle: 'Wklej przepis',
     pasteInto: 'Dodaj do',
     stepsHeading: 'Kroki',
-    pasteHelpIngredients: 'Jeden składnik w każdej linii, np. „Mąka - 300 g”.',
-    pasteHelpSteps: 'Jeden krok w każdej linii. Numery na początku linii zostaną pominięte.',
+    pasteHelpIngredients:
+      'Jeden składnik w każdej linii, np. „Mąka - 300 g” albo „2 szklanki mąki”. Słowa w nawiasie po nazwie stają się uwagą do składnika, a linia zakończona dwukropkiem staje się nagłówkiem.',
+    pasteHelpSteps:
+      'Numery, litery i myślniki rozpoznajemy sami: „1.” lub „2)” zaczyna krok, a „a)”, „1a” lub myślniki pod krokiem stają się jego podpunktami. Bez takich oznaczeń każda linia to osobny krok.',
     pasteTextLabel: 'Tekst do wklejenia',
     pasteAdd: 'Dodaj',
     pastedIngredients: (n: number) =>
       `Dodano ${n} ${plPlural(n, 'składnik', 'składniki', 'składników')}`,
     pastedSteps: (n: number) => `Dodano ${n} ${plPlural(n, 'krok', 'kroki', 'kroków')}`,
+    pastedBoth: (ingredients: number, steps: number) =>
+      `Dodano ${ingredients} ${plPlural(ingredients, 'składnik', 'składniki', 'składników')} i ${steps} ${plPlural(steps, 'krok', 'kroki', 'kroków')}`,
+    pasteFrom: 'Wklej z',
+    pasteFromWebsite: 'Strona',
+    pasteFromText: 'Tekst',
+    pasteUrlLabel: 'Adres strony z przepisem',
+    pasteUrlFromClipboard: 'Wklej skopiowany adres',
+    pasteHelpWebsite:
+      'Nazwa, zdjęcie, składniki i kroki zostaną uzupełnione ze strony. Sprawdź je przed zapisaniem.',
+    pasteWebsiteReplaces: 'To zastąpi wszystko, co już tu wpisano.',
+    clipboardUnavailable: 'Nie udało się odczytać schowka. Przytrzymaj pole, aby wkleić.',
+    importing: 'Czytamy…',
+    importDone: 'Przepis uzupełniony. Przejrzyj go przed zapisaniem.',
+    importDoneGuessed:
+      'Przepis odczytany z nagłówków strony, bo ta strona nie podaje go w zwykły sposób. Sprawdź go uważnie przed zapisaniem.',
+    importDoneNoAmounts:
+      'Przepis uzupełniony, ale ta strona nie podaje ilości składników. Dopisz je przed zapisaniem.',
+    importPhotoLoading: 'Pobieramy zdjęcie…',
+    importPhotoFailed: 'Nie udało się pobrać zdjęcia ze strony. Możesz dodać własne.',
+    importErrors: {
+      badAddress: 'To nie wygląda na adres strony.',
+      offline: 'Brak połączenia. Połącz się z internetem i spróbuj ponownie.',
+      refused: 'Ta strona nie udostępniła przepisu. Spróbuj wkleić go jako tekst.',
+      busy: 'Za dużo przepisów naraz. Odczekaj minutę i spróbuj ponownie.',
+      notAllowed: 'Zaloguj się rodzinnym kontem, aby dodawać przepisy ze stron.',
+      noRecipe: 'Nie udało się odczytać przepisu z tej strony. Spróbuj wkleić go jako tekst.',
+      failed: 'Nie udało się pobrać przepisu. Spróbuj ponownie za chwilę.',
+    },
+    importServings: (n: number) => `Na ${n} ${plPlural(n, 'porcję', 'porcje', 'porcji')}:`,
     discardTitle: 'Odrzucić zmiany?',
     discardBody: 'Jeśli zamkniesz teraz, stracisz zmiany wprowadzone od otwarcia przepisu.',
     discard: 'Odrzuć',

@@ -15,7 +15,8 @@ Private family recipe vault PWA. React 19 + TypeScript (strict) + Vite 6 + Tailw
 
 - `src/components/{auth,common,layout,recipe-detail,recipe-form,recipe-grid}`: UI, one component per file
 - `src/hooks/`: state and side effects (`useRecipes` = local + Firestore sync + versioning; `useAuth` = Google sign-in + family allowlist)
-- `src/services/`: I/O only (`firebase`, `firestore`, `storage` = localStorage, `gemini`)
+- `src/services/`: I/O only (`firebase`, `firestore`, `storage` = localStorage, `gemini`, `recipeImport` = the import worker)
+- `worker/`: the Cloudflare Worker that fetches recipe pages for "Paste → Website". Its pure parts (`worker/src/lib.ts`) are tested from `src/test/importWorker.test.ts`. It deploys separately (`npx wrangler deploy` in `worker/`). Setup and safeguards: `docs/recipe-import-worker.md`
 - `src/utils/`: pure logic (`fractions` = scaling/formatting, `timeEstimator`)
 - `src/i18n/translations.ts`: all UI strings, typed by the `UiTranslations` interface
 - `src/test/fixtures/wandasCheeseBread.ts`: test copy of Wanda's Cheese Bread, which lives in Firestore like any recipe (Peter owns it). Its content is **verbatim heirloom text**. Never paraphrase it.
@@ -76,6 +77,7 @@ Tools enforce most of these: TS strict, ESLint (react-hooks, jsx-a11y, promise s
 - **Local UI testing:** there's no local `.env`, so Firebase is off in dev. "Connect with Google" logs in as a fake dev user, and data stays in localStorage, so it's safe to click through anything. The vault starts empty: no recipe is built into the app. In the preview browser, the hidden pane stalls `document.startViewTransition`. If navigation clicks do nothing, run `document.startViewTransition = undefined` in the page first.
 - **Offline-first:** Firestore uses IndexedDB persistence, and recipes also live in localStorage. Test changes signed out (local-only) as well as signed in.
 - **Translation:** a recipe's top-level text is the original in `sourceLanguage`, and `translations[other]` carries a `sourceHash`. A mismatched hash means the translation is stale, and `useRecipes` re-translates it in the background. The logic lives in `utils/recipeTranslation`. Firebase is off locally, so translation only runs in tests (mocked) or with a real `.env` plus an App Check debug token.
+- **Website import:** off unless the build has `VITE_RECIPE_IMPORT_URL` (there's none locally, so the Paste sheet shows text only in dev and in tests, which mock `services/recipeImport` to turn it on). The worker answers only signed-in family from the app's own address: never add a localhost origin or a sign-in bypass to it. Imported text stays the site's own words (`utils/recipeImport`), and `sourceUrl` on the recipe records where it came from.
 - **Images:** photos are compressed client-side and embedded. Version backups include them, so a restore brings photos back, and each backup is its own document. Keep photos out of the recipe document's `versionIndex`.
 
 ## Definition of done

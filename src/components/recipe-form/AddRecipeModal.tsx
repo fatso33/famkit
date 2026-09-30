@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, RotateCcw, Trash2, TriangleAlert, Lightbulb } from 'lucide-react';
 import { Recipe, RecipeDraft, Language, VersionSummary } from '../../types/recipe';
-import { UiTranslations } from '../../i18n/translations';
+import { UI_TEXT, UiTranslations } from '../../i18n/translations';
 import { useBackStep } from '../../hooks/useBackStep';
 import { useExitAnimation } from '../../hooks/useExitAnimation';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
@@ -21,10 +21,19 @@ import {
   formToRecipe,
   hasContent,
   ingredientRowsOnly,
+  addPastedMethod,
   methodToSteps,
   pastedIngredients,
-  pastedSteps,
+  pastedMethod,
+  pastedStepCount,
 } from '../../utils/recipeForm';
+import { ImportedPage, readImportedPage, recipeFromPage } from '../../utils/recipeImport';
+import {
+  ImportError,
+  fetchRecipePage,
+  fetchRecipePhoto,
+  isRecipeImportAvailable,
+} from '../../services/recipeImport';
 import { estimateRecipeMinutes } from '../../utils/timeEstimator';
 import { prefersReducedMotion } from '../../utils/viewTransition';
 import { AutoGrowTextarea } from '../common/AutoGrowTextarea';
@@ -35,7 +44,7 @@ import { EditorPreview } from './EditorPreview';
 import { HeroPhotoField } from './HeroPhotoField';
 import { IngredientEditor } from './IngredientEditor';
 import { MethodEditor } from './MethodEditor';
-import { PasteSheet, PasteTarget } from './PasteSheet';
+import { ImportProblem, PasteSheet, PasteTarget } from './PasteSheet';
 import { RecipeTimeField } from './RecipeTimeField';
 import { SaveMenu } from './SaveMenu';
 import { VersionMenu } from './VersionMenu';
@@ -335,31 +344,92 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
   // --- Pasting ----------------------------------------------------------------------------
 
-  const addPasted = (target: PasteTarget, text: string) => {
-    if (target === 'ingredients') {
-      const rows = pastedIngredients(text);
-      if (rows.length === 0) return;
-      setForm((f) => {
-        const blank = f.ingredientRows.every((r) => !r.name.trim() && !r.amount.trim());
-        return { ...f, ingredientRows: blank ? rows : [...f.ingredientRows, ...rows] };
-      });
-      onToast(t.pastedIngredients(rows.length));
-    } else {
-      const steps = pastedSteps(text);
-      if (steps.length === 0) return;
-      setForm((f) => {
-        const sections = [...f.sections];
-        const last = sections[sections.length - 1];
-        const blank = last.steps.every((s) => !s.text.trim() && !s.fork);
-        sections[sections.length - 1] = {
-          ...last,
-          steps: blank ? steps : [...last.steps, ...steps],
-        };
-        return { ...f, sections };
-      });
-      onToast(t.pastedSteps(steps.length));
-    }
+  // Pasted text: the ingredient list, the steps, or both at once.
+  const addPasted = (text: Record<PasteTarget, string>) => {
+    const rows = pastedIngredients(text.ingredients);
+    const method = pastedMethod(text.steps);
+    const ingredientCount = ingredientRowsOnly(rows).length;
+    const stepCount = pastedStepCount(method);
+    if (rows.length === 0 && stepCount === 0) return;
+    setForm((f) => {
+      const blank = f.ingredientRows.every((r) => !r.name.trim() && !r.amount.trim());
+      return {
+        ...f,
+        ingredientRows:
+          rows.length === 0 ? f.ingredientRows : blank ? rows : [...f.ingredientRows, ...rows],
+        sections: stepCount > 0 ? addPastedMethod(f.sections, method) : f.sections,
+      };
+    });
+    onToast(
+      ingredientCount > 0 && stepCount > 0
+        ? t.pastedBoth(ingredientCount, stepCount)
+        : stepCount > 0
+          ? t.pastedSteps(stepCount)
+          : t.pastedIngredients(ingredientCount),
+    );
   };
+
+  // A recipe page's address: the form is filled in from the page, and its picture follows. Each
+  // import is numbered, so one that's closed or overtaken fills in nothing when it lands.
+  const importRun = useRef(0);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const pagePending = useRef(false);
+  const latestPhoto = useRef(0);
+  const importFromWebsite = async (url: string): Promise<ImportProblem | null> => {
+    const run = ++importRun.current;
+    let page: ImportedPage | null;
+    pagePending.current = true;
+    try {
+      page = readImportedPage(await fetchRecipePage(url));
+    } catch (error) {
+      return error instanceof ImportError ? error.reason : 'failed';
+    } finally {
+      if (run === importRun.current) pagePending.current = false;
+    }
+    if (run !== importRun.current) return null;
+    // A number of servings is worded in the page's language when it's one of the family's.
+    const pageLanguage = page?.lang.slice(0, 2).toLowerCase();
+    const words = pageLanguage === 'en' || pageLanguage === 'pl' ? UI_TEXT[pageLanguage] : t;
+    const imported = page && recipeFromPage(page, { servings: words.importServings });
+    if (!imported) return 'noRecipe';
+
+    setForm(imported.form);
+    setShowErrors(false);
+    bodyRef.current?.scrollTo?.({ top: 0 });
+    onToast(
+      imported.amountsMissing
+        ? t.importDoneNoAmounts
+        : imported.guessed
+          ? t.importDoneGuessed
+          : t.importDone,
+    );
+    setPhotoLoading(Boolean(imported.imageUrl));
+    // The photo answers to the recipe now in the form, not to later attempts that fill nothing.
+    const photoRun = ++latestPhoto.current;
+    if (imported.imageUrl) {
+      void fetchRecipePhoto(imported.imageUrl).then((photo) => {
+        if (photoRun !== latestPhoto.current) return;
+        setPhotoLoading(false);
+        if (!photo) {
+          onToast(t.importPhotoFailed);
+          return;
+        }
+        // Only into the recipe it belongs to, and never over a photo picked meanwhile.
+        setForm((f) =>
+          f.sourceUrl === imported.form.sourceUrl ? { ...f, heroImage: f.heroImage || photo } : f,
+        );
+      });
+    }
+    return null;
+  };
+  // Closing the editor lets go of an import still on its way.
+  useEffect(
+    () => () => {
+      importRun.current = -1;
+      latestPhoto.current = -1;
+    },
+    [],
+  );
 
   // --- Version restore --------------------------------------------------------------------
 
@@ -574,6 +644,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             <HeroPhotoField
               photo={form.heroImage}
               onChange={(photo) => set('heroImage', photo)}
+              loading={photoLoading}
               labelId="heroPhotoLabel"
               t={t}
             />
@@ -804,7 +875,22 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
         />
       )}
 
-      {sheet === 'paste' && <PasteSheet onAdd={addPasted} onClose={() => setSheet(null)} t={t} />}
+      {sheet === 'paste' && (
+        <PasteSheet
+          onAdd={addPasted}
+          onImport={isRecipeImportAvailable ? importFromWebsite : undefined}
+          replaces={hasContent({ ...form, authorMode })}
+          onClose={() => {
+            // Closed while a page was still being read: that page fills in nothing.
+            if (pagePending.current) {
+              pagePending.current = false;
+              importRun.current += 1;
+            }
+            setSheet(null);
+          }}
+          t={t}
+        />
+      )}
       {sheet === 'discard' && (
         <ConfirmSheet
           title={t.discardTitle}

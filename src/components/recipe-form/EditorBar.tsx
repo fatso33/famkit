@@ -23,7 +23,7 @@ interface EditorBarProps {
   onToggleVersions: () => void;
   /** New recipes: "Draft saved" or "Draft restored". */
   status: string | null;
-  /** Scrolled down the form: the tools slide away under the title row. */
+  /** Scrolled down the form: the banner slides away, leaving the row of actions. */
   tucked: boolean;
   /** Scrolled at all: a hairline separates the bar from the form. */
   scrolled: boolean;
@@ -47,9 +47,10 @@ interface EditorBarProps {
 }
 
 /**
- * The editor's one bar: Close, the title (with the version, which drops down its history), and
- * Save; under them Paste (new recipes) and Preview, which slide away as the form scrolls down and
- * come back as it scrolls up.
+ * The editor's bar: a banner with the title (and the version, which drops down its history),
+ * and under it one row of everything there is to do: Close, Paste (new recipes), Preview and
+ * Save. Scrolling down the form slides the banner away and leaves the row; scrolling up brings
+ * it back.
  */
 export const EditorBar: React.FC<EditorBarProps> = ({
   isEditMode,
@@ -74,18 +75,27 @@ export const EditorBar: React.FC<EditorBarProps> = ({
   t,
 }) => {
   const bar = useRef<HTMLElement>(null);
+  const banner = useRef<HTMLDivElement>(null);
   const latestOnHeight = useRef(onHeight);
   useLayoutEffect(() => {
     latestOnHeight.current = onHeight;
   });
 
-  // The bar's height changes with the text size, so the form's top margin follows it.
+  // The bar's height changes with the text size, so the form's top margin follows it, and so
+  // does how far the bar slides up to put its banner away (all of it but the status-bar inset).
   useLayoutEffect(() => {
     const el = bar.current;
     if (!el) return;
-    latestOnHeight.current(el.offsetHeight);
+    const measure = () => {
+      latestOnHeight.current(el.offsetHeight);
+      const title = banner.current;
+      if (!title) return;
+      const inset = parseFloat(getComputedStyle(title).paddingTop) || 0;
+      el.style.setProperty('--editor-banner-height', `${title.offsetHeight - inset}px`);
+    };
+    measure();
     if (typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(() => latestOnHeight.current(el.offsetHeight));
+    const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
@@ -95,7 +105,35 @@ export const EditorBar: React.FC<EditorBarProps> = ({
       ref={bar}
       className={`editor-bar${tucked ? ' is-tucked' : ''}${scrolled ? ' is-scrolled' : ''}`}
     >
-      <div className="editor-bar-main">
+      <div ref={banner} className="editor-bar-banner" inert={tucked}>
+        <h2 className="editor-bar-title" id="editorTitle">
+          {isEditMode ? t.editorTitleEdit : t.editorTitleNew}
+        </h2>
+        {isEditMode ? (
+          hasVersions ? (
+            <button
+              type="button"
+              className="editor-version"
+              aria-haspopup="dialog"
+              aria-expanded={versionsOpen}
+              onClick={onToggleVersions}
+            >
+              {draftLabel ?? t.versionLabel(version)}
+              <ChevronDown className="editor-version-chevron" size="1.05em" aria-hidden="true" />
+            </button>
+          ) : (
+            <span className="editor-bar-status">{draftLabel ?? t.versionLabel(version)}</span>
+          )
+        ) : (
+          status && (
+            <span className="editor-bar-status" role="status">
+              <CircleCheck size="1.05em" aria-hidden="true" />
+              {status}
+            </span>
+          )
+        )}
+      </div>
+      <div className="editor-bar-actions">
         <button
           type="button"
           className="editor-bar-close"
@@ -104,34 +142,29 @@ export const EditorBar: React.FC<EditorBarProps> = ({
         >
           <X size="1.35rem" strokeWidth={2.2} aria-hidden="true" />
         </button>
-        <div className="editor-bar-heading">
-          <h2 className="editor-bar-title" id="editorTitle">
-            {isEditMode ? t.editorTitleEdit : t.editorTitleNew}
-          </h2>
-          {isEditMode ? (
-            hasVersions ? (
-              <button
-                type="button"
-                className="editor-version"
-                aria-haspopup="dialog"
-                aria-expanded={versionsOpen}
-                onClick={onToggleVersions}
-              >
-                {draftLabel ?? t.versionLabel(version)}
-                <ChevronDown className="editor-version-chevron" size="1.05em" aria-hidden="true" />
-              </button>
-            ) : (
-              <span className="editor-bar-status">{draftLabel ?? t.versionLabel(version)}</span>
-            )
-          ) : (
-            status && (
-              <span className="editor-bar-status" role="status">
-                <CircleCheck size="1.05em" aria-hidden="true" />
-                {status}
-              </span>
-            )
+        <div className="editor-bar-tools">
+          {onPaste && (
+            <button type="button" className="editor-chip" onClick={onPaste}>
+              <ClipboardPaste size="1.15em" aria-hidden="true" />
+              {t.paste}
+            </button>
           )}
-          {children}
+          <button type="button" className="editor-chip" onClick={onPreview}>
+            <Eye size="1.15em" aria-hidden="true" />
+            {t.preview}
+          </button>
+          {onStartOver && (
+            <button type="button" className="editor-chip" onClick={onStartOver}>
+              <RotateCcw size="1.1em" aria-hidden="true" />
+              {t.startOver}
+            </button>
+          )}
+          {onDiscardDraft && (
+            <button type="button" className="editor-chip" onClick={onDiscardDraft}>
+              <Trash2 size="1.05em" aria-hidden="true" />
+              {t.discardDraft}
+            </button>
+          )}
         </div>
         <button
           type="button"
@@ -143,32 +176,10 @@ export const EditorBar: React.FC<EditorBarProps> = ({
           <Check className="editor-save-icon" size="1.25rem" strokeWidth={2.6} aria-hidden="true" />
           <span className="editor-save-label">{t.save}</span>
         </button>
-        {saveMenuOpen && saveMenu}
       </div>
-      <div className="editor-bar-tools" inert={tucked}>
-        {onPaste && (
-          <button type="button" className="editor-chip" onClick={onPaste}>
-            <ClipboardPaste size="1.15em" aria-hidden="true" />
-            {t.paste}
-          </button>
-        )}
-        <button type="button" className="editor-chip" onClick={onPreview}>
-          <Eye size="1.15em" aria-hidden="true" />
-          {t.preview}
-        </button>
-        {onStartOver && (
-          <button type="button" className="editor-chip" onClick={onStartOver}>
-            <RotateCcw size="1.1em" aria-hidden="true" />
-            {t.startOver}
-          </button>
-        )}
-        {onDiscardDraft && (
-          <button type="button" className="editor-chip" onClick={onDiscardDraft}>
-            <Trash2 size="1.05em" aria-hidden="true" />
-            {t.discardDraft}
-          </button>
-        )}
-      </div>
+      {/* Outside the rows, which slide: a moving row would trap the menus' tap catchers. */}
+      {children}
+      {saveMenuOpen && saveMenu}
     </header>
   );
 };

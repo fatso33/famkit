@@ -10,8 +10,9 @@ import {
   formText,
   formToRecipe,
   moveStep,
+  addPastedMethod,
   pastedIngredients,
-  pastedSteps,
+  pastedMethod,
   removePath,
   removeSection,
   removeStep,
@@ -371,9 +372,162 @@ describe('pasting', () => {
     ]);
   });
 
+  it('makes a note of what is in brackets after an ingredient name', () => {
+    const rows = pastedIngredients(
+      'Flour (sifted) - 300 g\n2 cups milk (warm)\n1 can (400 g) tomatoes\nButter [cold] (cubed): 100 g\n1 (14-ounce) can beans\n(optional)',
+    );
+    expect(rows.map((r) => [r.name, r.amount, r.note, r.showNote])).toEqual([
+      ['Flour', '300 g', 'sifted', true],
+      ['milk', '2 cups', 'warm', true],
+      // Brackets straight after the amount are part of the amount.
+      ['tomatoes', '1 can (400 g)', '', false],
+      ['Butter', '100 g', 'cold, cubed', true],
+      ['can beans', '1 (14-ounce)', '', false],
+      ['(optional)', '', '', false],
+    ]);
+  });
+
+  it('keeps a colon or a dash inside brackets out of the way', () => {
+    const [row] = pastedIngredients('2 eggs (room temperature: important)');
+    expect([row.name, row.amount, row.note]).toEqual(['eggs', '2', 'room temperature: important']);
+    const [range] = pastedIngredients('1 - 2 cups stock');
+    expect([range.name, range.amount]).toEqual(['stock', '1 - 2 cups']);
+  });
+
+  it('reads amounts written as a range or a sum, and leaves odd brackets as written', () => {
+    const rows = pastedIngredients(
+      '1/2 to 2/3 cup (113g to 152g) hot water\n1 and 1/4 cups chocolate chips\n500 g mince (beef (lean), or pork)\n2 cups broccoli ), chopped (1 head',
+    );
+    expect(rows.map((r) => [r.name, r.amount, r.note])).toEqual([
+      ['hot water', '1/2 to 2/3 cup (113g to 152g)', ''],
+      ['chocolate chips', '1 and 1/4 cups', ''],
+      ['mince', '500 g', 'beef (lean), or pork'],
+      // Brackets that don't pair up: nothing is guessed.
+      ['broccoli ), chopped (1 head', '2 cups', ''],
+    ]);
+  });
+
+  it('turns a line that only names a part of the list into a heading', () => {
+    const rows = pastedIngredients('For the sauce:\n2 tomatoes\nSugar: 1 cup');
+    expect(rows.map((r) => [Boolean(r.heading), r.name, r.amount])).toEqual([
+      [true, 'For the sauce', ''],
+      [false, 'tomatoes', '2'],
+      [false, 'Sugar', '1 cup'],
+    ]);
+  });
+
+  const shape = (text: string) =>
+    pastedMethod(text).map((section) => [
+      section.title,
+      section.steps.map((s) =>
+        s.substeps.length > 0 ? [s.text, s.substeps.map((sub) => sub.text)] : s.text,
+      ),
+    ]);
+
   it('drops the numbering pasted steps came with', () => {
-    const steps = pastedSteps('1. Mix.\n2) Knead.\nStep 3: Bake.\nKrok 4 - Ostudź.\n- Serve.');
-    expect(steps.map((s) => s.text)).toEqual(['Mix.', 'Knead.', 'Bake.', 'Ostudź.', 'Serve.']);
+    expect(shape('1. Mix.\n2) Knead.\nStep 3: Bake.\nKrok 4 - Ostudź.\n5.Serve.')).toEqual([
+      ['', ['Mix.', 'Knead.', 'Bake.', 'Ostudź.', 'Serve.']],
+    ]);
+  });
+
+  it('reads letters, numbers with letters and dashes under a numbered step as its substeps', () => {
+    expect(
+      shape('1. Make the dough\na) Mix.\nb) Knead.\n2. Bake\n- Preheat.\n- Bake 40 min.'),
+    ).toEqual([
+      [
+        '',
+        [
+          ['Make the dough', ['Mix.', 'Knead.']],
+          ['Bake', ['Preheat.', 'Bake 40 min.']],
+        ],
+      ],
+    ]);
+    expect(shape('1. Make the dough\n1a. Mix.\n1b) Knead.\n2. Bake.')).toEqual([
+      ['', [['Make the dough', ['Mix.', 'Knead.']], 'Bake.']],
+    ]);
+  });
+
+  it('makes each lettered part a step when no numbered line stands over them', () => {
+    expect(shape('1a. Mix.\n1b. Knead.\n2a. Bake.')).toEqual([['', ['Mix.', 'Knead.', 'Bake.']]]);
+  });
+
+  it('joins a wrapped line to the step above it, and leaves amounts like 1.5 alone', () => {
+    expect(shape('1. Mix the flour\nwith the water.\n2. Add\n1.5 cups of milk.')).toEqual([
+      ['', ['Mix the flour with the water.', 'Add 1.5 cups of milk.']],
+    ]);
+  });
+
+  it('reads dashes or bullets alone as steps, with letters under them as substeps', () => {
+    expect(shape('- Mix.\n• Knead.\na) Fold.\nb) Turn.\n* Bake.')).toEqual([
+      ['', ['Mix.', ['Knead.', ['Fold.', 'Turn.']], 'Bake.']],
+    ]);
+    expect(shape('a) Mix.\nb) Bake.')).toEqual([['', ['Mix.', 'Bake.']]]);
+  });
+
+  it('starts a section at a line that only names what follows', () => {
+    expect(shape('Dough:\n1. Mix.\n2. Knead.\nFor the icing:\n1. Whisk.')).toEqual([
+      ['Dough', ['Mix.', 'Knead.']],
+      ['For the icing', ['Whisk.']],
+    ]);
+  });
+
+  it('takes each line as a step when nothing marks the steps', () => {
+    expect(shape('Mix.\n\nKnead well:\nBake.')).toEqual([['', ['Mix.', 'Knead well:', 'Bake.']]]);
+  });
+
+  it('turns sections headed as options of each other into one step with a path each', () => {
+    const [section] = pastedMethod(
+      '1. Shape the loaf.\nOption 1: Oven\n1. Bake at 220°C.\n2. Cool.\nOption 2: Dutch oven\n1. Heat the pot.\nGlaze:\n1. Brush.',
+    );
+    expect(section.steps.map((s) => s.text)).toEqual(['Shape the loaf.', 'Bake at 220°C.']);
+    expect(
+      section.steps[1].fork?.paths.map((p) => [p.label, p.text, p.steps.map((s) => s.text)]),
+    ).toEqual([
+      ['Oven', 'Bake at 220°C.', ['Cool.']],
+      ['Dutch oven', 'Heat the pot.', []],
+    ]);
+    // A lone "Option 1", or options out of order, stay sections.
+    expect(shape('Option 1:\n1. Bake.\nGlaze:\n1. Brush.').map(([title]) => title)).toEqual([
+      'Option 1',
+      'Glaze',
+    ]);
+  });
+
+  it('does not take one stray dash or number among plain lines for a layout', () => {
+    expect(shape('Mix.\nKnead.\n- Rest an hour.\nShape.\nBake.')).toEqual([
+      ['', ['Mix.', 'Knead.', 'Rest an hour.', 'Shape.', 'Bake.']],
+    ]);
+  });
+
+  it('adds a pasted method after what is written, filling an empty section', () => {
+    const pasted = pastedMethod('1. Mix.\nIcing:\n1. Whisk.');
+    const filled = addPastedMethod([emptySection()], pasted);
+    expect(filled.map((s) => [s.title, s.steps.map((st) => st.text)])).toEqual([
+      ['', ['Mix.']],
+      ['Icing', ['Whisk.']],
+    ]);
+    const written = [{ ...emptySection('Dough'), steps: [emptyStep('Rest.')] }];
+    expect(
+      addPastedMethod(written, pasted).map((s) => [s.title, s.steps.map((st) => st.text)]),
+    ).toEqual([
+      ['Dough', ['Rest.', 'Mix.']],
+      ['Icing', ['Whisk.']],
+    ]);
+  });
+});
+
+describe('the page a recipe came from', () => {
+  it('is kept through the form, and only when it is a web address', () => {
+    const form = formFromRecipe({ ...plainRecipe, sourceUrl: 'https://example.com/bread' }, labels);
+    expect(form.sourceUrl).toBe('https://example.com/bread');
+    expect(formToRecipe(form).sourceUrl).toBe('https://example.com/bread');
+    expect(
+      formFromRecipe({ ...plainRecipe, sourceUrl: 'javascript:alert(1)' }, labels).sourceUrl,
+    ).toBe('');
+    expect(formToRecipe(formFromRecipe(plainRecipe, labels)).sourceUrl).toBeUndefined();
+    expect(formFromDraft({ title: 'Soup', sourceUrl: 'https://example.com/soup' })?.sourceUrl).toBe(
+      'https://example.com/soup',
+    );
   });
 });
 
