@@ -49,7 +49,8 @@ describe('production CSS', () => {
     const scrollDriven = blocks.filter((b) =>
       /animation-timeline:(scroll\(|view\(|--|var\()/.test(b),
     );
-    expect(scrollDriven.length).toBeGreaterThanOrEqual(4);
+    expect(scrollDriven.length).toBeGreaterThanOrEqual(3);
+    expect(scrollDriven.some((b) => b.includes('vault-shelf-carry'))).toBe(true);
     const zeroLength = scrollDriven.filter((b) => /animation(-duration)?:[^;]*\b0s\b/.test(b));
     expect(zeroLength).toEqual([]);
   });

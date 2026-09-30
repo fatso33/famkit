@@ -1,26 +1,26 @@
 import React, { useEffect, useRef, useState, type RefObject } from 'react';
-import { shelfFollowsScroll, shelfTimeline } from '../../utils/vaultShelf';
+import { shelfEndTimeline, shelfFollowsScroll, shelfTimeline } from '../../utils/vaultShelf';
 import { VaultTabLabel, type VaultTab } from './VaultTabLabel';
 
 interface VaultShelfProps {
   /** The divider tabs down the list, in order. */
   tabs: VaultTab[];
-  /** The list, whose `.vault-divider`s are those tabs. */
+  /** The list, whose `.vault-divider`s are those tabs, each heading a `.vault-group`. */
   list: RefObject<HTMLElement | null>;
 }
 
 /**
  * The divider tab pinned under the Recipe Box's bar (it rides in the bar, so it tucks up with
- * the toolbar). The list's tabs flow into it: as a section's tab slides up under the shelf, its
- * twin rises into the shelf in step with it and pushes the one above out of the top, like
- * section headers in a phone's contact list. So the shelf always names the section being read,
- * until that section's last card has gone by. Before the list's first tab reaches it, the shelf
- * isn't there at all, so that tab seems to stick.
+ * the toolbar). As a section's tab reaches it, the tab seems to stick there: its twin appears
+ * exactly over it, on a band as wide as the bar that the section's cards slip under. It stays
+ * until the section's last card comes up to it, then rides away on top of that card, as if
+ * fixed to it, and the next section's tab comes up the list to take its place. Scrolling back,
+ * it comes down on that card and sticks again.
  *
- * The scroll drives it all on the compositor (index.css): each tab in the list is a view
- * timeline its twin here follows, so nothing runs on the page's thread while it scrolls. Where
- * the browser can't do that, the shelf just names the section, found from the scroll.
- * Decorative for screen readers, which have the list's own headings.
+ * The scroll drives it all on the compositor (index.css): the list's tab and the section's
+ * last card are view timelines the band follows, so nothing runs on the page's thread while
+ * it scrolls. Where the browser can't do that, the shelf shows the section being read, found
+ * from the scroll. Decorative for screen readers, which have the list's own headings.
  */
 export const VaultShelf: React.FC<VaultShelfProps> = ({ tabs, list }) => {
   const shelfRef = useRef<HTMLDivElement>(null);
@@ -41,14 +41,14 @@ export const VaultShelf: React.FC<VaultShelfProps> = ({ tabs, list }) => {
       const { top, height } = shelf.getBoundingClientRect();
       let index = -1;
       dividers.forEach((divider, i) => {
-        // The first pins as it meets the shelf; the rest take over once halfway under it.
-        if (divider.getBoundingClientRect().top <= (i === 0 ? top + 0.5 : top + height / 2)) {
-          index = i;
-        }
+        if (divider.getBoundingClientRect().top <= top + 0.5) index = i;
       });
-      shelf.toggleAttribute('data-shown', index >= 0);
-      shelf.querySelectorAll('.vault-tab.is-pinned').forEach((tab, i) => {
-        tab.toggleAttribute('data-current', i === Math.max(index, 0));
+      // Gone with its section's last card, once that card is halfway up it.
+      const last = index >= 0 ? dividers[index].parentElement?.lastElementChild : null;
+      const carried = !!last && last.getBoundingClientRect().top <= top + height / 2;
+      shelf.toggleAttribute('data-shown', index >= 0 && !carried);
+      shelf.querySelectorAll('.vault-shelf-band').forEach((band, i) => {
+        band.toggleAttribute('data-current', i === index);
       });
     };
     const schedule = () => {
@@ -75,32 +75,27 @@ export const VaultShelf: React.FC<VaultShelfProps> = ({ tabs, list }) => {
       className={`vault-shelf${followsScroll ? ' follows-scroll' : ''}`}
       aria-hidden="true"
     >
-      <div className="vault-shelf-inner">
-        <div className="vault-shelf-tabs">
-          {tabs.map((tab, i) => (
-            <div
-              key={tab.key}
-              className="vault-tab is-pinned"
-              // Rises in with its own tab in the list, and is pushed out by the next one.
-              style={
-                followsScroll
-                  ? ({
-                      // Arrives and rises with its own tab; pushed out by the next (the last
-                      // never is, index.css).
-                      '--shelf-timelines': [i, i, i + 1]
-                        .filter((n) => n < tabs.length)
-                        .map(shelfTimeline)
-                        .join(', '),
-                    } as React.CSSProperties)
-                  : undefined
-              }
-            >
+      {tabs.map((tab, i) => (
+        <div
+          key={tab.key}
+          className="vault-shelf-band"
+          // Appears with its own tab in the list; carried away by the section's last card.
+          style={
+            followsScroll
+              ? ({
+                  '--band-timelines': `${shelfTimeline(i)}, ${shelfEndTimeline(i)}`,
+                } as React.CSSProperties)
+              : undefined
+          }
+        >
+          <div className="vault-shelf-inner">
+            <div className="vault-tab is-pinned">
               <VaultTabLabel tab={tab} />
             </div>
-          ))}
+            <div className="vault-tab-edge" />
+          </div>
         </div>
-        <div className="vault-tab-edge" />
-      </div>
+      ))}
     </div>
   );
 };

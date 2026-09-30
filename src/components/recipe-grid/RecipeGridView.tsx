@@ -11,7 +11,7 @@ import {
 import { UiTranslations } from '../../i18n/translations';
 import { getLocalizedRecipe } from '../../hooks/useRecipes';
 import { transitionView } from '../../utils/viewTransition';
-import { shelfFollowsScroll, shelfTimeline } from '../../utils/vaultShelf';
+import { shelfEndTimeline, shelfFollowsScroll, shelfTimeline } from '../../utils/vaultShelf';
 import {
   NO_FILTER,
   filterCounts,
@@ -179,8 +179,13 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
       ? { key: 'family', label: t.familyRecipes, count: group.length, kind: 'family' }
       : null;
   };
-  const card = (recipe: Recipe, text: Recipe, draft = false) => (
-    <div key={recipe.id} className="vault-slot">
+  // A section's last card carries its pinned tab away (endTimeline, index.css).
+  const card = (recipe: Recipe, text: Recipe, draft: boolean, endTimeline?: string) => (
+    <div
+      key={recipe.id}
+      className="vault-slot"
+      style={endTimeline ? ({ '--end-timeline': endTimeline } as React.CSSProperties) : undefined}
+    >
       {view === 'cards' ? (
         <RecipeCard
           recipe={recipe}
@@ -204,41 +209,58 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
       )}
     </div>
   );
+  // A section: its divider tab (the index-th of the tabs down the list, if it has one), when it
+  // joins the entrance, and its cards.
+  let tabCount = 0;
+  const section = (
+    key: string,
+    tab: VaultTab | null,
+    items: { recipe: Recipe; text: Recipe; draft: boolean }[],
+  ) => {
+    const index = tab ? tabCount++ : -1;
+    const enterAt = nextEnterIndex();
+    const last = items.length - 1;
+    const cards = items.map(({ recipe, text, draft }, i) =>
+      card(
+        recipe,
+        text,
+        draft,
+        tabTimelines && index >= 0 && i === last ? shelfEndTimeline(index) : undefined,
+      ),
+    );
+    return { key, tab, index, enterAt, cards };
+  };
   const sections = [
     ...(shownDrafts.length > 0
       ? [
-          {
-            key: 'drafts',
-            tab: {
-              key: 'drafts',
-              label: t.yourDrafts,
-              count: shownDrafts.length,
-              kind: 'drafts',
-            } as VaultTab,
-            enterAt: nextEnterIndex(),
-            cards: shownDrafts.map((draft) => {
+          section(
+            'drafts',
+            { key: 'drafts', label: t.yourDrafts, count: shownDrafts.length, kind: 'drafts' },
+            shownDrafts.map((draft) => {
               const recipe = draftRecipe(draft);
-              return card(recipe, recipe, true);
+              return { recipe, text: recipe, draft: true };
             }),
-          },
+          ),
         ]
       : []),
-    ...groups.map((group) => ({
-      key: group.key || 'all',
-      tab: tabFor(group),
-      enterAt: nextEnterIndex(),
-      cards: group.entries.map(({ recipe, shown: text }) => card(recipe, text)),
-    })),
+    ...groups.map((group) =>
+      section(
+        group.key || 'all',
+        tabFor(group),
+        group.entries.map(({ recipe, shown: text }) => ({ recipe, text, draft: false })),
+      ),
+    ),
   ];
   const tabs = sections.flatMap((section) => (section.tab ? [section.tab] : []));
-  // The shelf's tabs live in the bar, so the page lets them see the list's tabs' timelines.
+  // The shelf's tabs live in the bar, so the page lets them see the list's timelines.
   const timelineScope =
     tabTimelines && tabs.length > 0
       ? ({
-          '--vault-timelines': tabs.map((_, i) => shelfTimeline(i)).join(', '),
+          '--vault-timelines': tabs
+            .flatMap((_, i) => [shelfTimeline(i), shelfEndTimeline(i)])
+            .join(', '),
         } as React.CSSProperties)
       : undefined;
-  let tabIndex = 0;
 
   return (
     <section
@@ -293,7 +315,7 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
             </button>
           </div>
         )}
-        {sections.map(({ key, tab, cards, enterAt }) => (
+        {sections.map(({ key, tab, index, cards, enterAt }) => (
           <section key={key} className="vault-group">
             {tab && (
               <div
@@ -309,7 +331,7 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
                   className="vault-tab"
                   style={
                     tabTimelines
-                      ? ({ '--tab-timeline': shelfTimeline(tabIndex++) } as React.CSSProperties)
+                      ? ({ '--tab-timeline': shelfTimeline(index) } as React.CSSProperties)
                       : undefined
                   }
                 >

@@ -66,7 +66,11 @@ describe("the Recipe Box's divider tabs", () => {
       document
         .querySelector<HTMLElement>('.vault-page')!
         .style.getPropertyValue('--vault-timelines'),
-    ).toBe('--vault-tab-0, --vault-tab-1');
+    ).toBe('--vault-tab-0, --vault-end-0, --vault-tab-1, --vault-end-1');
+    // Each section's last card carries its pinned tab away.
+    expect(
+      cards().map((card) => card.parentElement!.style.getPropertyValue('--end-timeline')),
+    ).toEqual(['', '--vault-end-0', '--vault-end-1']);
   });
 
   it("leave the timelines out where the browser can't follow them", () => {

@@ -4,8 +4,11 @@
  * along (index.css), so the scroll alone drives the shelf.
  */
 
-/** The view timeline the list's divider tab at `index` drives its pinned twin with. */
+/** The view timeline the list's divider tab at `index` brings its pinned twin in with. */
 export const shelfTimeline = (index: number): string => `--vault-tab-${index}`;
+
+/** The view timeline of that section's last card, which carries the pinned tab away. */
+export const shelfEndTimeline = (index: number): string => `--vault-end-${index}`;
 
 /**
  * Whether the browser can drive the shelf from the scroll alone: the list's tabs named as view

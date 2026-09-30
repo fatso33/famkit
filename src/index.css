@@ -2474,10 +2474,11 @@
         color: var(--text-secondary);
       }
 
-      /* The pinned divider tab (VaultShelf). It hangs under the toolbar inside the bar, reaching
-         the bar's full width so the cards slip under it everywhere, and rides up with the
-         toolbar as it tucks. It holds a twin of each tab in the list, one showing at a time:
-         the list's tabs flow up into it, each pushing the one before out of the top. */
+      /* The pinned divider tab (VaultShelf). It hangs under the toolbar inside the bar and rides
+         up with the toolbar as it tucks. Each section has its own band there: its tab and the
+         thin edge of its divider card, on the page's colour as wide as the bar, so the section's
+         cards slip under it everywhere. One band at a time: it appears as the section's tab
+         reaches it and leaves on top of the section's last card. */
       .vault-bar-shelf {
         position: absolute;
         top: 100%;
@@ -2489,8 +2490,20 @@
         pointer-events: none;
       }
 
+      /* Clipped at its top, so a band leaving never crosses the toolbar or the title; it reaches
+         below the band for the band's shadow. */
       .vault-shelf {
+        position: relative;
+        height: calc(var(--vault-shelf-height) + 1.5rem);
         margin: 0 -1.25rem;
+        overflow: clip;
+      }
+
+      .vault-shelf-band {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
         padding: 0 1.25rem;
         background: var(--bg-main);
         box-shadow: 0 0.8rem 1rem -0.9rem var(--scrim);
@@ -2502,22 +2515,7 @@
         margin: 0 auto;
       }
 
-      /* Where the tabs pass: a tab arrives just under the shelf, exactly over its twin in the
-         list as that one meets the shelf, rises over the shelf's edge and shadow into place,
-         and leaves through the top, clipped there (so it never crosses the toolbar). The band
-         reaches below the shelf for the arriving tab without taking up room. */
-      .vault-shelf-tabs {
-        position: relative;
-        z-index: 1;
-        height: calc(var(--vault-tab-height) + var(--vault-shelf-height));
-        margin-bottom: calc(-1 * var(--vault-shelf-height));
-        overflow: clip;
-      }
-
       .vault-tab.is-pinned {
-        position: absolute;
-        top: 0;
-        left: 0;
         white-space: nowrap;
       }
 
@@ -2525,70 +2523,53 @@
         height: 0.25rem;
       }
 
-      /* Driven by the scroll, on the compositor. Each tab in the list is a view timeline
-         (VaultShelf) whose line is the top of the shelf: under the title, or under the toolbar
-         while it shows. The shelf appears the moment the first tab reaches that line, exactly
-         over it. A pinned tab rises into place as its twin in the list slides under the shelf,
-         matching it pixel for pixel (it appears only as that one meets the shelf, so the swap
-         can't be seen), and is pushed up and out as the next one arrives. Longhands
-         only (see the title's condense below). */
+      /* Driven by the scroll, on the compositor. Each tab in the list, and each section's last
+         card, is a view timeline (VaultShelf) whose line is the top of the shelf: under the
+         title, or under the toolbar while it shows. A band appears the moment its tab reaches
+         that line, exactly over it, so the tab seems to stick. When the section's last card
+         meets the band's lower edge, the band moves up with it pixel for pixel, as if fixed to
+         the card's top, until it has gone under the bar. Longhands only (see the title's
+         condense below). */
       .vault-page {
         timeline-scope: var(--vault-timelines, none);
       }
       .vault-box .vault-tab {
         view-timeline-name: var(--tab-timeline, none);
+      }
+      /* Only a section's last card, so the toolbar tucking restyles a card or two, not all. */
+      .vault-box .vault-group > .vault-slot:last-child {
+        view-timeline-name: var(--end-timeline, none);
+      }
+      .vault-box :is(.vault-tab, .vault-group > .vault-slot:last-child) {
         view-timeline-axis: block;
         view-timeline-inset: calc(var(--vault-bar-title) + var(--vault-tools-height, 0px)) 0px;
       }
-      .vault-bar[data-tucked] ~ .vault-box .vault-tab {
+      .vault-bar[data-tucked] ~ .vault-box :is(.vault-tab, .vault-group > .vault-slot:last-child) {
         view-timeline-inset: var(--vault-bar-title) 0px;
       }
-      .vault-shelf.follows-scroll {
-        animation-name: vault-shelf-show;
-        animation-timeline: --vault-tab-0;
-        animation-duration: auto;
-        animation-timing-function: linear;
-        animation-fill-mode: both;
-        animation-range: exit -1px exit 0%;
-      }
-      .vault-shelf.follows-scroll .vault-tab.is-pinned {
-        animation-name: vault-shelf-arrive, vault-shelf-rise, vault-shelf-push;
-        animation-timeline: var(--shelf-timelines);
-        animation-duration: auto, auto, auto;
-        animation-timing-function: linear, linear, linear;
-        animation-fill-mode: both, both, both;
+      .vault-shelf.follows-scroll .vault-shelf-band {
+        animation-name: vault-shelf-show, vault-shelf-carry;
+        animation-timeline: var(--band-timelines);
+        animation-duration: auto, auto;
+        animation-timing-function: linear, linear;
+        animation-fill-mode: both, both;
         animation-range:
-          exit calc(-1 * var(--vault-shelf-height) - 1px) exit calc(-1 * var(--vault-shelf-height)),
-          exit calc(-1 * var(--vault-shelf-height)) exit 0%,
-          exit calc(-1 * var(--vault-tab-height)) exit 0%;
-      }
-      .vault-shelf.follows-scroll .vault-tab.is-pinned:last-child {
-        animation-name: vault-shelf-arrive, vault-shelf-rise;
+          exit -1px exit 0%,
+          exit calc(-1 * var(--vault-shelf-height)) exit 1.5rem;
       }
 
       /* Found from the scroll instead (VaultShelf), where the browser can't drive it. */
-      .vault-shelf[data-shown] {
+      .vault-shelf[data-shown] .vault-shelf-band[data-current] {
         opacity: 1;
-      }
-      .vault-shelf:not(.follows-scroll) .vault-tab.is-pinned:not([data-current]) {
-        visibility: hidden;
       }
 
       @keyframes vault-shelf-show {
         from { opacity: 0; }
         to { opacity: 1; }
       }
-      @keyframes vault-shelf-arrive {
-        from { opacity: 0; }
-        to { opacity: 1; }
-      }
-      @keyframes vault-shelf-rise {
-        from { translate: 0 var(--vault-shelf-height); }
-        to { translate: 0 0; }
-      }
-      @keyframes vault-shelf-push {
+      @keyframes vault-shelf-carry {
         from { transform: none; }
-        to { transform: translateY(-100%); }
+        to { transform: translateY(calc(-1 * (var(--vault-shelf-height) + 1.5rem))); }
       }
 
       /* As a card reaches the pinned tab, it leans back on its bottom edge and fades, slipping
@@ -2612,6 +2593,10 @@
           }
           .vault-box.is-cards .vault-slot {
             animation-name: vault-card-lean-soft;
+          }
+          /* A section's last card doesn't slip under the pinned tab: it carries it away. */
+          .vault-box .vault-group > .vault-slot:last-child {
+            animation-name: none;
           }
         }
       }
