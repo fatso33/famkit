@@ -119,3 +119,89 @@ describe('the pinned divider tab', () => {
     expect(named()).toBe('Soups');
   });
 });
+
+describe('the pinned divider tab, as the page reflows', () => {
+  // What a browser's ResizeObservers would hear about: each resize, on cue.
+  let observers: { callback: () => void; targets: Element[] }[] = [];
+  let labelWidth = 120;
+  const resize = () =>
+    act(() => {
+      for (const o of observers) if (o.targets.length) o.callback();
+      vi.advanceTimersByTime(20);
+    });
+
+  beforeEach(() => {
+    vi.useFakeTimers({
+      toFake: [
+        'setTimeout',
+        'clearTimeout',
+        'requestAnimationFrame',
+        'cancelAnimationFrame',
+        'performance',
+      ],
+    });
+    observers = [];
+    labelWidth = 120;
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        entry: { callback: () => void; targets: Element[] };
+        constructor(callback: () => void) {
+          this.entry = { callback, targets: [] };
+          observers.push(this.entry);
+        }
+        observe(el: Element) {
+          this.entry.targets.push(el);
+        }
+        disconnect() {
+          this.entry.targets = [];
+        }
+      },
+    );
+    Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+      configurable: true,
+      get() {
+        return (this as HTMLElement).classList.contains('vault-shelf-label') ? labelWidth : 0;
+      },
+    });
+    tops = [-200, 400, 700];
+    Element.prototype.getBoundingClientRect = function (this: Element) {
+      if (this.classList.contains('vault-shelf')) return { ...SHELF, bottom: 140 } as DOMRect;
+      const i = (this as HTMLElement).dataset.i;
+      return { top: i === undefined ? 0 : tops[Number(i)], height: 40 } as DOMRect;
+    };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    Reflect.deleteProperty(HTMLElement.prototype, 'offsetWidth');
+    Element.prototype.getBoundingClientRect = realRect;
+  });
+
+  const tabWidth = () =>
+    (document.querySelector('.vault-tab.is-pinned') as HTMLElement).style.getPropertyValue(
+      '--tab-width',
+    );
+
+  it('fits its outline to the name again when the name resizes (the text size changing)', () => {
+    render(<Box />);
+    expect(named()).toBe('Breakfast');
+    expect(tabWidth()).toBe('120px');
+    labelWidth = 150;
+    resize();
+    expect(tabWidth()).toBe('150px');
+  });
+
+  it('names the right section after the list reflows, without waiting for a scroll', () => {
+    render(<Box />);
+    expect(named()).toBe('Breakfast');
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    // Bigger text: the Soups tab is now halfway under the shelf, though nothing scrolled.
+    tops = [-400, 110, 500];
+    resize();
+    expect(named()).toBe('Soups');
+  });
+});

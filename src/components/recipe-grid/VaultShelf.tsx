@@ -90,11 +90,16 @@ export const VaultShelf: React.FC<VaultShelfProps> = ({ tabs, list }) => {
     measure();
     window.addEventListener('scroll', schedule, { passive: true });
     window.addEventListener('resize', schedule);
+    // The list reflowing without a scroll (the text size changing, recipes or photos arriving)
+    // moves its tabs too.
+    const reflow = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
+    if (list.current) reflow?.observe(list.current);
     return () => {
       cancelAnimationFrame(frame);
       window.clearTimeout(timer);
       window.removeEventListener('scroll', schedule);
       window.removeEventListener('resize', schedule);
+      reflow?.disconnect();
     };
   }, [list, layout]);
 
@@ -107,11 +112,17 @@ export const VaultShelf: React.FC<VaultShelfProps> = ({ tabs, list }) => {
   // The tab is as wide as the name it shows, and eases between names' widths as they roll: its
   // outline's right end slides there (index.css), which the compositor animates without laying
   // anything out again.
+  // Measured again whenever the name itself resizes: the text size changing, or its font arriving.
   useLayoutEffect(() => {
     const el = tabRef.current;
     const label = labelRef.current;
-    if (el && label) el.style.setProperty('--tab-width', `${label.offsetWidth}px`);
-  }, [face?.key, face?.label, face?.count]);
+    if (!el || !label) return;
+    const fit = () => el.style.setProperty('--tab-width', `${label.offsetWidth}px`);
+    fit();
+    const resized = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(fit);
+    resized?.observe(label);
+    return () => resized?.disconnect();
+  }, [face?.key, face?.label, face?.count, shown.roll]);
 
   return (
     <div
