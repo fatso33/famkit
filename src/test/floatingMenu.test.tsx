@@ -200,12 +200,12 @@ describe('floating menu', () => {
     expect(screen.getByRole('dialog', { name: t.menu })).not.toHaveClass('is-closing');
   });
 
-  it('offers Share on a recipe page, whose back pill returns to the vault', () => {
+  it('offers Remix on a recipe page, whose back pill returns to the vault', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: WANDAS_CHEESE_BREAD.name }));
 
     const menu = openMenu();
-    expect(within(menu).getByRole('button', { name: t.shareRecipe })).toBeInTheDocument();
+    expect(within(menu).getByRole('button', { name: t.remixRecipe })).toBeInTheDocument();
     expect(within(menu).queryByRole('button', { name: t.addRecipe })).toBeNull();
     fireEvent.keyDown(window, { key: 'Escape' });
     finishClosing();
@@ -215,7 +215,7 @@ describe('floating menu', () => {
     expect(screen.getByRole('heading', { name: heading, level: 1 })).toBeInTheDocument();
   });
 
-  it("holds Edit with Share in the recipe page's card, not on the page itself", () => {
+  it("holds Edit with Remix in the recipe page's card, not on the page itself", () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: WANDAS_CHEESE_BREAD.name }));
     expect(screen.queryByRole('button', { name: t.editRecipe })).toBeNull();
@@ -226,7 +226,7 @@ describe('floating menu', () => {
       within(actions)
         .getAllByRole('button')
         .map((b) => b.textContent),
-    ).toEqual([t.editRecipe, t.shareRecipe]);
+    ).toEqual([t.editRecipe, t.remixRecipe]);
 
     fireEvent.click(within(actions).getByRole('button', { name: t.editRecipe }));
     finishClosing();

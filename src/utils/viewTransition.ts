@@ -5,6 +5,7 @@ import { flushSync } from 'react-dom';
  * - forward: into a sub-page (a recipe, Settings), which slides in from the right
  * - back: out of one, sliding back to the left
  * - fade: between main pages, or pages at the same depth
+ * - hop: from one recipe to another (a remix popover's link): the new page fades up over the old
  * - menu: a page chosen from the open menu, cross-fading under its blurring scrim as it clears
  * - zoom: a photo opening over the page, or closing
  * - vault: the vault's recipes re-filtered, re-sorted or re-laid out, gliding to their new places
@@ -12,10 +13,13 @@ import { flushSync } from 'react-dom';
  *   back; flip-close folds the recipe away and the card flips back into its place (setFlipAxis)
  */
 export type NavMotion =
-  'forward' | 'back' | 'fade' | 'menu' | 'zoom' | 'vault' | 'flip-open' | 'flip-close';
+  'forward' | 'back' | 'fade' | 'hop' | 'menu' | 'zoom' | 'vault' | 'flip-open' | 'flip-close';
 
-/** A photo that morphs between its old and new place: a step photo and the full-screen viewer. */
-export type Morph = 'photo';
+/**
+ * What morphs between its old and new place: a step photo and the full-screen viewer, or a
+ * recipe's name tapped in a remix popover and the title of the recipe it opens.
+ */
+export type Morph = 'photo' | 'title';
 
 interface Options {
   motion: NavMotion;

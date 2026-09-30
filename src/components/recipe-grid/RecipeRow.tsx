@@ -1,4 +1,5 @@
 import React from 'react';
+import { Timer } from 'lucide-react';
 import { Recipe } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
 import { recipeTime } from '../../utils/timeEstimator';
@@ -6,6 +7,7 @@ import { vaultItemKey } from '../../utils/viewTransition';
 import { recipePhoto } from '../../utils/vault';
 import { photoPending } from '../../utils/deviceCopy';
 import { CategoryTile } from './CategoryTile';
+import { RemixBadge, RemixMark } from './RemixMarks';
 
 interface RecipeRowProps {
   recipe: Recipe;
@@ -17,6 +19,10 @@ interface RecipeRowProps {
   enterIndex?: number;
   /** A draft: marked and named as one. */
   draft?: boolean;
+  /** A remix of another recipe: marked by its name. */
+  remixed?: boolean;
+  /** How many remixes have been made of it. */
+  remixCount?: number;
   /** Given the card, which the recipe flips open out of. */
   onSelect: (id: string, from: HTMLElement) => void;
   t: UiTranslations;
@@ -32,6 +38,8 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
   isFlipTarget = false,
   enterIndex,
   draft = false,
+  remixed = false,
+  remixCount = 0,
   onSelect,
   t,
 }) => {
@@ -49,8 +57,12 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
       onClick={(e) => onSelect(recipe.id, e.currentTarget)}
     >
       <span className="vault-row-text">
-        <span className="vault-row-name" data-vault-name="">
-          {shown.name}
+        {/* The mark follows the name, or sits beside it when the name wraps. */}
+        <span className="vault-row-title">
+          <span className="vault-row-name" data-vault-name="">
+            {shown.name}
+          </span>
+          {remixed && <RemixMark />}
         </span>
         <span className="vault-card-rule" aria-hidden="true" />
         <span className="vault-row-meta">
@@ -60,8 +72,11 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
             </span>
           )}
           <span className="vault-row-cook">{shown.author}</span>
-          <span aria-hidden="true">·</span>
-          <span className="vault-row-time">{t.totalTime(recipeTime(shown).minutes)}</span>
+          <span className="vault-row-time">
+            <Timer className="time-icon" size="1.05em" strokeWidth={2.1} aria-hidden="true" />
+            {t.totalTime(recipeTime(shown).minutes)}
+          </span>
+          {remixCount > 0 && <RemixBadge count={remixCount} />}
         </span>
       </span>
       <span className="vault-row-photo" data-vault-photo="">

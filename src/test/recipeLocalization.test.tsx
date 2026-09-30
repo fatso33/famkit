@@ -21,7 +21,7 @@ describe('recipe page in Polish', () => {
     expect(meta).not.toBeNull();
     expect(within(meta!).getByText('Autor: Wanda G.')).toBeInTheDocument();
     expect(within(meta!).getByText('Dodane przez: Peter Gzowski')).toBeInTheDocument();
-    expect(meta!.textContent).toMatch(/~\d+ (godz\.|min)/);
+    expect(meta!.textContent).toMatch(/~(\d+g \d\dm|\d+m)/);
     expect(meta!.textContent).not.toMatch(/\b(By|hrs?|mins)\b/);
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Chleb Serowy Wandy');
@@ -31,10 +31,10 @@ describe('recipe page in Polish', () => {
 
 describe('estimated time formatting', () => {
   it.each([
-    [45, '~45 mins', '~45 min'],
-    [60, '~1 hr', '~1 godz.'],
-    [120, '~2 hrs', '~2 godz.'],
-    [145, '~2 hrs 25 mins', '~2 godz. 25 min'],
+    [45, '~45m', '~45m'],
+    [60, '~1h 00m', '~1g 00m'],
+    [65, '~1h 05m', '~1g 05m'],
+    [145, '~2h 25m', '~2g 25m'],
   ])('formats %i minutes', (minutes, en, pl) => {
     expect(UI_TEXT.en.estimatedTime(minutes)).toBe(en);
     expect(UI_TEXT.pl.estimatedTime(minutes)).toBe(pl);

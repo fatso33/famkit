@@ -59,6 +59,11 @@ export function parseDraft(raw: unknown): RecipeDraft | null {
     language: raw.language === 'pl' ? 'pl' : 'en',
     savedAt: typeof raw.savedAt === 'number' ? raw.savedAt : 0,
   };
+  // A remix's draft names its original by id; anything else there is dropped.
+  delete draft.recipe.remixOf;
+  if (!recipeId && typeof content.remixOf === 'string' && content.remixOf) {
+    draft.recipe.remixOf = content.remixOf;
+  }
   if (recipeId) draft.recipeId = recipeId;
   if (typeof raw.baseVersion === 'number') draft.baseVersion = raw.baseVersion;
   if (typeof raw.changeNote === 'string' && raw.changeNote) draft.changeNote = raw.changeNote;

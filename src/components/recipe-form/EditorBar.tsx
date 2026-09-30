@@ -6,6 +6,7 @@ import {
   ClipboardPaste,
   Eye,
   RotateCcw,
+  Shuffle,
   Trash2,
   X,
 } from 'lucide-react';
@@ -13,6 +14,8 @@ import { UiTranslations } from '../../i18n/translations';
 
 interface EditorBarProps {
   isEditMode: boolean;
+  /** A remix: a new recipe started from another one. */
+  isRemix?: boolean;
   /** The recipe's current version (edit mode). */
   version: number;
   /** Shown in place of the version while a draft is open, e.g. "Draft v4". */
@@ -54,6 +57,7 @@ interface EditorBarProps {
  */
 export const EditorBar: React.FC<EditorBarProps> = ({
   isEditMode,
+  isRemix = false,
   version,
   draftLabel,
   hasVersions,
@@ -107,7 +111,7 @@ export const EditorBar: React.FC<EditorBarProps> = ({
     >
       <div ref={banner} className="editor-bar-banner" inert={tucked}>
         <h2 className="editor-bar-title" id="editorTitle">
-          {isEditMode ? t.editorTitleEdit : t.editorTitleNew}
+          {isEditMode ? t.editorTitleEdit : isRemix ? t.editorTitleRemix : t.editorTitleNew}
         </h2>
         {isEditMode ? (
           hasVersions ? (
@@ -127,7 +131,11 @@ export const EditorBar: React.FC<EditorBarProps> = ({
         ) : (
           status && (
             <span className="editor-bar-status" role="status">
-              <CircleCheck size="1.05em" aria-hidden="true" />
+              {isRemix ? (
+                <Shuffle size="1.05em" strokeWidth={2.1} aria-hidden="true" />
+              ) : (
+                <CircleCheck size="1.05em" aria-hidden="true" />
+              )}
               {status}
             </span>
           )

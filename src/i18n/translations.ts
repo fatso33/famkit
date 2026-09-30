@@ -2,22 +2,19 @@ import { Language, RecipeCategory, VaultSortKey } from '../types/recipe';
 import { plPlural } from '../utils/polish';
 import type { Season } from '../utils/season';
 
-/** "2 hrs 10 mins", from a number of minutes. */
-function durationEn(minutes: number): string {
+/** "2h 05m" ("45m" under an hour), from a number of minutes: short, to fit a card's row. */
+function duration(minutes: number, hourMark: string): string {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  const hrs = `${hours} ${hours === 1 ? 'hr' : 'hrs'}`;
-  if (hours === 0) return `${mins} mins`;
-  return mins === 0 ? hrs : `${hrs} ${mins} mins`;
+  if (hours === 0) return `${mins}m`;
+  return `${hours}${hourMark} ${String(mins).padStart(2, '0')}m`;
 }
 
-/** "2 godz. 10 min", from a number of minutes. */
-function durationPl(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (hours === 0) return `${mins} min`;
-  return mins === 0 ? `${hours} godz.` : `${hours} godz. ${mins} min`;
-}
+/** "2h 05m". */
+const durationEn = (minutes: number) => duration(minutes, 'h');
+
+/** "2g 05m" (godziny, minuty). */
+const durationPl = (minutes: number) => duration(minutes, 'g');
 
 export interface UiTranslations {
   vaultTitle: string;
@@ -71,8 +68,6 @@ export interface UiTranslations {
   iosStep2: string;
   iosStep3: string;
   iosModalDone: string;
-  shareSuccess: string;
-  shareFailed: string;
   backToRecipes: string;
   settings: string;
   themeToggle: string;
@@ -139,13 +134,13 @@ export interface UiTranslations {
   emptyFilter: string;
   /** Formats a duration already rounded to 5 minutes, e.g. "~2 hrs 25 mins". */
   estimatedTime: (minutes: number) => string;
-  shareText: (name: string, author: string) => string;
   // Screen-reader labels, tooltips and image descriptions
   logoAlt: string;
   languageToggle: string;
   decreaseTextSize: string;
   increaseTextSize: string;
-  shareRecipe: string;
+  /** The menu's action on a recipe page: start a remix of it. */
+  remixRecipe: string;
   installBannerLabel: string;
   dismissBanner: string;
   closeDialog: string;
@@ -171,6 +166,19 @@ export interface UiTranslations {
   // The recipe editor
   editorTitleNew: string;
   editorTitleEdit: string;
+  editorTitleRemix: string;
+  /** Under the remix editor's title: the recipe it's a remix of. */
+  remixingFrom: (name: string) => string;
+  /** The remix mark's popover: what it's a remix of. */
+  remixedFrom: string;
+  /** The remix mark on a remix's page: opens where it came from. */
+  showRemixOriginal: string;
+  /** The original was deleted after the remix was made. */
+  remixOriginalGone: string;
+  /** The remix badge's popover title. */
+  remixesTitle: string;
+  /** The remix badge on a recipe's page, e.g. "3 remixes". */
+  remixCount: (count: number) => string;
   save: string;
   draftSaved: string;
   paste: string;
@@ -442,8 +450,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     iosStep2: 'Scroll down and tap <strong>Add to Home Screen</strong> {icon}.',
     iosStep3: 'Tap <strong>Add</strong> in the top-right corner to finish.',
     iosModalDone: 'Got it',
-    shareSuccess: 'Recipe link copied to clipboard!',
-    shareFailed: "Couldn't copy the recipe link.",
     backToRecipes: 'Back to Recipes',
     settings: 'Settings',
     themeToggle: 'Toggle Theme',
@@ -504,12 +510,11 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     emptyVault: 'No recipes yet. Add the first one from the menu.',
     emptyFilter: 'No recipes here yet.',
     estimatedTime: (minutes: number) => `~${durationEn(minutes)}`,
-    shareText: (name: string, author: string) => `${name} by ${author} – a family recipe`,
     logoAlt: 'Family Kitchen logo',
     languageToggle: 'Toggle language: English / Polish',
     decreaseTextSize: 'Decrease text size',
     increaseTextSize: 'Increase text size',
-    shareRecipe: 'Share Recipe',
+    remixRecipe: 'Remix Recipe',
     installBannerLabel: 'Install app banner',
     dismissBanner: 'Dismiss banner',
     closeDialog: 'Close',
@@ -534,6 +539,13 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     descriptionLabel: 'Description',
     editorTitleNew: 'New Recipe',
     editorTitleEdit: 'Edit Recipe',
+    editorTitleRemix: 'Remix Recipe',
+    remixingFrom: (name: string) => `Remix of ${name}`,
+    remixedFrom: 'Remixed from',
+    showRemixOriginal: 'A remix: show the original recipe',
+    remixOriginalGone: 'The original is no longer in the Recipe Box.',
+    remixesTitle: 'Remixes',
+    remixCount: (count: number) => `${count} ${count === 1 ? 'remix' : 'remixes'}`,
     save: 'Save',
     draftSaved: 'Kept on this phone',
     paste: 'Paste',
@@ -798,8 +810,6 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     iosStep2: 'Przewiń w dół i wybierz <strong>Do ekranu początkowego</strong> {icon}.',
     iosStep3: 'Dotknij <strong>Dodaj</strong> w prawym górnym rogu ekranu.',
     iosModalDone: 'Rozumiem',
-    shareSuccess: 'Link do przepisu skopiowany do schowka!',
-    shareFailed: 'Nie udało się skopiować linku do przepisu.',
     backToRecipes: 'Powrót do przepisów',
     settings: 'Ustawienia',
     themeToggle: 'Zmień motyw',
@@ -862,12 +872,11 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     emptyVault: 'Nie ma jeszcze żadnych przepisów. Dodaj pierwszy z menu.',
     emptyFilter: 'Nie ma tu jeszcze przepisów.',
     estimatedTime: (minutes: number) => `~${durationPl(minutes)}`,
-    shareText: (name: string, author: string) => `${name} (${author}) – przepis rodzinny`,
     logoAlt: 'Logo Family Kitchen',
     languageToggle: 'Zmień język: angielski / polski',
     decreaseTextSize: 'Zmniejsz tekst',
     increaseTextSize: 'Powiększ tekst',
-    shareRecipe: 'Udostępnij Przepis',
+    remixRecipe: 'Zremiksuj Przepis',
     installBannerLabel: 'Baner instalacji aplikacji',
     dismissBanner: 'Zamknij baner',
     closeDialog: 'Zamknij',
@@ -892,6 +901,13 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     descriptionLabel: 'Opis',
     editorTitleNew: 'Nowy Przepis',
     editorTitleEdit: 'Edytuj Przepis',
+    editorTitleRemix: 'Remiks Przepisu',
+    remixingFrom: (name: string) => `Remiks przepisu: ${name}`,
+    remixedFrom: 'Remiks przepisu',
+    showRemixOriginal: 'Remiks: pokaż oryginalny przepis',
+    remixOriginalGone: 'Oryginału nie ma już w Przepiśniku.',
+    remixesTitle: 'Remiksy',
+    remixCount: (count: number) => `${count} ${plPlural(count, 'remiks', 'remiksy', 'remiksów')}`,
     save: 'Zapisz',
     draftSaved: 'Zachowano na tym telefonie',
     paste: 'Wklej',

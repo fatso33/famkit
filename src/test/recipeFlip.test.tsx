@@ -179,7 +179,7 @@ describe('a recipe card flipping open and shut', () => {
     expect(screen.getAllByRole('button', { name: t.closeMenu })).toHaveLength(2);
     expect(document.querySelector('.fab-group')).toHaveAttribute('data-back', 'shown');
     const menu = screen.getByRole('dialog', { name: t.menu });
-    expect(within(menu).getByRole('button', { name: t.shareRecipe })).toBeInTheDocument();
+    expect(within(menu).getByRole('button', { name: t.remixRecipe })).toBeInTheDocument();
   });
 
   it('shows the recipe and its back button at once where nothing animates', () => {

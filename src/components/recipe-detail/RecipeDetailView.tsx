@@ -1,5 +1,5 @@
 import React, { useImperativeHandle, useRef, useState, type Ref } from 'react';
-import { ChevronRight, FilePen, Languages } from 'lucide-react';
+import { ChevronRight, FilePen, Languages, Shuffle, Timer } from 'lucide-react';
 import { flushSync } from 'react-dom';
 import { Recipe, Language } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
@@ -19,6 +19,7 @@ import { useUnroll } from '../../hooks/useUnroll';
 import { recipePhoto } from '../../utils/vault';
 import { photoPending } from '../../utils/deviceCopy';
 import { CategoryTile } from '../recipe-grid/CategoryTile';
+import { RemixPopover } from './RemixPopover';
 
 /** What App can ask of an open recipe page. */
 export interface RecipePageHandle {
@@ -42,6 +43,15 @@ interface RecipeDetailViewProps {
   draftVersion?: number;
   /** Opens the editor on that draft, out of the chip that was tapped. */
   onContinueDraft?: (from: Element) => void;
+  /**
+   * What it's a remix of: the original, or null when that's no longer in the Recipe Box.
+   * Undefined when it isn't a remix.
+   */
+  remixOriginal?: Recipe | null;
+  /** The remixes family members have made of it. */
+  remixes?: Recipe[];
+  /** Opens another recipe from the remix popover, given the name tapped there. */
+  onOpenRecipe?: (id: string, name: HTMLElement) => void;
   ref?: Ref<RecipePageHandle>;
   t: UiTranslations;
 }
@@ -56,6 +66,9 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   onPhotoOpenChange,
   draftVersion,
   onContinueDraft,
+  remixOriginal,
+  remixes = [],
+  onOpenRecipe,
   ref,
   t,
 }) => {
@@ -76,6 +89,12 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   // The step photo shown full screen. The step stays set after closing, so the photo has
   // its thumbnail to shrink back into.
   const [zoom, setZoom] = useState<{ src: string; step: number; open: boolean } | null>(null);
+  // The remix popover, open from the mark by the title (the original) or the badge by the time
+  // (the remixes).
+  const [remixPop, setRemixPop] = useState<{
+    kind: 'original' | 'remixes';
+    anchor: HTMLElement;
+  } | null>(null);
 
   const openZoom = (src: string, step: number) => {
     // Marks the thumbnail before the browser snapshots the page, so the photo grows from it.
@@ -106,6 +125,9 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   const time = recipeTime(recipe, choices);
   const timeText = time.manual ? t.totalTime(time.minutes) : t.estimatedTime(time.minutes);
   const addedBy = addedByName(rawRecipe);
+  const shownIn = (r: Recipe) => getLocalizedRecipe(r, language) || r;
+  const openRemixPop = (kind: 'original' | 'remixes') => (e: React.MouseEvent<HTMLElement>) =>
+    setRemixPop({ kind, anchor: e.currentTarget });
 
   const handleIncreaseScale = () => {
     setScale((prev) => (prev === 0.5 ? 1 : Math.min(8, prev + 1)));
@@ -141,32 +163,51 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
         <div ref={bodyRef} className="detail-body">
           {/* Header Info */}
           <header className="detail-header-block">
-            <h1 id="detailTitle" className="detail-title">
-              {recipe.name}
-            </h1>
+            <div className="detail-title-row">
+              <h1 id="detailTitle" className="detail-title">
+                {recipe.name}
+              </h1>
+              {remixOriginal !== undefined && (
+                <button
+                  type="button"
+                  className="remix-mark is-button"
+                  aria-label={t.showRemixOriginal}
+                  aria-haspopup="dialog"
+                  aria-expanded={remixPop?.kind === 'original'}
+                  onClick={openRemixPop('original')}
+                >
+                  <Shuffle size="1em" strokeWidth={2.1} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+            {/* Each item after the first is set off by a dot (index.css), which is hidden when
+                the row wraps and the item starts a line. */}
             <div className="detail-meta">
-              <span id="detailAuthor" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+              <span
+                id="detailAuthor"
+                className="detail-meta-item"
+                style={{ fontWeight: 600, color: 'var(--text-primary)' }}
+              >
                 {t.byAuthor(recipe.author)}
               </span>
-              {addedBy && (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <span className="added-by">{t.addedBy(addedBy)}</span>
-                </>
-              )}
-              <span aria-hidden="true">·</span>
-              <span
-                id="detailEstimatedTime"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  color: 'var(--accent)',
-                  fontWeight: 600,
-                }}
-              >
-                ⏱️ <NumberRoll value={timeText} />
+              {addedBy && <span className="detail-meta-item added-by">{t.addedBy(addedBy)}</span>}
+              <span id="detailEstimatedTime" className="detail-meta-item detail-time">
+                <Timer className="time-icon" size="1.05em" strokeWidth={2.1} aria-hidden="true" />
+                <NumberRoll value={timeText} />
               </span>
+              {remixes.length > 0 && (
+                <button
+                  type="button"
+                  className="remix-badge is-button"
+                  aria-label={t.remixCount(remixes.length)}
+                  aria-haspopup="dialog"
+                  aria-expanded={remixPop?.kind === 'remixes'}
+                  onClick={openRemixPop('remixes')}
+                >
+                  <Shuffle size="1em" strokeWidth={2.2} aria-hidden="true" />
+                  <span className="remix-badge-count">{remixes.length}</span>
+                </button>
+              )}
             </div>
             {/* Some of it is still in the original language: its translation is coming. */}
             {awaitsTranslation(rawRecipe, language) && (
@@ -248,6 +289,25 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* The remixes' popover goes with its badge, should the last remix be deleted meanwhile. */}
+      {remixPop && onOpenRecipe && (remixPop.kind === 'original' || remixes.length > 0) && (
+        <RemixPopover
+          anchor={remixPop.anchor}
+          title={remixPop.kind === 'original' ? t.remixedFrom : t.remixesTitle}
+          recipes={
+            remixPop.kind === 'original'
+              ? remixOriginal
+                ? [shownIn(remixOriginal)]
+                : []
+              : remixes.map(shownIn)
+          }
+          emptyText={remixPop.kind === 'original' ? t.remixOriginalGone : undefined}
+          onOpen={onOpenRecipe}
+          onClose={() => setRemixPop(null)}
+          t={t}
+        />
+      )}
 
       {/* Image Zoom Lightbox Modal */}
       {zoom?.open && (

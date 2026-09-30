@@ -420,6 +420,22 @@
         animation: vt-fade-through 0.38s var(--ease-soft) both;
       }
 
+      /* One recipe to another (from a remix popover): the old page clears quickly and the new
+         one rises in just behind it, so two similar pages never show through each other. The
+         tapped name flying into the new title (the 'title' morph) carries the eye across. */
+      :root[data-nav='hop']::view-transition-old(root) {
+        animation: vt-fade-out 0.12s linear both;
+      }
+      :root[data-nav='hop']::view-transition-new(root) {
+        animation: vt-hop-in 0.36s var(--ease-glide) 0.12s both;
+      }
+      @keyframes vt-hop-in {
+        from {
+          opacity: 0;
+          transform: translateY(0.5rem);
+        }
+      }
+
       /* A page chosen from the menu: under the menu's blurring scrim, the old page cross-fades
          into the new one while the scrim clears, so the new page comes into focus. */
       :root[data-nav='menu']::view-transition-old(root) {
@@ -439,11 +455,11 @@
          selves show, never a sliding snapshot. (The open menu isn't lifted out like them: its
          scrim blurs the page behind, which a separate snapshot can't carry, so the blur would
          vanish at once. A page chosen from it cross-fades under the scrim instead, see above.) */
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='menu'], [data-nav='vault'], [data-nav='zoom'], [data-nav='flip-open'], [data-nav='flip-close'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='hop'], [data-nav='menu'], [data-nav='vault'], [data-nav='zoom'], [data-nav='flip-open'], [data-nav='flip-close'])
         .fab-group {
         view-transition-name: fk-fab;
       }
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='hop'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'])
         .app-toast {
         view-transition-name: fk-toast;
       }
@@ -526,6 +542,22 @@
         object-fit: contain;
         object-position: left top;
         animation-duration: 0.4s;
+      }
+
+      /* A recipe opened from a remix popover: the name tapped there flies up into the new
+         page's title (App, openLinkedRecipe names the two ends) as the new page fades up (hop).
+         Only the new title flies: it starts shrunk to the tapped name's width, in its place,
+         and grows to full size. The small name and the big title differ slightly in shape (the
+         serif's optical sizing), so cross-fading the two would show a doubled title. */
+      ::view-transition-group(recipe-title) {
+        animation-duration: 0.5s;
+        animation-timing-function: var(--ease-glide);
+      }
+      ::view-transition-old(recipe-title) {
+        display: none;
+      }
+      ::view-transition-new(recipe-title) {
+        animation: none;
       }
 
       /* A step photo grows into the full-screen viewer, and back into its step. */
@@ -2400,9 +2432,34 @@
       .vault-row-time,
       .card-time {
         flex: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        margin-left: 0.2rem;
         white-space: nowrap;
         font-weight: 600;
         color: var(--accent);
+      }
+
+      .time-icon {
+        flex: none;
+      }
+
+      /* The remix badge at the end of the cook-and-time row. */
+      :is(.vault-row-meta, .card-meta) .remix-badge {
+        margin-left: auto;
+      }
+
+      /* A list card's name with a remix's mark right after it; a name that wraps fills the
+         row, so the mark then sits at its end, centred on its lines. */
+      .vault-row-title {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+      }
+
+      .vault-row-title .vault-row-name {
+        min-width: 0;
       }
 
       .vault-row-photo {
@@ -2458,6 +2515,21 @@
         font: var(--weight-heading) 1.3rem/1.22 var(--font-serif);
         letter-spacing: -0.01em;
         color: var(--text-primary);
+      }
+
+      /* A photo card's name, with a remix's mark at the row's far end, centred on the name. */
+      .card-title-row {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+      }
+
+      .card-title-row .card-title {
+        min-width: 0;
+      }
+
+      .remix-mark.is-end {
+        margin-left: auto;
       }
 
       /* A few lines about the recipe, at most three, so the cards in the stack keep an even
@@ -2827,13 +2899,334 @@
         letter-spacing: -0.01em;
       }
 
+      /* The byline's items, each after the first set off by a dot drawn in the space before it.
+         An item that wraps to start a line has its dot there too, but the row is shifted left
+         by that space and clipped back on its left edge, so a line never starts (or ends) with
+         a stray dot, however the row wraps. */
       .detail-meta {
+        --meta-dot: 0.75rem;
         font-size: 1rem;
         color: var(--text-muted);
         display: flex;
         align-items: center;
         gap: 0.5rem;
         flex-wrap: wrap;
+        margin-left: calc(-1 * var(--meta-dot));
+        clip-path: inset(-3rem -3rem -3rem var(--meta-dot));
+      }
+
+      .detail-meta > * {
+        margin-left: var(--meta-dot);
+      }
+
+      .detail-meta-item {
+        position: relative;
+      }
+
+      .detail-meta-item + .detail-meta-item::before {
+        content: '·';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        right: 100%;
+        display: grid;
+        place-items: center;
+        /* The column gap and this item's margin: from the item before to this one. */
+        width: calc(0.5rem + var(--meta-dot));
+        /* Its own line height, so it sits on the row's middle beside smaller text too. */
+        font-size: 1rem;
+        line-height: 1;
+        font-weight: 400;
+        color: var(--text-muted);
+      }
+
+      /* The title, with a remix's mark beside its last line (or its lines, centred on them). */
+      .detail-title-row {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .detail-title-row .detail-title {
+        min-width: 0;
+        margin-bottom: 0;
+      }
+
+      .detail-time {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-weight: 600;
+        color: var(--accent);
+      }
+
+      /* The badge sits at the row's end, even when the row wraps onto a second line. */
+      .detail-meta > .remix-badge {
+        margin-left: auto;
+        font-size: 0.9375rem;
+        padding: 0.3rem 0.7rem 0.3rem 0.6rem;
+      }
+
+      /* ── Remixes. A remix's mark by its name, and a recipe's badge counting its remixes, on
+         its card and its page. On a card they're pictures (the card is what's tapped); on the
+         page they're buttons that open a popover of links. Static, so the cards' motion (the
+         entrance, the flip, the shelf) carries them as part of each card at no extra cost. */
+      .remix-mark {
+        flex: none;
+        display: inline-grid;
+        place-items: center;
+        width: 1.75em;
+        height: 1.75em;
+        border-radius: var(--radius-full);
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        color: var(--accent);
+        font-size: 0.9375rem;
+      }
+
+      .remix-badge {
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.12rem 0.55rem 0.12rem 0.45rem;
+        border-radius: var(--radius-full);
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        color: var(--accent);
+        font-size: 0.8125rem;
+        font-weight: 700;
+        line-height: 1.4;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .remix-mark.is-button,
+      .remix-badge.is-button {
+        position: relative;
+        border: 0;
+        font-family: inherit;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          background-color 0.2s ease,
+          scale 0.15s ease;
+      }
+
+      .remix-mark.is-button {
+        width: 2.75rem;
+        height: 2.75rem;
+        font-size: 1.3rem;
+      }
+
+      /* A badge's touch area reaches past its pill to a full fingertip. */
+      .remix-badge.is-button::before {
+        content: '';
+        position: absolute;
+        inset: -0.6rem -0.3rem;
+      }
+
+      .remix-mark.is-button:active,
+      .remix-badge.is-button:active {
+        scale: 0.94;
+      }
+
+      .remix-mark.is-button[aria-expanded='true'],
+      .remix-badge.is-button[aria-expanded='true'] {
+        background: color-mix(in srgb, var(--accent) 22%, transparent);
+      }
+
+      @media (hover: hover) {
+        .remix-mark.is-button:hover,
+        .remix-badge.is-button:hover {
+          background: color-mix(in srgb, var(--accent) 20%, transparent);
+        }
+      }
+
+      .remix-mark.is-button:focus-visible,
+      .remix-badge.is-button:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      /* The popover springs out of the mark or badge it belongs to (--pop-origin-x, measured
+         by RemixPopover), its links rising in a beat behind: transform and opacity only. It's
+         placed on the page once, so it scrolls with the page at no cost. */
+      .remix-pop-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        z-index: 45;
+        pointer-events: none;
+      }
+
+      .remix-pop-catcher {
+        position: fixed;
+        inset: 0;
+        pointer-events: auto;
+      }
+
+      .remix-pop {
+        position: absolute;
+        width: min(20rem, calc(100vw - 2rem));
+        padding: 0.85rem 0.5rem 0.5rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        background: var(--elev-menu);
+        box-shadow: var(--shadow-lg);
+        pointer-events: auto;
+        transform-origin: var(--pop-origin-x, 50%) -0.6rem;
+        animation: vault-popover-in 0.5s var(--spring-soft) both;
+      }
+
+      .remix-pop:focus {
+        outline: none;
+      }
+
+      /* A small point on its top edge, under the mark it came from. */
+      .remix-pop::before {
+        content: '';
+        position: absolute;
+        top: -0.4rem;
+        left: calc(var(--pop-origin-x, 50%) - 0.4rem);
+        width: 0.8rem;
+        height: 0.8rem;
+        border-top: 1px solid var(--border-subtle);
+        border-left: 1px solid var(--border-subtle);
+        border-top-left-radius: 3px;
+        background: var(--elev-menu);
+        rotate: 45deg;
+      }
+
+      .remix-pop-layer.is-closing .remix-pop {
+        animation: fk-exit-popover 0.2s var(--ease-accelerate) both;
+      }
+
+      .remix-pop-title {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        margin: 0 0.5rem 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+      }
+
+      .remix-pop-title > svg {
+        color: var(--accent);
+      }
+
+      .remix-pop-count {
+        margin-left: auto;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0;
+      }
+
+      .remix-pop-empty {
+        margin: 0 0.5rem 0.35rem;
+        font-size: 0.9375rem;
+        line-height: 1.45;
+        color: var(--text-secondary);
+      }
+
+      .remix-pop-list {
+        display: grid;
+        gap: 0.15rem;
+        max-height: min(22rem, 60dvh);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .remix-pop-list > li {
+        animation: vault-pop-item 0.45s var(--ease-glide) calc(60ms + min(var(--i, 0), 6) * 18ms)
+          both;
+      }
+
+      .remix-pop-link {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        width: 100%;
+        min-height: 3.5rem;
+        padding: 0.45rem 0.5rem;
+        border: 0;
+        border-radius: var(--radius-md);
+        background: transparent;
+        color: var(--text-primary);
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition: background-color 0.2s ease;
+      }
+
+      .remix-pop-link:active {
+        background: var(--menu-well);
+      }
+
+      @media (hover: hover) {
+        .remix-pop-link:hover {
+          background: var(--menu-well);
+        }
+      }
+
+      .remix-pop-link:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: -3px;
+      }
+
+      .remix-pop-thumb {
+        flex: none;
+        width: 2.75rem;
+        height: 2.75rem;
+        overflow: hidden;
+        border-radius: var(--radius-sm);
+        background: var(--bg-card);
+      }
+
+      .remix-pop-thumb img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .remix-pop-text {
+        flex: 1;
+        min-width: 0;
+        display: grid;
+        gap: 0.1rem;
+      }
+
+      .remix-pop-name {
+        /* As wide as its text, so it flies into the recipe's title as one piece. */
+        width: fit-content;
+        max-width: 100%;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        overflow: hidden;
+        font: var(--weight-heading) 1.05rem/1.25 var(--font-serif);
+        letter-spacing: -0.01em;
+        overflow-wrap: anywhere;
+      }
+
+      .remix-pop-cook {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 0.8125rem;
+        color: var(--text-muted);
+      }
+
+      .remix-pop-chevron {
+        flex: none;
+        color: var(--text-muted);
       }
 
       /* The owner's unfinished edit of this recipe, under its byline: tap to carry on. */

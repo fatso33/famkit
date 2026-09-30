@@ -115,6 +115,11 @@ interface AddRecipeModalProps {
     changeNote: string,
   ) => void;
   initialRecipe?: Recipe | null;
+  /**
+   * Set for a remix: the name of the recipe it's a remix of ('' when that's gone). The form
+   * opens on `initialRecipe` (or the remix's draft) and saves a new recipe.
+   */
+  remixFrom?: string;
   /** A saved draft to carry on with, in place of the recipe as it is (or an empty form). */
   draft?: RecipeDraft | null;
   /** Keeps what's written as a draft. Missing when there's nobody signed in to keep it for. */
@@ -148,6 +153,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   origin,
   onSave,
   initialRecipe,
+  remixFrom,
   draft,
   onSaveDraft,
   onDiscardDraft,
@@ -160,7 +166,9 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   language = 'en',
   t,
 }) => {
-  const isEditMode = Boolean(initialRecipe);
+  // A remix opens on another recipe's content, but saves as a new recipe.
+  const isRemix = remixFrom !== undefined;
+  const isEditMode = Boolean(initialRecipe) && !isRemix;
   // Closing folds the page back into the button it came from; saving lets it sink away.
   const [exit, setExit] = useState<'cancel' | 'save'>('cancel');
   const { ref: layerRef, isClosing, requestClose } = useExitAnimation<HTMLDivElement>(onClose);
@@ -179,7 +187,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   const initialNote = restore ? t.restoredNote(restore.version.version) : (draft?.changeNote ?? '');
   const [changeNote, setChangeNote] = useState(initialNote);
   // The version a draft of it becomes (the next, or 1 for a new recipe).
-  const nextVersion = draftVersion(initialRecipe);
+  const nextVersion = draftVersion(isEditMode ? initialRecipe : null);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showErrors, setShowErrors] = useState(false);
@@ -205,8 +213,9 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   // --- Kept on this phone (create mode) ---------------------------------------------------
 
   // A new recipe not yet saved anywhere is kept on this phone as it's typed, so closing the app
-  // by accident loses nothing. Not while a saved draft is open: that has its own place.
-  const keptOnPhone = !isEditMode && !draft;
+  // by accident loses nothing. Not while a saved draft is open: that has its own place. Nor a
+  // remix, which the one copy kept for a new recipe would lose its original from.
+  const keptOnPhone = !initialRecipe && !draft;
 
   // Draft JSON waiting on the 400ms debounce. Flushed on close so the last keystrokes
   // aren't lost; cleared when the form is emptied, submitted or the draft is discarded.
@@ -282,7 +291,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
       return;
     }
     const textChanged = (publishedText ?? formText(initial.form)) !== formText(form);
-    onSave(recipeFromForm(), initialRecipe?.id, textChanged, changeNote);
+    onSave(recipeFromForm(), isEditMode ? initialRecipe?.id : undefined, textChanged, changeNote);
     forgetKeptCopy();
     // Not reset: the form keeps its content while it sinks away, then unmounts.
     close('save');
@@ -318,9 +327,9 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
     else save();
   };
 
-  // Changed since it opened: an edit or a draft from how it was, a new recipe from empty.
+  // Changed since it opened: an edit, a remix or a draft from how it was, a new recipe from empty.
   const isDirty = () =>
-    isEditMode || draft
+    initialRecipe || draft
       ? JSON.stringify([formToRecipe(form), authorMode, form.author.trim(), changeNote]) !==
         JSON.stringify([
           formToRecipe(initial.form),
@@ -334,11 +343,12 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   const requestCancel = () => {
     if (!isDirty()) close('cancel');
     else if (onSaveDraft) setSheet('leave');
-    else if (isEditMode) setSheet('discard');
+    else if (isEditMode || isRemix) setSheet('discard');
     else close('cancel');
   };
   // Escape and the phone's back gesture close it like the ✕ (asking first when there are
-  // changes); sheets and menus opened over it take them for themselves.
+  // changes); sheets and menus opened over it take them for themselves. Without drafts a remix,
+  // like an edit, asks before its changes go: nothing else keeps them.
   useDialogDismiss(requestCancel);
   useBackStep(true, () => requestCancel());
 
@@ -507,6 +517,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
     >
       <EditorBar
         isEditMode={isEditMode}
+        isRemix={isRemix}
         version={initialRecipe?.version ?? 1}
         draftLabel={draft ? t.draftLabel(nextVersion) : undefined}
         hasVersions={Boolean(onPickVersion) && versions.length > 0}
@@ -515,11 +526,13 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
         status={
           draft
             ? t.draftLabel(nextVersion)
-            : hasRestoredDraft
-              ? t.draftRestored
-              : draftWorthy
-                ? t.draftSaved
-                : null
+            : remixFrom
+              ? t.remixingFrom(remixFrom)
+              : hasRestoredDraft
+                ? t.draftRestored
+                : draftWorthy
+                  ? t.draftSaved
+                  : null
         }
         tucked={scroll.tucked}
         scrolled={scroll.scrolled}
@@ -864,7 +877,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
         <EditorPreview
           recipe={{
             ...recipeFromForm(),
-            id: initialRecipe?.id ?? 'preview',
+            id: initialRecipe?.id || 'preview',
             ownerEmail: initialRecipe?.ownerEmail ?? currentUser?.email,
             ownerName: initialRecipe?.ownerName ?? currentUser?.name,
             createdAt: initialRecipe?.createdAt,

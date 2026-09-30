@@ -219,6 +219,11 @@ export interface Recipe {
   manualMinutes?: number;
   /** The web page it was brought in from, when it was. Kept for later; not shown. */
   sourceUrl?: string;
+  /**
+   * The id of the recipe this one is a remix of: a family member's own take on it, which they
+   * own. The original is never changed by it; its remixes are counted from this (utils/recipeRemix).
+   */
+  remixOf?: string;
   /** Language of the top-level text fields. Missing on older records, which are English. */
   sourceLanguage?: Language;
   translations?: RecipeTranslations;

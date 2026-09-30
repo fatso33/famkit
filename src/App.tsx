@@ -45,7 +45,14 @@ import {
   type NavMotion,
 } from './utils/viewTransition';
 import { SeasonPreference } from './utils/season';
-import { PencilLine, Plus, Share2 } from 'lucide-react';
+import {
+  remixLanguage,
+  remixOriginal,
+  remixOriginalId,
+  remixStart,
+  remixesOf,
+} from './utils/recipeRemix';
+import { PencilLine, Plus, Shuffle } from 'lucide-react';
 import { FloatingMenu, MenuAction } from './components/layout/FloatingMenu';
 import { InstallCard } from './components/layout/InstallCard';
 import { RecipeGridView } from './components/recipe-grid/RecipeGridView';
@@ -59,6 +66,7 @@ import { MakesView } from './components/makes/MakesView';
 import { SettingsView } from './components/settings/SettingsView';
 import { Toast } from './components/common/Toast';
 import {
+  Language,
   Recipe,
   RecipeDraft,
   RecipeVersion,
@@ -125,7 +133,6 @@ export default function App() {
     deleteRecipe,
     restoreRecipe,
   } = useRecipes(currentUser);
-  const localizedRecipe = getLocalizedRecipe(selectedRecipe, language);
   // The signed-in family member's unfinished recipes and edits, seen only by them.
   const {
     drafts,
@@ -157,6 +164,13 @@ export default function App() {
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   // The draft the editor carried on with, if any: saving it again replaces it.
   const [editingDraft, setEditingDraft] = useState<RecipeDraft | null>(null);
+  // A remix the editor holds: the recipe it's a remix of, what the form starts from (none when
+  // it carries on with the remix's draft), and the language it's written in.
+  const [remixing, setRemixing] = useState<{
+    from: string;
+    start: Recipe | null;
+    language: Language;
+  } | null>(null);
   // Whether the drafts were known when the editor opened. An edit opened before then can't tell
   // if its recipe already has a draft, which saving one would replace unseen.
   const [draftsKnownAtOpen, setDraftsKnownAtOpen] = useState(false);
@@ -183,7 +197,7 @@ export default function App() {
       : editingRecipe;
   // Edit in the viewer's language where possible (a draft, in the one it was written in); see
   // resolveEdit for how saves merge.
-  const editLanguage = editingDraft?.language ?? language;
+  const editLanguage = editingDraft?.language ?? remixing?.language ?? language;
   const editForm = editBase && recipeForEditing(editBase, editLanguage);
   const restore =
     editingRecipe && editBase && editForm && restoredVersion
@@ -197,10 +211,17 @@ export default function App() {
         }
       : undefined;
 
+  // The name of the recipe a remix is of, as the editor shows it; none when that's gone.
+  const remixSource = remixing && recipes.find((r) => r.id === remixing.from);
+  const remixFromName = remixSource
+    ? (getLocalizedRecipe(remixSource, language) ?? remixSource).name
+    : undefined;
+
   const closeEditor = () => {
     setIsAddModalOpen(false);
     setEditingRecipe(null);
     setEditingDraft(null);
+    setRemixing(null);
     setRestoredVersion(null);
     setEditorReopened(false);
   };
@@ -375,7 +396,17 @@ export default function App() {
 
   // The editor opens out of the button that asked for it: the menu button, where "Add recipe"
   // or "Edit recipe" was chosen, unless a draft's card or chip was tapped.
-  const openEditor = (recipe: Recipe | null, draft: RecipeDraft | null, from?: Element | null) => {
+  const openEditor = (
+    recipe: Recipe | null,
+    draft: RecipeDraft | null,
+    from?: Element | null,
+    remix: typeof remixing = null,
+  ) => {
+    // A remix's draft carries on as a remix.
+    const draftOf = draft && !draft.recipeId ? remixOriginalId(draft.recipe) : null;
+    setRemixing(
+      remix ?? (draft && draftOf ? { from: draftOf, start: null, language: draft.language } : null),
+    );
     setEditingRecipe(recipe);
     setEditingDraft(draft);
     setDraftsKnownAtOpen(draftsLoaded);
@@ -395,13 +426,28 @@ export default function App() {
     openEditor(recipe, draftFor(drafts, recipe.id), from);
   };
 
+  // A remix starts as a new recipe holding a copy of this one, for whoever remixes it to make
+  // their own (theirs to own, at version 1). The original stays as it is.
+  const remixRecipe = (original: Recipe) => {
+    // A copy without its photos would leave them out of the remix.
+    if (hasLeftOutPhotos(original)) {
+      showToast(t.photosStillLoading, 'info');
+      return;
+    }
+    openEditor(null, null, null, {
+      from: original.id,
+      start: remixStart(original, language),
+      language: remixLanguage(original, language),
+    });
+  };
+
   // Keeps what the editor holds as a draft: the open one again, else the recipe's, else a new one.
   const keepDraft = (content: DraftContent, changeNote: string) => {
     const recipeId = editingRecipe?.id;
     const id = editingDraft?.id ?? (recipeId ? editDraftId(recipeId) : newDraftId());
     const draft: RecipeDraft = {
       id,
-      recipe: { ...content, id: recipeId ?? id },
+      recipe: { ...content, id: recipeId ?? id, ...(remixing && { remixOf: remixing.from }) },
       language: editLanguage,
       savedAt: Date.now(),
     };
@@ -423,27 +469,35 @@ export default function App() {
       console.warn('Failed to remove a recipe draft:', err);
     });
 
-  const handleShare = async () => {
-    if (localizedRecipe && navigator.share) {
-      try {
-        await navigator.share({
-          title: localizedRecipe.name,
-          text: t.shareText(localizedRecipe.name, localizedRecipe.author),
-          url: window.location.href,
+  // From a recipe's remix popover to another recipe: the name tapped there flies up into the new
+  // page's title as that page fades up over this one (index.css, the 'hop' motion and 'title'
+  // morph). Only the two names and the page are snapshotted, so it stays light. Back still
+  // returns to the Recipe Box, where this recipe's card is the one that takes it back.
+  const openLinkedRecipe = (id: string, name: HTMLElement) => {
+    markSeen(id);
+    const title = () => document.getElementById('detailTitle');
+    // A hop cut short by another page change never cleared this page's title: two elements
+    // sharing the name would cancel this one.
+    title()?.style.removeProperty('view-transition-name');
+    // With less motion asked for, the pages only cross-fade.
+    const morph = !prefersReducedMotion();
+    if (morph) name.style.setProperty('view-transition-name', 'recipe-title');
+    transitionView(
+      () => {
+        flushSync(() => {
+          setLastRecipeId(id);
+          setPhotoOpenFor(null);
+          setSelectedRecipeId(id);
         });
-      } catch {
-        // User dismissed share dialog
-      }
-    } else {
-      // navigator.clipboard is undefined outside secure contexts (e.g. http on the LAN).
-      const copied =
-        navigator.clipboard?.writeText(window.location.href) ??
-        Promise.reject(new Error('Clipboard unavailable'));
-      copied.then(
-        () => showToast(t.shareSuccess),
-        () => showToast(t.shareFailed, 'error'),
-      );
-    }
+        jumpTo(0);
+        if (morph) title()?.style.setProperty('view-transition-name', 'recipe-title');
+      },
+      {
+        motion: 'hop',
+        morph: morph ? 'title' : undefined,
+        onFinished: () => title()?.style.removeProperty('view-transition-name'),
+      },
+    );
   };
 
   const onRecipe = page === 'recipes' && !!selectedRecipe;
@@ -468,11 +522,12 @@ export default function App() {
           onSelect: () => editRecipe(selectedRecipe),
         });
       }
+      // Anyone can remix any recipe, their own too.
       pageActions.push({
-        id: 'share',
-        label: t.shareRecipe,
-        icon: Share2,
-        onSelect: () => void handleShare(),
+        id: 'remix-recipe',
+        label: t.remixRecipe,
+        icon: Shuffle,
+        onSelect: () => remixRecipe(selectedRecipe),
       });
       break;
     case 'makes':
@@ -518,6 +573,9 @@ export default function App() {
               draftFor(drafts, selectedRecipe.id) ? draftVersion(selectedRecipe) : undefined
             }
             onContinueDraft={(from) => editRecipe(selectedRecipe, from)}
+            remixOriginal={remixOriginal(recipes, selectedRecipe)}
+            remixes={remixesOf(recipes, selectedRecipe.id)}
+            onOpenRecipe={openLinkedRecipe}
             t={t}
           />
         ) : (
@@ -574,7 +632,8 @@ export default function App() {
         <AddRecipeModal
           // A restored version reopens the form on its content.
           key={`${editingRecipe?.id ?? editingDraft?.id ?? 'new'}:${restoredVersion?.id ?? 'current'}`}
-          initialRecipe={editForm}
+          initialRecipe={editForm ?? remixing?.start}
+          remixFrom={remixing ? (remixFromName ?? '') : undefined}
           // An earlier version picked from the list replaces the draft's content in the form.
           draft={restoredVersion ? null : editingDraft}
           onSaveDraft={
@@ -618,7 +677,13 @@ export default function App() {
               }
             } else {
               // Provisional: translation detects the real language and corrects this.
-              addRecipe({ ...recipeData, sourceLanguage: editLanguage });
+              const added = addRecipe({
+                ...recipeData,
+                sourceLanguage: editLanguage,
+                ...(remixing && { remixOf: remixing.from }),
+              });
+              // Its page opens under the closing editor; its card is the one back takes it to.
+              setLastRecipeId(added.id);
             }
             // In the vault now, so its draft is done with.
             if (editingDraft) void dropDraft(editingDraft);

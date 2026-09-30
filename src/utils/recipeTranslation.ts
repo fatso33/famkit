@@ -616,6 +616,8 @@ export function resolveEdit(
     ownerEmail: original.ownerEmail,
     ownerName: original.ownerName,
     createdAt: original.createdAt,
+    // Not in the form: a remix stays one through its edits.
+    ...(original.remixOf ? { remixOf: original.remixOf } : {}),
     sourceLanguage: shownLanguage,
     translations,
   };

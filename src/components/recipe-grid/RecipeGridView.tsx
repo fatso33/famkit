@@ -22,6 +22,7 @@ import {
   type VaultEntry,
   type VaultGroup,
 } from '../../utils/vault';
+import { remixCounts, remixOriginalId } from '../../utils/recipeRemix';
 import { RecipeCard } from './RecipeCard';
 import { RecipeRow } from './RecipeRow';
 import { VaultHeader } from './VaultHeader';
@@ -111,6 +112,8 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
   const shown = sortEntries(filterEntries(entries, filter), sort, language);
   const counts = filterCounts(entries, filter, language);
   const groups = groupEntries(shown, sort.by, filter);
+  // How many remixes each recipe has, for the badge on its card.
+  const remixes = remixCounts(recipes);
 
   /**
    * With the bar pinned, a changed vault starts from its top, just under the bar. The pinned bar
@@ -193,6 +196,8 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
           isFlipTarget={!draft && recipe.id === flipRecipeId}
           enterIndex={enterIndex()}
           draft={draft}
+          remixed={remixOriginalId(recipe) !== null}
+          remixCount={draft ? 0 : (remixes.get(recipe.id) ?? 0)}
           onSelect={draft ? openDraft : onSelectRecipe}
           t={t}
         />
@@ -203,6 +208,8 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
           isFlipTarget={!draft && recipe.id === flipRecipeId}
           enterIndex={enterIndex()}
           draft={draft}
+          remixed={remixOriginalId(recipe) !== null}
+          remixCount={draft ? 0 : (remixes.get(recipe.id) ?? 0)}
           onSelect={draft ? openDraft : onSelectRecipe}
           t={t}
         />
