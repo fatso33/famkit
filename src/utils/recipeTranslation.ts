@@ -391,9 +391,25 @@ const wordsOf = (values: Iterable<PieceValue>) =>
  * confirm the recipe's current language, never relabel it.
  */
 export function translationFitsRecipe(recipe: Recipe, result: PieceTranslation): boolean {
-  const original = polishScore(wordsOf(recipePieces(translatableContent(recipe)).map(pieceValue)));
+  return languageFits(
+    recipePieces(translatableContent(recipe)).map(pieceValue),
+    result,
+    sourceLanguageOf(recipe),
+  );
+}
+
+/**
+ * Whether a translation's language labels fit any document's words (`source`, in what's taken
+ * as `current` language until then): see translationFitsRecipe.
+ */
+export function languageFits(
+  source: Iterable<PieceValue>,
+  result: PieceTranslation,
+  current: Language,
+): boolean {
+  const original = polishScore(wordsOf(source));
   const translation = polishScore(wordsOf(result.values.values()));
-  if (original === translation) return result.detectedLanguage === sourceLanguageOf(recipe);
+  if (original === translation) return result.detectedLanguage === current;
   return result.detectedLanguage === 'pl' ? original > translation : translation > original;
 }
 
