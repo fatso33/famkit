@@ -7,7 +7,6 @@ import {
   isoDay,
   madeOnLabel,
   makeCounts,
-  makesDeviceJson,
   makesOf,
   parseIsoDay,
   parseMake,
@@ -104,31 +103,5 @@ describe('makes', () => {
     expect(parseMake({ ...make(), recipeId: undefined })).toBeNull();
     expect(parseMake({ ...make(), photo: '' })).toBeNull();
     expect(parseMake('make')).toBeNull();
-  });
-
-  it("keeps the newest makes' photos on the device within its budget", () => {
-    const photo = 'x'.repeat(100);
-    const makes = [
-      make({ id: 'old', createdAt: 1, photo }),
-      make({ id: 'new', createdAt: 3, photo }),
-      make({ id: 'mid', createdAt: 2, photo }),
-    ];
-    const kept = (JSON.parse(makesDeviceJson(makes, 250, true)) as Make[]).map((m) => [
-      m.id,
-      Boolean(m.photo),
-      Boolean(m.photoOmitted),
-    ]);
-    expect(kept).toEqual([
-      ['old', false, true],
-      ['new', true, false],
-      ['mid', true, false],
-    ]);
-    // A copy without its photo comes back as a make waiting for it.
-    expect(parseMake(JSON.parse(makesDeviceJson(makes, 0, true))[0])).toMatchObject({
-      photo: '',
-      photoOmitted: true,
-    });
-    // Without the cloud, this copy is the only one: kept whole.
-    expect(makesDeviceJson(makes, 0, false)).toBe(JSON.stringify(makes));
   });
 });

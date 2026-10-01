@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   getStoredRecipes,
   saveRecipes,
+  getStoredMakes,
+  saveMakes,
   getStoredLanguage,
   setStoredLanguage,
   getStoredTheme,
@@ -16,10 +18,28 @@ import {
 } from '../services/storage';
 import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 import { Recipe } from '../types/recipe';
+import { Make } from '../types/make';
+import type { PhotoEntry, PhotoSet } from '../utils/deviceCopy';
+
+// The photo store (IndexedDB) as a map, its writes applied at once.
+const { kept } = vi.hoisted(() => ({ kept: new Map<string, PhotoEntry>() }));
+vi.mock('../services/photoStore', async () => {
+  const { photoChanges } = await import('../utils/deviceCopy');
+  return {
+    loadDevicePhotos: () => Promise.resolve(),
+    devicePhotos: (key: string) => kept.get(key),
+    keepDevicePhotos: (set: PhotoSet) => {
+      const { put, remove } = photoChanges(kept, set);
+      put.forEach((entry) => kept.set(entry.key, entry));
+      remove.forEach((key) => kept.delete(key));
+    },
+  };
+});
 
 describe('storage service', () => {
   beforeEach(() => {
     localStorage.clear();
+    kept.clear();
   });
 
   it('starts with an empty vault: no recipe is built into the app', () => {
@@ -55,7 +75,7 @@ describe('storage service', () => {
     expect(stored[1].name).toBe("Grandma's Apple Pie");
   });
 
-  describe('when the photos outgrow this device', () => {
+  describe('when the cloud keeps the photos', () => {
     // About 5.2M characters of photos: more than a browser lets a site keep (about 5M).
     const bigVault = (): Recipe[] =>
       Array.from({ length: 40 }, (_, i) => ({
@@ -71,55 +91,57 @@ describe('storage service', () => {
         updatedAt: 1000 + i,
       }));
 
-    it('keeps every recipe, with photos for the newest, when the cloud has the rest', () => {
-      setStoredVaultSort({ by: 'changed', reversed: false });
+    it('keeps only the words in storage, and every photo in the photo store', () => {
       const vault = bigVault();
       saveRecipes(vault, { photosInCloud: true });
 
-      const stored = getStoredRecipes();
-      expect(stored.map((r) => r.id)).toEqual(vault.map((r) => r.id));
-      const newest = stored.find((r) => r.id === 'r39')!;
-      expect(newest.heroImage).toBe(vault[39].heroImage);
-      expect(newest.photosOmitted).toBeUndefined();
-      const oldest = stored.find((r) => r.id === 'r0')!;
-      expect(oldest.heroImage).toBe('');
-      expect(oldest.photosOmitted).toEqual({ hero: true });
+      const words = localStorage.getItem('wandas_recipes')!;
+      expect(words).not.toContain('data:image');
+      expect(words.length).toBeLessThan(20_000);
+      expect([...kept.keys()]).toHaveLength(40);
     });
 
-    it('keeps photos for the recipes first in the order this device sorts the vault', () => {
-      setStoredVaultSort({ by: 'name', reversed: false });
+    it('starts with every recipe whole when the photo store has them', () => {
+      const vault = bigVault();
+      saveRecipes(vault, { photosInCloud: true });
+      expect(getStoredRecipes()).toEqual(vault);
+    });
+
+    it("leaves a recipe waiting for the cloud when its photos aren't kept here", () => {
       saveRecipes(bigVault(), { photosInCloud: true });
+      kept.delete('recipe:r3');
 
       const stored = getStoredRecipes();
-      expect(stored.find((r) => r.id === 'r0')!.photosOmitted).toBeUndefined();
-      expect(stored.find((r) => r.id === 'r39')!.photosOmitted).toEqual({ hero: true });
+      expect(stored).toHaveLength(40);
+      expect(stored.find((r) => r.id === 'r3')).toMatchObject({
+        heroImage: '',
+        photosOmitted: { hero: true },
+      });
+      expect(stored.filter((r) => r.photosOmitted)).toHaveLength(1);
     });
 
-    it('keeps just the words when little room is left, and nothing out of date when none is', () => {
-      const setItem = Storage.prototype.setItem;
-      let room = 100_000;
-      const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (
-        this: Storage,
-        key: string,
-        value: string,
-      ) {
-        if (value.length > room) throw new DOMException('Storage full', 'QuotaExceededError');
-        setItem.call(this, key, value);
+    it('keeps nothing out of date when even the words no longer fit', () => {
+      saveRecipes(bigVault().slice(0, 2), { photosInCloud: true });
+      const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new DOMException('Storage full', 'QuotaExceededError');
       });
       vi.spyOn(console, 'warn').mockImplementation(() => {});
       try {
-        saveRecipes(bigVault(), { photosInCloud: true });
-        const stored = getStoredRecipes();
-        expect(stored).toHaveLength(40);
-        expect(stored.every((r) => r.photosOmitted)).toBe(true);
-
-        room = 0;
         saveRecipes(bigVault(), { photosInCloud: true });
         expect(localStorage.getItem('wandas_recipes')).toBeNull();
       } finally {
         spy.mockRestore();
         vi.mocked(console.warn).mockRestore();
       }
+    });
+
+    it("keeps makes' words in storage and their photos in the photo store", () => {
+      const makes: Make[] = [
+        { id: 'm1', recipeId: 'r1', photo: bigVault()[0].heroImage, createdAt: 1, updatedAt: 1 },
+      ];
+      saveMakes(makes, { photosInCloud: true });
+      expect(localStorage.getItem('family_kitchen_makes')).not.toContain('data:image');
+      expect(getStoredMakes()).toEqual(makes);
     });
 
     it('never leaves photos out when this device is the only copy', () => {

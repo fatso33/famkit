@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Language } from '../types/recipe';
 import { Make, MakeContent } from '../types/make';
-import { getStoredMakes, saveMakes } from '../services/storage';
+import { getStoredMakes, saveMakes, withDeviceMakePhotos } from '../services/storage';
+import { whenDevicePhotosLoad } from '../services/photoStore';
 import {
   hasCloud,
   saveMakeToCloud,
@@ -74,6 +75,8 @@ export function useMakes(currentUser: CurrentUser | null) {
   const translatedOnThisDevice = useRef(new Set<string>());
 
   useEffect(() => subscribeToMakes(setMakes), []);
+  // Photos kept on this device that were still being read at the first render (a slow phone).
+  useEffect(() => whenDevicePhotosLoad(() => setMakes((prev) => withDeviceMakePhotos(prev))), []);
 
   /** Changes one make here (and on this device), returning it; null when it isn't here. */
   const change = useCallback((id: string, update: (make: Make) => Make): Make | null => {

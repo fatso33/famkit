@@ -46,8 +46,9 @@ export interface Make {
   /** Set when its maker deleted it. Deleted makes are hidden, never erased. */
   deletedAt?: number;
   /**
-   * Only on this device's copy, never in the cloud: its photo was left out to fit, so it's shown
-   * waiting for the photo until the cloud's copy arrives, and is never saved from.
+   * Only on this device's copy, never in the cloud: its photo is kept apart (services/photoStore)
+   * and wasn't there to fill back in, so it's shown waiting for the photo until the cloud's copy
+   * arrives, and is never saved from.
    */
   photoOmitted?: boolean;
 }

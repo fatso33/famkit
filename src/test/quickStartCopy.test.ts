@@ -3,9 +3,10 @@ import { renderHook, act } from '@testing-library/react';
 import { useRecipes } from '../hooks/useRecipes';
 import { saveRecipeToCloud } from '../services/firestore';
 import { Recipe } from '../types/recipe';
-import { leavePhotosOut } from '../utils/deviceCopy';
+import { leavePhotosOut, PhotoEntry, recipePhotoEntry } from '../utils/deviceCopy';
 
-// Only I/O is mocked: Firestore, so the full recipe can arrive after the app has started.
+// Only I/O is mocked: Firestore, so the full recipe can arrive after the app has started, and
+// the photo store (IndexedDB), so its photos can be read after the first render.
 vi.mock('../services/firebase', () => ({ isFirebaseConfigured: true }));
 vi.mock('../services/gemini', () => ({
   isTranslationAvailable: false,
@@ -22,6 +23,20 @@ vi.mock('../services/firestore', () => ({
   saveRecipeToCloud: vi.fn(() => Promise.resolve()),
   saveTranslationToCloud: vi.fn(() => Promise.resolve()),
   fetchRecipeVersion: vi.fn(() => Promise.reject(new Error('offline'))),
+}));
+
+const photoStore = vi.hoisted(() => ({
+  kept: new Map<string, PhotoEntry>(),
+  loaded: () => {},
+}));
+vi.mock('../services/photoStore', () => ({
+  loadDevicePhotos: () => Promise.resolve(),
+  whenDevicePhotosLoad: (listener: () => void) => {
+    photoStore.loaded = listener;
+    return () => {};
+  },
+  devicePhotos: (key: string) => photoStore.kept.get(key),
+  keepDevicePhotos: () => {},
 }));
 
 const owner = { email: 'raye@example.com', name: 'Raye' };
@@ -45,7 +60,8 @@ describe("this device's quick-start copy, without its photos", () => {
   beforeEach(() => {
     vi.mocked(saveRecipeToCloud).mockClear();
     localStorage.clear();
-    // What the phone saved last time: this recipe's photos didn't fit.
+    photoStore.kept.clear();
+    // What the phone saved last time: the words, its photos kept apart.
     localStorage.setItem('wandas_recipes', JSON.stringify([slim]));
   });
 
@@ -89,5 +105,22 @@ describe("this device's quick-start copy, without its photos", () => {
     act(() => firestore.push([slim]));
 
     expect(result.current.recipes[0]).toEqual(full);
+  });
+
+  it('is made whole by the photos kept on this phone once they are read, and can then be edited', () => {
+    const { result } = renderHook(() => useRecipes(owner));
+    expect(result.current.recipes[0].photosOmitted).toBeDefined();
+
+    photoStore.kept.set('recipe:pie', recipePhotoEntry(full)!);
+    act(() => photoStore.loaded());
+    expect(result.current.recipes[0]).toEqual(full);
+
+    act(() => {
+      result.current.updateRecipe({ ...result.current.recipes[0], name: 'Apple Pie!' });
+    });
+    expect(vi.mocked(saveRecipeToCloud).mock.calls[0][0]).toMatchObject({
+      name: 'Apple Pie!',
+      heroImage: full.heroImage,
+    });
   });
 });

@@ -1,12 +1,19 @@
 import { Recipe, RecipeVersion, Language, Theme, VaultSort, VaultView } from '../types/recipe';
 import { Make } from '../types/make';
-import { MAKES_DEVICE_BUDGET, makesDeviceJson, parseMake } from '../utils/makes';
-import { DEVICE_COPY_BUDGET, deviceCopyJson } from '../utils/deviceCopy';
+import { leaveMakePhotoOut, parseMake } from '../utils/makes';
+import {
+  leavePhotosOut,
+  makePhotoKey,
+  makePhotoSet,
+  recipePhotoKey,
+  recipePhotoSet,
+  withMakePhoto,
+  withRecipePhotos,
+} from '../utils/deviceCopy';
+import { devicePhotos, keepDevicePhotos, loadDevicePhotos } from './photoStore';
 import { familyMemberName } from '../utils/ownership';
-import { localizeRecipe } from '../utils/recipeTranslation';
-import { isDeleted } from '../utils/recipeTrash';
 import { isSeasonPreference, SeasonPreference } from '../utils/season';
-import { DEFAULT_SORT, formatVaultSort, parseVaultSort, sortEntries } from '../utils/vault';
+import { DEFAULT_SORT, formatVaultSort, parseVaultSort } from '../utils/vault';
 
 const RECIPES_KEY = 'wandas_recipes';
 // The Makes page's makes, which the app starts from before the cloud answers.
@@ -84,7 +91,11 @@ export function setTranslationPause(until: number): void {
   }
 }
 
-/** This device's copy of the vault. Every recipe was added by a family member; none is built in. */
+/**
+ * This device's copy of the vault. Every recipe was added by a family member; none is built in.
+ * With the cloud, the copy holds the words and the photos are kept apart (services/photoStore):
+ * each recipe is made whole again from them once they're read, and waits for the cloud if not.
+ */
 export function getStoredRecipes(): Recipe[] {
   if (typeof window === 'undefined') return [];
 
@@ -93,27 +104,50 @@ export function getStoredRecipes(): Recipe[] {
 
   try {
     const recipes: unknown = JSON.parse(raw);
-    return Array.isArray(recipes) ? (recipes as Recipe[]) : [];
+    return Array.isArray(recipes) ? withDeviceRecipePhotos(recipes as Recipe[]) : [];
   } catch (e) {
     console.warn('Failed to parse stored recipes, starting with an empty vault:', e);
     return [];
   }
 }
 
-/** Ids of the vault's recipes in the order this device shows them, top first. */
-function shownOrder(recipes: Recipe[]): string[] {
-  const lang = getStoredLanguage();
-  const entries = recipes
-    .filter((recipe) => !isDeleted(recipe))
-    .map((recipe) => ({ recipe, shown: localizeRecipe(recipe, lang) }));
-  return sortEntries(entries, getStoredVaultSort(), lang).map((e) => e.recipe.id);
+/** The recipes with the photos kept on this device filled in (the same list if none were). */
+export function withDeviceRecipePhotos(recipes: Recipe[]): Recipe[] {
+  const filled = recipes.map((r) => withRecipePhotos(r, devicePhotos(recipePhotoKey(r.id))));
+  return filled.some((r, i) => r !== recipes[i]) ? filled : recipes;
+}
+
+/** The makes with the photos kept on this device filled in (the same list if none were). */
+export function withDeviceMakePhotos(makes: Make[]): Make[] {
+  const filled = makes.map((m) => withMakePhoto(m, devicePhotos(makePhotoKey(m.id))));
+  return filled.some((m, i) => m !== makes[i]) ? filled : makes;
+}
+
+/**
+ * Reads the photos kept on this device before the app first draws, so it starts with them
+ * rather than filling them in a moment later. Waits at most `maxWait` ms, and only when a copy
+ * here is waiting for photos.
+ */
+export function loadDevicePhotosForLaunch(maxWait: number): Promise<void> {
+  const read = loadDevicePhotos();
+  const raw = (key: string) => {
+    try {
+      return localStorage.getItem(key) ?? '';
+    } catch {
+      return '';
+    }
+  };
+  const waiting =
+    raw(RECIPES_KEY).includes('"photosOmitted"') || raw(MAKES_KEY).includes('"photoOmitted"');
+  if (!waiting) return Promise.resolve();
+  return Promise.race([read, new Promise<void>((resolve) => setTimeout(resolve, maxWait))]);
 }
 
 /**
  * Keeps this device's copy of the vault, which the app starts from before the cloud answers.
- * `photosInCloud`: the cloud keeps every photo, so photos that don't fit may be left out of this
- * copy (marked, see utils/deviceCopy), the ones the vault shows first kept. Without it this copy
- * is the only one, and is kept whole or not at all.
+ * `photosInCloud`: the cloud keeps every photo, so this copy keeps the words, small and quick
+ * to write, and the photos go to the photo store. Without it this copy is the only one, and is
+ * kept whole or not at all.
  */
 export function saveRecipes(recipes: Recipe[], { photosInCloud = false } = {}): void {
   if (typeof window === 'undefined') return;
@@ -126,24 +160,17 @@ export function saveRecipes(recipes: Recipe[], { photosInCloud = false } = {}): 
     return;
   }
 
-  const attempts = [
-    () => deviceCopyJson(recipes, shownOrder(recipes), DEVICE_COPY_BUDGET),
-    // Something else took the room: just the words.
-    () => deviceCopyJson(recipes, [], 0),
-  ];
-  for (const json of attempts) {
-    try {
-      localStorage.setItem(RECIPES_KEY, json());
-      return;
-    } catch (e) {
-      console.warn('Could not keep the vault on this device, trying it smaller:', e);
-    }
-  }
-  // An out-of-date copy would hide the newest recipes, and could be edited over newer ones.
+  keepDevicePhotos(recipePhotoSet(recipes));
   try {
-    localStorage.removeItem(RECIPES_KEY);
-  } catch {
-    // Storage unavailable: nothing kept to go stale.
+    localStorage.setItem(RECIPES_KEY, JSON.stringify(recipes.map(leavePhotosOut)));
+  } catch (e) {
+    console.warn('Could not keep the vault on this device:', e);
+    // An out-of-date copy would hide the newest recipes, and could be edited over newer ones.
+    try {
+      localStorage.removeItem(RECIPES_KEY);
+    } catch {
+      // Storage unavailable: nothing kept to go stale.
+    }
   }
 }
 
@@ -391,7 +418,7 @@ export function getStoredMakes(): Make[] {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(MAKES_KEY) || '[]');
     if (!Array.isArray(parsed)) return [];
-    return parsed.map(parseMake).filter((m): m is Make => m !== null);
+    return withDeviceMakePhotos(parsed.map(parseMake).filter((m): m is Make => m !== null));
   } catch (e) {
     console.warn('Failed to read the makes kept on this device, starting without them:', e);
     return [];
@@ -400,22 +427,18 @@ export function getStoredMakes(): Make[] {
 
 /**
  * Keeps this device's copy of the makes. With the cloud keeping every photo (`photosInCloud`),
- * only the newest makes keep theirs here (utils/makes makesDeviceJson); without it, this copy
- * is the only one, kept whole.
+ * this copy keeps the words and the photos go to the photo store; without it, this copy is the
+ * only one, kept whole.
  */
 export function saveMakes(makes: Make[], { photosInCloud = false } = {}): void {
   if (typeof window === 'undefined') return;
-  const attempts = [
-    () => makesDeviceJson(makes, MAKES_DEVICE_BUDGET, photosInCloud),
-    // Something else took the room: just the words (only when the cloud has the photos).
-    ...(photosInCloud ? [() => makesDeviceJson(makes, 0, true)] : []),
-  ];
-  for (const json of attempts) {
-    try {
-      localStorage.setItem(MAKES_KEY, json());
-      return;
-    } catch (e) {
-      console.warn('Could not keep the makes on this device, trying it smaller:', e);
-    }
+  if (photosInCloud) keepDevicePhotos(makePhotoSet(makes));
+  try {
+    localStorage.setItem(
+      MAKES_KEY,
+      JSON.stringify(photosInCloud ? makes.map(leaveMakePhotoOut) : makes),
+    );
+  } catch (e) {
+    console.warn('Could not keep the makes on this device:', e);
   }
 }

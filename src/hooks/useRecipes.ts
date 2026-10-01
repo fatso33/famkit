@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Recipe, RecipeVersion, Language } from '../types/recipe';
-import { getStoredRecipes, saveRecipes } from '../services/storage';
+import { getStoredRecipes, saveRecipes, withDeviceRecipePhotos } from '../services/storage';
+import { whenDevicePhotosLoad } from '../services/photoStore';
 import {
   subscribeToRecipes,
   saveRecipeToCloud,
@@ -112,6 +113,12 @@ export function useRecipes(
 
     return () => unsubscribe();
   }, []);
+
+  // Photos kept on this device that were still being read at the first render (a slow phone).
+  useEffect(
+    () => whenDevicePhotosLoad(() => setRecipes((prev) => withDeviceRecipePhotos(prev))),
+    [],
+  );
 
   // Each recipe waiting for translation, for the queue the family's makes share
   // (hooks/useTranslationQueue): only the pieces with no translation yet, due when

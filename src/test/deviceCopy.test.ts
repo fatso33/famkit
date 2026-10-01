@@ -1,12 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import { Recipe } from '../types/recipe';
+import { Make } from '../types/make';
 import {
-  deviceCopyJson,
   hasLeftOutPhotos,
   keepLoadedPhotos,
   leavePhotosOut,
+  makePhotoEntry,
+  PhotoEntry,
+  photoChanges,
   photoPending,
+  recipePhotoEntry,
+  recipePhotoSet,
+  withMakePhoto,
+  withRecipePhotos,
 } from '../utils/deviceCopy';
+import { leaveMakePhotoOut } from '../utils/makes';
 
 const photo = (seed: string, size = 1000) => `data:image/jpeg;base64,${seed.repeat(size)}`;
 
@@ -23,8 +31,6 @@ const recipe = (id: string, createdAt: number, extra: Partial<Recipe> = {}): Rec
   updatedAt: createdAt,
   ...extra,
 });
-
-const parse = (json: string) => JSON.parse(json) as Recipe[];
 
 describe('leaving photos out of the quick-start copy', () => {
   it("drops a fork path's own photo too", () => {
@@ -94,33 +100,106 @@ describe('leaving photos out of the quick-start copy', () => {
   });
 });
 
-describe('fitting the quick-start copy into its budget', () => {
-  const vault = [recipe('a', 3), recipe('b', 2), recipe('c', 1)];
-  const oneRecipe = JSON.stringify(vault[0]).length;
+describe('photos kept apart from the words', () => {
+  const full = recipe('babka', 5, {
+    version: 3,
+    steps: [
+      { num: 1, text: 'Knead.', hasImage: true, imageSrc: photo('knead'), imageCaption: 'Dough' },
+      { num: 2, text: 'Rest.' },
+      {
+        num: 3,
+        text: 'Bake.',
+        fork: {
+          paths: [
+            { label: 'Oven', text: 'Bake.' },
+            { label: 'Pan', text: 'Fry.', hasImage: true, imageSrc: photo('pan') },
+          ],
+        },
+      },
+    ],
+  });
+  const slim = leavePhotosOut(full);
+  const entry = recipePhotoEntry(full)!;
 
-  it('keeps every photo when the whole vault fits', () => {
-    expect(parse(deviceCopyJson(vault, ['a', 'b', 'c'], 10 * oneRecipe))).toEqual(vault);
+  it('puts every photo back where it was, unmarked', () => {
+    const filled = withRecipePhotos(slim, entry);
+    expect(filled).toEqual(full);
+    expect(hasLeftOutPhotos(filled)).toBe(false);
   });
 
-  it('keeps photos for the recipes shown first, and every recipe, when it does not', () => {
-    const copy = parse(deviceCopyJson(vault, ['c', 'a', 'b'], 2.5 * oneRecipe));
-
-    expect(copy.map((r) => r.id)).toEqual(['a', 'b', 'c']);
-    expect(copy[2]).toEqual(vault[2]);
-    expect(copy[0]).toEqual(vault[0]);
-    expect(copy[1]).toEqual(leavePhotosOut(vault[1]));
+  it("doesn't fill a different saved state, which keeps waiting for the cloud", () => {
+    const newer = leavePhotosOut({ ...full, updatedAt: 9 });
+    expect(withRecipePhotos(newer, entry)).toBe(newer);
+    const nextVersion = leavePhotosOut({ ...full, version: 4 });
+    expect(withRecipePhotos(nextVersion, entry)).toBe(nextVersion);
+    expect(withRecipePhotos(slim, undefined)).toBe(slim);
   });
 
-  it('leaves out the photos of recipes the vault does not show (deleted ones) first', () => {
-    const copy = parse(deviceCopyJson(vault, ['b', 'c'], 2.5 * oneRecipe));
-    expect(copy.map(hasLeftOutPhotos)).toEqual([true, false, false]);
+  it('fills nothing unless every photo has its place, so a recipe is never half filled', () => {
+    const stray = { ...entry, photos: { ...entry.photos, s7: photo('stray') } };
+    expect(withRecipePhotos(slim, stray)).toBe(slim);
+    const noHero = { ...entry, photos: { s0: photo('knead') } };
+    expect(withRecipePhotos(slim, noHero)).toBe(slim);
   });
 
-  it('stays within the budget', () => {
-    const budget = 1.5 * oneRecipe;
-    const json = deviceCopyJson(vault, ['a', 'b', 'c'], budget);
-    expect(json.length).toBeLessThanOrEqual(budget);
-    expect(parse(json).map(hasLeftOutPhotos)).toEqual([false, true, true]);
+  it('leaves full recipes alone, and keeps nothing for a copy or a recipe without photos', () => {
+    expect(withRecipePhotos(full, entry)).toBe(full);
+    expect(recipePhotoEntry(slim)).toBeNull();
+    expect(recipePhotoEntry(recipe('toast', 1, { heroImage: '' }))).toBeNull();
+  });
+
+  it("does the same for a make's photo", () => {
+    const made: Make = {
+      id: 'm1',
+      recipeId: 'babka',
+      photo: photo('made'),
+      createdAt: 1,
+      updatedAt: 2,
+    };
+    const madeEntry = makePhotoEntry(made)!;
+    const waiting = leaveMakePhotoOut(made);
+    expect(withMakePhoto(waiting, madeEntry)).toEqual(made);
+    expect(withMakePhoto(waiting, madeEntry).photoOmitted).toBeUndefined();
+    const edited = { ...waiting, updatedAt: 3 };
+    expect(withMakePhoto(edited, madeEntry)).toBe(edited);
+    expect(makePhotoEntry(waiting)).toBeNull();
+  });
+});
+
+describe('deciding which photos this device writes', () => {
+  const a = recipe('a', 1);
+  const b = recipe('b', 2);
+  const known = (...entries: PhotoEntry[]) => new Map(entries.map((e) => [e.key, e]));
+
+  it('writes new and changed photos, and leaves unchanged ones alone', () => {
+    const changedB = { ...b, heroImage: photo('B') };
+    const { put, remove } = photoChanges(
+      known(recipePhotoEntry(a)!, recipePhotoEntry(b)!),
+      recipePhotoSet([a, changedB, recipe('c', 3)]),
+    );
+    expect(put.map((e) => e.key)).toEqual(['recipe:b', 'recipe:c']);
+    expect(remove).toEqual([]);
+  });
+
+  it("removes those of recipes gone or without photos, never a waiting copy's or a make's", () => {
+    const madeEntry = makePhotoEntry({
+      id: 'm1',
+      recipeId: 'a',
+      photo: photo('m'),
+      createdAt: 1,
+      updatedAt: 1,
+    })!;
+    const { put, remove } = photoChanges(
+      known(
+        recipePhotoEntry(a)!,
+        recipePhotoEntry(b)!,
+        recipePhotoEntry(recipe('gone', 3))!,
+        madeEntry,
+      ),
+      recipePhotoSet([leavePhotosOut(a), { ...b, heroImage: '' }]),
+    );
+    expect(put).toEqual([]);
+    expect(remove.sort()).toEqual(['recipe:b', 'recipe:gone']);
   });
 });
 

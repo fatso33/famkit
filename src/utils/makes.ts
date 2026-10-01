@@ -219,31 +219,7 @@ export function parseMake(raw: unknown): Make | null {
 
 // --- This device's copy ---------------------------------------------------------------------
 
-/**
- * How big this device's quick-start copy of the makes may get, in characters: room for the
- * photos of the first few, which the Makes page opens on. The recipes' copy has 2.5M of the
- * roughly 5M a site may keep (utils/deviceCopy).
- */
-export const MAKES_DEVICE_BUDGET = 600_000;
-
 /** The make without its photo, marked so it's never saved from (see `photoOmitted`). */
 export function leaveMakePhotoOut(make: Make): Make {
   return make.photo ? { ...make, photo: '', photoOmitted: true } : make;
-}
-
-/**
- * The makes as JSON for this device, within `budget` characters: the newest shown makes keep
- * their photos while there's room; the rest (and deleted ones) keep only their words. Every make
- * is kept. With the cloud off (`photosInCloud` false) this copy is the only one, so it's whole.
- */
-export function makesDeviceJson(makes: Make[], budget: number, photosInCloud: boolean): string {
-  if (!photosInCloud) return JSON.stringify(makes);
-  const keep = new Set<string>();
-  let used = 0;
-  for (const make of shownMakes(makes)) {
-    if (used + make.photo.length > budget) break;
-    used += make.photo.length;
-    keep.add(make.id);
-  }
-  return JSON.stringify(makes.map((m) => (keep.has(m.id) ? m : leaveMakePhotoOut(m))));
 }
