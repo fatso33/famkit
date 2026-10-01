@@ -1465,8 +1465,11 @@
         color: var(--text-muted);
       }
 
+      /* Our own ✕ clears the search. WebKit still draws its clear key under appearance: none, so
+         it's taken out entirely (it showed a second clear button in Safari). */
       .vault-search-input::-webkit-search-cancel-button {
         appearance: none;
+        display: none;
       }
 
       .vault-search-close {
@@ -5930,6 +5933,7 @@
 
       .nav-deck-search input::-webkit-search-cancel-button {
         appearance: none;
+        display: none;
       }
 
       .nav-deck-search-clear {
