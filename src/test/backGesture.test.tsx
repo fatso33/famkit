@@ -87,13 +87,47 @@ describe('back gesture', () => {
     expect(heading()).toHaveTextContent(t.vaultTitle);
   });
 
-  it('leaves the app from Makes, since it is a main page', async () => {
+  it('goes from Makes back to the Recipe Box, and only from there leaves the app', async () => {
     render(<App />);
     await openMenuItem(t.makes);
     await settle();
-
     expect(heading()).toHaveTextContent(t.makes);
-    expect(depth()).toBe(0);
+    expect(depth()).toBe(1);
+
+    await swipeBack();
+    expect(heading()).toHaveTextContent(t.vaultTitle);
+    await historyAt(0);
+  });
+
+  it('closes a photo open on Makes first, then goes back to the Recipe Box', async () => {
+    localStorage.setItem(
+      'family_kitchen_makes',
+      JSON.stringify([
+        {
+          id: 'make-1',
+          recipeId: 'babka',
+          title: 'Sunday babka',
+          photo: 'data:image/jpeg;base64,BABKA',
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ]),
+    );
+    render(<App />);
+    await openMenuItem(t.makes);
+    // The menu's entry gives way to Makes' own.
+    await settle();
+    fireEvent.click(screen.getByRole('button', { name: t.viewMakePhoto('Sunday babka') }));
+    expect(photo()).toBeInTheDocument();
+    // Makes' own entry, and the photo's over it.
+    await historyAt(2);
+
+    await swipeBack();
+    expect(photo()).toBeNull();
+    expect(heading()).toHaveTextContent(t.makes);
+
+    await swipeBack();
+    expect(heading()).toHaveTextContent(t.vaultTitle);
   });
 
   it('goes from Settings back to Makes when it was opened from Makes', async () => {

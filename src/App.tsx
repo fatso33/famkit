@@ -116,6 +116,11 @@ interface NavigateOptions {
   motion?: NavMotion;
   /** Other state changes that belong to the same transition. */
   alongside?: () => void;
+  /**
+   * Going back to a page at the same depth (Makes back to the Recipe Box): it slides back like
+   * any return, at its remembered spot, without its entrance.
+   */
+  back?: boolean;
 }
 
 export default function App() {
@@ -369,11 +374,17 @@ export default function App() {
 
   const navigateTo = (
     target: AppPage,
-    { animated = true, morph = true, motion: motionOverride, alongside }: NavigateOptions = {},
+    {
+      animated = true,
+      morph = true,
+      motion: motionOverride,
+      alongside,
+      back = false,
+    }: NavigateOptions = {},
   ) => {
     const fromDepth = onSubPage ? 1 : 0;
     const toDepth = target === 'settings' ? 1 : 0;
-    const goingBack = toDepth < fromDepth;
+    const goingBack = toDepth < fromDepth || back;
     if (page !== 'settings' && !onSubPage) mainScroll.current[page] = window.scrollY;
     // The recipe folds away onto its card, which flips back into the box (landFlippedCard).
     const flipsBack =
@@ -444,6 +455,10 @@ export default function App() {
       ? leaveRecipe(animated)
       : navigateTo(mainPage, { animated }),
   );
+  // On Makes, the back gesture returns to the Recipe Box, the app's first page; only from there
+  // does it leave the app. (Settings, a photo, a menu or the Add Make page open over Makes take
+  // it first.)
+  useBackStep(page === 'makes', (animated) => navigateTo('recipes', { animated, back: true }));
 
   // The editor opens out of the button that asked for it: the menu button, where "Add recipe"
   // or "Edit recipe" was chosen, unless a draft's card or chip was tapped.
