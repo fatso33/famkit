@@ -2,7 +2,6 @@ import React, { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import {
   ArrowDown,
-  BookOpen,
   LayoutGrid,
   List,
   ListFilter,
@@ -20,6 +19,7 @@ import {
   isDefaultSort,
   type FilterCounts,
 } from '../../utils/vault';
+import { RecipeBoxIcon } from '../common/RecipeBoxIcon';
 import { CATEGORY_ICONS, SORT_ICONS } from './vaultIcons';
 import { VaultPopover } from './VaultPopover';
 import { FilterSelect, type FilterOption } from './FilterSelect';
@@ -108,7 +108,7 @@ export const VaultToolbar: React.FC<VaultToolbarProps> = ({
 
   const categoryLabel =
     filter.category === 'all' ? t.allRecipes : t.recipeCategories[filter.category];
-  const CategoryIcon = filter.category === 'all' ? BookOpen : CATEGORY_ICONS[filter.category];
+  const CategoryIcon = filter.category === 'all' ? RecipeBoxIcon : CATEGORY_ICONS[filter.category];
   // An author no longer in the vault (their last recipe removed) still shows by name.
   const authorName =
     counts.authors.find((author) => author.key === filter.author)?.name ?? filter.author;
@@ -344,7 +344,7 @@ const FilterMenu: React.FC<FilterMenuProps> = ({ filter, counts, onFilterChange,
     setOpen((current) => (isOpen ? part : current === part ? null : current));
 
   const categories: FilterOption[] = (['all', ...RECIPE_CATEGORIES] as const).map((category) => {
-    const Icon = category === 'all' ? BookOpen : CATEGORY_ICONS[category];
+    const Icon = category === 'all' ? RecipeBoxIcon : CATEGORY_ICONS[category];
     return {
       value: category,
       label: category === 'all' ? t.allRecipes : t.recipeCategories[category],

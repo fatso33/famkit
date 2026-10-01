@@ -1,19 +1,12 @@
 import React, { useCallback, useId, useLayoutEffect, useRef, useState } from 'react';
-import {
-  ArrowLeft,
-  BookOpen,
-  CookingPot,
-  Moon,
-  Settings,
-  Sun,
-  type LucideIcon,
-} from 'lucide-react';
+import { ArrowLeft, CookingPot, Moon, Settings, Sun, type LucideIcon } from 'lucide-react';
 import { Language, Theme } from '../../types/recipe';
 import { AppPage } from '../../types/navigation';
 import { UiTranslations } from '../../i18n/translations';
 import { useBackStep } from '../../hooks/useBackStep';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { transitionStarted } from '../../utils/viewTransition';
+import { RecipeBoxIcon } from '../common/RecipeBoxIcon';
 
 /** Something to do on the current page (e.g. "Add recipe" on the vault), held in its card. */
 export interface MenuAction {
@@ -45,6 +38,14 @@ interface FloatingMenuProps {
   photoOpen: boolean;
   onBack: () => void;
   t: UiTranslations;
+}
+
+/** A page the menu goes to, with its icon (and that icon's stroke, when not the usual). */
+interface PageEntry {
+  id: AppPage;
+  label: string;
+  icon: React.ComponentType<{ size?: string | number; strokeWidth?: number }>;
+  strokeWidth?: number;
 }
 
 // 'closing' keeps the panel mounted until its exit animation ends.
@@ -229,9 +230,10 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
     void transitionStarted().then(onClose);
   };
 
-  const settingsPage = { id: 'settings' as const, label: t.settings, icon: Settings };
-  const pages: { id: AppPage; label: string; icon: LucideIcon }[] = [
-    { id: 'recipes', label: t.recipeVault, icon: BookOpen },
+  const settingsPage: PageEntry = { id: 'settings', label: t.settings, icon: Settings };
+  const pages: PageEntry[] = [
+    // The Recipe Box's own tin has more lines, so a lighter stroke keeps them apart.
+    { id: 'recipes', label: t.recipeVault, icon: RecipeBoxIcon, strokeWidth: 1.75 },
     { id: 'makes', label: t.makes, icon: CookingPot },
   ];
   // Settings normally sits at the top of the preferences, but while it's the page you're on it
@@ -383,11 +385,11 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
 
           <nav className="fk-menu-pages" aria-label={t.pages}>
             <ul className="fk-menu-list">
-              {otherPages.map(({ id: pageId, label, icon: Icon }) => (
+              {otherPages.map(({ id: pageId, label, icon: Icon, strokeWidth = 1.9 }) => (
                 <li key={pageId} className="fk-menu-row" style={stagger()}>
                   <button type="button" className="fk-menu-item" onClick={() => go(pageId)}>
                     <span className="fk-menu-chip" aria-hidden="true">
-                      <Icon size="1.1em" strokeWidth={1.9} />
+                      <Icon size="1.1em" strokeWidth={strokeWidth} />
                     </span>
                     <span className="fk-menu-item-label">{label}</span>
                   </button>
@@ -405,7 +407,7 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
                   onClick={() => go(current.id)}
                 >
                   <span className="fk-menu-chip" aria-hidden="true">
-                    <CurrentIcon size="1.1em" strokeWidth={1.9} />
+                    <CurrentIcon size="1.1em" strokeWidth={current.strokeWidth ?? 1.9} />
                   </span>
                   <span className="fk-menu-item-label">{current.label}</span>
                 </button>
