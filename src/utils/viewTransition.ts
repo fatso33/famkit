@@ -5,6 +5,8 @@ import { flushSync } from 'react-dom';
  * - forward: into a sub-page (a recipe, Settings), which slides in from the right
  * - back: out of one, sliding back to the left
  * - fade: between main pages, or pages at the same depth
+ * - side-next / side-prev: a main page chosen on the navigation island, sliding in from the side
+ *   its tab sits on (next: from the right)
  * - hop: from one recipe to another (a remix popover's link): the new page fades up over the old
  * - menu: a page chosen from the open menu, cross-fading under its blurring scrim as it clears
  * - zoom: a photo opening over the page, or closing
@@ -19,6 +21,8 @@ export type NavMotion =
   | 'forward'
   | 'back'
   | 'fade'
+  | 'side-next'
+  | 'side-prev'
   | 'hop'
   | 'to-box'
   | 'menu'

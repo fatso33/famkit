@@ -19,7 +19,7 @@ const noop = () => {};
 
 /**
  * The recipe page exactly as the family will see it, opened over the editor. The back button
- * springs out where the menu button sits on a recipe page; it, Escape and the phone's back
+ * springs out at the foot of the screen, on the right; it, Escape and the phone's back
  * gesture all return to the form. While a step photo is open full screen, the back button rises
  * over it and closes it instead. Mount only while open.
  */

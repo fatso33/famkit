@@ -23,7 +23,7 @@ const babka: Recipe = {
   createdAt: 1000,
 };
 
-const fabs = () => document.querySelector<HTMLElement>('.fab-group')!;
+const island = () => document.querySelector<HTMLElement>('.nav-island')!;
 const photo = () => screen.queryByRole('dialog', { name: t.photoZoomDialog });
 
 describe('the back button over a full-screen photo', () => {
@@ -35,21 +35,22 @@ describe('the back button over a full-screen photo', () => {
     Element.prototype.scrollIntoView = vi.fn();
   });
 
-  it("takes the menu button's place, closes the photo, then goes home beside it", async () => {
+  it('stays over the photo alone, closes it, then the island comes back around it', async () => {
     render(<App initialPage="recipes" />);
     fireEvent.click(screen.getByRole('button', { name: 'Babka' }));
-    expect(fabs().dataset.back).toBe('shown');
+    expect(island().dataset.back).toBe('out');
 
     fireEvent.click(screen.getByRole('button', { name: 'Dough' }));
     expect(photo()).not.toBeNull();
-    expect(fabs().dataset.back).toBe('photo');
-    // The menu button has tucked away under it.
+    expect(island().dataset.back).toBe('photo');
+    // The pill and the actions button have stepped aside.
     expect(screen.queryByRole('button', { name: t.openMenu })).toBeNull();
+    expect(screen.queryByRole('navigation', { name: t.pages })).toBeNull();
 
-    fireEvent.click(fabs().querySelector('.fab-back')!);
+    fireEvent.click(island().querySelector('.nav-back')!);
     await act(async () => {});
     expect(photo()).toBeNull();
-    expect(fabs().dataset.back).toBe('unphoto');
+    expect(island().dataset.back).toBe('out');
     expect(screen.getByRole('button', { name: t.openMenu })).toBeInTheDocument();
     // Still on the recipe: back from here leaves it, as ever.
     expect(screen.getByRole('button', { name: t.backToRecipes })).toBeInTheDocument();
@@ -62,6 +63,6 @@ describe('the back button over a full-screen photo', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     await act(async () => {});
     expect(photo()).toBeNull();
-    expect(fabs().dataset.back).toBe('unphoto');
+    expect(island().dataset.back).toBe('out');
   });
 });

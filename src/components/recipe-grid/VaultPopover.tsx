@@ -35,7 +35,7 @@ export const VaultPopover: React.FC<VaultPopoverProps> = ({
     chosen?.focus({ preventScroll: true });
   }, [ref]);
 
-  // It ends above the floating menu button (index.css, --popover-top), scrolling inside when a
+  // It ends above the navigation island (index.css, --popover-top), scrolling inside when a
   // list unfolds past there. Kept current as the page moves the toolbar it hangs from.
   useLayoutEffect(() => {
     const popover = popoverRef.current;

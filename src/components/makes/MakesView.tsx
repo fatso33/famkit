@@ -20,7 +20,7 @@ const ENTRANCE_ITEMS = 3;
 
 /** What App can ask of the Makes page. */
 export interface MakesPageHandle {
-  /** Closes the photo open full screen (the menu button's back button does this). */
+  /** Closes the photo open full screen (the navigation island's back button does this). */
   closePhoto: () => void;
 }
 
@@ -41,7 +41,7 @@ interface MakesViewProps {
   onEditMake: (make: Make, from: HTMLElement) => void;
   onHeart: (id: string, on: boolean) => void;
   onAddMake: (from: HTMLElement) => void;
-  /** A photo opened full screen, or closed: the back button takes the menu button's place. */
+  /** A photo opened full screen, or closed: the navigation island steps aside, leaving its back button. */
   onPhotoOpenChange: (open: boolean) => void;
   ref?: Ref<MakesPageHandle>;
   t: UiTranslations;

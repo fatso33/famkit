@@ -25,7 +25,7 @@ import { madeOnLabel, makerName } from '../../utils/makes';
 
 /** What App can ask of an open recipe page. */
 export interface RecipePageHandle {
-  /** Closes the step photo open full screen (the menu button's back button does this). */
+  /** Closes the step photo open full screen (the navigation island's back button does this). */
   closePhoto: () => void;
 }
 
@@ -39,7 +39,7 @@ interface RecipeDetailViewProps {
    * Recipe Box, it unfolds from its card instead (utils/viewTransition, the flip motions).
    */
   unroll?: boolean;
-  /** A step photo opened full screen, or closed: the back button takes the menu button's place. */
+  /** A step photo opened full screen, or closed: the navigation island steps aside, leaving its back button. */
   onPhotoOpenChange: (open: boolean) => void;
   /** The version the owner's draft of it becomes, when they have one. */
   draftVersion?: number;

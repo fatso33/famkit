@@ -168,7 +168,7 @@ describe('a recipe card flipping open and shut', () => {
     expect(recipeHeading()).toBeInTheDocument();
   });
 
-  it('keeps the back button out beside the menu button while the menu is open', async () => {
+  it('keeps the back button out beside the island while its actions panel is open', async () => {
     const transitions = playViewTransitions();
     render(<App initialPage="recipes" />);
     open();
@@ -177,7 +177,7 @@ describe('a recipe card flipping open and shut', () => {
     fireEvent.click(screen.getByRole('button', { name: t.openMenu }));
     // While the menu is open it closes the menu, and says so.
     expect(screen.getAllByRole('button', { name: t.closeMenu })).toHaveLength(2);
-    expect(document.querySelector('.fab-group')).toHaveAttribute('data-back', 'shown');
+    expect(document.querySelector('.nav-island')).toHaveAttribute('data-back', 'out');
     const menu = screen.getByRole('dialog', { name: t.menu });
     expect(within(menu).getByRole('button', { name: t.remixRecipe })).toBeInTheDocument();
   });

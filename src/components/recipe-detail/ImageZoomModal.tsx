@@ -120,8 +120,8 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClos
       aria-label={t.photoZoomDialog}
       {...backdropProps}
     >
-      {/* On screen, the photo closes with the back button in the menu button's place (FloatingMenu)
-          or a tap beside it. This one is for the keyboard and screen readers, which start here. */}
+      {/* On screen, the photo closes with the navigation island's back button (NavIsland), left
+          over it alone, or a tap beside it. This one is for the keyboard and screen readers, which start here. */}
       <button
         ref={focusOnOpen}
         type="button"

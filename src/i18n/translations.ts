@@ -421,6 +421,12 @@ export interface UiTranslations {
   viewMakePhoto: (title: string) => string;
   /** The home page. */
   counter: string;
+  /** The navigation pill's short tab labels, under their icons. */
+  navCounter: string;
+  navRecipes: string;
+  navMakes: string;
+  /** The back button, where it returns to a main page (from Settings). */
+  goBack: string;
   /** Each greeting, with {name} where the first name goes (utils/greeting). */
   greetings: Record<GreetingId, string>;
   /** New hearts on one of your makes: who gave them (where known), how many, and the make. */
@@ -453,7 +459,7 @@ export interface UiTranslations {
   translationSection: string;
   translationInfo: string;
   translationOfflineNote: string;
-  // Required reCAPTCHA attribution, shown because the badge would cover the menu button.
+  // Required reCAPTCHA attribution, shown because the badge would cover the navigation island.
   recaptchaNoticeStart: string;
   privacyPolicy: string;
   recaptchaNoticeAnd: string;
@@ -843,6 +849,10 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     makePhotoAlt: (title: string) => `Photo: ${title}`,
     viewMakePhoto: (title: string) => `View the photo of ${title}`,
     counter: 'My Counter',
+    navCounter: 'Counter',
+    navRecipes: 'Box',
+    navMakes: 'Makes',
+    goBack: 'Back',
     greetings: {
       goodMorning: 'Good morning, {name}',
       coffeeFirst: 'Coffee first, {name}?',
@@ -1307,6 +1317,10 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     makePhotoAlt: (title: string) => `Zdjęcie: ${title}`,
     viewMakePhoto: (title: string) => `Powiększ zdjęcie: ${title}`,
     counter: 'Mój blat',
+    navCounter: 'Blat',
+    navRecipes: 'Przepiśnik',
+    navMakes: 'Popisy',
+    goBack: 'Wróć',
     greetings: {
       goodMorning: 'Dzień dobry, {name}',
       coffeeFirst: 'Najpierw kawa, {name}?',

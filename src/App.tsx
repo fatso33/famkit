@@ -64,7 +64,7 @@ import {
 import { CookingPot, Download, PencilLine, Plus, Shuffle } from 'lucide-react';
 import { canEditMake, makeCounts, makesOf } from './utils/makes';
 import { localizeMake } from './utils/makeTranslation';
-import { FloatingMenu, MenuAction } from './components/layout/FloatingMenu';
+import { NavIsland, MenuAction } from './components/layout/NavIsland';
 import { InstallCard } from './components/layout/InstallCard';
 import { RecipeGridView } from './components/recipe-grid/RecipeGridView';
 import {
@@ -107,6 +107,11 @@ const centreOnScreen = (el: Element) => {
   const { top, height } = el.getBoundingClientRect();
   jumpTo(Math.max(0, window.scrollY + top + height / 2 - window.innerHeight / 2));
 };
+
+// The navigation island's tabs, left to right: a page slides in from its tab's side.
+const TAB_ORDER: MainPage[] = ['counter', 'recipes', 'makes'];
+const sideFrom = (from: MainPage, to: MainPage): NavMotion =>
+  TAB_ORDER.indexOf(to) > TAB_ORDER.indexOf(from) ? 'side-next' : 'side-prev';
 
 // How long a tapped card takes to lift out of the box before it flips (index.css, data-lifted).
 const CARD_LIFT_MS = 200;
@@ -265,7 +270,7 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
   const [editorReopened, setEditorReopened] = useState(false);
   // The open recipe page (its step photo viewer).
   const recipePage = useRef<RecipePageHandle>(null);
-  // Set once the recipe has opened: a back button grows out of the menu button.
+  // Set once the recipe has opened: a back button slides out from behind the navigation island.
   const [backShown, setBackShown] = useState(false);
   // The recipe whose step photo is open full screen, if any: the back button takes the menu
   // button's place and closes it. Kept by id, so it can't outlive that recipe's page.
@@ -371,7 +376,7 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
 
   // Opening a recipe: its card lifts out of the box, flips over on its middle, and the recipe
   // unfolds from the card's back (the flip motions in index.css). Then the back button springs
-  // out of the menu button.
+  // out from behind the navigation island.
   // `marked`: it was marked seen already, on the way here (a make's link).
   const handleSelectRecipe = (id: string, card?: HTMLElement, marked = false) => {
     if (liftingCard.current) return;
@@ -454,6 +459,9 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
       flipsBack && canFlip()
         ? 'flip-close'
         : (motionOverride ?? (toDepth > fromDepth ? 'forward' : goingBack ? 'back' : 'fade'));
+    // Between main pages on the island's tabs: the slide is the page's entrance, and each page
+    // comes back where it was left, as a tab does.
+    const sideways = motion === 'side-next' || motion === 'side-prev';
 
     transitionView(
       () => {
@@ -463,14 +471,14 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
           setBoxShowcase(null);
           setArrivingMake(null);
           setMakePhotoOpen(false);
-          setVaultEntrance(!goingBack && !flipsBack);
+          setVaultEntrance(!goingBack && !flipsBack && !sideways);
           setPage(target);
           if (target !== 'settings') setMainPage(target);
           setSelectedRecipeId(null);
         });
         // Only once the page is there: a shorter page it replaces (a recipe) can't scroll as
         // far, and the jump would land short of the spot.
-        jumpTo(goingBack && target !== 'settings' ? mainScroll.current[target] : 0);
+        jumpTo((goingBack || sideways) && target !== 'settings' ? mainScroll.current[target] : 0);
         // Back from a recipe opened from a make: its card or row in the middle of the screen.
         const leftRecipe = target === 'recipes' && page === 'recipes' && !!selectedRecipe;
         const centre = leftRecipe ? centreOnReturn.current : null;
@@ -508,6 +516,26 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
   const leaveRecipe = (animated = true) => {
     setBackShown(false);
     navigateTo('recipes', { animated });
+  };
+
+  // A tab on the navigation island. Its page slides in from the side its tab sits on; the tab
+  // lit under an open recipe (the Recipe Box) takes it back to its card, as back does; the
+  // current page's own tab returns to its top.
+  const selectTab = (target: MainPage) => {
+    if (page === 'recipes' && selectedRecipe) {
+      if (target === 'recipes') leaveRecipe();
+      else navigateTo(target, { motion: sideFrom(mainPage, target), morph: false });
+      return;
+    }
+    if (page === 'settings') {
+      navigateTo(target, target === mainPage ? {} : { motion: sideFrom(mainPage, target) });
+      return;
+    }
+    if (target === page) {
+      window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'instant' : 'smooth' });
+      return;
+    }
+    navigateTo(target, { motion: sideFrom(page, target) });
   };
 
   // What glides between the makes window of My Counter and the Makes page: each latest make's
@@ -600,7 +628,7 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
       : navigateTo(mainPage, { animated }),
   );
 
-  // The editor opens out of the button that asked for it: the menu button, where "Add recipe"
+  // The editor opens out of the button that asked for it: the island's actions button, where "Add recipe"
   // or "Edit recipe" was chosen, unless a draft's card or chip was tapped.
   const openEditor = (
     recipe: Recipe | null,
@@ -616,7 +644,7 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
     setEditingRecipe(recipe);
     setEditingDraft(draft);
     setDraftsKnownAtOpen(draftsLoaded);
-    setEditorOrigin(centreOf(from ?? document.getElementById('fabMenuBtn')));
+    setEditorOrigin(centreOf(from ?? document.getElementById('navActionsBtn')));
     setIsAddModalOpen(true);
   };
 
@@ -879,7 +907,7 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
     else openEditor(null, draft, from);
   };
 
-  // The Add Make page opens out of the button that asked for it (the menu button by default).
+  // The Add Make page opens out of the button that asked for it (the island's actions button by default).
   const openMakeEditor = (make: Make | null, recipeId?: string, from?: Element | null) => {
     if (make?.photoOmitted) {
       showToast(t.photosStillLoading, 'info');
@@ -888,7 +916,7 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
     setMakeEditor({
       make,
       recipeId,
-      origin: centreOf(from ?? document.getElementById('fabMenuBtn')),
+      origin: centreOf(from ?? document.getElementById('navActionsBtn')),
     });
   };
 
@@ -932,7 +960,7 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
   const photoOpen =
     (onRecipe && photoOpenFor === selectedRecipe.id) || (page === 'makes' && makePhotoOpen);
 
-  // Page-dependent entries at the bottom of the floating menu.
+  // What can be done on each page, in the navigation island's actions panel.
   let pageActions: MenuAction[] = [];
   switch (page) {
     case 'recipes':
@@ -1136,12 +1164,23 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
         )}
       </main>
 
-      <FloatingMenu
+      <NavIsland
         page={page}
-        // Under the menu's blurring scrim, the page cross-fades as the scrim clears. Never the
-        // card flip back from a recipe: the scrim and menu would fold away with the recipe.
-        onNavigate={(target) => navigateTo(target, { motion: 'menu', morph: false })}
+        // While a recipe is open, the Recipe Box's tab is lit, its tin holding the recipe's card.
+        litTab={onRecipe ? 'recipes' : mainPage}
+        onRecipe={onRecipe}
+        onSelectTab={selectTab}
+        // Under the panel's blurring scrim, Settings cross-fades in as the scrim clears. Never
+        // the card flip back from a recipe: the scrim and panel would fold away with the recipe.
+        onOpenSettings={() => navigateTo('settings', { motion: 'menu', morph: false })}
         actions={pageActions}
+        panelTitle={
+          onRecipe
+            ? (getLocalizedRecipe(selectedRecipe, language) ?? selectedRecipe).name
+            : { counter: t.counter, recipes: t.recipeVault, makes: t.makes, settings: t.settings }[
+                page
+              ]
+        }
         language={language}
         onToggleLanguage={toggleLanguage}
         theme={theme}
@@ -1149,14 +1188,21 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
         fontPercent={fontPercent}
         onIncreaseFont={increaseScale}
         onDecreaseFont={decreaseScale}
-        showBack={((backShown || photoOpen) && onRecipe) || (photoOpen && page === 'makes')}
+        showBack={
+          ((backShown || photoOpen) && onRecipe) ||
+          (photoOpen && page === 'makes') ||
+          page === 'settings'
+        }
+        backLabel={page === 'settings' ? t.goBack : t.backToRecipes}
         photoOpen={photoOpen}
         onBack={() =>
-          !photoOpen
-            ? leaveRecipe()
-            : page === 'makes'
+          photoOpen
+            ? page === 'makes'
               ? makesPage.current?.closePhoto()
               : recipePage.current?.closePhoto()
+            : page === 'settings'
+              ? navigateTo(mainPage)
+              : leaveRecipe()
         }
         t={t}
       />

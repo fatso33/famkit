@@ -380,7 +380,7 @@
         --morph-duration: 0.56s;
         /* How long a recipe card takes to flip over before the recipe unfolds from its back. */
         --flip-turn: 0.28s;
-        /* The floating menu button (and the back button beside it). The menu panel, the toast
+        /* The room kept for the navigation island at the foot of the screen. The toast
            and the page's bottom padding are placed from it. */
         --fab-size: 4rem;
         /* The recipe page's hero photo corners. */
@@ -420,6 +420,36 @@
         animation: vt-fade-through 0.38s var(--ease-soft) both;
       }
 
+      /* A main page chosen on the navigation island slides in from the side its tab sits on,
+         as the old page drifts the other way and clears; the new one starts just after, so the
+         two pages' text never shows through each other. */
+      :root[data-nav='side-next']::view-transition-old(root) {
+        animation: vt-side-out-left 0.26s cubic-bezier(0.4, 0, 1, 1) both;
+      }
+      :root[data-nav='side-next']::view-transition-new(root) {
+        animation: vt-side-in-right 0.44s var(--ease-glide) 0.12s both;
+      }
+      :root[data-nav='side-prev']::view-transition-old(root) {
+        animation: vt-side-out-right 0.26s cubic-bezier(0.4, 0, 1, 1) both;
+      }
+      :root[data-nav='side-prev']::view-transition-new(root) {
+        animation: vt-side-in-left 0.44s var(--ease-glide) 0.12s both;
+      }
+      @keyframes vt-side-out-left {
+        60% { opacity: 0; }
+        to { opacity: 0; transform: translateX(-18%); }
+      }
+      @keyframes vt-side-out-right {
+        60% { opacity: 0; }
+        to { opacity: 0; transform: translateX(18%); }
+      }
+      @keyframes vt-side-in-right {
+        from { opacity: 0; transform: translateX(22%); }
+      }
+      @keyframes vt-side-in-left {
+        from { opacity: 0; transform: translateX(-22%); }
+      }
+
       /* One recipe to another (from a remix popover): the old page clears quickly and the new
          one rises in just behind it, so two similar pages never show through each other. The
          tapped name flying into the new title (the 'title' morph) carries the eye across. */
@@ -451,15 +481,15 @@
         animation-duration: 0.32s;
       }
 
-      /* The floating button and the toast stay put while the page moves: only their live
-         selves show, never a sliding snapshot. (The open menu isn't lifted out like them: its
+      /* The navigation island and the toast stay put while the page moves: only their live
+         selves show, never a sliding snapshot. (The panel's scrim isn't lifted out like them: it
          scrim blurs the page behind, which a separate snapshot can't carry, so the blur would
          vanish at once. A page chosen from it cross-fades under the scrim instead, see above.) */
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='zoom'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
-        .fab-group {
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='zoom'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
+        .nav-island {
         view-transition-name: fk-fab;
       }
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
         .app-toast {
         view-transition-name: fk-toast;
       }
@@ -869,7 +899,7 @@
       .app-container {
         max-width: 1080px;
         margin: 0 auto;
-        /* Bottom room so the floating menu button never covers the last content. */
+        /* Bottom room so the navigation island never covers the last content. */
         padding: 1.5rem 1.25rem calc(3.5rem + var(--fab-size) + env(safe-area-inset-bottom));
         width: 100%;
         flex: 1;
@@ -1572,7 +1602,7 @@
         top: calc(100% + 0.6rem);
         right: 0;
         width: min(22rem, calc(100vw - 2rem));
-        /* Down to just above the floating menu button (VaultPopover measures --popover-top),
+        /* Down to just above the navigation island (VaultPopover measures --popover-top),
            and never so short that a list has no room to show. */
         max-height: max(
           16rem,
@@ -4391,7 +4421,7 @@
       /* In-app Toast Notification */
       .app-toast {
         position: fixed;
-        /* Just above the floating menu button (1.25rem inset + the button + gap). */
+        /* Just above the navigation island. */
         bottom: calc(1.25rem + var(--fab-size) + 0.75rem + env(safe-area-inset-bottom));
         left: 50%;
         width: max-content;
@@ -5139,58 +5169,11 @@
         outline-offset: 2px;
       }
 
-      /* The reCAPTCHA badge would sit under the menu button; Settings shows the required
+      /* The reCAPTCHA badge would sit under the navigation island; Settings shows the required
          attribution text instead, as Google permits. */
       .grecaptcha-badge { visibility: hidden; }
 
-      /* The floating menu button, and on a recipe page the back button that grows out of its
-         left side. With both out they sit in one glass pill, a single control. The menu button
-         never moves: the group's padding is taken off its offset from the corner. */
-      .fab-group {
-        --fab-pad: 0.375rem;
-        --fab-gap: 0.625rem;
-        /* How far the back button travels out from behind the menu button. */
-        --fab-shift: calc(var(--fab-size) + var(--fab-gap));
-        position: fixed;
-        right: calc(1.25rem - var(--fab-pad) + env(safe-area-inset-right));
-        bottom: calc(1.25rem - var(--fab-pad) + env(safe-area-inset-bottom));
-        z-index: 62;
-        display: flex;
-        gap: var(--fab-gap);
-        padding: var(--fab-pad);
-        /* The pill's padding shouldn't catch taps meant for the page. */
-        pointer-events: none;
-      }
-
-      .fab-group > button {
-        pointer-events: auto;
-      }
-
-      /* The pill slides out with the back button, clipped to its final shape, so its left end
-         stays perfectly round the whole way (a stretched shape would squash it). */
-      .fab-pill-track {
-        position: absolute;
-        inset: 0;
-        border-radius: var(--radius-full);
-        overflow: clip;
-        pointer-events: none;
-      }
-
-      .fab-pill {
-        position: absolute;
-        inset: 0;
-        border-radius: inherit;
-        background: color-mix(in srgb, var(--bg-card) 95%, transparent);
-        backdrop-filter: blur(16px) saturate(1.4);
-        border: 1px solid var(--border-strong);
-        box-shadow: inset 0 1px 0 color-mix(in srgb, var(--bg-surface) 70%, transparent);
-      }
-
-      .fab-group[data-back='none'] .fab-pill-track,
-      .fab-group[data-back='none'] .fab-back {
-        display: none;
-      }
-
+      /* The editor preview's round back button (EditorPreview). */
       .fab-back {
         position: relative;
         z-index: 1;
@@ -5221,172 +5204,543 @@
         outline-offset: 3px;
       }
 
-      /* Out: the menu button bulges as if pushing it out, the back button springs out from
-         behind it with the pill, and its arrow slides in last. Separate scale and translate
-         properties leave the button's own transform (the open X's turn, a press) alone. */
-      .fab-group[data-back='shown'] .fab-menu { animation: fab-push 0.56s ease-in-out both; }
-      .fab-group[data-back='shown'] .fab-back { animation: fab-back-out 0.74s var(--spring-soft) both; }
-      .fab-group[data-back='shown'] .fab-back-arrow { animation: fab-arrow-in 0.5s var(--ease-glide) 0.14s both; }
-      .fab-group[data-back='shown'] .fab-pill { animation: fab-pill-out 0.6s var(--ease-glide) both; }
-      /* In: it slides back under the menu button, which swallows it with a small squash. */
-      .fab-group[data-back='hidden'] .fab-back { animation: fab-back-in 0.34s cubic-bezier(0.5, 0, 0.25, 1) both; }
-      .fab-group[data-back='hidden'] .fab-pill { animation: fab-pill-in 0.34s cubic-bezier(0.5, 0, 0.25, 1) both; }
-      .fab-group[data-back='hidden'] .fab-menu { animation: fab-absorb 0.5s ease-out 0.16s both; }
-
-      /* A photo open full screen: the back button glides over into the menu button's place and
-         closes the photo, as the menu button shrinks away under it and the pill draws in around
-         it. Both sit over the photo. Closing the photo, the back button glides home and the menu
-         button grows back out from under it. The resting positions are set outright, so reduced
-         motion (which drops the animations) still lands in them. */
-      .fab-group[data-back='photo'] { z-index: 210; }
-      .fab-group[data-back='photo'] .fab-back,
-      .fab-group[data-back='unphoto'] .fab-back { z-index: 3; }
-      .fab-group[data-back='photo'] .fab-back { translate: var(--fab-shift) 0; }
-      .fab-group[data-back='photo'] .fab-pill { translate: var(--fab-shift) 0; }
-      .fab-group[data-back='photo'] .fab-menu { scale: 0.5; opacity: 0; visibility: hidden; }
-      .fab-group[data-back='photo'] .fab-back { animation: fab-back-over 0.62s var(--spring-soft) both; }
-      .fab-group[data-back='photo'] .fab-back-arrow { animation: fab-arrow-over 0.5s var(--ease-glide) both; }
-      .fab-group[data-back='photo'] .fab-pill { animation: fab-pill-over 0.62s var(--spring-soft) both; }
-      .fab-group[data-back='photo'] .fab-menu { animation: fab-menu-tuck 0.32s cubic-bezier(0.5, 0, 0.25, 1) 0.08s both; }
-      .fab-group[data-back='unphoto'] .fab-back { animation: fab-back-home 0.66s var(--spring-soft) both; }
-      .fab-group[data-back='unphoto'] .fab-back-arrow { animation: fab-arrow-home 0.5s var(--ease-glide) both; }
-      .fab-group[data-back='unphoto'] .fab-pill { animation: fab-pill-home 0.66s var(--spring-soft) both; }
-      .fab-group[data-back='unphoto'] .fab-menu { animation: fab-menu-spawn 0.7s var(--spring-soft) 0.14s both; }
-
-      @keyframes fab-back-over {
-        from { translate: 0 0; }
-        to { translate: var(--fab-shift) 0; }
-      }
-      /* The arrow leans into the glide, and settles as the button lands. */
-      @keyframes fab-arrow-over {
-        30% { translate: 0.2rem 0; }
-      }
-      @keyframes fab-pill-over {
-        from { translate: 0 0; }
-        to { translate: var(--fab-shift) 0; }
-      }
-      @keyframes fab-menu-tuck {
-        from { scale: 1; opacity: 1; visibility: visible; }
-        to { scale: 0.5; opacity: 0; visibility: hidden; }
-      }
-      @keyframes fab-back-home {
-        from { translate: var(--fab-shift) 0; }
-        to { translate: 0 0; }
-      }
-      @keyframes fab-arrow-home {
-        30% { translate: -0.2rem 0; }
-      }
-      @keyframes fab-pill-home {
-        from { translate: var(--fab-shift) 0; }
-        to { translate: 0 0; }
-      }
-      @keyframes fab-menu-spawn {
-        from { scale: 0.5; opacity: 0; }
-        35% { opacity: 1; }
-        to { scale: 1; opacity: 1; }
-      }
-
-      @keyframes fab-push {
-        24% { scale: 1.07 0.94; translate: -0.15rem 0; }
-        58% { scale: 0.98 1.02; translate: 0 0; }
-        to { scale: 1; translate: 0 0; }
-      }
-      @keyframes fab-back-out {
-        from { translate: var(--fab-shift) 0; scale: 0.5; opacity: 0; }
-        25% { opacity: 1; }
-        to { translate: 0 0; scale: 1; opacity: 1; }
-      }
       @keyframes fab-arrow-in {
         from { translate: 0.5rem 0; opacity: 0; }
       }
-      @keyframes fab-pill-out {
-        from { translate: var(--fab-shift) 0; opacity: 0; }
-        20% { opacity: 1; }
-        to { translate: 0 0; opacity: 1; }
-      }
-      @keyframes fab-back-in {
-        from { translate: 0 0; scale: 1; opacity: 1; }
-        65% { opacity: 1; }
-        to { translate: var(--fab-shift) 0; scale: 0.5; opacity: 0; visibility: hidden; }
-      }
-      @keyframes fab-pill-in {
-        from { translate: 0 0; opacity: 1; }
-        75% { opacity: 1; }
-        to { translate: var(--fab-shift) 0; opacity: 0; }
-      }
-      @keyframes fab-absorb {
-        35% { scale: 1.06 0.95; }
-        70% { scale: 0.99 1.01; }
-        to { scale: 1; }
+
+      /* The navigation island (NavIsland): a pill of the three main pages, centred at the foot
+         of the screen, with two shorter capsules tucked behind its ends, in the same material:
+         the page's actions on the right, and on a recipe or Settings the back button on the
+         left. Sized from --nav-u, a rem that gives way on a narrow phone at a large text size, so
+         the island always fits. The pill is drawn as two halves, so it can shrink to the current
+         page by moving them together (transforms only, on the compositor). */
+      .nav-island {
+        --nav-u: min(1rem, calc((100vw - 1.5rem) / 19.5));
+        --nav-tab: calc(var(--nav-u) * 3.875);
+        --nav-pad: calc(var(--nav-u) * 0.375);
+        --nav-h: calc(var(--nav-u) * 3.75);
+        --nav-ind-h: calc(var(--nav-u) * 2.875);
+        --cap-h: calc(var(--nav-u) * 3.125);
+        --cap-w: calc(var(--nav-u) * 5.125);
+        /* How much of a capsule shows past the pill's end. */
+        --cap-out: calc(var(--nav-u) * 3.375);
+        --nav-face: var(--elev-menu);
+        --cap-face: color-mix(in srgb, var(--bg-card) 60%, var(--bg-surface));
+        --nav-edge: var(--border-subtle);
+        --nav-shadow:
+          0 0.875rem 1.875rem -0.875rem rgba(60, 35, 20, 0.45),
+          0 0.2rem 0.5rem -0.25rem rgba(60, 35, 20, 0.18);
+        /* The pill's soft shadow over the capsules tucked under its ends. */
+        --nav-lap: 0 0 1rem -0.3rem rgba(60, 35, 20, 0.4);
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: calc(1rem + env(safe-area-inset-bottom));
+        z-index: 62;
+        width: calc(3 * var(--nav-tab) + 2 * var(--nav-pad));
+        height: var(--nav-h);
+        margin-inline: auto;
+        pointer-events: none;
       }
 
-      /* Floating menu button: bars morph into an X while the menu is open */
-      .fab-menu {
+      [data-theme='dark'] .nav-island {
+        --nav-shadow:
+          0 0.875rem 1.875rem -0.75rem rgba(0, 0, 0, 0.8),
+          0 0.2rem 0.5rem -0.25rem rgba(0, 0, 0, 0.5);
+        --nav-lap: 0 0 1rem -0.25rem rgba(0, 0, 0, 0.85);
+      }
+
+      .nav-pill {
+        position: absolute;
+        inset: 0;
+        z-index: 3;
+        pointer-events: auto;
+        transition: scale 0.42s var(--spring-soft), opacity 0.25s ease;
+      }
+
+      /* The pill gives a little under the thumb. */
+      .nav-pill:active {
+        scale: 0.97;
+        transition-duration: 0.12s;
+      }
+
+      .nav-shade {
+        position: absolute;
+        inset: 0;
+        border-radius: calc(var(--nav-h) / 2);
+        box-shadow: var(--nav-shadow), var(--nav-lap);
+        pointer-events: none;
+        transition: opacity 0.4s ease;
+      }
+
+      /* The shrunk pill's own shadow, shaped for it, which the full one fades into. */
+      .nav-shade.is-compact {
+        inset: 0 calc(var(--nav-tab) + 1px);
+        opacity: 0;
+      }
+
+      /* The pill's face: two rounded ends and the strip between them, which narrows as the ends
+         close in (the pill shrinking to the current page). Each keeps its own shape. */
+      .nav-end,
+      .nav-mid {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        background: var(--nav-face);
+        border: 1px solid var(--nav-edge);
+        box-shadow: inset 0 1px 0 var(--card-sheen);
+        transition: transform 0.5s var(--ease-glide);
+      }
+
+      .nav-end {
+        width: calc(var(--nav-h) / 2 + 2px);
+      }
+
+      .nav-end.is-left {
+        left: 0;
+        border-right: 0;
+        border-radius: calc(var(--nav-h) / 2) 0 0 calc(var(--nav-h) / 2);
+      }
+
+      .nav-end.is-right {
+        right: 0;
+        border-left: 0;
+        border-radius: 0 calc(var(--nav-h) / 2) calc(var(--nav-h) / 2) 0;
+      }
+
+      .nav-mid {
+        left: calc(var(--nav-h) / 2);
+        right: calc(var(--nav-h) / 2);
+        border-inline: 0;
+      }
+
+      .nav-tabs {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        padding: 0 var(--nav-pad);
+        touch-action: none;
+        transition: transform 0.5s var(--ease-glide);
+      }
+
+      /* The current page's highlight. It rests by --lit (NavIsland stretches it from one tab to
+         the next, leading edge first). */
+      .nav-ind {
+        position: absolute;
+        top: calc((var(--nav-h) - var(--nav-ind-h)) / 2 - 1px);
+        left: var(--nav-pad);
+        width: var(--nav-tab);
+        height: var(--nav-ind-h);
+        border-radius: var(--radius-full);
+        background: var(--accent-subtle);
+        box-shadow:
+          inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent),
+          0 0.25rem 0.75rem -0.375rem color-mix(in srgb, var(--accent) 60%, transparent);
+        transform: translateX(calc(var(--lit, 0) * 100%));
+        transform-origin: left;
+      }
+
+      .nav-tab {
         position: relative;
-        z-index: 2;
-        width: var(--fab-size);
-        height: var(--fab-size);
-        display: grid;
-        place-items: center;
+        z-index: 1;
+        flex: none;
+        width: var(--nav-tab);
+        height: var(--nav-ind-h);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: calc(var(--nav-u) * 0.08);
+        padding: 0 0.15rem;
         border: none;
-        border-radius: 50%;
-        background: var(--accent);
-        color: var(--on-accent);
-        box-shadow: var(--fab-shadow);
+        border-radius: var(--radius-full);
+        background: transparent;
+        color: var(--text-secondary);
+        font-family: inherit;
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
-        transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease,
-          transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        transition: color 0.3s ease, opacity 0.3s ease;
       }
 
-      @media (hover: hover) {
-        .fab-menu:hover { background: var(--accent-hover); }
-      }
-      .fab-menu:active { transform: scale(0.94); }
-
-      .fab-menu:focus-visible {
-        outline: 3px solid var(--accent);
-        outline-offset: 3px;
+      .nav-tab[data-lit] {
+        color: var(--accent);
       }
 
-      .fab-menu.is-open {
-        background: var(--text-primary);
-        color: var(--bg-surface);
-        box-shadow: var(--shadow-lg);
-        transform: rotate(90deg);
+      .nav-tab:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
       }
 
-      .fab-menu.is-open:active { transform: rotate(90deg) scale(0.94); }
+      .nav-icon {
+        width: calc(var(--nav-u) * 1.375);
+        height: calc(var(--nav-u) * 1.375);
+        overflow: visible;
+      }
 
-      .fab-menu-glyph {
+      .nav-tab-label {
+        max-width: 100%;
+        overflow: hidden;
+        font-size: calc(var(--nav-u) * 0.66);
+        font-weight: 650;
+        line-height: 1.15;
+        letter-spacing: 0.01em;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      /* Each tab's icon does its own small thing as its page becomes the current one: the chef's
+         hat puffs, a card pops up out of the tin, the pot's lid lifts and lets out steam. */
+      .nav-hat,
+      .nav-lid {
+        transform-box: view-box;
+      }
+
+      .nav-hat {
+        transform-origin: 12px 21px;
+      }
+
+      .nav-lid {
+        transform-origin: 20px 4px;
+      }
+
+      .nav-steam {
+        opacity: 0;
+      }
+
+      .nav-tab[data-lit] .nav-hat {
+        animation: nav-hat-puff 0.52s ease-out;
+      }
+
+      .nav-tab[data-lit] .nav-card {
+        animation: nav-card-pop 0.76s var(--ease-glide);
+      }
+
+      .nav-tab[data-lit] .nav-lid {
+        animation: nav-lid-lift 0.62s var(--spring-soft);
+      }
+
+      .nav-tab[data-lit] .nav-steam {
+        animation: nav-steam 0.9s ease-out 0.12s;
+      }
+
+      .nav-tab[data-lit] .nav-steam + .nav-steam {
+        animation-delay: 0.24s;
+      }
+
+      @keyframes nav-hat-puff {
+        30% { scale: 1.12 0.84; }
+        65% { scale: 0.94 1.1; }
+      }
+
+      @keyframes nav-card-pop {
+        40%,
+        65% {
+          d: path('M6.31 11 7.54 3.28Q7.76 1.9 9.14 2.12L15.26 3.08Q16.64 3.3 16.43 4.69L15.43 11');
+        }
+      }
+
+      @keyframes nav-lid-lift {
+        35% { translate: 0 -2.2px; rotate: -9deg; }
+      }
+
+      @keyframes nav-steam {
+        from { opacity: 0; translate: 0 2px; }
+        40% { opacity: 1; }
+        to { opacity: 0; translate: 0 -4px; }
+      }
+
+      /* While a recipe is open, the tin holds its card pulled up: the recipe icon
+         (RecipeCardIcon). Where paths can't change shape, the pulled-up card fades in instead. */
+      .nav-card {
+        transition: d 0.62s var(--spring-soft);
+      }
+
+      .nav-card-line,
+      .nav-card-up {
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      .nav-island[data-recipe] .nav-card {
+        d: path('M6.31 11 7.54 3.28Q7.76 1.9 9.14 2.12L15.26 3.08Q16.64 3.3 16.43 4.69L15.43 11');
+      }
+
+      .nav-island[data-recipe] .nav-card-line {
+        opacity: 1;
+        transition-delay: 0.2s;
+      }
+
+      @supports not (d: path('M0 0')) {
+        .nav-card,
+        .nav-card-up {
+          transition: opacity 0.3s ease, translate 0.5s var(--ease-glide);
+        }
+        .nav-card-up {
+          translate: 0 4.4px;
+        }
+        .nav-island[data-recipe] .nav-card {
+          opacity: 0;
+        }
+        .nav-island[data-recipe] .nav-card-up {
+          opacity: 1;
+          translate: 0 0;
+        }
+        .nav-tab[data-lit] .nav-card {
+          animation: nav-card-bob 0.76s var(--ease-glide);
+        }
+        @keyframes nav-card-bob {
+          40%,
+          65% { translate: 0 -2px; }
+        }
+      }
+
+      /* The capsules: shorter than the pill and tucked behind its ends, the same material. */
+      .nav-cap {
+        position: absolute;
+        top: calc((var(--nav-h) - var(--cap-h)) / 2);
+        z-index: 2;
+        width: var(--cap-w);
+        height: var(--cap-h);
+        display: flex;
+        align-items: center;
+        padding: 0;
+        border: 1px solid var(--nav-edge);
+        border-radius: calc(var(--cap-h) / 2);
+        background: var(--cap-face);
+        color: var(--text-primary);
+        box-shadow: inset 0 1px 0 var(--card-sheen), var(--nav-shadow);
+        cursor: pointer;
+        pointer-events: auto;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          translate 0.5s var(--ease-glide),
+          border-color 0.3s ease,
+          box-shadow 0.3s ease,
+          opacity 0.25s ease;
+      }
+
+      .nav-cap:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .nav-actions {
+        right: calc(-1 * var(--cap-out));
+        justify-content: flex-end;
+        padding-right: calc(var(--nav-u) * 1.05);
+      }
+
+      .nav-back {
+        left: calc(-1 * var(--cap-out));
+        justify-content: flex-start;
+        padding-left: calc(var(--nav-u) * 0.95);
+        /* Tucked: slid in behind the pill's end, out of sight. */
+        transform: translateX(var(--cap-out));
+        visibility: hidden;
+        transition:
+          transform 0.38s cubic-bezier(0.5, 0, 0.6, 1),
+          translate 0.5s var(--ease-glide),
+          visibility 0s linear 0.38s;
+      }
+
+      /* Out: it slides out from behind the left end and settles with a small overshoot. */
+      .nav-island:is([data-back='out'], [data-back='photo']) .nav-back {
+        transform: none;
+        visibility: visible;
+        transition:
+          transform 0.62s var(--spring-soft),
+          translate 0.5s var(--ease-glide),
+          visibility 0s;
+      }
+
+      .nav-glyph,
+      .nav-back-arrow {
+        transition: scale 0.15s ease;
+      }
+
+      .nav-cap:active :is(.nav-glyph, .nav-back-arrow) {
+        scale: 0.88;
+      }
+
+      .nav-glyph {
         position: relative;
-        width: 1.4rem;
-        height: 1.125rem;
+        width: calc(var(--nav-u) * 1.2);
+        height: calc(var(--nav-u) * 0.875);
       }
 
-      .fab-menu-glyph > span {
+      .nav-glyph > span {
         position: absolute;
         left: 0;
         width: 100%;
         height: 2px;
         border-radius: 2px;
         background: currentColor;
-        transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
+        transition: transform 0.45s var(--ease-glide), opacity 0.3s ease;
       }
 
-      .fab-menu-glyph > span:nth-child(1) { top: 0; }
-      .fab-menu-glyph > span:nth-child(2) { top: calc(50% - 1px); width: 70%; left: 30%; }
-      .fab-menu-glyph > span:nth-child(3) { bottom: 0; }
+      .nav-glyph > span:nth-child(1) { top: 0; }
+      .nav-glyph > span:nth-child(2) { top: calc(50% - 1px); width: 70%; left: 30%; }
+      .nav-glyph > span:nth-child(3) { bottom: 0; }
 
-      .fab-menu.is-open .fab-menu-glyph > span:nth-child(1) {
-        transform: translateY(calc(0.5625rem - 1px)) rotate(45deg);
+      .nav-island[data-menu='open'] .nav-glyph > span:nth-child(1) {
+        transform: translateY(calc(var(--nav-u) * 0.4375 - 1px)) rotate(45deg);
       }
-      .fab-menu.is-open .fab-menu-glyph > span:nth-child(2) {
+      .nav-island[data-menu='open'] .nav-glyph > span:nth-child(2) {
         opacity: 0;
         transform: scaleX(0);
       }
-      .fab-menu.is-open .fab-menu-glyph > span:nth-child(3) {
-        transform: translateY(calc(-0.5625rem + 1px)) rotate(-45deg);
+      .nav-island[data-menu='open'] .nav-glyph > span:nth-child(3) {
+        transform: translateY(calc(var(--nav-u) * -0.4375 + 1px)) rotate(-45deg);
+      }
+
+      /* While its panel is open, the actions capsule is the panel's own corner. */
+      .nav-island[data-menu='open'] .nav-actions {
+        border-color: transparent;
+        box-shadow: none;
+      }
+
+      /* Scrolling down, the pill shrinks to the current page, its capsules still tucked at its
+         ends; a tap or scrolling up opens it out again. */
+      .nav-island[data-compact] .nav-end.is-left { transform: translateX(var(--nav-tab)); }
+      .nav-island[data-compact] .nav-end.is-right { transform: translateX(calc(-1 * var(--nav-tab))); }
+      /* What's left of the strip between the ends: (4.625 - 3.75) / (12.375 - 3.75) of it. */
+      .nav-island[data-compact] .nav-mid { transform: scaleX(0.102); }
+      /* The pill's width over its full width (see the sizes above). */
+      .nav-island[data-compact] .nav-shade { opacity: 0; }
+      .nav-island[data-compact] .nav-shade.is-compact { opacity: 1; }
+      .nav-island[data-compact] .nav-tabs {
+        transform: translateX(calc((1 - var(--lit, 0)) * var(--nav-tab)));
+      }
+      .nav-island[data-compact] .nav-tab:not([data-lit]) {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .nav-island[data-compact] .nav-actions { translate: calc(-1 * var(--nav-tab)) 0; }
+      .nav-island[data-compact] .nav-back { translate: var(--nav-tab) 0; }
+
+      /* A photo open full screen: only the back button stays, over it, and closes it. */
+      .nav-island[data-back='photo'] {
+        z-index: 210;
+      }
+      .nav-island[data-back='photo'] :is(.nav-pill, .nav-actions) {
+        opacity: 0;
+        scale: 0.9;
+        pointer-events: none;
+      }
+
+      /* The actions panel unrolls up out of the actions capsule, tucked behind the pill like it,
+         and rolls back down into it (NavIsland measures where the capsule sits in it). */
+      .nav-panel {
+        position: absolute;
+        right: calc(-1 * var(--cap-out));
+        bottom: calc((var(--nav-h) - var(--cap-h)) / 2);
+        z-index: 1;
+        width: min(19rem, calc(100vw - 1.5rem));
+        max-height: calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        /* Reversed, so a panel taller than the screen scrolls from its bottom, by the thumb. */
+        display: flex;
+        flex-direction: column-reverse;
+        padding: 0.875rem 0.75rem calc(var(--nav-h) + 0.125rem);
+        background: var(--cap-face);
+        border: 1px solid var(--nav-edge);
+        border-radius: var(--radius-xl) var(--radius-xl) calc(var(--cap-h) / 2) var(--radius-xl);
+        box-shadow: inset 0 1px 0 var(--card-sheen), var(--nav-shadow);
+        pointer-events: auto;
+        /* Backwards only: once open, nothing clips the panel, so it can grow (larger text). */
+        animation: nav-panel-in 0.54s var(--ease-glide) backwards;
+      }
+
+      .nav-panel.is-closing {
+        animation: nav-panel-out 0.4s cubic-bezier(0.5, 0, 0.2, 1) both;
+      }
+
+      @keyframes nav-panel-in {
+        from {
+          clip-path: inset(var(--cap-top, 0) 0 0 var(--cap-left, 0) round calc(var(--cap-h) / 2));
+        }
+        to {
+          clip-path: inset(0 round var(--radius-xl) var(--radius-xl) calc(var(--cap-h) / 2) var(--radius-xl));
+        }
+      }
+
+      @keyframes nav-panel-out {
+        from {
+          clip-path: inset(0 round var(--radius-xl) var(--radius-xl) calc(var(--cap-h) / 2) var(--radius-xl));
+        }
+        to {
+          clip-path: inset(var(--cap-top, 0) 0 0 var(--cap-left, 0) round calc(var(--cap-h) / 2));
+        }
+      }
+
+      .nav-panel-body {
+        flex-shrink: 0;
+      }
+
+      .nav-panel.is-closing .nav-panel-body {
+        animation: fk-fade-out 0.16s ease both;
+      }
+
+      .nav-panel-title {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0 0.25rem 0.7rem;
+        font-family: var(--font-serif);
+        font-size: 1.1rem;
+        font-weight: var(--weight-heading);
+        color: var(--text-primary);
+      }
+
+      .nav-panel-chip {
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+        width: 2rem;
+        height: 2rem;
+        border-radius: var(--radius-sm);
+        background: var(--accent-subtle);
+        color: var(--accent);
+      }
+
+      .nav-panel-name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .nav-panel-actions {
+        padding: 0;
+      }
+
+      .nav-panel-foot {
+        margin-top: 0.6rem;
+        padding-top: 0.35rem;
+        border-top: 1px solid var(--border-subtle);
+      }
+
+      .nav-panel-settings {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        min-height: 48px;
+      }
+
+      .nav-panel-settings .fk-menu-item {
+        flex: 1;
+      }
+
+      .nav-panel-settings .fk-prefs-toggle {
+        margin-left: auto;
+      }
+
+      .nav-panel .fk-prefs-body {
+        padding-top: 0.25rem;
+        margin-bottom: 0;
+        border-bottom: 0;
       }
 
       /* Menu layer: the page behind softens into a blur + panel that blooms out of the button.
@@ -5406,52 +5760,13 @@
         animation: fk-fade-out 0.2s ease both;
       }
 
-      .fk-menu-panel {
-        position: absolute;
-        right: calc(1.25rem + env(safe-area-inset-right));
-        bottom: calc(1.25rem + var(--fab-size) + 0.75rem + env(safe-area-inset-bottom));
-        width: min(20rem, calc(100vw - 2rem));
-        max-height: calc(100dvh - 3.5rem - var(--fab-size) - env(safe-area-inset-bottom));
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        /* Reversed, so an overflowing menu scrolls from its bottom: the current page stays by
-           the button while the preferences unfold (.fk-menu-content keeps reading order). */
-        display: flex;
-        flex-direction: column-reverse;
-        padding: 0.75rem;
-        background: var(--elev-menu);
-        border: 1px solid var(--border-subtle);
-        border-radius: var(--radius-xl);
-        box-shadow: var(--shadow-lg);
-        /* The menu button's centre, from the panel's corner. FloatingMenu measures how far
-           the panel's far corner is (--menu-reach), so the unfurl spends none of its time
-           growing where nothing shows. */
-        --menu-origin: calc(100% - var(--fab-size) / 2) calc(100% + 0.75rem + var(--fab-size) / 2);
-        transform-origin: var(--menu-origin);
-        /* Backwards only: once open, nothing clips the panel, so it can grow (larger text). */
-        animation: fk-menu-in 0.56s var(--ease-glide) backwards;
-      }
-
-      .fk-menu-layer.is-closing .fk-menu-panel {
-        animation: fk-menu-out 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
-      }
-
       .fk-menu-row {
         animation: fk-menu-row-in 0.46s var(--ease-glide) both;
         animation-delay: calc(70ms + var(--i, 0) * 22ms);
       }
 
-      /* The preferences drawer across the top, then the pages, with the preferences key laid
-         over the top page row's right end. */
-      .fk-menu-content {
-        flex-shrink: 0;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-      }
-
       /* Preferences: a drawer that unfolds upwards out of its key, growing the panel's top */
       .fk-prefs-drawer {
-        grid-column: 1 / -1;
         display: grid;
         grid-template-rows: 0fr;
         transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -5462,23 +5777,9 @@
         transition: grid-template-rows 0.5s var(--ease-glide);
       }
 
-      .fk-menu-pages {
-        grid-row: 2;
-        grid-column: 1 / -1;
-      }
-
-      /* The top page row stops short of the key beside it. */
-      .fk-menu-list > li:first-child {
-        margin-right: 3.25rem;
-      }
-
       /* A round key as tall as a page row (the row's 0.4rem padding around its 2.25rem chip),
          so the two line up at any text size. */
       .fk-prefs-toggle {
-        grid-row: 2;
-        grid-column: 2;
-        align-self: start;
-        z-index: 1;
         display: grid;
         place-items: center;
         min-width: 48px;
@@ -5612,14 +5913,7 @@
         transition-delay: calc(var(--j, 0) * 30ms);
       }
 
-      .fk-menu-list {
-        list-style: none;
-        display: flex;
-        flex-direction: column;
-        gap: 0.15rem;
-      }
-
-      /* Pages are flat rows; the current page's actions are raised keys (.fk-menu-action). */
+      /* Settings in the actions panel: a flat row, where the actions are raised keys. */
       .fk-menu-item {
         position: relative;
         width: 100%;
@@ -5669,31 +5963,6 @@
         background: var(--menu-well);
         color: var(--text-secondary);
         transition: background-color 0.18s ease, color 0.18s ease;
-      }
-
-      /* The page you're on: the lowest, nearest the thumb, on a tinted card that also holds
-         what you can do there */
-      .fk-menu-current {
-        margin-top: 0.3rem;
-        padding: 0.25rem;
-        border-radius: var(--radius-lg);
-        background: var(--accent-subtle);
-        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent);
-      }
-
-      .fk-menu-current .fk-menu-item {
-        color: var(--accent);
-      }
-
-      .fk-menu-current .fk-menu-item .fk-menu-chip {
-        background: var(--accent);
-        color: var(--on-accent);
-      }
-
-      @media (hover: hover) {
-        .fk-menu-current .fk-menu-item:hover {
-          background: color-mix(in srgb, var(--accent) 9%, transparent);
-        }
       }
 
       /* Preference rows */
@@ -5906,28 +6175,9 @@
         to { opacity: 0; }
       }
 
-      @keyframes fab-fade-away {
-        to { opacity: 0; visibility: hidden; }
-      }
-
       @keyframes fk-rise-in {
         from { opacity: 0; transform: translateY(6px); }
         to { opacity: 1; transform: translateY(0); }
-      }
-
-      /* Unfurls out of the menu button itself: the circle starts the button's size. */
-      @keyframes fk-menu-in {
-        from {
-          opacity: 0;
-          transform: translateY(0.5rem) scale(0.94);
-          clip-path: circle(calc(var(--fab-size) / 2) at var(--menu-origin));
-        }
-        22% { opacity: 1; }
-        to {
-          opacity: 1;
-          transform: none;
-          clip-path: circle(var(--menu-reach, 60rem) at var(--menu-origin));
-        }
       }
 
       @keyframes fk-menu-row-in {
@@ -5962,42 +6212,30 @@
         to { opacity: 0; transform: translateY(10px) scale(0.97); }
       }
 
-      /* Furls back into the button. */
-      @keyframes fk-menu-out {
-        from {
-          opacity: 1;
-          transform: none;
-          clip-path: circle(var(--menu-reach, 60rem) at var(--menu-origin));
-        }
-        60% { opacity: 1; }
-        to {
-          opacity: 0;
-          transform: translateY(0.35rem) scale(0.96);
-          clip-path: circle(calc(var(--fab-size) / 2) at var(--menu-origin));
-        }
-      }
-
       /* Reduced motion: a short fade instead of the bloom (it still ends, so the panel unmounts). */
       @media (prefers-reduced-motion: reduce) {
-        .fk-menu-panel {
+        .nav-panel {
           animation: fk-fade-in 0.15s ease both;
         }
-        .fk-menu-layer.is-closing .fk-menu-panel {
+        .nav-panel.is-closing {
           animation: fk-fade-out 0.15s ease both;
         }
         .fk-menu-row,
-        .install-card { animation: none; }
-        .fab-group[data-back='shown'] :is(.fab-menu, .fab-back-arrow) { animation: none; }
-        .fab-group[data-back='shown'] :is(.fab-back, .fab-pill) { animation: fk-fade-in 0.2s ease both; }
-        .fab-group[data-back='hidden'] .fab-menu { animation: none; }
-        .fab-group[data-back='hidden'] .fab-pill { animation: fk-fade-out 0.15s ease both; }
-        .fab-group[data-back='hidden'] .fab-back { animation: fab-fade-away 0.15s ease both; }
-        .fab-group:is([data-back='photo'], [data-back='unphoto']) :is(.fab-back, .fab-back-arrow, .fab-pill, .fab-menu) {
-          animation: none;
-        }
+        .install-card,
+        .nav-icon *,
+        .nav-panel.is-closing .nav-panel-body { animation: none; }
         .fab-back,
-        .fab-menu,
-        .fab-menu-glyph > span,
+        .nav-pill,
+        .nav-shade,
+        .nav-end,
+        .nav-mid,
+        .nav-tabs,
+        .nav-cap,
+        .nav-card,
+        .nav-card-line,
+        .nav-card-up,
+        .nav-glyph,
+        .nav-glyph > span,
         .fk-segmented-thumb,
         .fk-stepper button,
         .scaler-btn,
@@ -8642,7 +8880,7 @@
       }
 
       /* ── Download sheet: with photos or text only, each shown as its page in small ── */
-      /* Opened from a page, not the editor: over the menu button (.fab-group), under toasts. */
+      /* Opened from a page, not the editor: over the navigation island (.nav-island), under toasts. */
       .editor-sheet-layer.is-over-page {
         z-index: 70;
       }
@@ -8858,7 +9096,7 @@
         to { opacity: 0; transform: translateY(1.5rem); }
       }
 
-      /* The back button, in glass where the menu button sits on a recipe page. */
+      /* The back button, in glass at the foot of the screen, on the right. */
       .editor-preview-back {
         position: fixed;
         right: calc(1.25rem - 0.375rem + env(safe-area-inset-right));
@@ -11076,7 +11314,7 @@
 
       /* Print Styles */
       @media print {
-        .fab-menu, .fk-menu-layer, .install-card, .detail-back-pill, .ios-install-modal-overlay, .scaler-control,
+        .nav-island, .fk-menu-layer, .install-card, .detail-back-pill, .ios-install-modal-overlay, .scaler-control,
         .fk-emblem-glow, .fk-emblem-motes, .fk-splash-controls, .fk-splash-field {
           display: none !important;
         }
