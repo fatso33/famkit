@@ -13,6 +13,7 @@ import {
 } from '../utils/recipeTranslation';
 import { EDIT_SETTLE_MS } from '../utils/translationQueue';
 import { dictionaryTranslator, replyFrom } from './translator';
+import { goFromMenu } from './menu';
 
 // Firebase is off in tests, so recipes stay local; only the translation call is mocked.
 vi.mock('../services/gemini', () => ({
@@ -86,6 +87,64 @@ describe('background recipe translation', () => {
   });
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('translates a make in the same request as a recipe, never one of its own', async () => {
+    seed(customRecipe);
+    // Shared long enough ago to have settled.
+    localStorage.setItem(
+      'family_kitchen_makes',
+      JSON.stringify([
+        {
+          id: 'make-1',
+          recipeId: 'custom-1',
+          title: 'Sunday loaves',
+          note: 'Doubled it.',
+          photo: 'data:image/jpeg;base64,AAAA',
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ]),
+    );
+    translate.mockImplementation(
+      dictionaryTranslator(
+        { ...POLISH, 'Sunday loaves': 'Niedzielne bochenki', 'Doubled it.': 'Podwoiłam.' },
+        'en',
+      ),
+    );
+    localStorage.setItem('wandas_language', 'pl');
+    render(<App />);
+    await settle();
+
+    expect(translate).toHaveBeenCalledTimes(1);
+    expect(translate.mock.calls[0][0].map((doc) => doc.ref)).toEqual(['custom-1', 'make:make-1']);
+    await goFromMenu(UI_TEXT.pl.makes, UI_TEXT.pl);
+    expect(screen.getByRole('heading', { name: 'Niedzielne bochenki' })).toBeInTheDocument();
+    expect(screen.getByText('Podwoiłam.')).toBeInTheDocument();
+  });
+
+  it('waits for a newly shared make to settle before translating it', async () => {
+    seed(withPolish(customRecipe));
+    const now = Date.now();
+    localStorage.setItem(
+      'family_kitchen_makes',
+      JSON.stringify([
+        {
+          id: 'make-1',
+          recipeId: 'custom-1',
+          title: 'Sunday loaves',
+          photo: 'data:image/jpeg;base64,AAAA',
+          createdAt: now,
+          updatedAt: now,
+        },
+      ]),
+    );
+    translate.mockImplementation(dictionaryTranslator({ 'Sunday loaves': 'Niedzielne' }, 'en'));
+    render(<App />);
+    await settle();
+
+    // Nothing else is going, so it costs no request of its own yet.
+    expect(translate).not.toHaveBeenCalled();
   });
 
   it("translates an untranslated recipe once, and never sends Wanda's", async () => {

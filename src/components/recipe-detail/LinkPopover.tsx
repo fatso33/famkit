@@ -1,27 +1,32 @@
 import React, { useEffect, useId, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronRight, Shuffle } from 'lucide-react';
-import { Recipe } from '../../types/recipe';
-import { UiTranslations } from '../../i18n/translations';
+import { ChevronRight } from 'lucide-react';
 import { useBackStep } from '../../hooks/useBackStep';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { useExitAnimation } from '../../hooks/useExitAnimation';
-import { recipePhoto } from '../../utils/vault';
-import { creditName } from '../../utils/ownership';
-import { CategoryTile } from '../recipe-grid/CategoryTile';
 
-interface RemixPopoverProps {
-  /** The remix mark or badge it springs out of. */
+/** One link in the popover: a recipe, or a make. */
+export interface PopoverLink {
+  id: string;
+  name: string;
+  /** Under the name, e.g. who made it. */
+  byline: string;
+  /** Its little picture: a photo, or the recipe's category tile. */
+  thumb: React.ReactNode;
+}
+
+interface LinkPopoverProps {
+  /** The mark or badge it springs out of. */
   anchor: HTMLElement;
   title: string;
-  /** The recipes it links to, in the viewer's language. */
-  recipes: Recipe[];
+  /** The badge's own icon, beside the title. */
+  icon: React.ComponentType<{ size?: string | number; strokeWidth?: number }>;
+  links: PopoverLink[];
   /** Shown in place of the links when there are none (the original was deleted). */
   emptyText?: string;
-  /** Opens a recipe, given the name that was tapped (it flies up into the page's title). */
+  /** Opens a link, given the name that was tapped (it flies into the page it opens). */
   onOpen: (id: string, name: HTMLElement) => void;
   onClose: () => void;
-  t: UiTranslations;
 }
 
 /** Space kept between the popover and the screen's edges, in px. */
@@ -30,19 +35,19 @@ const EDGE = 16;
 const GAP = 10;
 
 /**
- * A small card of links springing out of a recipe's remix mark or badge: to the original, or to
- * its remixes. Mounted only while open. It lives on the page (it scrolls with it), placed under
+ * A small card of links springing out of a recipe's remix mark or badge (to the original, or to
+ * its remixes), or its make badge (to its makes). Mounted only while open. It lives on the page (it scrolls with it), placed under
  * the mark once as it opens, and grows out of the mark, animating only transform and opacity.
  * A tap outside, Escape or the back gesture closes it, and focus returns to the mark.
  */
-export const RemixPopover: React.FC<RemixPopoverProps> = ({
+export const LinkPopover: React.FC<LinkPopoverProps> = ({
   anchor,
   title,
-  recipes,
+  icon: Icon,
+  links,
   emptyText,
   onOpen,
   onClose,
-  t,
 }) => {
   const { ref: layerRef, isClosing, requestClose } = useExitAnimation<HTMLDivElement>(onClose);
   const backdropProps = useDialogDismiss(requestClose);
@@ -90,47 +95,40 @@ export const RemixPopover: React.FC<RemixPopoverProps> = ({
         tabIndex={-1}
       >
         <h2 id={titleId} className="remix-pop-title">
-          <Shuffle size="1.05em" strokeWidth={2} aria-hidden="true" />
+          <Icon size="1.05em" strokeWidth={2} />
           <span>{title}</span>
-          {recipes.length > 1 && <span className="remix-pop-count">{recipes.length}</span>}
+          {links.length > 1 && <span className="remix-pop-count">{links.length}</span>}
         </h2>
-        {recipes.length === 0 ? (
+        {links.length === 0 ? (
           <p className="remix-pop-empty">{emptyText}</p>
         ) : (
           <ul className="remix-pop-list">
-            {recipes.map((recipe, i) => {
-              const photo = recipePhoto(recipe);
-              return (
-                <li key={recipe.id} style={{ '--i': i } as React.CSSProperties}>
-                  <button
-                    type="button"
-                    className="remix-pop-link"
-                    onClick={(e) => {
-                      const name = e.currentTarget.querySelector<HTMLElement>('.remix-pop-name');
-                      onOpen(recipe.id, name ?? e.currentTarget);
-                    }}
-                  >
-                    <span className="remix-pop-thumb" aria-hidden="true">
-                      {photo ? (
-                        <img src={photo} alt="" decoding="async" />
-                      ) : (
-                        <CategoryTile recipe={recipe} />
-                      )}
-                    </span>
-                    <span className="remix-pop-text">
-                      <span className="remix-pop-name">{recipe.name}</span>
-                      <span className="remix-pop-cook">{t.byAuthor(creditName(recipe))}</span>
-                    </span>
-                    <ChevronRight
-                      className="remix-pop-chevron"
-                      size="1.1em"
-                      strokeWidth={2.2}
-                      aria-hidden="true"
-                    />
-                  </button>
-                </li>
-              );
-            })}
+            {links.map((link, i) => (
+              <li key={link.id} style={{ '--i': i } as React.CSSProperties}>
+                <button
+                  type="button"
+                  className="remix-pop-link"
+                  onClick={(e) => {
+                    const name = e.currentTarget.querySelector<HTMLElement>('.remix-pop-name');
+                    onOpen(link.id, name ?? e.currentTarget);
+                  }}
+                >
+                  <span className="remix-pop-thumb" aria-hidden="true">
+                    {link.thumb}
+                  </span>
+                  <span className="remix-pop-text">
+                    <span className="remix-pop-name">{link.name}</span>
+                    <span className="remix-pop-cook">{link.byline}</span>
+                  </span>
+                  <ChevronRight
+                    className="remix-pop-chevron"
+                    size="1.1em"
+                    strokeWidth={2.2}
+                    aria-hidden="true"
+                  />
+                </button>
+              </li>
+            ))}
           </ul>
         )}
       </div>

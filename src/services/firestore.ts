@@ -3,8 +3,11 @@ import {
   doc,
   getDoc,
   deleteField,
+  FieldPath,
   onSnapshot,
   runTransaction,
+  setDoc,
+  updateDoc,
   writeBatch,
   Unsubscribe,
 } from 'firebase/firestore';
@@ -20,6 +23,10 @@ import { hasLeftOutPhotos } from '../utils/deviceCopy';
 import { familyMemberName } from '../utils/ownership';
 import { parseRecipeVersion } from '../utils/recipeVersions';
 import { sourceHash } from '../utils/recipeTranslation';
+import { Make, MakeTranslation } from '../types/make';
+import { getStoredMakes, saveMakes } from './storage';
+import { heartKey, parseMake } from '../utils/makes';
+import { makeSourceHash } from '../utils/makeTranslation';
 
 /**
  * Whether the cloud keeps the vault (and every photo). Not when Firebase is off, nor when it is
@@ -32,6 +39,8 @@ const RECIPES_COLLECTION = 'recipes';
 const FAMILY_MEMBERS_COLLECTION = 'family_members';
 // Earlier versions of a recipe: recipes/{recipeId}/versions/{versionId}, written once, never changed.
 const VERSIONS_COLLECTION = 'versions';
+// What family members made from the recipes: makes/{makeId}.
+const MAKES_COLLECTION = 'makes';
 
 /**
  * Real-time listener for the recipes collection.
@@ -191,4 +200,110 @@ export async function saveTranslationToCloud(
     });
     return true;
   });
+}
+
+// --- Makes ---------------------------------------------------------------------------------
+
+/**
+ * Real-time listener for the makes, newest first. Each is checked as it arrives (parseMake); one
+ * that isn't usable is left out. Falls back to this device's copy without the cloud.
+ */
+export function subscribeToMakes(onUpdate: (makes: Make[]) => void): Unsubscribe {
+  if (!isFirebaseConfigured || !db) {
+    onUpdate(getStoredMakes());
+    return () => {};
+  }
+  return onSnapshot(
+    collection(db, MAKES_COLLECTION),
+    (snapshot) => {
+      // An empty answer from an empty offline cache says nothing: keep this device's copy.
+      if (snapshot.empty && snapshot.metadata.fromCache) {
+        onUpdate(getStoredMakes());
+        return;
+      }
+      const makes: Make[] = [];
+      snapshot.forEach((docSnap) => {
+        const make = parseMake(docSnap.data());
+        if (make && make.id === docSnap.id) makes.push(make);
+      });
+      makes.sort((a, b) => b.createdAt - a.createdAt);
+      saveMakes(makes, { photosInCloud: true });
+      onUpdate(makes);
+    },
+    (error) => {
+      console.warn('Makes subscription error (falling back to the copy on this device):', error);
+      onUpdate(getStoredMakes());
+    },
+  );
+}
+
+// The fields a maker writes. Saving clears the ones a make no longer has, and leaves everyone's
+// hearts alone, so a heart given while the maker was editing isn't lost.
+const MAKE_FIELDS = [
+  'id',
+  'recipeId',
+  'title',
+  'note',
+  'photo',
+  'madeOn',
+  'ownerEmail',
+  'ownerName',
+  'ownerNameAsTyped',
+  'sourceLanguage',
+  'translations',
+  'createdAt',
+  'updatedAt',
+  'deletedAt',
+] as const;
+
+/** Saves a make its maker added, edited, deleted or restored. Never its hearts. */
+export async function saveMakeToCloud(make: Make): Promise<void> {
+  if (make.photoOmitted) {
+    throw new Error(`Refusing to save make ${make.id} from a copy without its photo`);
+  }
+  if (!isFirebaseConfigured || !db) return;
+  const data: Record<string, unknown> = {};
+  for (const field of MAKE_FIELDS) {
+    const value = make[field];
+    data[field] = value === undefined ? deleteField() : value;
+  }
+  // Each field replaced whole (a merge would blend old translation entries into new ones).
+  await setDoc(doc(db, MAKES_COLLECTION, make.id), data, { mergeFields: [...MAKE_FIELDS] });
+}
+
+/**
+ * Stores a make's finished translation, only while the cloud's words are still what was
+ * translated: a translation of older words never lands on newer ones. Resolves to whether it
+ * wrote.
+ */
+export async function saveMakeTranslationToCloud(
+  makeId: string,
+  sourceLanguage: Language,
+  translation: MakeTranslation,
+): Promise<boolean> {
+  const firestore = db;
+  if (!isFirebaseConfigured || !firestore) return false;
+  const target: Language = sourceLanguage === 'en' ? 'pl' : 'en';
+  const ref = doc(firestore, MAKES_COLLECTION, makeId);
+  return runTransaction(firestore, async (tx) => {
+    const current = await tx.get(ref);
+    const make = current.exists() ? parseMake(current.data()) : null;
+    if (!make || makeSourceHash(make) !== translation.sourceHash) return false;
+    tx.update(ref, {
+      sourceLanguage,
+      [`translations.${target}`]: translation,
+      [`translations.${sourceLanguage}`]: deleteField(),
+    });
+    return true;
+  });
+}
+
+/** Gives (`on`) or takes back this person's heart on a make. Touches only their own heart. */
+export async function setMakeHeartInCloud(makeId: string, email: string, on: boolean) {
+  if (!isFirebaseConfigured || !db) return;
+  await updateDoc(
+    doc(db, MAKES_COLLECTION, makeId),
+    new FieldPath('hearts', heartKey(email)),
+    on ? true : deleteField(),
+  );
 }

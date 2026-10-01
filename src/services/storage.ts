@@ -1,4 +1,6 @@
 import { Recipe, RecipeVersion, Language, Theme, VaultSort, VaultView } from '../types/recipe';
+import { Make } from '../types/make';
+import { MAKES_DEVICE_BUDGET, makesDeviceJson, parseMake } from '../utils/makes';
 import { DEVICE_COPY_BUDGET, deviceCopyJson } from '../utils/deviceCopy';
 import { familyMemberName } from '../utils/ownership';
 import { localizeRecipe } from '../utils/recipeTranslation';
@@ -7,6 +9,8 @@ import { isSeasonPreference, SeasonPreference } from '../utils/season';
 import { DEFAULT_SORT, formatVaultSort, parseVaultSort, sortEntries } from '../utils/vault';
 
 const RECIPES_KEY = 'wandas_recipes';
+// The Makes page's makes, which the app starts from before the cloud answers.
+const MAKES_KEY = 'family_kitchen_makes';
 const THEME_KEY = 'wandas_theme';
 const LANG_KEY = 'wandas_language';
 const FONT_SCALE_KEY = 'wandas_font_scale';
@@ -378,5 +382,40 @@ export function setStoredPathChoices(recipeId: string, choices: Record<number, n
     localStorage.setItem(FORK_PATHS_KEY, JSON.stringify(all));
   } catch (e) {
     console.warn('Could not remember the chosen fork path (storage full?):', e);
+  }
+}
+
+/** This device's copy of the makes; any entry that isn't a usable make is dropped. */
+export function getStoredMakes(): Make[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(MAKES_KEY) || '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(parseMake).filter((m): m is Make => m !== null);
+  } catch (e) {
+    console.warn('Failed to read the makes kept on this device, starting without them:', e);
+    return [];
+  }
+}
+
+/**
+ * Keeps this device's copy of the makes. With the cloud keeping every photo (`photosInCloud`),
+ * only the newest makes keep theirs here (utils/makes makesDeviceJson); without it, this copy
+ * is the only one, kept whole.
+ */
+export function saveMakes(makes: Make[], { photosInCloud = false } = {}): void {
+  if (typeof window === 'undefined') return;
+  const attempts = [
+    () => makesDeviceJson(makes, MAKES_DEVICE_BUDGET, photosInCloud),
+    // Something else took the room: just the words (only when the cloud has the photos).
+    ...(photosInCloud ? [() => makesDeviceJson(makes, 0, true)] : []),
+  ];
+  for (const json of attempts) {
+    try {
+      localStorage.setItem(MAKES_KEY, json());
+      return;
+    } catch (e) {
+      console.warn('Could not keep the makes on this device, trying it smaller:', e);
+    }
   }
 }

@@ -9,6 +9,10 @@ interface HeroPhotoFieldProps {
   /** A picture from a recipe's web page is on its way. */
   loading?: boolean;
   labelId: string;
+  /** What the empty frame says (the recipe editor's own hint by default). */
+  hint?: string;
+  /** Set when the photo is required and missing: the field's error, which describes it. */
+  errorId?: string;
   t: UiTranslations;
 }
 
@@ -18,6 +22,8 @@ export const HeroPhotoField: React.FC<HeroPhotoFieldProps> = ({
   onChange,
   loading = false,
   labelId,
+  hint,
+  errorId,
   t,
 }) => {
   const { inputs, chooseFile, takePhoto } = usePhotoPicker(onChange);
@@ -27,6 +33,7 @@ export const HeroPhotoField: React.FC<HeroPhotoFieldProps> = ({
       className={`hero-photo-field${photo ? ' has-photo' : ''}`}
       role="group"
       aria-labelledby={labelId}
+      aria-describedby={errorId}
     >
       {inputs}
       {photo ? (
@@ -59,7 +66,7 @@ export const HeroPhotoField: React.FC<HeroPhotoFieldProps> = ({
             )}
           </span>
           <span className="hero-photo-hint" role={loading ? 'status' : undefined}>
-            {loading ? t.importPhotoLoading : t.photoHint}
+            {loading ? t.importPhotoLoading : (hint ?? t.photoHint)}
           </span>
           <div className="hero-photo-buttons">
             <button type="button" className="editor-chip" onClick={takePhoto}>

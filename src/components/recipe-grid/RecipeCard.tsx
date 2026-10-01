@@ -9,7 +9,7 @@ import { recipePhoto } from '../../utils/vault';
 import { creditName } from '../../utils/ownership';
 import { photoPending } from '../../utils/deviceCopy';
 import { CategoryTile } from './CategoryTile';
-import { RemixBadge, RemixMark } from './RemixMarks';
+import { MakeBadge, RemixBadge, RemixMark } from './RemixMarks';
 
 interface RecipeCardProps {
   recipe: Recipe;
@@ -24,6 +24,8 @@ interface RecipeCardProps {
   remixed?: boolean;
   /** How many remixes have been made of it. */
   remixCount?: number;
+  /** How many makes family members have shared of it. */
+  makeCount?: number;
   /** Given the card, which the recipe flips open out of. */
   onSelect: (id: string, from: HTMLElement) => void;
   t: UiTranslations;
@@ -41,6 +43,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
   draft = false,
   remixed = false,
   remixCount = 0,
+  makeCount = 0,
   onSelect,
   t,
 }) => {
@@ -102,7 +105,12 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
             <Timer className="time-icon" size="1.05em" strokeWidth={2.1} aria-hidden="true" />
             {estimatedTime}
           </span>
-          {remixCount > 0 && <RemixBadge count={remixCount} />}
+          {(remixCount > 0 || makeCount > 0) && (
+            <span className="vault-badges">
+              {remixCount > 0 && <RemixBadge count={remixCount} />}
+              {makeCount > 0 && <MakeBadge count={makeCount} />}
+            </span>
+          )}
         </div>
         <p className="card-desc">{description}</p>
       </div>

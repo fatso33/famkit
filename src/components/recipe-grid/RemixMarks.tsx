@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shuffle } from 'lucide-react';
+import { CookingPot, Shuffle } from 'lucide-react';
 
 /**
  * A remix's mark by its name, on a vault card or row. Only a picture there: the whole card is
@@ -15,6 +15,14 @@ export const RemixMark: React.FC<{ className?: string }> = ({ className = '' }) 
 export const RemixBadge: React.FC<{ count: number }> = ({ count }) => (
   <span className="remix-badge" aria-hidden="true">
     <Shuffle size="1em" strokeWidth={2.2} />
+    <span className="remix-badge-count">{count}</span>
+  </span>
+);
+
+/** How many makes a recipe has, after its remix badge on the cook-and-time row. A picture too. */
+export const MakeBadge: React.FC<{ count: number }> = ({ count }) => (
+  <span className="remix-badge make-badge" aria-hidden="true">
+    <CookingPot size="1em" strokeWidth={2.2} />
     <span className="remix-badge-count">{count}</span>
   </span>
 );

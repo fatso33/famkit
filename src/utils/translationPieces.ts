@@ -23,7 +23,9 @@ export type TextKind =
   | 'substep'
   | 'pathLabel'
   | 'pathText'
-  | 'pathStep';
+  | 'pathStep'
+  | 'makeTitle'
+  | 'makeNote';
 
 /** An ingredient row's words. Amounts used for scaling always stay with the original. */
 export type IngredientWords = Pick<

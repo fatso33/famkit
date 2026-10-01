@@ -55,6 +55,8 @@ interface RecipeGridViewProps {
   drafts?: RecipeDraft[];
   /** Opens the editor on a draft, out of its card or row. */
   onOpenDraft?: (draft: RecipeDraft, from: HTMLElement) => void;
+  /** How many makes each recipe has, by id, for the badge on its card. */
+  makeCounts?: ReadonlyMap<string, number>;
   /** Plays the banner's entrance: true arriving at the vault, false coming back to it. */
   animateIn: boolean;
   /** Shown above the vault title, e.g. the install prompt. */
@@ -76,6 +78,7 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
   onSelectRecipe,
   drafts = [],
   onOpenDraft,
+  makeCounts,
   animateIn,
   banner,
   t,
@@ -198,6 +201,7 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
           draft={draft}
           remixed={remixOriginalId(recipe) !== null}
           remixCount={draft ? 0 : (remixes.get(recipe.id) ?? 0)}
+          makeCount={draft ? 0 : (makeCounts?.get(recipe.id) ?? 0)}
           onSelect={draft ? openDraft : onSelectRecipe}
           t={t}
         />
@@ -210,6 +214,7 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
           draft={draft}
           remixed={remixOriginalId(recipe) !== null}
           remixCount={draft ? 0 : (remixes.get(recipe.id) ?? 0)}
+          makeCount={draft ? 0 : (makeCounts?.get(recipe.id) ?? 0)}
           onSelect={draft ? openDraft : onSelectRecipe}
           t={t}
         />

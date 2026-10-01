@@ -8,7 +8,7 @@ import { recipePhoto } from '../../utils/vault';
 import { creditName } from '../../utils/ownership';
 import { photoPending } from '../../utils/deviceCopy';
 import { CategoryTile } from './CategoryTile';
-import { RemixBadge, RemixMark } from './RemixMarks';
+import { MakeBadge, RemixBadge, RemixMark } from './RemixMarks';
 
 interface RecipeRowProps {
   recipe: Recipe;
@@ -24,6 +24,8 @@ interface RecipeRowProps {
   remixed?: boolean;
   /** How many remixes have been made of it. */
   remixCount?: number;
+  /** How many makes family members have shared of it. */
+  makeCount?: number;
   /** Given the card, which the recipe flips open out of. */
   onSelect: (id: string, from: HTMLElement) => void;
   t: UiTranslations;
@@ -41,6 +43,7 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
   draft = false,
   remixed = false,
   remixCount = 0,
+  makeCount = 0,
   onSelect,
   t,
 }) => {
@@ -77,7 +80,12 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
             <Timer className="time-icon" size="1.05em" strokeWidth={2.1} aria-hidden="true" />
             {t.totalTime(recipeTime(shown).minutes)}
           </span>
-          {remixCount > 0 && <RemixBadge count={remixCount} />}
+          {(remixCount > 0 || makeCount > 0) && (
+            <span className="vault-badges">
+              {remixCount > 0 && <RemixBadge count={remixCount} />}
+              {makeCount > 0 && <MakeBadge count={makeCount} />}
+            </span>
+          )}
         </span>
       </span>
       <span className="vault-row-photo" data-vault-photo="">

@@ -1,7 +1,8 @@
 import React, { useImperativeHandle, useRef, useState, type Ref } from 'react';
-import { ChevronRight, FilePen, Languages, Shuffle, Timer } from 'lucide-react';
+import { ChevronRight, CookingPot, FilePen, Languages, Shuffle, Timer } from 'lucide-react';
 import { flushSync } from 'react-dom';
 import { Recipe, Language } from '../../types/recipe';
+import { Make } from '../../types/make';
 import { UiTranslations } from '../../i18n/translations';
 import { recipeTime, capitalizeFirstLetter } from '../../utils/timeEstimator';
 import { PathChoices } from '../../utils/recipeMethod';
@@ -19,7 +20,8 @@ import { useUnroll } from '../../hooks/useUnroll';
 import { recipePhoto } from '../../utils/vault';
 import { photoPending } from '../../utils/deviceCopy';
 import { CategoryTile } from '../recipe-grid/CategoryTile';
-import { RemixPopover } from './RemixPopover';
+import { LinkPopover, PopoverLink } from './LinkPopover';
+import { madeOnLabel, makerName } from '../../utils/makes';
 
 /** What App can ask of an open recipe page. */
 export interface RecipePageHandle {
@@ -52,6 +54,10 @@ interface RecipeDetailViewProps {
   remixes?: Recipe[];
   /** Opens another recipe from the remix popover, given the name tapped there. */
   onOpenRecipe?: (id: string, name: HTMLElement) => void;
+  /** What family members made from it, newest first, in the viewer's language. */
+  makes?: Make[];
+  /** Goes to a make on the Makes page, given its name tapped in the makes popover. */
+  onOpenMake?: (id: string, name: HTMLElement) => void;
   ref?: Ref<RecipePageHandle>;
   t: UiTranslations;
 }
@@ -69,6 +75,8 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   remixOriginal,
   remixes = [],
   onOpenRecipe,
+  makes = [],
+  onOpenMake,
   ref,
   t,
 }) => {
@@ -89,10 +97,10 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   // The step photo shown full screen. The step stays set after closing, so the photo has
   // its thumbnail to shrink back into.
   const [zoom, setZoom] = useState<{ src: string; step: number; open: boolean } | null>(null);
-  // The remix popover, open from the mark by the title (the original) or the badge by the time
-  // (the remixes).
+  // The popover of links, open from the remix mark by the title (the original), or from a
+  // badge by the time (the remixes, or the makes).
   const [remixPop, setRemixPop] = useState<{
-    kind: 'original' | 'remixes';
+    kind: 'original' | 'remixes' | 'makes';
     anchor: HTMLElement;
   } | null>(null);
 
@@ -126,8 +134,29 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   const timeText = time.manual ? t.totalTime(time.minutes) : t.estimatedTime(time.minutes);
   const addedBy = addedByName(rawRecipe);
   const shownIn = (r: Recipe) => getLocalizedRecipe(r, language) || r;
-  const openRemixPop = (kind: 'original' | 'remixes') => (e: React.MouseEvent<HTMLElement>) =>
-    setRemixPop({ kind, anchor: e.currentTarget });
+  const openRemixPop =
+    (kind: 'original' | 'remixes' | 'makes') => (e: React.MouseEvent<HTMLElement>) =>
+      setRemixPop({ kind, anchor: e.currentTarget });
+  const recipeLink = (r: Recipe): PopoverLink => {
+    const shown = shownIn(r);
+    const photo = recipePhoto(shown);
+    return {
+      id: r.id,
+      name: shown.name,
+      byline: t.byAuthor(creditName(shown)),
+      thumb: photo ? <img src={photo} alt="" decoding="async" /> : <CategoryTile recipe={r} />,
+    };
+  };
+  const makeLink = (m: Make): PopoverLink => ({
+    id: m.id,
+    name: m.title || recipe.name,
+    byline: [makerName(m), madeOnLabel(m, language, t)].filter(Boolean).join(' · '),
+    thumb: m.photo ? (
+      <img src={m.photo} alt="" decoding="async" />
+    ) : (
+      <span className="photo-pending" />
+    ),
+  });
 
   const handleIncreaseScale = () => {
     setScale((prev) => (prev === 0.5 ? 1 : Math.min(8, prev + 1)));
@@ -206,6 +235,19 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                 >
                   <Shuffle size="1em" strokeWidth={2.2} aria-hidden="true" />
                   <span className="remix-badge-count">{remixes.length}</span>
+                </button>
+              )}
+              {makes.length > 0 && onOpenMake && (
+                <button
+                  type="button"
+                  className="remix-badge make-badge is-button"
+                  aria-label={t.makeCount(makes.length)}
+                  aria-haspopup="dialog"
+                  aria-expanded={remixPop?.kind === 'makes'}
+                  onClick={openRemixPop('makes')}
+                >
+                  <CookingPot size="1em" strokeWidth={2.2} aria-hidden="true" />
+                  <span className="remix-badge-count">{makes.length}</span>
                 </button>
               )}
             </div>
@@ -290,24 +332,38 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
         </div>
       </div>
 
-      {/* The remixes' popover goes with its badge, should the last remix be deleted meanwhile. */}
-      {remixPop && onOpenRecipe && (remixPop.kind === 'original' || remixes.length > 0) && (
-        <RemixPopover
-          anchor={remixPop.anchor}
-          title={remixPop.kind === 'original' ? t.remixedFrom : t.remixesTitle}
-          recipes={
-            remixPop.kind === 'original'
-              ? remixOriginal
-                ? [shownIn(remixOriginal)]
-                : []
-              : remixes.map(shownIn)
-          }
-          emptyText={remixPop.kind === 'original' ? t.remixOriginalGone : undefined}
-          onOpen={onOpenRecipe}
-          onClose={() => setRemixPop(null)}
-          t={t}
-        />
-      )}
+      {/* A badge's popover goes with the badge, should the last remix or make be deleted meanwhile. */}
+      {remixPop?.kind === 'makes'
+        ? makes.length > 0 &&
+          onOpenMake && (
+            <LinkPopover
+              anchor={remixPop.anchor}
+              title={t.makes}
+              icon={CookingPot}
+              links={makes.map(makeLink)}
+              onOpen={onOpenMake}
+              onClose={() => setRemixPop(null)}
+            />
+          )
+        : remixPop &&
+          onOpenRecipe &&
+          (remixPop.kind === 'original' || remixes.length > 0) && (
+            <LinkPopover
+              anchor={remixPop.anchor}
+              title={remixPop.kind === 'original' ? t.remixedFrom : t.remixesTitle}
+              icon={Shuffle}
+              links={
+                remixPop.kind === 'original'
+                  ? remixOriginal
+                    ? [recipeLink(remixOriginal)]
+                    : []
+                  : remixes.map(recipeLink)
+              }
+              emptyText={remixPop.kind === 'original' ? t.remixOriginalGone : undefined}
+              onOpen={onOpenRecipe}
+              onClose={() => setRemixPop(null)}
+            />
+          )}
 
       {/* Image Zoom Lightbox Modal */}
       {zoom?.open && (

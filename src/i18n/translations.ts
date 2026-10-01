@@ -379,9 +379,41 @@ export interface UiTranslations {
   recipeVault: string;
   makes: string;
   addMake: string;
-  comingSoonToast: string;
   makesEmptyTitle: string;
   makesEmptyBody: string;
+  editMakeTitle: string;
+  makePhoto: string;
+  makePhotoHint: string;
+  makePhotoRequired: string;
+  makeRecipe: string;
+  chooseRecipe: string;
+  makeRecipeRequired: string;
+  searchRecipes: string;
+  noRecipesMatch: string;
+  makeTitle: string;
+  makeNote: string;
+  makeNotePlaceholder: string;
+  madeOn: string;
+  today: string;
+  yesterday: string;
+  makeShared: string;
+  makeSaved: string;
+  makeDeleted: string;
+  editMakeNamed: (title: string) => string;
+  editMake: string;
+  deleteMake: string;
+  deleteMakeTitle: string;
+  deleteMakeBody: string;
+  makeDiscardBody: string;
+  giveHeart: string;
+  heartFailed: string;
+  heartCount: (count: number) => string;
+  makeCount: (count: number) => string;
+  /** The link from a make to the recipe it was made from. */
+  openRecipeNamed: (name: string) => string;
+  recipeGone: string;
+  makePhotoAlt: (title: string) => string;
+  viewMakePhoto: (title: string) => string;
   seasonSection: string;
   seasonInfo: string;
   seasonAuto: string;
@@ -748,9 +780,40 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     recipeVault: 'Recipe Box',
     makes: 'Makes',
     addMake: 'Add Make',
-    comingSoonToast: 'Makes are coming soon!',
     makesEmptyTitle: 'No makes yet',
-    makesEmptyBody: 'This is where your makes will live. Coming soon.',
+    makesEmptyBody: 'Made something from the Recipe Box? Share a photo of it here for the family.',
+    editMakeTitle: 'Edit Make',
+    makePhoto: 'Photo',
+    makePhotoHint: 'Show the family what you made',
+    makePhotoRequired: 'Add a photo of what you made',
+    makeRecipe: 'Recipe',
+    chooseRecipe: 'Choose a recipe',
+    makeRecipeRequired: 'Choose the recipe you made',
+    searchRecipes: 'Search recipes',
+    noRecipesMatch: 'No recipes match',
+    makeTitle: 'Title',
+    makeNote: 'Note',
+    makeNotePlaceholder: 'How did it go? Anything you changed?',
+    madeOn: 'Made on',
+    today: 'Today',
+    yesterday: 'Yesterday',
+    makeShared: 'Shared to Makes',
+    makeSaved: 'Make updated',
+    makeDeleted: 'Make removed',
+    editMakeNamed: (title: string) => `Edit ${title}`,
+    editMake: 'Edit',
+    deleteMake: 'Delete',
+    deleteMakeTitle: 'Delete this make?',
+    deleteMakeBody: 'It disappears from Makes for the whole family.',
+    makeDiscardBody: "Closing now loses what you've written.",
+    giveHeart: 'Give a heart',
+    heartFailed: "Couldn't save your heart. Try again.",
+    heartCount: (count: number) => `${count} ${count === 1 ? 'heart' : 'hearts'}`,
+    makeCount: (count: number) => `${count} ${count === 1 ? 'make' : 'makes'}`,
+    openRecipeNamed: (name: string) => `Open the recipe ${name}`,
+    recipeGone: 'No longer in the Recipe Box',
+    makePhotoAlt: (title: string) => `Photo: ${title}`,
+    viewMakePhoto: (title: string) => `View the photo of ${title}`,
     seasonSection: 'Seasons',
     seasonInfo:
       'The colours change with the seasons. Text stays just as easy to read all year round.',
@@ -1127,9 +1190,41 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     recipeVault: 'Przepiśnik',
     makes: 'Popisy',
     addMake: 'Dodaj popis',
-    comingSoonToast: 'Popisy już wkrótce!',
     makesEmptyTitle: 'Nie ma jeszcze popisów',
-    makesEmptyBody: 'Tu wkrótce pojawią się Twoje popisy.',
+    makesEmptyBody: 'Coś wyszło z przepisu z Przepiśnika? Pochwal się tu zdjęciem przed rodziną.',
+    editMakeTitle: 'Edytuj popis',
+    makePhoto: 'Zdjęcie',
+    makePhotoHint: 'Pokaż rodzinie swoje dzieło',
+    makePhotoRequired: 'Dodaj zdjęcie swojego dzieła',
+    makeRecipe: 'Przepis',
+    chooseRecipe: 'Wybierz przepis',
+    makeRecipeRequired: 'Wybierz przepis, z którego to powstało',
+    searchRecipes: 'Szukaj przepisów',
+    noRecipesMatch: 'Brak pasujących przepisów',
+    makeTitle: 'Tytuł',
+    makeNote: 'Notatka',
+    makeNotePlaceholder: 'Jak wyszło? Co było inaczej?',
+    madeOn: 'Data przygotowania',
+    today: 'Dziś',
+    yesterday: 'Wczoraj',
+    makeShared: 'Dodano do popisów',
+    makeSaved: 'Popis zaktualizowany',
+    makeDeleted: 'Popis usunięty',
+    editMakeNamed: (title: string) => `Edytuj: ${title}`,
+    editMake: 'Edytuj',
+    deleteMake: 'Usuń',
+    deleteMakeTitle: 'Usunąć ten popis?',
+    deleteMakeBody: 'Zniknie z popisów dla całej rodziny.',
+    makeDiscardBody: 'Jeśli zamkniesz teraz, wpisane zmiany przepadną.',
+    giveHeart: 'Daj serduszko',
+    heartFailed: 'Nie udało się zapisać serduszka. Spróbuj ponownie.',
+    heartCount: (count: number) =>
+      `${count} ${plPlural(count, 'serduszko', 'serduszka', 'serduszek')}`,
+    makeCount: (count: number) => `${count} ${plPlural(count, 'popis', 'popisy', 'popisów')}`,
+    openRecipeNamed: (name: string) => `Otwórz przepis: ${name}`,
+    recipeGone: 'Nie ma go już w Przepiśniku',
+    makePhotoAlt: (title: string) => `Zdjęcie: ${title}`,
+    viewMakePhoto: (title: string) => `Powiększ zdjęcie: ${title}`,
     seasonSection: 'Pory roku',
     seasonInfo:
       'Kolory zmieniają się razem z porami roku. Tekst przez cały rok czyta się równie łatwo.',

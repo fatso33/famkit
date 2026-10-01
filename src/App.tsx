@@ -12,6 +12,7 @@ import { useCurrentUser } from './hooks/useCurrentUser';
 import { useBackStep } from './hooks/useBackStep';
 import { useSeenRecipes } from './hooks/useSeenRecipes';
 import { useDrafts } from './hooks/useDrafts';
+import { useMakes } from './hooks/useMakes';
 import { isFirebaseConfigured } from './services/firebase';
 import { canEditRecipe, isOwnRecipe } from './utils/ownership';
 import { hasLeftOutPhotos } from './utils/deviceCopy';
@@ -43,6 +44,7 @@ import {
   setFlipAxis,
   transitionTheme,
   transitionView,
+  vaultItemKey,
   type NavMotion,
 } from './utils/viewTransition';
 import { SeasonPreference } from './utils/season';
@@ -53,7 +55,9 @@ import {
   remixStart,
   remixesOf,
 } from './utils/recipeRemix';
-import { Download, PencilLine, Plus, Shuffle } from 'lucide-react';
+import { CookingPot, Download, PencilLine, Plus, Shuffle } from 'lucide-react';
+import { canEditMake, makeCounts, makesOf } from './utils/makes';
+import { localizeMake } from './utils/makeTranslation';
 import { FloatingMenu, MenuAction } from './components/layout/FloatingMenu';
 import { InstallCard } from './components/layout/InstallCard';
 import { RecipeGridView } from './components/recipe-grid/RecipeGridView';
@@ -64,7 +68,8 @@ import {
 import { AddRecipeModal, type DraftContent } from './components/recipe-form/AddRecipeModal';
 import { IOSInstallModal } from './components/layout/IOSInstallModal';
 import { DownloadSheet } from './components/recipe-detail/DownloadSheet';
-import { MakesView } from './components/makes/MakesView';
+import { MakesView, type MakesPageHandle } from './components/makes/MakesView';
+import { AddMakeModal } from './components/makes/AddMakeModal';
 import { SettingsView } from './components/settings/SettingsView';
 import { Toast } from './components/common/Toast';
 import {
@@ -77,6 +82,7 @@ import {
   VaultView,
 } from './types/recipe';
 import { AppPage, MainPage } from './types/navigation';
+import { Make, MakeContent } from './types/make';
 
 // Page changes jump straight to their scroll position: html's smooth scrolling would
 // otherwise play out in the middle of the page transition.
@@ -87,6 +93,12 @@ const centreOf = (el: Element | null) => {
   if (!el) return undefined;
   const { left, top, width, height } = el.getBoundingClientRect();
   return { x: left + width / 2, y: top + height / 2 };
+};
+
+/** Scrolls so the element sits in the middle of the screen (as far as the page allows). */
+const centreOnScreen = (el: Element) => {
+  const { top, height } = el.getBoundingClientRect();
+  jumpTo(Math.max(0, window.scrollY + top + height / 2 - window.innerHeight / 2));
 };
 
 // How long a tapped card takes to lift out of the box before it flips (index.css, data-lifted).
@@ -125,6 +137,9 @@ export default function App() {
   const currentUser = useCurrentUser();
   const { seen, markSeen } = useSeenRecipes(currentUser?.email ?? '');
 
+  // What the family made from the recipes. Their words join the recipes' translation requests.
+  const { makes, addMake, updateMake, deleteMake, restoreMake, setHeart, collectMakeJobs } =
+    useMakes(currentUser);
   const {
     recipes,
     allRecipes,
@@ -135,7 +150,7 @@ export default function App() {
     loadVersion,
     deleteRecipe,
     restoreRecipe,
-  } = useRecipes(currentUser);
+  } = useRecipes(currentUser, collectMakeJobs);
   // The signed-in family member's unfinished recipes and edits, seen only by them.
   const {
     drafts,
@@ -192,6 +207,26 @@ export default function App() {
   const [photoOpenFor, setPhotoOpenFor] = useState<string | null>(null);
   // A card lifting out of the box before it flips open: a second tap waits for it.
   const liftingCard = useRef(false);
+  // The Recipe Box shown as cards, unfiltered, while a make's recipe link takes you to its card:
+  // only for that trip, so this person's own view and filter are never changed.
+  const [boxShowcase, setBoxShowcase] = useState(false);
+  // A recipe opened from a make: back from it, the Recipe Box opens on its card or row (in this
+  // person's own view), as no scroll position of theirs leads there.
+  const centreOnReturn = useRef<string | null>(null);
+  // The Add Make page: the make being edited (null for a new one), a new make's recipe, and
+  // where the page opens out of.
+  const [makeEditor, setMakeEditor] = useState<{
+    make: Make | null;
+    recipeId?: string;
+    origin?: { x: number; y: number };
+  } | null>(null);
+  // A make arriving on the Makes page: just shared, or come to from a recipe's makes.
+  const [arrivingMake, setArrivingMake] = useState<{ id: string; kind: 'new' | 'visit' } | null>(
+    null,
+  );
+  // The open Makes page (its photo viewer), and whether a make's photo is open full screen.
+  const makesPage = useRef<MakesPageHandle>(null);
+  const [makePhotoOpen, setMakePhotoOpen] = useState(false);
 
   // What the editor starts from: the recipe, or an earlier version's content on it.
   const editBase =
@@ -271,18 +306,22 @@ export default function App() {
   // Opening a recipe: its card lifts out of the box, flips over on its middle, and the recipe
   // unfolds from the card's back (the flip motions in index.css). Then the back button springs
   // out of the menu button.
-  const handleSelectRecipe = (id: string, card?: HTMLElement) => {
+  // `marked`: it was marked seen already, on the way here (a make's link).
+  const handleSelectRecipe = (id: string, card?: HTMLElement, marked = false) => {
     if (liftingCard.current) return;
     // A card left lifted by a return cut short (another page change took over) drops back first.
     dropFlippedCard();
+    centreOnReturn.current = null;
     mainScroll.current.recipes = window.scrollY;
-    markSeen(id);
+    if (!marked) markSeen(id);
     // Marks the tapped card before the browser snapshots the vault.
     flushSync(() => setLastRecipeId(id));
     const open = (motion: NavMotion) =>
       transitionView(
         () => {
           setBackShown(false);
+          // Behind the recipe, the Recipe Box goes back to this person's own view.
+          setBoxShowcase(false);
           setSelectedRecipeId(id);
           jumpTo(0);
         },
@@ -349,6 +388,9 @@ export default function App() {
         flushSync(() => {
           alongside?.();
           setBackShown(false);
+          setBoxShowcase(false);
+          setArrivingMake(null);
+          setMakePhotoOpen(false);
           setVaultEntrance(!goingBack && !flipsBack);
           setPage(target);
           if (target !== 'settings') setMainPage(target);
@@ -357,6 +399,12 @@ export default function App() {
         // Only once the page is there: a shorter page it replaces (a recipe) can't scroll as
         // far, and the jump would land short of the spot.
         jumpTo(goingBack && target !== 'settings' ? mainScroll.current[target] : 0);
+        // Back from a recipe opened from a make: its card or row in the middle of the screen.
+        const leftRecipe = target === 'recipes' && page === 'recipes' && !!selectedRecipe;
+        const centre = leftRecipe ? centreOnReturn.current : null;
+        centreOnReturn.current = null;
+        const flipTarget = centre && document.querySelector('.vault-item.is-flip-target');
+        if (flipTarget) centreOnScreen(flipTarget);
         // Only now is the card there to measure. Out of sight, the vault simply fades in.
         if (motion === 'flip-close' && !landFlippedCard())
           document.documentElement.dataset.nav = 'fade';
@@ -503,8 +551,167 @@ export default function App() {
     );
   };
 
+  // From a make to its recipe, through the Recipe Box: the Makes page recedes as the box comes
+  // forward, laid out as cards (this person's own view and filter untouched) and opened on the
+  // recipe's card, into whose title the make's link flies (the 'to-box' motion and 'title'
+  // morph). Then the card lifts and flips open into the recipe, as when it's tapped in the box.
+  // Back from the recipe returns to the Recipe Box, in this person's view, at that recipe.
+  const openRecipeFromMake = (recipeId: string, name: HTMLElement) => {
+    if (liftingCard.current) return;
+    mainScroll.current.makes = window.scrollY;
+    const cardOf = () =>
+      document.querySelector<HTMLElement>(
+        `.vault-item[data-vault-item="${vaultItemKey(recipeId)}"]`,
+      );
+    const titleOf = (card: HTMLElement | null) =>
+      card?.querySelector<HTMLElement>('[data-vault-name]') ?? null;
+    if (!canFlip()) {
+      // Less motion asked for (or no view transitions): straight to the recipe.
+      dropFlippedCard();
+      centreOnReturn.current = recipeId;
+      transitionView(
+        () => {
+          flushSync(() => {
+            setBackShown(false);
+            setArrivingMake(null);
+            setMakePhotoOpen(false);
+            setPage('recipes');
+            setMainPage('recipes');
+            setLastRecipeId(recipeId);
+            setSelectedRecipeId(recipeId);
+            markSeen(recipeId);
+          });
+          jumpTo(0);
+        },
+        { motion: 'forward', onFinished: () => setBackShown(true) },
+      );
+      return;
+    }
+    name.style.setProperty('view-transition-name', 'recipe-title');
+    let card: HTMLElement | null = null;
+    transitionView(
+      () => {
+        flushSync(() => {
+          setBackShown(false);
+          setArrivingMake(null);
+          setMakePhotoOpen(false);
+          setBoxShowcase(true);
+          setVaultEntrance(false);
+          setPage('recipes');
+          setMainPage('recipes');
+          setSelectedRecipeId(null);
+          setLastRecipeId(recipeId);
+          // With the page change, not after: marking it later would build the box once more
+          // between the card landing and lifting.
+          markSeen(recipeId);
+        });
+        card = cardOf();
+        if (card) centreOnScreen(card);
+        else jumpTo(0);
+        titleOf(card)?.style.setProperty('view-transition-name', 'recipe-title');
+      },
+      {
+        motion: 'to-box',
+        morph: 'title',
+        onFinished: () => {
+          titleOf(card)?.style.removeProperty('view-transition-name');
+          // No card to flip (the recipe went meanwhile): the box goes back to this person's view.
+          if (!card) {
+            setBoxShowcase(false);
+            return;
+          }
+          // The box has gone meanwhile (another page change took over).
+          if (!card.isConnected) return;
+          handleSelectRecipe(recipeId, card, true);
+          centreOnReturn.current = recipeId;
+        },
+      },
+    );
+  };
+
+  // From a recipe's makes popover to that make on the Makes page: the name tapped flies into the
+  // make's title as the Makes page fades up (the 'hop' motion and 'title' morph), opened on it.
+  const openMakeFromRecipe = (makeId: string, name: HTMLElement) => {
+    const morph = !prefersReducedMotion();
+    if (morph) name.style.setProperty('view-transition-name', 'recipe-title');
+    const titleOf = () =>
+      document.getElementById(`make-${makeId}`)?.querySelector<HTMLElement>('.make-title');
+    transitionView(
+      () => {
+        flushSync(() => {
+          setBackShown(false);
+          setPhotoOpenFor(null);
+          setBoxShowcase(false);
+          setVaultEntrance(false);
+          setArrivingMake({ id: makeId, kind: 'visit' });
+          setPage('makes');
+          setMainPage('makes');
+          setSelectedRecipeId(null);
+        });
+        const card = document.getElementById(`make-${makeId}`);
+        if (card) centreOnScreen(card);
+        if (morph) titleOf()?.style.setProperty('view-transition-name', 'recipe-title');
+      },
+      {
+        motion: 'hop',
+        morph: morph ? 'title' : undefined,
+        onFinished: () => titleOf()?.style.removeProperty('view-transition-name'),
+      },
+    );
+  };
+
+  // The Add Make page opens out of the button that asked for it (the menu button by default).
+  const openMakeEditor = (make: Make | null, recipeId?: string, from?: Element | null) => {
+    if (make?.photoOmitted) {
+      showToast(t.photosStillLoading, 'info');
+      return;
+    }
+    setMakeEditor({
+      make,
+      recipeId,
+      origin: centreOf(from ?? document.getElementById('fabMenuBtn')),
+    });
+  };
+
+  // A new make lands at the top of the Makes page, which the closing page sinks away to show.
+  const saveMake = (content: MakeContent) => {
+    const editing = makeEditor?.make;
+    if (editing) {
+      if (updateMake(editing.id, content)) showToast(t.makeSaved);
+      else showToast(t.photosStillLoading, 'error');
+      return;
+    }
+    const added = addMake(content, language);
+    flushSync(() => {
+      setBackShown(false);
+      setPhotoOpenFor(null);
+      setBoxShowcase(false);
+      setVaultEntrance(false);
+      setArrivingMake({ id: added.id, kind: 'new' });
+      setPage('makes');
+      setMainPage('makes');
+      setSelectedRecipeId(null);
+    });
+    jumpTo(0);
+  };
+
+  const removeMake = (id: string) => {
+    if (deleteMake(id)) {
+      showToast(t.makeDeleted, 'info', { label: t.undo, onAction: () => restoreMake(id) });
+    } else {
+      showToast(t.photosStillLoading, 'error');
+    }
+  };
+
+  const heartMake = (id: string, on: boolean) => {
+    void setHeart(id, on).then((done) => {
+      if (!done) showToast(t.heartFailed, 'error');
+    });
+  };
+
   const onRecipe = page === 'recipes' && !!selectedRecipe;
-  const photoOpen = onRecipe && photoOpenFor === selectedRecipe.id;
+  const photoOpen =
+    (onRecipe && photoOpenFor === selectedRecipe.id) || (page === 'makes' && makePhotoOpen);
 
   // Page-dependent entries at the bottom of the floating menu.
   let pageActions: MenuAction[] = [];
@@ -530,6 +737,13 @@ export default function App() {
           icon: Shuffle,
           onSelect: () => remixRecipe(selectedRecipe),
         },
+        // And share what they made from it, with the recipe already picked.
+        {
+          id: 'add-make',
+          label: t.addMake,
+          icon: CookingPot,
+          onSelect: () => openMakeEditor(null, selectedRecipe.id),
+        },
       );
       // Only the family member who added a recipe can edit it. Their Edit key has the bottom
       // row to itself, under Download and Remix.
@@ -545,12 +759,7 @@ export default function App() {
       break;
     case 'makes':
       pageActions = [
-        {
-          id: 'add-make',
-          label: t.addMake,
-          icon: Plus,
-          onSelect: () => showToast(t.comingSoonToast, 'info'),
-        },
+        { id: 'add-make', label: t.addMake, icon: Plus, onSelect: () => openMakeEditor(null) },
       ];
       break;
     case 'settings':
@@ -562,7 +771,21 @@ export default function App() {
       {/* Main Container */}
       <main className="app-container">
         {page === 'makes' ? (
-          <MakesView t={t} />
+          <MakesView
+            ref={makesPage}
+            makes={makes}
+            recipes={recipes}
+            language={language}
+            canEdit={(make) => canEditMake(make, currentUser, isFirebaseConfigured)}
+            arriving={arrivingMake}
+            animateIn={vaultEntrance}
+            onOpenRecipe={openRecipeFromMake}
+            onEditMake={(make, from) => openMakeEditor(make, undefined, from)}
+            onHeart={heartMake}
+            onAddMake={(from) => openMakeEditor(null, undefined, from)}
+            onPhotoOpenChange={setMakePhotoOpen}
+            t={t}
+          />
         ) : page === 'settings' ? (
           <SettingsView
             deletedRecipes={restorableRecipes(allRecipes, currentUser, isFirebaseConfigured)}
@@ -589,18 +812,22 @@ export default function App() {
             remixOriginal={remixOriginal(recipes, selectedRecipe)}
             remixes={remixesOf(recipes, selectedRecipe.id)}
             onOpenRecipe={openLinkedRecipe}
+            makes={makesOf(makes, selectedRecipe.id).map((m) => localizeMake(m, language))}
+            onOpenMake={openMakeFromRecipe}
             t={t}
           />
         ) : (
           <RecipeGridView
             recipes={recipes}
             language={language}
-            filter={vaultFilter}
+            // On the way to a make's recipe, the box shows every recipe as a card.
+            filter={boxShowcase ? NO_FILTER : vaultFilter}
             onFilterChange={changeVaultFilter}
             sort={vaultSort}
             onSortChange={changeVaultSort}
-            view={vaultView}
+            view={boxShowcase ? 'cards' : vaultView}
             onViewChange={changeVaultView}
+            makeCounts={makeCounts(makes)}
             isSeen={(recipe) => vaultSeen.has(recipe.id) || isOwnRecipe(recipe, currentUser)}
             animateIn={vaultEntrance}
             flipRecipeId={lastRecipeId}
@@ -634,9 +861,15 @@ export default function App() {
         fontPercent={fontPercent}
         onIncreaseFont={increaseScale}
         onDecreaseFont={decreaseScale}
-        showBack={(backShown || photoOpen) && onRecipe}
+        showBack={((backShown || photoOpen) && onRecipe) || (photoOpen && page === 'makes')}
         photoOpen={photoOpen}
-        onBack={() => (photoOpen ? recipePage.current?.closePhoto() : leaveRecipe())}
+        onBack={() =>
+          !photoOpen
+            ? leaveRecipe()
+            : page === 'makes'
+              ? makesPage.current?.closePhoto()
+              : recipePage.current?.closePhoto()
+        }
         t={t}
       />
 
@@ -702,6 +935,20 @@ export default function App() {
             if (editingDraft) void dropDraft(editingDraft);
             // The editor then closes itself, and closeEditor clears it once it has slid away.
           }}
+          t={t}
+        />
+      )}
+
+      {makeEditor && (
+        <AddMakeModal
+          make={makeEditor.make}
+          recipeId={makeEditor.recipeId}
+          recipes={recipes}
+          language={language}
+          origin={makeEditor.origin}
+          onSave={saveMake}
+          onDelete={makeEditor.make ? () => removeMake(makeEditor.make!.id) : undefined}
+          onClose={() => setMakeEditor(null)}
           t={t}
         />
       )}

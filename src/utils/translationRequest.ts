@@ -128,6 +128,8 @@ const KIND_NAMES: Record<TextKind, string> = {
   pathLabel: 'name on a switch between ways of doing a step (1-3 words)',
   pathText: 'step, done this way',
   pathStep: 'step, done this way',
+  makeTitle: "title of a family member's post about something they cooked",
+  makeNote: "a family member's note about how their cooking went",
 };
 
 /** Each piece gets an id (p1, p2, …, unique across the request) in the list it belongs to. */

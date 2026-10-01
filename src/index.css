@@ -455,11 +455,11 @@
          selves show, never a sliding snapshot. (The open menu isn't lifted out like them: its
          scrim blurs the page behind, which a separate snapshot can't carry, so the blur would
          vanish at once. A page chosen from it cross-fades under the scrim instead, see above.) */
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='hop'], [data-nav='menu'], [data-nav='vault'], [data-nav='zoom'], [data-nav='flip-open'], [data-nav='flip-close'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='zoom'], [data-nav='flip-open'], [data-nav='flip-close'])
         .fab-group {
         view-transition-name: fk-fab;
       }
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='hop'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'])
         .app-toast {
         view-transition-name: fk-toast;
       }
@@ -2445,8 +2445,12 @@
         flex: none;
       }
 
-      /* The remix badge at the end of the cook-and-time row. */
-      :is(.vault-row-meta, .card-meta) .remix-badge {
+      /* The remix and make badges at the end of the cook-and-time row, the remixes first. */
+      .vault-badges {
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
         margin-left: auto;
       }
 
@@ -2968,6 +2972,11 @@
         padding: 0.3rem 0.7rem 0.3rem 0.6rem;
       }
 
+      /* The make badge follows the remix badge. */
+      .detail-meta > .remix-badge + .remix-badge {
+        margin-left: 0;
+      }
+
       /* ── Remixes. A remix's mark by its name, and a recipe's badge counting its remixes, on
          its card and its page. On a card they're pictures (the card is what's tapped); on the
          page they're buttons that open a popover of links. Static, so the cards' motion (the
@@ -3048,7 +3057,7 @@
       }
 
       /* The popover springs out of the mark or badge it belongs to (--pop-origin-x, measured
-         by RemixPopover), its links rising in a beat behind: transform and opacity only. It's
+         by LinkPopover), its links rising in a beat behind: transform and opacity only. It's
          placed on the page once, so it scrolls with the page at no cost. */
       .remix-pop-layer {
         position: absolute;
@@ -6695,11 +6704,11 @@
         color: #f2b8b5;
       }
 
-      .has-error :is(.form-control[aria-invalid='true'], .category-select-trigger) {
+      .has-error :is(.form-control[aria-invalid='true'], .category-select-trigger, .hero-photo-field) {
         border-color: #b3261e;
       }
 
-      [data-theme='dark'] .has-error :is(.form-control[aria-invalid='true'], .category-select-trigger) {
+      [data-theme='dark'] .has-error :is(.form-control[aria-invalid='true'], .category-select-trigger, .hero-photo-field) {
         border-color: #f2b8b5;
       }
 
@@ -9800,6 +9809,526 @@
       :root[data-theme-swap]::view-transition-new(root) {
         animation: none;
         mix-blend-mode: normal;
+      }
+
+      /* ── Makes ──
+         components/makes: what the family made from the Recipe Box, the newest first. Each make
+         is a card led by its photo, square and mounted like a recipe card's, then a link to the
+         recipe it was made from, its title and note, and who made it when, with its hearts.
+         Every animation here moves only transform and opacity. */
+      .makes-feed {
+        display: grid;
+        gap: 1.5rem;
+        max-width: 34rem;
+        margin: 0 auto;
+      }
+
+      .make-card {
+        position: relative;
+        padding: 0.7rem 0.7rem 0.35rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        background: var(--bg-surface);
+        box-shadow:
+          inset 0 1px 0 var(--card-sheen),
+          var(--shadow-sm);
+      }
+
+      /* The photo, which opens full screen when tapped (it grows into the viewer, zoom). */
+      .make-photo {
+        display: block;
+        width: 100%;
+        aspect-ratio: 1;
+        padding: 0;
+        overflow: hidden;
+        border: 0;
+        border-radius: calc(var(--radius-lg) - 7px);
+        background: var(--bg-card);
+        cursor: zoom-in;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .make-photo-img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .make-photo:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      :root[data-morph='photo'] .make-photo.is-zoom-source .make-photo-img {
+        view-transition-name: zoom-photo;
+      }
+
+      .make-body {
+        padding: 0.55rem 0.3rem 0;
+      }
+
+      /* The recipe it was made from, along the bottom: the recipe tin with its card pulled up,
+         and the recipe's name, in a pill that gives way (its name trimmed) to the hearts beside it.
+         The button is a full 44px tall around the smaller pill. */
+      .make-recipe {
+        flex: 0 1 auto;
+        display: inline-flex;
+        align-items: center;
+        min-width: 0;
+        max-width: 100%;
+        min-height: 44px;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: var(--accent);
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .make-recipe-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        min-width: 0;
+        padding: 0.3rem 0.65rem 0.3rem 0.5rem;
+        border-radius: var(--radius-full);
+        background: var(--accent-subtle);
+        font-size: 0.9375rem;
+        font-weight: 650;
+        line-height: 1.3;
+        transition:
+          scale 0.15s ease,
+          background-color 0.2s ease;
+      }
+
+      .make-recipe-icon,
+      .make-recipe-chevron {
+        flex: none;
+      }
+
+      .make-recipe-chevron {
+        margin-left: -0.1rem;
+        opacity: 0.75;
+      }
+
+      .make-recipe-name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .make-recipe:active .make-recipe-pill {
+        scale: 0.96;
+      }
+
+      .make-recipe:focus-visible {
+        outline: none;
+      }
+
+      .make-recipe:focus-visible .make-recipe-pill {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      @media (hover: hover) {
+        .make-recipe:hover .make-recipe-pill {
+          background: color-mix(in srgb, var(--accent) 18%, var(--accent-subtle));
+        }
+      }
+
+      /* Its recipe has been deleted: named as gone, and not a link. */
+      .make-recipe.is-gone {
+        color: var(--text-muted);
+        cursor: default;
+      }
+
+      .make-recipe.is-gone .make-recipe-pill {
+        background: var(--bg-card);
+        font-weight: 600;
+      }
+
+      .make-title {
+        /* As wide as its text, so a name flying into it lands on the words. */
+        width: fit-content;
+        max-width: 100%;
+        margin: 0.15rem 0 0;
+        font: var(--weight-heading) 1.375rem/1.22 var(--font-serif);
+        letter-spacing: -0.01em;
+        color: var(--text-primary);
+      }
+
+      .make-note {
+        margin: 0.4rem 0 0;
+        font-size: 1rem;
+        line-height: 1.55;
+        color: var(--text-secondary);
+        white-space: pre-line;
+        overflow-wrap: anywhere;
+      }
+
+      .make-translating {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        margin: 0.45rem 0 0;
+        font-size: 0.8125rem;
+        color: var(--text-muted);
+      }
+
+      /* Under the title: who made it, and when. */
+      .make-byline {
+        display: flex;
+        align-items: baseline;
+        gap: 0.35rem;
+        min-width: 0;
+        margin: 0.25rem 0 0;
+        font-size: 0.875rem;
+        color: var(--text-muted);
+      }
+
+      /* Along the bottom: the recipe's pill, then the hearts (and, for its author, Edit) at the end. */
+      .make-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 44px;
+        margin-top: 0.45rem;
+        font-size: 0.875rem;
+        color: var(--text-muted);
+      }
+
+      .make-maker {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 600;
+        color: var(--text-secondary);
+      }
+
+      .make-maker:empty {
+        display: none;
+      }
+
+      .make-date {
+        flex: none;
+        white-space: nowrap;
+      }
+
+      .make-maker:not(:empty) + .make-date::before {
+        content: '·';
+        margin-right: 0.35rem;
+      }
+
+      .make-actions {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 0.15rem;
+        margin: 0 -0.35rem 0 auto;
+      }
+
+      .make-action {
+        min-width: 44px;
+        height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.3rem;
+        padding: 0 0.6rem;
+        border: 0;
+        border-radius: var(--radius-full);
+        background: none;
+        color: var(--text-muted);
+        font: inherit;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          color 0.2s ease,
+          background-color 0.2s ease;
+      }
+
+      .make-action:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 0;
+      }
+
+      @media (hover: hover) {
+        .make-action:hover {
+          background: var(--menu-well);
+          color: var(--text-primary);
+        }
+      }
+
+      .make-heart {
+        position: relative;
+      }
+
+      .make-heart[aria-pressed='true'],
+      .make-heart.is-static {
+        color: var(--accent);
+      }
+
+      .make-heart[aria-pressed='true'] .make-heart-icon,
+      .make-heart.is-static .make-heart-icon {
+        fill: currentColor;
+      }
+
+      /* The author's own count: the heart's look, without the button. */
+      .make-heart.is-static {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0 0.6rem;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .empty-state-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin-top: 0.75rem;
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        /* A heart given: it squeezes, bursts out and settles, a ring spreading behind it. */
+        .make-heart-icon.is-popping {
+          animation: make-heart-pop 0.6s var(--ease-soft) both;
+        }
+        .make-heart:has(.make-heart-icon.is-popping)::after {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 2.4rem;
+          height: 2.4rem;
+          margin: -1.2rem 0 0 -1.2rem;
+          border: 2px solid var(--accent);
+          border-radius: 50%;
+          pointer-events: none;
+          animation: make-heart-ring 0.6s var(--ease-decelerate) 0.08s both;
+        }
+
+        /* Arriving at the page: the first makes rise into place in turn, once the page's first
+           frame is drawn (MakesView sets data-entrance). */
+        .makes-page.is-entering .make-card {
+          animation: vault-item-in 0.85s var(--ease-glide) calc(0.12s + var(--enter-i, 0) * 90ms)
+            both;
+        }
+        .makes-page.is-entering:not([data-entrance]) .make-card {
+          animation-play-state: paused;
+        }
+
+        /* Just shared: it rises into place as the Add Make page sinks away, its photo settling
+           into its frame. */
+        .make-card.is-arriving-new {
+          animation: make-arrive 0.8s var(--ease-glide) 0.16s both;
+        }
+        .make-card.is-arriving-new .make-photo-img {
+          animation: make-photo-settle 1.2s var(--ease-decelerate) 0.16s both;
+        }
+
+        /* Come to from a recipe's makes: a ring of the accent glows once around it. */
+        .make-card.is-arriving-visit::after {
+          content: '';
+          position: absolute;
+          inset: -5px;
+          border: 2px solid var(--accent);
+          border-radius: calc(var(--radius-lg) + 5px);
+          pointer-events: none;
+          animation: make-visit-glow 1.6s var(--ease-soft) 0.4s both;
+        }
+      }
+
+      @keyframes make-heart-pop {
+        0% { transform: scale(1); }
+        25% { transform: scale(0.72); }
+        60% { transform: scale(1.3); }
+        100% { transform: scale(1); }
+      }
+
+      @keyframes make-heart-ring {
+        from { opacity: 0.55; transform: scale(0.4); }
+        to { opacity: 0; transform: scale(1.35); }
+      }
+
+      @keyframes make-arrive {
+        from { opacity: 0; transform: translateY(2rem) scale(0.95); }
+      }
+
+      @keyframes make-photo-settle {
+        from { transform: scale(1.12); }
+      }
+
+      @keyframes make-visit-glow {
+        from { opacity: 0; }
+        18% { opacity: 0.9; }
+        to { opacity: 0; }
+      }
+
+      /* From a make to its recipe's card (App, the 'to-box' motion): the Makes page recedes and
+         is gone before the Recipe Box comes forward (two pages showing through each other look
+         muddy), while the recipe's name flies from the make's link into the card's title (the
+         'title' morph). The card then lifts and flips open. */
+      :root[data-nav='to-box']::view-transition-old(root) {
+        animation: vt-recede 0.18s var(--ease-accelerate) both;
+      }
+      :root[data-nav='to-box']::view-transition-new(root) {
+        animation: vt-box-forward 0.42s var(--ease-glide) 0.14s both;
+      }
+      @keyframes vt-box-forward {
+        from {
+          opacity: 0;
+          transform: scale(1.035);
+        }
+      }
+
+      /* The Add Make page: the recipe editor's page (editor-layer), with one row for its bar:
+         Close, the title, Save. */
+      .make-editor-bar {
+        padding-top: calc(0.5rem + env(safe-area-inset-top));
+      }
+
+      .make-editor-bar .editor-bar-title {
+        margin: 0;
+        text-align: center;
+      }
+
+      .make-editor-body {
+        max-width: 34rem;
+      }
+
+      .make-note-input {
+        min-height: 5.5rem;
+      }
+
+      .make-date-input {
+        width: auto;
+        min-width: 12rem;
+      }
+
+      [data-theme='dark'] .make-date-input {
+        color-scheme: dark;
+      }
+
+      .make-editor-delete {
+        display: flex;
+        justify-content: center;
+        margin-top: 2rem;
+      }
+
+      /* Picking the recipe: the category list's look, as one column with a search, which
+         scrolls on its own when the Recipe Box is long. */
+      .recipe-link-icon {
+        color: var(--accent);
+      }
+
+      .recipe-link-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+        max-height: min(26rem, 60vh);
+      }
+
+      .recipe-link-search {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 44px;
+        padding: 0 0.75rem;
+        border: 1.5px solid var(--border-field);
+        border-radius: var(--radius-md);
+        background: var(--bg-surface);
+        color: var(--text-muted);
+      }
+
+      .recipe-link-search:focus-within {
+        border-color: var(--accent);
+      }
+
+      .recipe-link-search-input {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        background: none;
+        color: var(--text-primary);
+        font: inherit;
+        font-size: 1rem;
+        outline: none;
+      }
+
+      .recipe-link-search-input::placeholder {
+        color: var(--text-muted);
+        opacity: 1;
+      }
+
+      .recipe-link-options {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        min-height: 0;
+        margin: 0 -0.25rem;
+        padding: 0.1rem 0.25rem;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+      }
+
+      .recipe-link-option {
+        flex: none;
+        padding: 0.35rem 0.6rem 0.35rem 0.35rem;
+      }
+
+      .recipe-link-thumb {
+        flex: none;
+        width: 2.5rem;
+        height: 2.5rem;
+        overflow: hidden;
+        border-radius: var(--radius-sm);
+        background: var(--bg-card);
+      }
+
+      .recipe-link-thumb img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .recipe-link-text {
+        flex: 1;
+        min-width: 0;
+        display: grid;
+        gap: 0.1rem;
+      }
+
+      .recipe-link-text .category-option-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .recipe-link-cook {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: var(--text-muted);
+      }
+
+      .recipe-link-none {
+        padding: 0.75rem;
+        text-align: center;
+        color: var(--text-muted);
       }
 
       /* Print Styles */

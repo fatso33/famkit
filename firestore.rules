@@ -61,6 +61,35 @@ service cloud.firestore {
       }
     }
 
+    // Makes: what family members made from the recipes, each with a photo. The maker owns theirs.
+    // Anyone may heart one (giving or taking back only their own heart), and any family phone may
+    // finish its background translation.
+    match /makes/{makeId} {
+      function hearts(data) {
+        return data.get('hearts', {});
+      }
+      function onlyMyHeart() {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hearts']) &&
+          hearts(request.resource.data).diff(hearts(resource.data)).affectedKeys()
+            .hasOnly([myEmail()]) &&
+          hearts(request.resource.data).get(myEmail(), true) == true;
+      }
+      allow read: if isFamily();
+      // Added by the person saving it, under its own id, with no hearts yet.
+      allow create: if isFamily() && ownedByMe(request.resource.data) &&
+        request.resource.data.get('id', '') == makeId &&
+        !('hearts' in request.resource.data);
+      // Only the maker edits it (keeping it theirs, and leaving its hearts as they are).
+      allow update: if isFamily() && (
+        (ownedByMe(resource.data) && ownedByMe(request.resource.data) &&
+          hearts(request.resource.data) == hearts(resource.data)) ||
+        onlyTranslation() ||
+        onlyMyHeart()
+      );
+      // Makes are never erased from the app.
+      allow delete: if false;
+    }
+
     // Drafts: recipes and edits a family member is still writing, kept under their own email
     // (in lowercase). Only they can read, save or discard them.
     match /drafts/{email}/recipes/{draftId} {

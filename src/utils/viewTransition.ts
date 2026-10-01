@@ -13,7 +13,16 @@ import { flushSync } from 'react-dom';
  *   back; flip-close folds the recipe away and the card flips back into its place (setFlipAxis)
  */
 export type NavMotion =
-  'forward' | 'back' | 'fade' | 'hop' | 'menu' | 'zoom' | 'vault' | 'flip-open' | 'flip-close';
+  | 'forward'
+  | 'back'
+  | 'fade'
+  | 'hop'
+  | 'to-box'
+  | 'menu'
+  | 'zoom'
+  | 'vault'
+  | 'flip-open'
+  | 'flip-close';
 
 /**
  * What morphs between its old and new place: a step photo and the full-screen viewer, or a
