@@ -1,22 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronRight, CookingPot, Heart, NotebookPen, PencilLine } from 'lucide-react';
+import { ChevronRight, CookingPot, Heart, NotebookPen, PencilLine, Sparkles } from 'lucide-react';
 import { Language, Recipe, RecipeDraft, Theme } from '../../types/recipe';
 import { Make } from '../../types/make';
 import { UiTranslations } from '../../i18n/translations';
 import type { Season } from '../../utils/season';
 import { getLocalizedRecipe } from '../../hooks/useRecipes';
 import { useSplashUp } from '../../hooks/useSplashUp';
-import { recipePhoto } from '../../utils/vault';
-import { creditName } from '../../utils/ownership';
-import { photoPending } from '../../utils/deviceCopy';
-import { makerName } from '../../utils/makes';
+import { makeCounts, makerName } from '../../utils/makes';
+import { remixCounts, remixOriginalId } from '../../utils/recipeRemix';
 import { localizeMake } from '../../utils/makeTranslation';
 import { draftVersion } from '../../utils/recipeDrafts';
-import { changedAt, latestMakes, latestRecipes, recipeChange, timeAgo } from '../../utils/counter';
+import { latestMakes, latestRecipes, recipeChange, timeAgo } from '../../utils/counter';
 import { splitGreeting } from '../../utils/greeting';
 import { prefersReducedMotion, vaultItemKey } from '../../utils/viewTransition';
 import { HeartFlourish } from '../common/HeartFlourish';
-import { CategoryTile } from '../recipe-grid/CategoryTile';
+import { RecipeRow } from '../recipe-grid/RecipeRow';
 import { skyClock } from '../../utils/sky';
 import { launchFlourishShown } from '../auth/launchFlourish';
 import { CounterSky } from './CounterSky';
@@ -57,8 +55,10 @@ interface CounterViewProps {
   onAddRecipe: (from: HTMLElement) => void;
   onAddMake: (from: HTMLElement) => void;
   onOpenSettings: () => void;
-  /** A recipe tapped: its name, which flies to its row in the Recipe Box. */
-  onOpenRecipe: (id: string, name: HTMLElement) => void;
+  /** A recipe tapped: its card, which lifts and flips open into the recipe, as in the box. */
+  onOpenRecipe: (id: string, card: HTMLElement) => void;
+  /** The recipe last opened from here: its card is the one the recipe folds back onto. */
+  flipRecipeId: string | null;
   onSeeAllRecipes: () => void;
   /** A make tapped: its photo, which grows into its card on the Makes page. */
   onOpenMake: (id: string, photo: HTMLElement) => void;
@@ -95,6 +95,7 @@ export const CounterView: React.FC<CounterViewProps> = ({
   onAddMake,
   onOpenSettings,
   onOpenRecipe,
+  flipRecipeId,
   onSeeAllRecipes,
   onOpenMake,
   onSeeAllMakes,
@@ -147,6 +148,9 @@ export const CounterView: React.FC<CounterViewProps> = ({
 
   const words = splitGreeting(greeting, firstName);
   const latest = latestRecipes(recipes);
+  // Their remix and make badges, as in the box.
+  const remixes = remixCounts(recipes);
+  const madeCounts = makeCounts(makes);
   const shownMakes = latestMakes(makes);
   const recipesById = new Map(recipes.map((r) => [r.id, r]));
   // A draft of a recipe that has gone since waits, unseen, until the recipe comes back.
@@ -237,86 +241,79 @@ export const CounterView: React.FC<CounterViewProps> = ({
           t={t}
         />
 
+        {/* The latest recipes, filed as the Recipe Box's own cards behind a divider tab. */}
         <section
-          className="counter-window"
+          className="counter-window is-box"
           data-counter-window="recipes"
           aria-labelledby="counterRecipesTitle"
           style={{ '--w': 0 } as React.CSSProperties}
         >
-          <div className="counter-window-head">
-            <h2 id="counterRecipesTitle" className="counter-window-title">
-              {t.freshInBox}
-            </h2>
-            {latest.length > 0 && (
-              <button
-                type="button"
-                className="counter-see-all"
-                aria-label={t.seeAllRecipes}
-                onClick={onSeeAllRecipes}
-              >
-                {t.seeAll}
-                <ChevronRight size="1.05em" strokeWidth={2.2} aria-hidden="true" />
-              </button>
+          <div className="vault-box is-list counter-box">
+            <div className="vault-divider">
+              <div className="counter-tab-row">
+                <h2 id="counterRecipesTitle" className="vault-tab">
+                  <Sparkles
+                    className="vault-tab-icon"
+                    size="1.05em"
+                    strokeWidth={2}
+                    aria-hidden="true"
+                  />
+                  <span className="vault-tab-name">{t.freshInBox}</span>
+                </h2>
+                {latest.length > 0 && (
+                  <button
+                    type="button"
+                    className="counter-see-all"
+                    aria-label={t.seeAllRecipes}
+                    onClick={onSeeAllRecipes}
+                  >
+                    {/* The arrow first: laid out from the right, it's the part that always shows
+                        (index.css, counter-tab-row). */}
+                    <span className="counter-see-all-fit">
+                      <ChevronRight size="1.05em" strokeWidth={2.2} aria-hidden="true" />
+                      <span>{t.seeAll}</span>
+                    </span>
+                  </button>
+                )}
+              </div>
+              <div className="vault-tab-edge" aria-hidden="true" />
+            </div>
+            {latest.length === 0 ? (
+              <p className="counter-empty counter-box-empty">
+                <NotebookPen size="1.2em" strokeWidth={1.8} aria-hidden="true" />
+                {t.boxEmpty}
+              </p>
+            ) : (
+              <ul className="counter-box-cards">
+                {latest.map((recipe, i) => {
+                  const change = recipeChange(recipe);
+                  return (
+                    <li
+                      key={recipe.id}
+                      className="vault-slot"
+                      style={{ '--r': i } as React.CSSProperties}
+                    >
+                      <RecipeRow
+                        recipe={recipe}
+                        shown={getLocalizedRecipe(recipe, language) ?? recipe}
+                        isFlipTarget={recipe.id === flipRecipeId}
+                        remixed={remixOriginalId(recipe) !== null}
+                        remixCount={remixes.get(recipe.id) ?? 0}
+                        makeCount={madeCounts.get(recipe.id) ?? 0}
+                        tag={{
+                          text: change === 'new' ? t.recipeNew : t.recipeUpdated,
+                          className: `counter-tag is-${change}`,
+                        }}
+                        unseenLabel={isSeen(recipe) ? undefined : t.unseen}
+                        onSelect={onOpenRecipe}
+                        t={t}
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </div>
-          {latest.length === 0 ? (
-            <p className="counter-empty">
-              <NotebookPen size="1.2em" strokeWidth={1.8} aria-hidden="true" />
-              {t.boxEmpty}
-            </p>
-          ) : (
-            <ul className="counter-rows">
-              {latest.map((recipe, i) => {
-                const shown = getLocalizedRecipe(recipe, language) ?? recipe;
-                const photo = recipePhoto(shown);
-                const change = recipeChange(recipe);
-                return (
-                  <li key={recipe.id} style={{ '--r': i } as React.CSSProperties}>
-                    <button
-                      type="button"
-                      className="counter-row"
-                      data-counter-recipe={vaultItemKey(recipe.id)}
-                      onClick={(e) =>
-                        onOpenRecipe(
-                          recipe.id,
-                          e.currentTarget.querySelector<HTMLElement>('[data-counter-name]') ??
-                            e.currentTarget,
-                        )
-                      }
-                    >
-                      <span className="counter-row-text">
-                        <span className="counter-row-name" data-counter-name="">
-                          {shown.name}
-                        </span>
-                        <span className="counter-row-meta">
-                          <span className={`counter-tag is-${change}`}>
-                            {change === 'new' ? t.recipeNew : t.recipeUpdated}
-                          </span>
-                          <span className="counter-row-detail">
-                            {creditName(shown)} · {timeAgo(changedAt(recipe), now, language)}
-                          </span>
-                          {!isSeen(recipe) && (
-                            <span className="counter-unseen" title={t.unseen}>
-                              <span className="sr-only">{t.unseen}</span>
-                            </span>
-                          )}
-                        </span>
-                      </span>
-                      <span className="counter-row-photo" data-counter-photo="">
-                        {photo ? (
-                          <img src={photo} alt="" />
-                        ) : photoPending(recipe) ? (
-                          <span className="photo-pending" />
-                        ) : (
-                          <CategoryTile recipe={recipe} />
-                        )}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
         </section>
 
         <section

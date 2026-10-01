@@ -11038,12 +11038,110 @@
         color: var(--text-secondary);
       }
 
-      .counter-unseen {
+      /* Not opened yet: a dot after a card's name (My Counter's latest recipes). */
+      .vault-unseen {
+        flex: none;
         width: 0.5rem;
         height: 0.5rem;
         border-radius: 50%;
         background: var(--accent);
         box-shadow: 0 0 0 3px var(--accent-subtle);
+      }
+
+      .vault-row-meta .counter-tag {
+        flex: none;
+      }
+
+      /* With its tag, a row's cook and time may need a second line (large text). */
+      .counter-box .vault-row-meta {
+        flex-wrap: wrap;
+        row-gap: 0.3rem;
+      }
+
+      /* The latest recipes: the Recipe Box's own list cards, filed behind a divider tab of their
+         own, with "See all" beside the tab. No window around them, and none of the box's
+         scrolling lean (there's no pinned tab here for them to slip under). */
+      .counter-window.is-box {
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: none;
+        box-shadow: none;
+      }
+
+      .counter-box {
+        --vault-tab-height: 2.35rem;
+      }
+
+      .counter-tab-row {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+
+      /* Its name wraps rather than being cut short beside "See all" (large text, a narrow phone). */
+      .counter-tab-row .vault-tab {
+        min-width: 0;
+        height: auto;
+        min-height: var(--vault-tab-height);
+        padding-block: 0.3rem;
+      }
+
+      .counter-tab-row .vault-tab-name {
+        white-space: normal;
+      }
+
+      /* Where the two don't both fit (large text on a small phone), the tab keeps its whole
+         name, and "See all" only its arrow: the word wraps onto a second line, out of sight
+         (its name stays for screen readers). The arrow comes first, from the right. */
+      .counter-tab-row .vault-tab {
+        flex: none;
+        max-width: calc(100% - 44px - 0.75rem);
+      }
+
+      .counter-tab-row .counter-see-all {
+        flex: 0 1 auto;
+        justify-content: flex-end;
+        min-width: 44px;
+        min-height: max(44px, var(--vault-tab-height));
+        margin: 0 -0.45rem 0 0;
+      }
+
+      .counter-see-all-fit {
+        display: flex;
+        flex-flow: row-reverse wrap;
+        align-items: center;
+        column-gap: 0.1rem;
+        min-width: 0;
+        height: 1.25rem;
+        overflow: hidden;
+        line-height: 1.25rem;
+      }
+
+      /* Each a whole line high, so a wrapped word starts below what shows. */
+      .counter-see-all-fit > * {
+        flex: none;
+        height: 100%;
+      }
+
+      .counter-box-cards {
+        list-style: none;
+        margin: -0.3rem 0 0;
+        padding: 0;
+      }
+
+      .counter-box .vault-slot {
+        animation: none;
+      }
+
+      .counter-box-empty {
+        margin: -0.3rem 0 0;
+        padding: 0.9rem 1.1rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--card-face-radius);
+        background: var(--bg-surface);
+        box-shadow: inset 0 1px 0 var(--card-sheen), 0 -0.55rem 1rem -0.8rem var(--scrim);
       }
 
       .counter-row-photo {
@@ -11200,12 +11298,12 @@
         .counter-page.is-entering .counter-window:nth-of-type(1) { --deal-tilt: -0.8deg; }
         .counter-page.is-entering .counter-window:nth-of-type(2) { --deal-tilt: 0.7deg; }
         .counter-page.is-entering .counter-window:nth-of-type(3) { --deal-tilt: -0.5deg; }
-        .counter-page.is-entering :is(.counter-rows, .counter-tiles) > li {
+        .counter-page.is-entering :is(.counter-rows, .counter-tiles, .counter-box-cards) > li {
           animation: counter-row-in 0.65s var(--ease-glide)
             calc(1.02s + var(--w, 0) * 0.13s + var(--r, 0) * 0.07s) both;
         }
         .counter-page.is-entering:not([data-entrance])
-          :is(.counter-word, .counter-flourish, .vault-flourish-line, .vault-flourish-heart, .counter-news, .counter-key, .counter-prefs-toggle, .fk-prefs-key, .counter-window, .counter-rows > li, .counter-tiles > li) {
+          :is(.counter-word, .counter-flourish, .vault-flourish-line, .vault-flourish-heart, .counter-news, .counter-key, .counter-prefs-toggle, .fk-prefs-key, .counter-window, .counter-rows > li, .counter-tiles > li, .counter-box-cards > li) {
           animation-play-state: paused;
         }
       }

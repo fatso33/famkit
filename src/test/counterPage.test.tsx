@@ -92,31 +92,58 @@ describe('My Counter', () => {
     expect(greetings).toContain(heading().textContent);
   });
 
-  it("shows the box's latest three recipes, the latest first, new or updated", () => {
+  it("files the box's latest three recipes as its cards, the latest first, new or updated", () => {
     renderCounter();
-    const rows = within(region(t.freshInBox)).getAllByRole('listitem');
-    expect(rows.map((row) => row.querySelector('[data-counter-name]')?.textContent)).toEqual([
+    const fresh = region(t.freshInBox);
+    const rows = within(fresh).getAllByRole('listitem');
+    expect(rows.map((row) => row.querySelector('[data-vault-name]')?.textContent)).toEqual([
       'Bigos',
       'Babka',
       'Rye bread',
     ]);
+    // The Recipe Box's own cards, behind a divider tab of their own, which has no count.
+    expect(rows.every((row) => row.querySelector('.vault-row'))).toBe(true);
+    expect(within(fresh).getByRole('heading', { name: t.freshInBox, level: 2 })).toHaveClass(
+      'vault-tab',
+    );
+    expect(fresh.querySelector('.vault-tab-count')).toBeNull();
     expect(within(rows[0]).getByText(t.recipeUpdated)).toBeInTheDocument();
     expect(within(rows[1]).getByText(t.recipeNew)).toBeInTheDocument();
     // None opened yet.
     expect(within(rows[1]).getByText(t.unseen)).toBeInTheDocument();
   });
 
-  it('opens a recipe from it, through the Recipe Box, and back goes to the box', async () => {
+  it('opens a recipe right on the counter, under the Recipe Box tab, and back comes home', async () => {
     renderCounter();
-    const babka = within(region(t.freshInBox))
-      .getAllByRole('button')
-      .find((b) => b.textContent?.startsWith('Babka'))!;
-    fireEvent.click(babka);
+    fireEvent.click(within(region(t.freshInBox)).getByRole('button', { name: 'Babka' }));
     expect(await screen.findByRole('heading', { name: 'Babka', level: 1 })).toBeInTheDocument();
     // Opened now, so no longer unseen.
     expect(JSON.parse(localStorage.getItem('family_kitchen_seen_recipes') ?? '{}')).toEqual({
       [ola.email]: ['babka'],
     });
+    const tabs = screen.getByRole('navigation', { name: t.pages });
+    expect(within(tabs).getByRole('button', { name: t.recipeVault })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: t.goBack }));
+    expect(document.getElementById('viewCounter')).toBeInTheDocument();
+    expect(within(tabs).getByRole('button', { name: t.counter })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
+  it("goes on to a tab's own page from a recipe opened on the counter", async () => {
+    renderCounter();
+    fireEvent.click(within(region(t.freshInBox)).getByRole('button', { name: 'Babka' }));
+    await screen.findByRole('heading', { name: 'Babka', level: 1 });
+
+    const tabs = screen.getByRole('navigation', { name: t.pages });
+    fireEvent.click(within(tabs).getByRole('button', { name: t.recipeVault }));
+    await act(async () => {});
+    expect(heading()).toHaveTextContent(t.vaultTitle);
   });
 
   it('opens the Recipe Box from "See all"', () => {

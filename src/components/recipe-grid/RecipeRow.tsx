@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { Timer } from 'lucide-react';
 import { Recipe } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
@@ -26,6 +26,10 @@ interface RecipeRowProps {
   remixCount?: number;
   /** How many makes family members have shared of it. */
   makeCount?: number;
+  /** A word at the start of the cook-and-time row (My Counter's New or Updated), and its look. */
+  tag?: { text: string; className: string };
+  /** Not opened yet by this person: a dot after the name, named by this. */
+  unseenLabel?: string;
   /** Given the card, which the recipe flips open out of. */
   onSelect: (id: string, from: HTMLElement) => void;
   t: UiTranslations;
@@ -44,10 +48,15 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
   remixed = false,
   remixCount = 0,
   makeCount = 0,
+  tag,
+  unseenLabel,
   onSelect,
   t,
 }) => {
   const photo = recipePhoto(shown);
+  // Named by the recipe alone, as in the box; the tag and the dot describe it.
+  const noteId = useId();
+  const note = !!tag || !!unseenLabel;
   return (
     <button
       type="button"
@@ -58,6 +67,7 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
       }
       // Named like a card: by the recipe alone.
       aria-label={draft ? t.draftNamed(shown.name) : shown.name}
+      aria-describedby={note ? noteId : undefined}
       onClick={(e) => onSelect(recipe.id, e.currentTarget)}
     >
       <span className="vault-row-text">
@@ -67,9 +77,22 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
             {shown.name}
           </span>
           {remixed && <RemixMark />}
+          {unseenLabel && <span className="vault-unseen" title={unseenLabel} />}
         </span>
         <span className="vault-card-rule" aria-hidden="true" />
         <span className="vault-row-meta">
+          {note && (
+            <span id={noteId} className="sr-only">
+              {tag?.text}
+              {tag && unseenLabel && ', '}
+              {unseenLabel && <span>{unseenLabel}</span>}
+            </span>
+          )}
+          {tag && (
+            <span className={tag.className} aria-hidden="true">
+              {tag.text}
+            </span>
+          )}
           {draft && (
             <span className="vault-draft-ribbon is-inline" aria-hidden="true">
               {t.draftRibbon}

@@ -169,8 +169,6 @@ function nameGlides(parts: GlidePart[]) {
   };
 }
 
-const counterRecipe = (key: string) => document.querySelector(`[data-counter-recipe="${key}"]`);
-const boxRecipe = (key: string) => document.querySelector(`.vault-item[data-vault-item="${key}"]`);
 const counterMake = (key: string) => document.querySelector(`[data-counter-make="${key}"]`);
 
 interface AppProps {
@@ -247,6 +245,9 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
   const mainScroll = useRef<Record<MainPage, number>>({ counter: 0, recipes: 0, makes: 0 });
   // The recipe last opened from the vault: its card is the one that flips open and shut.
   const [lastRecipeId, setLastRecipeId] = useState<string | null>(null);
+  // The page an open recipe was opened over, where back folds it onto its card: the Recipe Box,
+  // or My Counter's latest recipes.
+  const [recipeHome, setRecipeHome] = useState<'recipes' | 'counter'>('recipes');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   // The draft the editor carried on with, if any: saving it again replaces it.
@@ -276,9 +277,9 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
   const [photoOpenFor, setPhotoOpenFor] = useState<string | null>(null);
   // A card lifting out of the box before it flips open: a second tap waits for it.
   const liftingCard = useRef(false);
-  // The Recipe Box shown unfiltered, laid out as cards (from a make's recipe link) or as a list
-  // (from My Counter), while it takes you to a recipe's card: only for that trip, so this person's
-  // own view and filter are never changed.
+  // The Recipe Box shown unfiltered, laid out as cards, while it takes you from a make's recipe
+  // link to the recipe's card: only for that trip, so this person's own view and filter are
+  // never changed.
   const [boxShowcase, setBoxShowcase] = useState<VaultView | null>(null);
   // A recipe opened from a make: back from it, the Recipe Box opens on its card or row (in this
   // person's own view), as no scroll position of theirs leads there.
@@ -335,8 +336,9 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
   };
 
   const handleDelete = (id: string) => {
-    // Inside the transition, so it animates from the recipe rather than an already-empty page.
-    navigateTo('recipes', {
+    // Inside the transition, so it animates from the recipe rather than an already-empty page,
+    // to the page the recipe was opened over.
+    navigateTo(page === 'recipes' && selectedRecipe ? recipeHome : 'recipes', {
       morph: false,
       alongside: () => {
         deleteRecipe(id);
@@ -377,14 +379,20 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
   // unfolds from the card's back (the flip motions in index.css). Then the back button springs
   // out from behind the navigation island.
   // `marked`: it was marked seen already, on the way here (a make's link).
-  const handleSelectRecipe = (id: string, card?: HTMLElement, marked = false) => {
+  // `home`: the page it's opened over, the Recipe Box or My Counter, where back returns it.
+  const handleSelectRecipe = (
+    id: string,
+    card?: HTMLElement,
+    marked = false,
+    home: 'recipes' | 'counter' = 'recipes',
+  ) => {
     if (liftingCard.current) return;
     // A card left lifted by a return cut short (another page change took over) drops back first.
     dropFlippedCard();
     centreOnReturn.current = null;
-    mainScroll.current.recipes = window.scrollY;
+    mainScroll.current[home] = window.scrollY;
     if (!marked) markSeen(id);
-    // Marks the tapped card before the browser snapshots the vault.
+    // Marks the tapped card before the browser snapshots the page.
     flushSync(() => setLastRecipeId(id));
     const open = (motion: NavMotion) =>
       transitionView(
@@ -392,6 +400,9 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
           setBackShown(false);
           // Behind the recipe, the Recipe Box goes back to this person's own view.
           setBoxShowcase(null);
+          setRecipeHome(home);
+          // The recipe is the Recipe Box's, wherever it was opened (its tab stays lit).
+          setPage('recipes');
           setSelectedRecipeId(id);
           jumpTo(0);
         },
@@ -451,9 +462,10 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
     const toDepth = target === 'settings' ? 1 : 0;
     const goingBack = toDepth < fromDepth || back;
     if (page !== 'settings' && !onSubPage) mainScroll.current[page] = window.scrollY;
-    // The recipe folds away onto its card, which flips back into the box (landFlippedCard).
+    // The recipe folds away onto its card, which flips back into the page it was opened over
+    // (landFlippedCard).
     const flipsBack =
-      morph && animated && target === 'recipes' && page === 'recipes' && !!selectedRecipe;
+      morph && animated && target === recipeHome && page === 'recipes' && !!selectedRecipe;
     const motion: NavMotion =
       flipsBack && canFlip()
         ? 'flip-close'
@@ -510,20 +522,21 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
     setVaultView(view);
     setStoredVaultView(view);
   };
-  // Back from a recipe: it folds away onto its card, as the back button tucks into the menu
-  // button, and the card flips back into its place in the box.
+  // Back from a recipe: it folds away onto its card, as the back button tucks away, and the
+  // card flips back into its place, in the box or on My Counter.
   const leaveRecipe = (animated = true) => {
     setBackShown(false);
-    navigateTo('recipes', { animated });
+    navigateTo(recipeHome, { animated });
   };
 
-  // A tab on the navigation island. Its page slides in from the side its tab sits on; the tab
-  // lit under an open recipe (the Recipe Box) takes it back to its card, as back does; the
-  // current page's own tab returns to its top.
+  // A tab on the navigation island. Its page slides in from the side its tab sits on; on a
+  // recipe, the tab of the page it was opened over takes it back to its card, as back does
+  // (the Recipe Box's tab, lit under every recipe, slides the box in when that was My Counter);
+  // the current page's own tab returns to its top.
   const selectTab = (target: MainPage) => {
     if (page === 'recipes' && selectedRecipe) {
-      if (target === 'recipes') leaveRecipe();
-      else navigateTo(target, { motion: sideFrom(mainPage, target), morph: false });
+      if (target === recipeHome) leaveRecipe();
+      else navigateTo(target, { motion: sideFrom('recipes', target), morph: false });
       return;
     }
     if (page === 'settings') {
@@ -733,20 +746,14 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
     );
   };
 
-  // From a make (or a recipe on My Counter) to its recipe, through the Recipe Box: the page
-  // recedes as the box comes forward, laid out as cards from a make, as a list from the counter
-  // (this person's own view and filter untouched), and opened on the recipe's card or row, into
-  // whose title the tapped name flies (the 'to-box' motion and 'title' morph); from the counter
-  // its photo glides into place too. Then the card lifts and flips open into the recipe, as when
-  // it's tapped in the box. Back from the recipe returns to the Recipe Box, in this person's view,
-  // at that recipe.
-  const openRecipeThroughBox = (
-    recipeId: string,
-    name: HTMLElement,
-    from: 'makes' | 'counter' = 'makes',
-  ) => {
+  // From a make to its recipe, through the Recipe Box: the Makes page recedes as the box comes
+  // forward, laid out as cards (this person's own view and filter untouched), and opened on the
+  // recipe's card, into whose title the tapped name flies (the 'to-box' motion and 'title'
+  // morph). Then the card lifts and flips open into the recipe, as when it's tapped in the box.
+  // Back from the recipe returns to the Recipe Box, in this person's view, at that recipe.
+  const openRecipeThroughBox = (recipeId: string, name: HTMLElement) => {
     if (liftingCard.current) return;
-    mainScroll.current[from] = window.scrollY;
+    mainScroll.current.makes = window.scrollY;
     const cardOf = () =>
       document.querySelector<HTMLElement>(
         `.vault-item[data-vault-item="${vaultItemKey(recipeId)}"]`,
@@ -765,6 +772,7 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
             setMakePhotoOpen(false);
             setPage('recipes');
             setMainPage('recipes');
+            setRecipeHome('recipes');
             setLastRecipeId(recipeId);
             setSelectedRecipeId(recipeId);
             markSeen(recipeId);
@@ -776,18 +784,6 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
       return;
     }
     name.style.setProperty('view-transition-name', 'recipe-title');
-    const key = vaultItemKey(recipeId);
-    const photo =
-      from === 'counter'
-        ? nameGlides([
-            {
-              name: `glide-photo-${key}`,
-              kind: 'photo',
-              from: () => counterRecipe(key)?.querySelector('[data-counter-photo]') ?? null,
-              to: () => boxRecipe(key)?.querySelector('[data-vault-photo]') ?? null,
-            },
-          ])
-        : null;
     let card: HTMLElement | null = null;
     transitionView(
       () => {
@@ -795,7 +791,7 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
           setBackShown(false);
           setArrivingMake(null);
           setMakePhotoOpen(false);
-          setBoxShowcase(from === 'counter' ? 'list' : 'cards');
+          setBoxShowcase('cards');
           setVaultEntrance(false);
           setPage('recipes');
           setMainPage('recipes');
@@ -809,12 +805,10 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
         if (card) centreOnScreen(card);
         else jumpTo(0);
         titleOf(card)?.style.setProperty('view-transition-name', 'recipe-title');
-        photo?.arrive();
       },
       {
         motion: 'to-box',
         morph: 'title',
-        always: photo?.clear,
         onFinished: () => {
           titleOf(card)?.style.removeProperty('view-transition-name');
           // No card to flip (the recipe went meanwhile): the box goes back to this person's view.
@@ -1078,7 +1072,8 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
             onAddRecipe={(from) => openEditor(null, null, from)}
             onAddMake={(from) => openMakeEditor(null, undefined, from)}
             onOpenSettings={() => navigateTo('settings')}
-            onOpenRecipe={(id, name) => openRecipeThroughBox(id, name, 'counter')}
+            onOpenRecipe={(id, card) => handleSelectRecipe(id, card, false, 'counter')}
+            flipRecipeId={lastRecipeId}
             onSeeAllRecipes={() => openCounterWindow('recipes')}
             onOpenMake={openMakeFromCounter}
             onSeeAllMakes={() => openCounterWindow('makes')}
@@ -1192,7 +1187,7 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
           (photoOpen && page === 'makes') ||
           page === 'settings'
         }
-        backLabel={page === 'settings' ? t.goBack : t.backToRecipes}
+        backLabel={page === 'settings' || recipeHome === 'counter' ? t.goBack : t.backToRecipes}
         photoOpen={photoOpen}
         onBack={() =>
           photoOpen
