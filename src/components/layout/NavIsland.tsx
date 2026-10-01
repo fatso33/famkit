@@ -312,6 +312,11 @@ export const NavIsland: React.FC<NavIslandProps> = (props) => {
               e.stopPropagation();
               setCompactOn(null);
             }}
+            onFocus={(e) => {
+              // The keyboard reaching the shrunk pill opens it out, so the tab it's on shows and
+              // works at once (a tap's focus isn't :focus-visible, and keeps the tap's own rule).
+              if (compact && e.target.matches(':focus-visible')) setCompactOn(null);
+            }}
           >
             <span ref={indRef} className="nav-ind" aria-hidden="true" />
             {TABS.map((tab) => (

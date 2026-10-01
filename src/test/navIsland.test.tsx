@@ -302,6 +302,23 @@ describe('the navigation island', () => {
     Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
   });
 
+  it('opens out when the keyboard reaches the shrunk pill, so its tabs show and work', () => {
+    let now = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    render(<App initialPage="recipes" />);
+    now = 5000;
+    Object.defineProperty(window, 'scrollY', { value: 400, configurable: true });
+    fireEvent.scroll(window);
+    expect(island()).toHaveAttribute('data-compact');
+
+    // Tabbing onto a hidden tab shows the whole pill; Enter then goes there at once.
+    act(() => tab(t.makes).focus());
+    expect(island()).not.toHaveAttribute('data-compact');
+    fireEvent.click(tab(t.makes));
+    expect(tab(t.makes)).toHaveAttribute('aria-current', 'page');
+    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
+  });
+
   it('opens out again on the next page, even one of the same kind as where it shrank', () => {
     let now = 0;
     vi.spyOn(performance, 'now').mockImplementation(() => now);
