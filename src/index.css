@@ -455,11 +455,11 @@
          selves show, never a sliding snapshot. (The open menu isn't lifted out like them: its
          scrim blurs the page behind, which a separate snapshot can't carry, so the blur would
          vanish at once. A page chosen from it cross-fades under the scrim instead, see above.) */
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='zoom'], [data-nav='flip-open'], [data-nav='flip-close'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='zoom'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
         .fab-group {
         view-transition-name: fk-fab;
       }
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
         .app-toast {
         view-transition-name: fk-toast;
       }
@@ -9002,18 +9002,18 @@
       /* The season's drifting particles (three colours) and the one that settles on the lid,
          plus the motes' tint. Seasonal artwork like the emblem, so they live here rather than
          in the UI palettes. Autumn (the default) keeps the gold motes above. */
-      .fk-splash {
+      :is(.fk-splash, .counter-sky) {
         --fk-particle-1: #c2622e;
         --fk-particle-2: #d49a35;
         --fk-particle-3: #a9442b;
         --fk-particle-lid: var(--fk-particle-2);
       }
-      [data-theme="dark"] .fk-splash {
+      [data-theme="dark"] :is(.fk-splash, .counter-sky) {
         --fk-particle-1: #e0804a;
         --fk-particle-2: #e6ae4e;
         --fk-particle-3: #cc5a3c;
       }
-      [data-season="spring"] .fk-splash {
+      [data-season="spring"] :is(.fk-splash, .counter-sky) {
         --fk-particle-1: #eea3b8;
         --fk-particle-2: #e28aa4;
         --fk-particle-3: #f4bfcd;
@@ -9021,14 +9021,14 @@
         --fk-splash-mote: rgba(178, 160, 60, 0.7);
         --fk-splash-mote-glow: transparent;
       }
-      [data-theme="dark"][data-season="spring"] .fk-splash {
+      [data-theme="dark"][data-season="spring"] :is(.fk-splash, .counter-sky) {
         --fk-particle-1: #e8a2b5;
         --fk-particle-2: #d6879f;
         --fk-particle-3: #f1c2ce;
         --fk-splash-mote: rgba(232, 214, 120, 0.85);
         --fk-splash-mote-glow: rgba(140, 190, 110, 0.5);
       }
-      [data-season="summer"] .fk-splash {
+      [data-season="summer"] :is(.fk-splash, .counter-sky) {
         --fk-particle-1: #8f958c;
         --fk-particle-2: #a3a698;
         --fk-particle-3: #7f877f;
@@ -9037,14 +9037,14 @@
         --fk-splash-mote-glow: transparent;
       }
       /* Summer nights: the motes become fireflies. */
-      [data-theme="dark"][data-season="summer"] .fk-splash {
+      [data-theme="dark"][data-season="summer"] :is(.fk-splash, .counter-sky) {
         --fk-particle-1: #e6e2d4;
         --fk-particle-2: #d4d2c4;
         --fk-particle-3: #f0ede2;
         --fk-splash-mote: rgba(228, 240, 130, 0.95);
         --fk-splash-mote-glow: rgba(190, 225, 80, 0.75);
       }
-      [data-season="winter"] .fk-splash {
+      [data-season="winter"] :is(.fk-splash, .counter-sky) {
         --fk-particle-1: #a7b8d2;
         --fk-particle-2: #8ea4c6;
         --fk-particle-3: #bcc9dc;
@@ -9052,7 +9052,7 @@
         --fk-splash-mote: rgba(118, 148, 196, 0.7);
         --fk-splash-mote-glow: transparent;
       }
-      [data-theme="dark"][data-season="winter"] .fk-splash {
+      [data-theme="dark"][data-season="winter"] :is(.fk-splash, .counter-sky) {
         --fk-particle-1: #eef3fa;
         --fk-particle-2: #cbd9ee;
         --fk-particle-3: #dfe7f3;
@@ -9098,6 +9098,24 @@
           animation: none;
           opacity: 0;
         }
+      }
+
+      /* Handing over to My Counter (SplashScreen, handOver): the splash's pieces go their own ways,
+         and its page colour, now a layer of its own under them, clears to show the counter
+         arriving beneath. */
+      .fk-splash.is-handing-over {
+        background: transparent;
+      }
+      .fk-splash.is-handing-over::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background: var(--bg-main);
+        animation: fk-handoff-clear 0.45s var(--ease-soft) 0.12s both;
+      }
+      @keyframes fk-handoff-clear {
+        to { opacity: 0; }
       }
 
       @keyframes fk-splash-leave {
@@ -9581,16 +9599,16 @@
 
         /* Seasonal particles, from the moment the intro is over. */
         .fk-splash:is(.is-live, .is-skipped) .fk-particle {
-          animation: var(--fk-p-path) var(--fk-p-dur) linear var(--fk-p-delay) infinite;
+          animation: var(--fk-p-path) var(--fk-p-dur) linear calc(var(--fk-p-delay) - var(--fk-sky-age, 0s)) infinite;
         }
         .fk-splash:is(.is-live, .is-skipped) .fk-particle-sway {
-          animation: fk-particle-sway var(--fk-p-sway-dur) ease-in-out var(--fk-p-sway-delay) infinite alternate;
+          animation: fk-particle-sway var(--fk-p-sway-dur) ease-in-out calc(var(--fk-p-sway-delay) - var(--fk-sky-age, 0s)) infinite alternate;
         }
         .fk-splash:is(.is-live, .is-skipped) .fk-particle-bob {
-          animation: fk-particle-bob calc(var(--fk-p-sway-dur) / 2) ease-in-out var(--fk-p-sway-delay) infinite alternate;
+          animation: fk-particle-bob calc(var(--fk-p-sway-dur) / 2) ease-in-out calc(var(--fk-p-sway-delay) - var(--fk-sky-age, 0s)) infinite alternate;
         }
         .fk-splash:is(.is-live, .is-skipped) .fk-particle-turn {
-          animation: var(--fk-p-turn) var(--fk-p-turn-dur) var(--fk-p-turn-ease) var(--fk-p-turn-delay) infinite
+          animation: var(--fk-p-turn) var(--fk-p-turn-dur) var(--fk-p-turn-ease) calc(var(--fk-p-turn-delay) - var(--fk-sky-age, 0s)) infinite
             var(--fk-p-turn-dir);
         }
 
@@ -10330,6 +10348,731 @@
         text-align: center;
         color: var(--text-muted);
       }
+
+      /* ── My Counter ──
+         Each family member's home page, where the app opens (components/counter). A greeting
+         under the splash's heart flourish, the quick keys and the preferences key, then three
+         windows on the counter: the Recipe Box's latest recipes, the latest makes, the drafts.
+         The season's particles drift behind it all (the splash's own, CounterSky). */
+      .counter-page {
+        position: relative;
+        isolation: isolate;
+        padding-top: 0.5rem;
+      }
+
+      .counter-content {
+        position: relative;
+        z-index: 1;
+        max-width: 36rem;
+        margin: 0 auto;
+      }
+
+      /* The particles: most behind the page; while it arrives, the few the splash shows in front
+         of its content are in front of this one too, then sink behind it (their twins behind
+         fade in as they fade out). Hidden (not faded) while the splash is still up over the
+         counter: the splash's particles are these very ones, so its going changes nothing. */
+      .counter-sky {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+      }
+      .counter-sky.is-back { z-index: 0; }
+      .counter-sky.is-front {
+        z-index: 2;
+        transition: opacity 1.2s var(--ease-soft);
+      }
+      .counter-sky[data-hidden] { visibility: hidden; }
+      .counter-sky-twins {
+        opacity: 0;
+        transition: opacity 1.2s var(--ease-soft);
+      }
+      .counter-sky.is-back:is([data-front='sinking'], [data-front='behind']) .counter-sky-twins {
+        opacity: 1;
+      }
+      .counter-sky.is-back[data-front='sinking'] ~ .counter-sky.is-front { opacity: 0; }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .counter-sky .fk-particle {
+          animation: var(--fk-p-path) var(--fk-p-dur) linear calc(var(--fk-p-delay) - var(--fk-sky-age, 0s)) infinite;
+        }
+        .counter-sky .fk-particle-sway {
+          animation: fk-particle-sway var(--fk-p-sway-dur) ease-in-out calc(var(--fk-p-sway-delay) - var(--fk-sky-age, 0s)) infinite alternate;
+        }
+        .counter-sky .fk-particle-bob {
+          animation: fk-particle-bob calc(var(--fk-p-sway-dur) / 2) ease-in-out calc(var(--fk-p-sway-delay) - var(--fk-sky-age, 0s)) infinite alternate;
+        }
+        .counter-sky .fk-particle-turn {
+          animation: var(--fk-p-turn) var(--fk-p-turn-dur) var(--fk-p-turn-ease) calc(var(--fk-p-turn-delay) - var(--fk-sky-age, 0s)) infinite
+            var(--fk-p-turn-dir);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .counter-sky { display: none; }
+      }
+
+      /* The greeting: centred like the Recipe Box's title, the first name in the accent. */
+      .counter-greeting {
+        padding: 0.75rem 0.5rem 0;
+        text-align: center;
+      }
+
+      .counter-hello {
+        margin: 0;
+        font: var(--weight-heading) 2.25rem/1.12 var(--font-serif);
+        letter-spacing: -0.015em;
+        text-wrap: balance;
+        color: var(--text-primary);
+      }
+
+      .counter-word { display: inline-block; }
+
+      .counter-name {
+        font-style: normal;
+        color: var(--accent);
+      }
+
+      .counter-flourish-slot { display: block; }
+
+      .counter-flourish {
+        display: block;
+        width: 9.5rem;
+        height: auto;
+        margin: 0.75rem auto 0;
+        overflow: visible;
+      }
+
+      /* New hearts on one of your makes, once. */
+      .counter-news {
+        max-width: 24rem;
+        margin: 0.7rem auto 0;
+        font-size: 0.9375rem;
+        line-height: 1.45;
+        color: var(--text-secondary);
+        text-wrap: balance;
+      }
+
+      .counter-news-heart {
+        display: inline-block;
+        margin-left: 0.35em;
+        vertical-align: -0.1em;
+        color: var(--accent);
+        fill: var(--accent);
+      }
+
+      /* The row under the greeting: Add Recipe and Add Make, then the preferences key; its bar
+         sweeps out leftwards from the key, over the two (grid overlap, all in one cell). */
+      .counter-page {
+        --key-face: var(--bg-surface);
+        --key-edge: color-mix(in srgb, var(--border-strong) 55%, var(--border-subtle));
+        --key-lift: 0 1px 1px rgba(0, 0, 0, 0.04), 0 2px 5px -1px rgba(60, 35, 20, 0.16);
+      }
+      [data-theme='dark'] .counter-page {
+        --key-face: var(--menu-well-hover);
+        --key-edge: var(--border-strong);
+        --key-lift: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 2px 5px -1px rgba(0, 0, 0, 0.5);
+      }
+
+      .counter-tools {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        min-height: 3.5rem;
+        margin: 1.5rem 0 1.25rem;
+      }
+
+      .counter-quick {
+        grid-area: 1 / 1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        transition:
+          opacity 0.25s ease 0.08s,
+          transform 0.4s var(--ease-glide) 0.08s;
+      }
+
+      .counter-tools[data-prefs='open'] .counter-quick {
+        opacity: 0;
+        transform: translateX(-0.6rem);
+        transition:
+          opacity 0.2s ease,
+          transform 0.35s var(--ease-glide);
+      }
+
+      .counter-key {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        min-height: 44px;
+        padding: 0.5rem 1rem 0.5rem 0.8rem;
+        border: 1px solid var(--key-edge);
+        border-radius: var(--radius-full);
+        background: var(--key-face);
+        box-shadow: var(--key-lift);
+        color: var(--text-primary);
+        font-family: inherit;
+        font-size: 0.9rem;
+        font-weight: 650;
+        line-height: 1.2;
+        white-space: nowrap;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          border-color 0.18s ease,
+          box-shadow 0.18s ease,
+          scale 0.15s ease;
+      }
+
+      .counter-key-icon {
+        flex-shrink: 0;
+        color: var(--accent);
+      }
+
+      @media (hover: hover) {
+        .counter-key:hover {
+          border-color: color-mix(in srgb, var(--accent) 50%, var(--key-edge));
+        }
+      }
+
+      .counter-key:active {
+        scale: 0.96;
+        box-shadow: none;
+      }
+
+      .counter-key:focus-visible,
+      .counter-see-all:focus-visible,
+      .counter-row:focus-visible,
+      .counter-tile:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      /* Closed, the bar is a circle under the key; open, it sweeps out to the row's width. */
+      /* Laid over the row (it takes no room of its own), centred on it; where the three won't fit
+         one line (very large text, a narrow phone) it grows to two, over what's around it. */
+      .counter-prefs-bar {
+        position: absolute;
+        inset-inline: 0;
+        top: 50%;
+        translate: 0 -50%;
+        z-index: 1;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-evenly;
+        gap: 0.4rem 0.3rem;
+        min-height: 4.25rem;
+        padding: 0.35rem 3.7rem 0.4rem 0.4rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: 2.125rem;
+        background: var(--bg-surface);
+        box-shadow: var(--shadow-md);
+        opacity: 0;
+        clip-path: inset(calc(50% - 1.6rem) 0.1rem calc(50% - 1.6rem) calc(100% - 3.4rem) round 1.6rem);
+        transition:
+          clip-path 0.42s var(--ease-glide),
+          opacity 0.2s ease 0.18s;
+      }
+
+      .counter-tools[data-prefs='open'] .counter-prefs-bar {
+        opacity: 1;
+        clip-path: inset(0 round 2.125rem);
+        transition:
+          clip-path 0.55s var(--ease-glide),
+          opacity 0.12s ease;
+      }
+
+      .counter-pref {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.2rem;
+        opacity: 0;
+        transform: translateX(0.8rem);
+        transition:
+          opacity 0.15s ease,
+          transform 0.3s var(--ease-glide);
+      }
+
+      .counter-tools[data-prefs='open'] .counter-pref {
+        opacity: 1;
+        transform: none;
+        transition:
+          opacity 0.35s ease calc(0.14s + var(--k, 0) * 60ms),
+          transform 0.55s var(--ease-glide) calc(0.1s + var(--k, 0) * 60ms);
+      }
+
+      .counter-pref-label {
+        font-size: 0.66rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        color: var(--text-muted);
+      }
+
+      .counter-pill {
+        width: calc(2 * 44px + 2px);
+        min-width: 0;
+        min-height: 44px;
+      }
+
+      .counter-pill.fk-segmented > span:not(.fk-segmented-thumb) { padding: 0; }
+
+      .counter-pill.fk-stepper {
+        justify-content: space-between;
+        padding: 0 2px;
+      }
+
+      /* The key: a little larger than the menu's, beside a row of keys rather than a page row. */
+      .counter-prefs-toggle {
+        grid-row: 1;
+        grid-column: 2;
+        align-self: center;
+        z-index: 2;
+        margin-right: 0.15rem;
+        padding: 0.1rem;
+      }
+
+      .counter-prefs-toggle .fk-prefs-key {
+        position: relative;
+        width: 3rem;
+        height: 3rem;
+      }
+
+      /* Open, the key is the way to Settings: the sliders' knobs glide, then the sliders turn
+         away as a cog turns in. Closing, the cog turns back into the sliders. */
+      .counter-tools[data-prefs='open'] .fk-prefs-key {
+        --prefs-key-bg: var(--accent-subtle);
+        border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+        color: var(--accent);
+      }
+
+      .counter-glyph {
+        grid-area: 1 / 1;
+        display: grid;
+        place-items: center;
+        transition:
+          opacity 0.22s ease,
+          transform 0.5s var(--ease-glide);
+      }
+
+      .counter-glyph.is-cog {
+        opacity: 0;
+        transform: rotate(-120deg) scale(0.5);
+      }
+
+      .counter-tools[data-prefs='open'] .counter-glyph.is-prefs {
+        opacity: 0;
+        transform: rotate(90deg) scale(0.55);
+        transition:
+          opacity 0.2s ease 0.2s,
+          transform 0.45s var(--ease-glide) 0.16s;
+      }
+
+      .counter-tools[data-prefs='open'] .counter-glyph.is-cog {
+        opacity: 1;
+        transform: none;
+        transition:
+          opacity 0.25s ease 0.24s,
+          transform 0.6s var(--spring-soft) 0.2s;
+      }
+
+      .counter-tools[data-prefs='open'] .fk-prefs-glyph circle:nth-of-type(1) { transform: translateX(6px); }
+      .counter-tools[data-prefs='open'] .fk-prefs-glyph circle:nth-of-type(2) { transform: translateX(-7px); }
+      .counter-tools[data-prefs='open'] .fk-prefs-glyph circle:nth-of-type(3) { transform: translateX(8px); }
+
+      /* The windows: cards laid on the counter. */
+      .counter-window {
+        position: relative;
+        margin: 0 0 1rem;
+        padding: 0.8rem 1rem 0.35rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        background: var(--bg-surface);
+        box-shadow: var(--shadow-md);
+      }
+
+      .counter-window-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        min-height: 2rem;
+      }
+
+      .counter-window-title {
+        margin: 0;
+        font: var(--weight-heading) 1.15rem/1.25 var(--font-serif);
+        color: var(--text-primary);
+      }
+
+      .counter-see-all {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.1rem;
+        min-height: 44px;
+        margin: -0.5rem -0.45rem -0.5rem 0;
+        padding: 0 0.45rem;
+        border: 0;
+        border-radius: var(--radius-sm);
+        background: none;
+        color: var(--accent);
+        font-family: inherit;
+        font-size: 0.875rem;
+        font-weight: 650;
+        white-space: nowrap;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .counter-rows {
+        list-style: none;
+        margin: 0.25rem 0 0;
+        padding: 0;
+      }
+
+      .counter-rows > li + li { border-top: 1px solid var(--border-subtle); }
+
+      .counter-row {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        width: 100%;
+        padding: 0.65rem 0;
+        border: 0;
+        border-radius: var(--radius-sm);
+        background: none;
+        color: inherit;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition: scale 0.15s ease;
+      }
+
+      .counter-row:active { scale: 0.985; }
+
+      .counter-row-text {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3rem;
+      }
+
+      .counter-row-name {
+        font: var(--weight-heading) 1.05rem/1.25 var(--font-serif);
+        color: var(--text-primary);
+        overflow-wrap: anywhere;
+      }
+
+      .counter-row-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.3rem 0.5rem;
+        font-size: 0.8125rem;
+        line-height: 1.3;
+        color: var(--text-muted);
+      }
+
+      .counter-tag {
+        padding: 0.1rem 0.45rem;
+        border-radius: var(--radius-full);
+        background: var(--accent-gold-subtle);
+        color: var(--accent-gold);
+        font-size: 0.66rem;
+        font-weight: 750;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .counter-tag.is-new {
+        background: var(--accent-subtle);
+        color: var(--accent);
+      }
+
+      .counter-tag.is-draft {
+        background: var(--menu-well);
+        color: var(--text-secondary);
+      }
+
+      .counter-unseen {
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-subtle);
+      }
+
+      .counter-row-photo {
+        flex-shrink: 0;
+        width: 3.5rem;
+        height: 3.5rem;
+        overflow: hidden;
+        border-radius: var(--radius-md);
+        background: var(--bg-card);
+      }
+
+      .counter-row-photo img,
+      .counter-tile-photo img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .counter-row-photo.is-draft {
+        display: grid;
+        place-items: center;
+        border: 1px dashed color-mix(in srgb, var(--accent) 38%, transparent);
+        background: var(--accent-subtle);
+        color: var(--accent);
+      }
+
+      .counter-empty {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin: 0.2rem 0 0.5rem;
+        font-size: 0.95rem;
+        color: var(--text-muted);
+      }
+
+      .counter-tiles {
+        list-style: none;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.6rem;
+        margin: 0.4rem 0 0.55rem;
+        padding: 0;
+      }
+
+      .counter-tile {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        width: 100%;
+        padding: 0;
+        border: 0;
+        border-radius: var(--radius-md);
+        background: none;
+        color: inherit;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition: scale 0.15s ease;
+      }
+
+      .counter-tile:active { scale: 0.97; }
+
+      .counter-tile-photo {
+        aspect-ratio: 1;
+        overflow: hidden;
+        border-radius: var(--radius-md);
+        background: var(--bg-card);
+      }
+
+      .counter-tile-title {
+        overflow: hidden;
+        margin-top: 0.15rem;
+        font-size: 0.8125rem;
+        font-weight: 650;
+        line-height: 1.25;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        color: var(--text-primary);
+      }
+
+      .counter-tile-maker {
+        font-size: 0.75rem;
+        line-height: 1.25;
+        color: var(--text-muted);
+      }
+
+      /* A window that had nothing to show opens out when its first one arrives. */
+      .counter-unfold.is-arrived {
+        display: grid;
+        animation: counter-unfold 0.65s var(--ease-glide) both;
+      }
+      .counter-unfold.is-arrived > .counter-unfold-inner {
+        min-height: 0;
+        overflow: hidden;
+      }
+      @keyframes counter-unfold {
+        from {
+          grid-template-rows: 0fr;
+          opacity: 0;
+        }
+        to {
+          grid-template-rows: 1fr;
+          opacity: 1;
+        }
+      }
+
+      /* Arriving: the greeting comes into focus word by word (as the splash's did), the flourish
+         draws out from its heart, the keys pop up, and the windows are dealt onto the counter,
+         each with a slight tilt it settles out of, its rows following. From the splash, the
+         splash's own flourish glides into place (SplashScreen, handOver) and this one shows as it
+         lands; the preferences key pops up as the splash's pills fold into it, and gives a little
+         pulse as it catches them. Held until the page's first frame is drawn (data-entrance). */
+      @media (prefers-reduced-motion: no-preference) {
+        .counter-page.is-entering .counter-word {
+          animation: fk-splash-unblur 1s var(--ease-decelerate) calc(0.12s + var(--i, 0) * 0.09s) both;
+        }
+        .counter-page.is-entering[data-arrival='handoff'] .counter-word {
+          animation-delay: calc(0.3s + var(--i, 0) * 0.08s);
+        }
+        .counter-page.is-entering .counter-flourish .vault-flourish-line {
+          animation: fk-splash-draw 0.9s cubic-bezier(0.5, 0.05, 0.25, 1) 0.5s both;
+        }
+        .counter-page.is-entering .counter-flourish .vault-flourish-heart {
+          animation: fk-splash-pop 0.55s var(--ease-decelerate) 0.4s both;
+        }
+        .counter-page.is-entering:is([data-arrival='handoff'], .has-flourish-glide)
+          .counter-flourish :is(.vault-flourish-line, .vault-flourish-heart) {
+          animation: none;
+        }
+        .counter-page.is-entering[data-arrival='handoff'] .counter-flourish {
+          animation: counter-appear 1ms linear 1.02s both;
+        }
+        .counter-page.is-entering .counter-news {
+          animation: fk-splash-rise 0.75s var(--ease-decelerate) 0.8s both;
+        }
+        .counter-page.is-entering .counter-key {
+          animation: counter-key-in 0.7s var(--spring-soft) 0.62s both;
+        }
+        .counter-page.is-entering .counter-key + .counter-key { animation-delay: 0.69s; }
+        .counter-page.is-entering .counter-prefs-toggle {
+          animation: counter-key-in 0.7s var(--spring-soft) 0.76s both;
+        }
+        .counter-page.is-entering[data-arrival='handoff'] .counter-prefs-toggle {
+          animation-delay: 0.6s;
+        }
+        .counter-page.is-entering[data-arrival='handoff'] .counter-prefs-toggle .fk-prefs-key {
+          animation: counter-catch 0.5s var(--ease-soft) 0.88s both;
+        }
+        .counter-page.is-entering .counter-window {
+          animation: counter-deal 0.9s var(--ease-glide) calc(0.78s + var(--w, 0) * 0.13s) both;
+        }
+        .counter-page.is-entering .counter-window:nth-of-type(1) { --deal-tilt: -0.8deg; }
+        .counter-page.is-entering .counter-window:nth-of-type(2) { --deal-tilt: 0.7deg; }
+        .counter-page.is-entering .counter-window:nth-of-type(3) { --deal-tilt: -0.5deg; }
+        .counter-page.is-entering :is(.counter-rows, .counter-tiles) > li {
+          animation: counter-row-in 0.65s var(--ease-glide)
+            calc(1.02s + var(--w, 0) * 0.13s + var(--r, 0) * 0.07s) both;
+        }
+        .counter-page.is-entering:not([data-entrance])
+          :is(.counter-word, .counter-flourish, .vault-flourish-line, .vault-flourish-heart, .counter-news, .counter-key, .counter-prefs-toggle, .fk-prefs-key, .counter-window, .counter-rows > li, .counter-tiles > li) {
+          animation-play-state: paused;
+        }
+      }
+
+      @keyframes counter-appear {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes counter-key-in {
+        from {
+          opacity: 0;
+          transform: translateY(0.6rem) scale(0.7);
+        }
+      }
+      @keyframes counter-catch {
+        40% { transform: scale(1.14); }
+      }
+      @keyframes counter-deal {
+        from {
+          opacity: 0;
+          transform: translateY(1.75rem) scale(0.965) rotate(var(--deal-tilt, 0deg));
+        }
+        40% { opacity: 1; }
+      }
+      @keyframes counter-row-in {
+        from {
+          opacity: 0;
+          translate: 0 0.5rem;
+        }
+      }
+
+      /* "See all" on a window (App, the window motions): the window opens out into its page as
+         the counter recedes, the window's recipes or makes gliding to their places there
+         (nameGlide). Back, the page folds back into its window over the counter coming forward,
+         and they glide back. The page on top covers the one below, blended normally. */
+      @media (prefers-reduced-motion: no-preference) {
+        :root:is([data-nav='window-open'], [data-nav='window-close'])::view-transition-image-pair(root) {
+          isolation: auto;
+        }
+        :root:is([data-nav='window-open'], [data-nav='window-close'])::view-transition-old(root),
+        :root:is([data-nav='window-open'], [data-nav='window-close'])::view-transition-new(root) {
+          mix-blend-mode: normal;
+        }
+        :root[data-nav='window-open']::view-transition-old(root) {
+          animation: vt-recede 0.55s var(--ease-soft) both;
+        }
+        :root[data-nav='window-open']::view-transition-new(root) {
+          animation: vt-window-open 0.66s cubic-bezier(0.55, 0, 0.15, 1) both;
+        }
+        :root[data-nav='window-close']::view-transition-old(root) {
+          z-index: 1;
+          animation: vt-window-close 0.52s var(--ease-glide) both;
+        }
+        :root[data-nav='window-close']::view-transition-new(root) {
+          animation: vt-come-forward 0.5s var(--ease-soft) 0.04s both;
+        }
+      }
+      /* The page comes up inside the window as it grows, rather than cutting in at once. */
+      @keyframes vt-window-open {
+        from {
+          opacity: 0;
+          clip-path: inset(var(--win-top) var(--win-right) var(--win-bottom) var(--win-left) round var(--radius-lg));
+        }
+        22% { opacity: 1; }
+        to {
+          clip-path: inset(0 round 0);
+        }
+      }
+      @keyframes vt-window-close {
+        from {
+          clip-path: inset(0 round 0);
+        }
+        70% { opacity: 1; }
+        to {
+          clip-path: inset(var(--win-top) var(--win-right) var(--win-bottom) var(--win-left) round var(--radius-lg));
+          opacity: 0;
+        }
+      }
+
+      /* A recipe's name and photo, or a make's photo, gliding between the counter and its page.
+         Only the arriving name shows, grown from the leaving one's size (two optical sizes of
+         the serif cross-fading would show a doubled name); the two photos, cropped differently,
+         both fill the moving frame. */
+      ::view-transition-group(*.glide-name),
+      ::view-transition-group(*.glide-photo) {
+        animation-duration: 0.56s;
+        animation-timing-function: var(--ease-glide);
+      }
+      ::view-transition-old(*.glide-name) { display: none; }
+      ::view-transition-new(*.glide-name) {
+        height: 100%;
+        object-fit: contain;
+        object-position: left top;
+        animation: none;
+      }
+      ::view-transition-old(*.glide-photo),
+      ::view-transition-new(*.glide-photo) {
+        height: 100%;
+        object-fit: cover;
+        overflow: clip;
+        border-radius: var(--radius-md);
+      }
+      /* The arriving photo shows from the start, over the leaving one, which fades under it. */
+      ::view-transition-new(*.glide-photo) { animation: none; }
+      ::view-transition-old(*.glide-photo) { animation: vt-fade-out 0.25s linear both; }
 
       /* Print Styles */
       @media print {

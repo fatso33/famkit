@@ -113,7 +113,7 @@ describe('background recipe translation', () => {
       ),
     );
     localStorage.setItem('wandas_language', 'pl');
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await settle();
 
     expect(translate).toHaveBeenCalledTimes(1);
@@ -140,7 +140,7 @@ describe('background recipe translation', () => {
       ]),
     );
     translate.mockImplementation(dictionaryTranslator({ 'Sunday loaves': 'Niedzielne' }, 'en'));
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await settle();
 
     // Nothing else is going, so it costs no request of its own yet.
@@ -151,7 +151,7 @@ describe('background recipe translation', () => {
     seed(customRecipe);
     translate.mockImplementation(dictionaryTranslator(POLISH, 'en'));
     localStorage.setItem('wandas_language', 'pl');
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await settle();
 
     expect(translate).toHaveBeenCalledTimes(1);
@@ -165,7 +165,7 @@ describe('background recipe translation', () => {
     const { translations, ...untranslated } = WANDAS_CHEESE_BREAD;
     localStorage.setItem('wandas_recipes', JSON.stringify([untranslated]));
     translate.mockImplementation(replyFrom(untranslated as Recipe, translations!.pl!, 'pl'));
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await settle();
 
     // Asked once more straight away, like any unusable answer, then left for later.
@@ -183,7 +183,7 @@ describe('background recipe translation', () => {
       .mockRejectedValueOnce(new TranslationRejectedError('Translation response is not JSON'))
       .mockImplementation(dictionaryTranslator(POLISH, 'en'));
     localStorage.setItem('wandas_language', 'pl');
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await settle();
 
     expect(translate).toHaveBeenCalledTimes(2);
@@ -195,7 +195,7 @@ describe('background recipe translation', () => {
   it('waits before asking again when the second answer is unusable too', async () => {
     seed(customRecipe);
     translate.mockRejectedValue(new TranslationRejectedError('Translation response is not JSON'));
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await settle();
 
     expect(translate).toHaveBeenCalledTimes(2);
@@ -206,7 +206,7 @@ describe('background recipe translation', () => {
   it('asks only once when the connection is lost (that retries when back online)', async () => {
     seed(customRecipe);
     translate.mockImplementation(offline);
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await settle();
 
     expect(translate).toHaveBeenCalledTimes(1);
@@ -219,7 +219,7 @@ describe('background recipe translation', () => {
     translate
       .mockImplementationOnce(dictionaryTranslator(allButStep, 'en'))
       .mockImplementation(dictionaryTranslator({}, 'en'));
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await settle();
 
     // The left-out step, alone, once; the model leaving it out again doesn't loop.
@@ -232,7 +232,7 @@ describe('background recipe translation', () => {
   it('tries a failing translation once, then again when the phone comes back online', async () => {
     seed(customRecipe);
     translate.mockImplementation(offline);
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await settle();
     expect(translate).toHaveBeenCalledTimes(1);
 
@@ -247,7 +247,7 @@ describe('background recipe translation', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     seed(withPolish(customRecipe));
     translate.mockImplementation(dictionaryTranslator({ "Aunt Ola's Pierogi": 'Pierogi Oli' }));
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await settle();
     expect(translate).not.toHaveBeenCalled();
 
@@ -279,7 +279,7 @@ describe('background recipe translation', () => {
     seed(withPolish(customRecipe));
     translate.mockImplementation(offline);
     localStorage.setItem('wandas_language', 'pl');
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await settle();
 
     fireEvent.click(screen.getByText('Pierogi cioci Oli'));
@@ -305,7 +305,7 @@ describe('background recipe translation', () => {
   it('keeps the English original when a Polish reader changes only the author', async () => {
     seed(withPolish(customRecipe));
     localStorage.setItem('wandas_language', 'pl');
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await settle();
 
     fireEvent.click(screen.getByText('Pierogi cioci Oli'));
@@ -375,7 +375,7 @@ describe('translation that holds up', () => {
       .mockImplementationOnce(dictionaryTranslator(CHILI_TEXTS, 'en'))
       .mockImplementation(dictionaryTranslator({ ...CHILI_TEXTS, ...CHILI_ROWS }, 'en'));
     localStorage.setItem('wandas_language', 'pl');
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await settle();
 
     // Its left-out rows, straight away, alone, in its now settled language.
@@ -395,7 +395,7 @@ describe('translation that holds up', () => {
     translate.mockImplementation(
       dictionaryTranslator({ ...POLISH, ...CHILI_TEXTS, ...CHILI_ROWS }, 'en'),
     );
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await settle();
 
     expect(translate).toHaveBeenCalledTimes(1);
@@ -419,7 +419,7 @@ describe('translation that holds up', () => {
         'en',
       ),
     );
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await settle();
 
     expect(translate).toHaveBeenCalledTimes(1);
@@ -433,14 +433,14 @@ describe('translation that holds up', () => {
     seed(customRecipe);
     const resets = Date.now() + 3 * 60 * 60 * 1000;
     translate.mockRejectedValue(new TranslationQuotaError('used up', resets));
-    const { unmount } = render(<App />);
+    const { unmount } = render(<App initialPage="recipes" />);
     await settle();
     expect(translate).toHaveBeenCalledTimes(1);
     expect(Number(localStorage.getItem('family_kitchen_translation_paused_until'))).toBe(resets);
     unmount();
 
     // Opening the app again before the reset asks for nothing.
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await settle();
     expect(translate).toHaveBeenCalledTimes(1);
     // Not an unusable answer: no longer wait once the allowance is back.
@@ -453,7 +453,7 @@ describe('translation that holds up', () => {
       dictionaryTranslator({ ...POLISH, 'Flour - 2 cups': { text: 'Mąka - 3 szklanki' } }, 'en'),
     );
     localStorage.setItem('wandas_language', 'pl');
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await settle();
 
     // Asked once more for just that row, then left in its own words.
@@ -470,7 +470,7 @@ describe('translation that holds up', () => {
     seed(customRecipe);
     translate.mockImplementation(offline);
     localStorage.setItem('wandas_language', 'pl');
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await settle();
 
     fireEvent.click(screen.getByText('Aunt Ola Pierogi'));
@@ -489,7 +489,7 @@ describe('translation that holds up', () => {
     seed(edited);
     translate.mockImplementation(offline);
     localStorage.setItem('wandas_language', 'pl');
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await settle();
 
     // The new title as written, the rest in Polish, and the note.
@@ -521,7 +521,7 @@ describe('Polish recipe page', () => {
       },
     };
     seed(withPhoto);
-    render(<App />);
+    render(<App initialPage="recipes" />);
 
     fireEvent.click(screen.getByText('Pierogi cioci Oli'));
     expect(screen.getByText('Wymieszaj.')).toBeInTheDocument();

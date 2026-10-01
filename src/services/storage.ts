@@ -10,7 +10,8 @@ import {
   withMakePhoto,
   withRecipePhotos,
 } from '../utils/deviceCopy';
-import { devicePhotos, keepDevicePhotos, loadDevicePhotos } from './photoStore';
+import { devicePhotos, keepDevicePhotos, loadDevicePhotos, loadPhotosFirst } from './photoStore';
+import { latestMakes, latestRecipes } from '../utils/counter';
 import { familyMemberName } from '../utils/ownership';
 import { isSeasonPreference, SeasonPreference } from '../utils/season';
 import { DEFAULT_SORT, formatVaultSort, parseVaultSort } from '../utils/vault';
@@ -125,11 +126,11 @@ export function withDeviceMakePhotos(makes: Make[]): Make[] {
 
 /**
  * Reads the photos kept on this device before the app first draws, so it starts with them
- * rather than filling them in a moment later. Waits at most `maxWait` ms, and only when a copy
- * here is waiting for photos.
+ * rather than filling them in a moment later. Only those My Counter shows (the latest recipes
+ * and makes) are waited for, read ahead of the rest, which follow straight after for the pages
+ * behind it. Waits at most `maxWait` ms, and only when a copy here is waiting for photos.
  */
 export function loadDevicePhotosForLaunch(maxWait: number): Promise<void> {
-  const read = loadDevicePhotos();
   const raw = (key: string) => {
     try {
       return localStorage.getItem(key) ?? '';
@@ -137,10 +138,37 @@ export function loadDevicePhotosForLaunch(maxWait: number): Promise<void> {
       return '';
     }
   };
-  const waiting =
-    raw(RECIPES_KEY).includes('"photosOmitted"') || raw(MAKES_KEY).includes('"photoOmitted"');
-  if (!waiting) return Promise.resolve();
+  const recipesRaw = raw(RECIPES_KEY);
+  const makesRaw = raw(MAKES_KEY);
+  const waiting = recipesRaw.includes('"photosOmitted"') || makesRaw.includes('"photoOmitted"');
+  if (!waiting) {
+    void loadDevicePhotos();
+    return Promise.resolve();
+  }
+  const read = loadPhotosFirst(counterPhotoKeys(recipesRaw, makesRaw));
   return Promise.race([read, new Promise<void>((resolve) => setTimeout(resolve, maxWait))]);
+}
+
+/** The photo store's keys for what My Counter shows first, from this device's copy. */
+export function counterPhotoKeys(recipesRaw: string, makesRaw: string): string[] {
+  const parse = (text: string): unknown[] => {
+    try {
+      const parsed: unknown = JSON.parse(text || '[]');
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+  const recipes = parse(recipesRaw).filter(
+    (r): r is Recipe => typeof (r as Recipe | null)?.id === 'string',
+  );
+  const makes = parse(makesRaw)
+    .map(parseMake)
+    .filter((m): m is Make => m !== null);
+  return [
+    ...latestRecipes(recipes).map((r) => recipePhotoKey(r.id)),
+    ...latestMakes(makes).map((m) => makePhotoKey(m.id)),
+  ];
 }
 
 /**
@@ -370,6 +398,57 @@ export function setSeenRecipes(email: string, ids: string[]): void {
     localStorage.setItem(SEEN_RECIPES_KEY, JSON.stringify(all));
   } catch (e) {
     console.warn('Could not remember which recipes were opened on this device:', e);
+  }
+}
+
+// What My Counter remembers for each person on this device (lowercase email → CounterMemory):
+// the greeting it showed last, when they last came, and the hearts on their makes already shown.
+const COUNTER_KEY = 'family_kitchen_counter';
+
+export interface CounterMemory {
+  lastGreeting?: string;
+  lastVisit?: number;
+  /** Each of their makes' hearts as last shown to them: make id → hearts' keys. */
+  heartsShown: Record<string, string[]>;
+}
+
+function readCounterMemories(): Record<string, unknown> {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(COUNTER_KEY) || '{}');
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+export function getCounterMemory(email: string): CounterMemory {
+  if (typeof window === 'undefined') return { heartsShown: {} };
+  const raw = readCounterMemories()[email.toLowerCase()];
+  const memory: CounterMemory = { heartsShown: {} };
+  if (typeof raw !== 'object' || raw === null) return memory;
+  const { lastGreeting, lastVisit, heartsShown } = raw as Record<string, unknown>;
+  if (typeof lastGreeting === 'string') memory.lastGreeting = lastGreeting;
+  if (typeof lastVisit === 'number' && Number.isFinite(lastVisit)) memory.lastVisit = lastVisit;
+  if (typeof heartsShown === 'object' && heartsShown !== null && !Array.isArray(heartsShown)) {
+    for (const [id, keys] of Object.entries(heartsShown)) {
+      if (Array.isArray(keys)) {
+        memory.heartsShown[id] = keys.filter((k): k is string => typeof k === 'string');
+      }
+    }
+  }
+  return memory;
+}
+
+export function setCounterMemory(email: string, memory: CounterMemory): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const all = readCounterMemories();
+    all[email.toLowerCase()] = memory;
+    localStorage.setItem(COUNTER_KEY, JSON.stringify(all));
+  } catch (e) {
+    console.warn('Could not remember the counter greeting and hearts on this device:', e);
   }
 }
 

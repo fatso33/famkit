@@ -30,7 +30,7 @@ const t = UI_TEXT.en;
 
 const openRecipe = (recipe: Recipe = WANDAS_CHEESE_BREAD) => {
   localStorage.setItem('wandas_recipes', JSON.stringify([recipe]));
-  render(<App />);
+  render(<App initialPage="recipes" />);
   fireEvent.click(screen.getByRole('button', { name: recipe.name }));
 };
 

@@ -71,7 +71,7 @@ describe('deleting and restoring recipes', () => {
     );
     window.matchMedia = vi.fn().mockReturnValue({ matches: false });
     window.scrollTo = vi.fn();
-    render(<App />);
+    render(<App initialPage="recipes" />);
   });
 
   // Asks first, in a sheet naming the recipe; confirm=false keeps it.

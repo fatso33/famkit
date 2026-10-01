@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useTheme } from './hooks/useTheme';
 import { useFontScale } from './hooks/useFontScale';
@@ -13,6 +13,8 @@ import { useBackStep } from './hooks/useBackStep';
 import { useSeenRecipes } from './hooks/useSeenRecipes';
 import { useDrafts } from './hooks/useDrafts';
 import { useMakes } from './hooks/useMakes';
+import { useCounterMemory } from './hooks/useCounter';
+import { useSplashUp } from './hooks/useSplashUp';
 import { isFirebaseConfigured } from './services/firebase';
 import { canEditRecipe, isOwnRecipe } from './utils/ownership';
 import { hasLeftOutPhotos } from './utils/deviceCopy';
@@ -40,13 +42,17 @@ import {
 } from './services/storage';
 import {
   isOnScreen,
+  nameGlide,
   prefersReducedMotion,
   setFlipAxis,
+  setWindowRect,
   transitionTheme,
   transitionView,
   vaultItemKey,
   type NavMotion,
 } from './utils/viewTransition';
+import { familyNames, heartNews, latestMakes } from './utils/counter';
+import { firstName } from './utils/greeting';
 import { SeasonPreference } from './utils/season';
 import {
   remixLanguage,
@@ -71,6 +77,7 @@ import { DownloadSheet } from './components/recipe-detail/DownloadSheet';
 import { MakesView, type MakesPageHandle } from './components/makes/MakesView';
 import { AddMakeModal } from './components/makes/AddMakeModal';
 import { SettingsView } from './components/settings/SettingsView';
+import { CounterView, type CounterEntrance } from './components/counter/CounterView';
 import { Toast } from './components/common/Toast';
 import {
   Language,
@@ -123,7 +130,51 @@ interface NavigateOptions {
   back?: boolean;
 }
 
-export default function App() {
+/** A recipe's name or photo, or a make's photo, gliding between My Counter and its page. */
+interface GlidePart {
+  name: string;
+  kind: 'name' | 'photo';
+  /** Where it is on the page being left. */
+  from: () => Element | null;
+  /** Where it lands on the page arriving. */
+  to: () => Element | null;
+}
+
+/**
+ * Names the parts on the page being left, those on screen, so each glides to its place on the
+ * next page (`arrive`, once that page is there, names the other ends that are on screen too).
+ */
+function nameGlides(parts: GlidePart[]) {
+  const clears: (() => void)[] = [];
+  const named = parts.filter((part) => {
+    const el = part.from();
+    if (!el || !isOnScreen(el)) return false;
+    clears.push(nameGlide(el, part.name, part.kind));
+    return true;
+  });
+  return {
+    arrive: () => {
+      for (const part of named) {
+        const el = part.to();
+        if (el && isOnScreen(el)) clears.push(nameGlide(el, part.name, part.kind));
+      }
+    },
+    clear: () => {
+      for (const clear of clears) clear();
+    },
+  };
+}
+
+const counterRecipe = (key: string) => document.querySelector(`[data-counter-recipe="${key}"]`);
+const boxRecipe = (key: string) => document.querySelector(`.vault-item[data-vault-item="${key}"]`);
+const counterMake = (key: string) => document.querySelector(`[data-counter-make="${key}"]`);
+
+interface AppProps {
+  /** Where the app opens: My Counter (tests may start elsewhere). */
+  initialPage?: AppPage;
+}
+
+export default function App({ initialPage = 'counter' }: AppProps = {}) {
   const { theme, toggleTheme } = useTheme();
   const { percent: fontPercent, increaseScale, decreaseScale } = useFontScale();
   const {
@@ -165,9 +216,18 @@ export default function App() {
     canDraft,
   } = useDrafts(currentUser);
 
-  const [page, setPage] = useState<AppPage>('recipes');
+  const [page, setPage] = useState<AppPage>(initialPage);
   // The last main page (not Settings), where the back gesture returns to.
-  const [mainPage, setMainPage] = useState<MainPage>('recipes');
+  const [mainPage, setMainPage] = useState<MainPage>(
+    initialPage === 'settings' ? 'counter' : initialPage,
+  );
+  // How My Counter arrives: out of the launch screen, handed over from the sign-in splash, and
+  // once it has been left, come back to.
+  const splashUp = useSplashUp();
+  const [counterArrival, setCounterArrival] = useState<CounterEntrance>(
+    splashUp ? 'handoff' : 'launch',
+  );
+  if (page !== 'counter' && counterArrival !== 'return') setCounterArrival('return');
   // The vault's filter and each main page's scroll survive a visit to a sub-page, so going
   // back returns to the same spot (and a recipe's photo can shrink back into its card).
   const [vaultFilter, setVaultFilter] = useState<VaultFilter>(NO_FILTER);
@@ -180,7 +240,7 @@ export default function App() {
   // The vault's banner plays its entrance when the vault arrives, not when a recipe or
   // Settings slides back to reveal it.
   const [vaultEntrance, setVaultEntrance] = useState(true);
-  const mainScroll = useRef<Record<MainPage, number>>({ recipes: 0, makes: 0 });
+  const mainScroll = useRef<Record<MainPage, number>>({ counter: 0, recipes: 0, makes: 0 });
   // The recipe last opened from the vault: its card is the one that flips open and shut.
   const [lastRecipeId, setLastRecipeId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -212,9 +272,10 @@ export default function App() {
   const [photoOpenFor, setPhotoOpenFor] = useState<string | null>(null);
   // A card lifting out of the box before it flips open: a second tap waits for it.
   const liftingCard = useRef(false);
-  // The Recipe Box shown as cards, unfiltered, while a make's recipe link takes you to its card:
-  // only for that trip, so this person's own view and filter are never changed.
-  const [boxShowcase, setBoxShowcase] = useState(false);
+  // The Recipe Box shown unfiltered, laid out as cards (from a make's recipe link) or as a list
+  // (from My Counter), while it takes you to a recipe's card: only for that trip, so this person's
+  // own view and filter are never changed.
+  const [boxShowcase, setBoxShowcase] = useState<VaultView | null>(null);
   // A recipe opened from a make: back from it, the Recipe Box opens on its card or row (in this
   // person's own view), as no scroll position of theirs leads there.
   const centreOnReturn = useRef<string | null>(null);
@@ -326,7 +387,7 @@ export default function App() {
         () => {
           setBackShown(false);
           // Behind the recipe, the Recipe Box goes back to this person's own view.
-          setBoxShowcase(false);
+          setBoxShowcase(null);
           setSelectedRecipeId(id);
           jumpTo(0);
         },
@@ -399,7 +460,7 @@ export default function App() {
         flushSync(() => {
           alongside?.();
           setBackShown(false);
-          setBoxShowcase(false);
+          setBoxShowcase(null);
           setArrivingMake(null);
           setMakePhotoOpen(false);
           setVaultEntrance(!goingBack && !flipsBack);
@@ -449,16 +510,95 @@ export default function App() {
     navigateTo('recipes', { animated });
   };
 
+  // What glides between the makes window of My Counter and the Makes page: each latest make's
+  // photo, between its tile and its card. (The Recipe Box's recipes stand in this person's own
+  // order, where the latest are seldom on screen, and a name flying over the box's other names
+  // reads as a muddle, so the recipes window simply opens out and folds back.)
+  const makeGlides = (toCounter: boolean): GlidePart[] =>
+    latestMakes(makes).map((make) => {
+      const key = vaultItemKey(make.id);
+      const tile = () => counterMake(key)?.querySelector('[data-counter-photo]') ?? null;
+      const card = () =>
+        document.getElementById(`make-${make.id}`)?.querySelector('.make-photo') ?? null;
+      return {
+        name: `glide-make-${key}`,
+        kind: 'photo',
+        from: toCounter ? card : tile,
+        to: toCounter ? tile : card,
+      };
+    });
+
+  // "See all" on a window of My Counter: the window opens out into its page, the Recipe Box or
+  // Makes, which comes up inside it as it grows (the 'window-open' motion). Only the newest
+  // make's photo glides out to its card, the one sure to be at the top of Makes.
+  const openCounterWindow = (win: 'recipes' | 'makes') => {
+    mainScroll.current.counter = window.scrollY;
+    const opens =
+      !prefersReducedMotion() &&
+      setWindowRect(document.querySelector(`[data-counter-window="${win}"]`));
+    const glides = opens && win === 'makes' ? nameGlides(makeGlides(false).slice(0, 1)) : null;
+    transitionView(
+      () => {
+        flushSync(() => {
+          setBackShown(false);
+          setBoxShowcase(null);
+          setArrivingMake(null);
+          setMakePhotoOpen(false);
+          // Opening out of the window is its entrance.
+          setVaultEntrance(!opens);
+          setPage(win);
+          setMainPage(win);
+          setSelectedRecipeId(null);
+        });
+        jumpTo(0);
+        glides?.arrive();
+      },
+      { motion: opens ? 'window-open' : 'fade', always: glides?.clear },
+    );
+  };
+
+  // Back to My Counter from the Recipe Box or Makes: the page folds back into its window on the
+  // counter, the makes on screen gliding back into their tiles (the 'window-close' motion).
+  const returnToCounter = (animated = true) => {
+    const win = page === 'makes' ? 'makes' : 'recipes';
+    if (page === 'recipes' || page === 'makes') mainScroll.current[page] = window.scrollY;
+    // Only a transition the app animates itself folds the page away (not the iOS back swipe).
+    const folds = animated && !prefersReducedMotion() && !!document.startViewTransition;
+    const glides = folds && win === 'makes' ? nameGlides(makeGlides(true)) : null;
+    transitionView(
+      () => {
+        flushSync(() => {
+          setBackShown(false);
+          setBoxShowcase(null);
+          setArrivingMake(null);
+          setMakePhotoOpen(false);
+          setPage('counter');
+          setMainPage('counter');
+          setSelectedRecipeId(null);
+        });
+        jumpTo(mainScroll.current.counter);
+        // Only now is the window there to measure. Out of sight, the counter simply comes back.
+        if (!folds) return;
+        if (setWindowRect(document.querySelector(`[data-counter-window="${win}"]`))) {
+          glides?.arrive();
+        } else {
+          document.documentElement.dataset.nav = 'back';
+        }
+      },
+      { motion: 'window-close', animated, always: glides?.clear },
+    );
+  };
+
+  // From the Recipe Box or Makes, and anything open over them, the phone's back gesture comes
+  // home to My Counter; only from there does it leave the app. Registered before the sub-pages'
+  // step below, so a recipe or Settings open over them is undone first.
+  useBackStep(mainPage !== 'counter', (animated) => returnToCounter(animated));
   // From a recipe or Settings, the phone's back gesture returns to the last main page.
   useBackStep(onSubPage, (animated) =>
     selectedRecipe && page === 'recipes'
       ? leaveRecipe(animated)
       : navigateTo(mainPage, { animated }),
   );
-  // On Makes, the back gesture returns to the Recipe Box, the app's first page; only from there
-  // does it leave the app. (Settings, a photo, a menu or the Add Make page open over Makes take
-  // it first.)
-  useBackStep(page === 'makes', (animated) => navigateTo('recipes', { animated, back: true }));
 
   // The editor opens out of the button that asked for it: the menu button, where "Add recipe"
   // or "Edit recipe" was chosen, unless a draft's card or chip was tapped.
@@ -566,14 +706,20 @@ export default function App() {
     );
   };
 
-  // From a make to its recipe, through the Recipe Box: the Makes page recedes as the box comes
-  // forward, laid out as cards (this person's own view and filter untouched) and opened on the
-  // recipe's card, into whose title the make's link flies (the 'to-box' motion and 'title'
-  // morph). Then the card lifts and flips open into the recipe, as when it's tapped in the box.
-  // Back from the recipe returns to the Recipe Box, in this person's view, at that recipe.
-  const openRecipeFromMake = (recipeId: string, name: HTMLElement) => {
+  // From a make (or a recipe on My Counter) to its recipe, through the Recipe Box: the page
+  // recedes as the box comes forward, laid out as cards from a make, as a list from the counter
+  // (this person's own view and filter untouched), and opened on the recipe's card or row, into
+  // whose title the tapped name flies (the 'to-box' motion and 'title' morph); from the counter
+  // its photo glides into place too. Then the card lifts and flips open into the recipe, as when
+  // it's tapped in the box. Back from the recipe returns to the Recipe Box, in this person's view,
+  // at that recipe.
+  const openRecipeThroughBox = (
+    recipeId: string,
+    name: HTMLElement,
+    from: 'makes' | 'counter' = 'makes',
+  ) => {
     if (liftingCard.current) return;
-    mainScroll.current.makes = window.scrollY;
+    mainScroll.current[from] = window.scrollY;
     const cardOf = () =>
       document.querySelector<HTMLElement>(
         `.vault-item[data-vault-item="${vaultItemKey(recipeId)}"]`,
@@ -603,6 +749,18 @@ export default function App() {
       return;
     }
     name.style.setProperty('view-transition-name', 'recipe-title');
+    const key = vaultItemKey(recipeId);
+    const photo =
+      from === 'counter'
+        ? nameGlides([
+            {
+              name: `glide-photo-${key}`,
+              kind: 'photo',
+              from: () => counterRecipe(key)?.querySelector('[data-counter-photo]') ?? null,
+              to: () => boxRecipe(key)?.querySelector('[data-vault-photo]') ?? null,
+            },
+          ])
+        : null;
     let card: HTMLElement | null = null;
     transitionView(
       () => {
@@ -610,7 +768,7 @@ export default function App() {
           setBackShown(false);
           setArrivingMake(null);
           setMakePhotoOpen(false);
-          setBoxShowcase(true);
+          setBoxShowcase(from === 'counter' ? 'list' : 'cards');
           setVaultEntrance(false);
           setPage('recipes');
           setMainPage('recipes');
@@ -624,15 +782,17 @@ export default function App() {
         if (card) centreOnScreen(card);
         else jumpTo(0);
         titleOf(card)?.style.setProperty('view-transition-name', 'recipe-title');
+        photo?.arrive();
       },
       {
         motion: 'to-box',
         morph: 'title',
+        always: photo?.clear,
         onFinished: () => {
           titleOf(card)?.style.removeProperty('view-transition-name');
           // No card to flip (the recipe went meanwhile): the box goes back to this person's view.
           if (!card) {
-            setBoxShowcase(false);
+            setBoxShowcase(null);
             return;
           }
           // The box has gone meanwhile (another page change took over).
@@ -656,7 +816,7 @@ export default function App() {
         flushSync(() => {
           setBackShown(false);
           setPhotoOpenFor(null);
-          setBoxShowcase(false);
+          setBoxShowcase(null);
           setVaultEntrance(false);
           setArrivingMake({ id: makeId, kind: 'visit' });
           setPage('makes');
@@ -673,6 +833,50 @@ export default function App() {
         onFinished: () => titleOf()?.style.removeProperty('view-transition-name'),
       },
     );
+  };
+
+  // From a make on My Counter to it on the Makes page: its photo grows from the tile into the
+  // make's card as the Makes page fades up (the 'hop' motion), opened on it.
+  const openMakeFromCounter = (makeId: string, photo: HTMLElement) => {
+    mainScroll.current.counter = window.scrollY;
+    const key = vaultItemKey(makeId);
+    const glides = prefersReducedMotion()
+      ? null
+      : nameGlides([
+          {
+            name: `glide-make-${key}`,
+            kind: 'photo',
+            from: () => photo,
+            to: () =>
+              document.getElementById(`make-${makeId}`)?.querySelector('.make-photo') ?? null,
+          },
+        ]);
+    transitionView(
+      () => {
+        flushSync(() => {
+          setBackShown(false);
+          setBoxShowcase(null);
+          setVaultEntrance(false);
+          setArrivingMake({ id: makeId, kind: 'visit' });
+          setPage('makes');
+          setMainPage('makes');
+          setSelectedRecipeId(null);
+        });
+        const card = document.getElementById(`make-${makeId}`);
+        if (card) centreOnScreen(card);
+        else jumpTo(0);
+        glides?.arrive();
+      },
+      { motion: 'hop', always: glides?.clear },
+    );
+  };
+
+  // A draft on My Counter carries on in the editor, which opens out of its row: an edit's draft
+  // as its recipe's edit (as the recipe page's chip does), a new recipe's on its own.
+  const openDraftFromCounter = (draft: RecipeDraft, from: HTMLElement) => {
+    const recipe = draft.recipeId ? recipes.find((r) => r.id === draft.recipeId) : undefined;
+    if (recipe) editRecipe(recipe, from);
+    else openEditor(null, draft, from);
   };
 
   // The Add Make page opens out of the button that asked for it (the menu button by default).
@@ -700,7 +904,7 @@ export default function App() {
     flushSync(() => {
       setBackShown(false);
       setPhotoOpenFor(null);
-      setBoxShowcase(false);
+      setBoxShowcase(null);
       setVaultEntrance(false);
       setArrivingMake({ id: added.id, kind: 'new' });
       setPage('makes');
@@ -777,15 +981,84 @@ export default function App() {
         { id: 'add-make', label: t.addMake, icon: Plus, onSelect: () => openMakeEditor(null) },
       ];
       break;
+    case 'counter':
+      pageActions = [
+        { id: 'add-recipe', label: t.addRecipe, icon: Plus, onSelect: openAddRecipe },
+        {
+          id: 'add-make',
+          label: t.addMake,
+          icon: CookingPot,
+          onSelect: () => openMakeEditor(null),
+        },
+      ];
+      break;
     case 'settings':
       break;
   }
+
+  // My Counter's greeting, picked once per launch, and news of hearts on this person's makes
+  // since they last saw them.
+  const email = currentUser?.email ?? '';
+  const counterMemory = useCounterMemory(
+    email,
+    season,
+    page === 'counter'
+      ? recipes.filter((r) => !seen.has(r.id) && !isOwnRecipe(r, currentUser)).length
+      : 0,
+  );
+  const news =
+    page === 'counter'
+      ? heartNews(makes, email, counterMemory.heartsShown, familyNames(allRecipes, makes))
+      : null;
+  const newsRecipe = news && recipes.find((r) => r.id === news.make.recipeId);
+  const newsTitle = news
+    ? localizeMake(news.make, language).title ||
+      (newsRecipe ? (getLocalizedRecipe(newsRecipe, language) ?? newsRecipe).name : '')
+    : '';
+  // Shown on the counter now, so they aren't news next launch.
+  const shownNews = news && JSON.stringify([news.make.id, news.hearts]);
+  const { markHeartsShown } = counterMemory;
+  useEffect(() => {
+    if (!shownNews) return;
+    const [makeId, hearts] = JSON.parse(shownNews) as [string, string[]];
+    markHeartsShown(makeId, hearts);
+  }, [shownNews, markHeartsShown]);
 
   return (
     <div className="min-h-screen flex flex-col transition-colors duration-200">
       {/* Main Container */}
       <main className="app-container">
-        {page === 'makes' ? (
+        {page === 'counter' ? (
+          <CounterView
+            entrance={counterArrival}
+            season={season}
+            greeting={t.greetings[counterMemory.greetingId]}
+            firstName={firstName(currentUser?.name ?? '')}
+            news={
+              news && newsTitle ? { text: t.heartNews(news.names, news.count, newsTitle) } : null
+            }
+            recipes={recipes}
+            isSeen={(recipe) => seen.has(recipe.id) || isOwnRecipe(recipe, currentUser)}
+            makes={makes}
+            drafts={[...drafts].sort((a, b) => b.savedAt - a.savedAt)}
+            language={language}
+            theme={theme}
+            onToggleLanguage={toggleLanguage}
+            onToggleTheme={(origin) => transitionTheme(toggleTheme, origin)}
+            fontPercent={fontPercent}
+            onIncreaseFont={increaseScale}
+            onDecreaseFont={decreaseScale}
+            onAddRecipe={(from) => openEditor(null, null, from)}
+            onAddMake={(from) => openMakeEditor(null, undefined, from)}
+            onOpenSettings={() => navigateTo('settings')}
+            onOpenRecipe={(id, name) => openRecipeThroughBox(id, name, 'counter')}
+            onSeeAllRecipes={() => openCounterWindow('recipes')}
+            onOpenMake={openMakeFromCounter}
+            onSeeAllMakes={() => openCounterWindow('makes')}
+            onOpenDraft={openDraftFromCounter}
+            t={t}
+          />
+        ) : page === 'makes' ? (
           <MakesView
             ref={makesPage}
             makes={makes}
@@ -794,7 +1067,7 @@ export default function App() {
             canEdit={(make) => canEditMake(make, currentUser, isFirebaseConfigured)}
             arriving={arrivingMake}
             animateIn={vaultEntrance}
-            onOpenRecipe={openRecipeFromMake}
+            onOpenRecipe={openRecipeThroughBox}
             onEditMake={(make, from) => openMakeEditor(make, undefined, from)}
             onHeart={heartMake}
             onAddMake={(from) => openMakeEditor(null, undefined, from)}
@@ -840,7 +1113,7 @@ export default function App() {
             onFilterChange={changeVaultFilter}
             sort={vaultSort}
             onSortChange={changeVaultSort}
-            view={boxShowcase ? 'cards' : vaultView}
+            view={boxShowcase ?? vaultView}
             onViewChange={changeVaultView}
             makeCounts={makeCounts(makes)}
             isSeen={(recipe) => vaultSeen.has(recipe.id) || isOwnRecipe(recipe, currentUser)}
@@ -945,6 +1218,14 @@ export default function App() {
               });
               // Its page opens under the closing editor; its card is the one back takes it to.
               setLastRecipeId(added.id);
+              // Added from My Counter (or Makes), it opens over the Recipe Box like any recipe,
+              // so back goes to its card there (at the top, newly added), then home.
+              if (page !== 'recipes') {
+                mainScroll.current.recipes = 0;
+                centreOnReturn.current = added.id;
+                setPage('recipes');
+                setMainPage('recipes');
+              }
             }
             // In the vault now, so its draft is done with.
             if (editingDraft) void dropDraft(editingDraft);

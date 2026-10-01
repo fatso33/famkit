@@ -26,7 +26,7 @@ describe('choosing a season in Settings', () => {
     vi.setSystemTime(new Date(2027, 0, 10));
     window.matchMedia = vi.fn().mockReturnValue({ matches: false });
     window.scrollTo = vi.fn();
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(screen.getByRole('button', { name: t.openMenu }));
     fireEvent.click(screen.getByRole('button', { name: t.settings }));
   });

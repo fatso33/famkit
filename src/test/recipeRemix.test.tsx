@@ -135,7 +135,7 @@ function chooseSave(name: RegExp) {
 const renderApp = () =>
   render(
     <CurrentUserContext value={kasia}>
-      <App />
+      <App initialPage="recipes" />
     </CurrentUserContext>,
   );
 

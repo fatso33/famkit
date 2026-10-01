@@ -94,6 +94,32 @@ export function loadDevicePhotos(): Promise<void> {
   return loading;
 }
 
+/**
+ * Reads just these photos ahead of the rest, so the first page can show them before the whole
+ * store is read (My Counter needs a handful; the store holds every photo in the box). The full
+ * read goes on beside it, and its listeners fill in everything else. Never rejects.
+ */
+export function loadPhotosFirst(keys: readonly string[]): Promise<void> {
+  if (!available || loading || keys.length === 0) return loadDevicePhotos();
+  return (async () => {
+    try {
+      const db = await openDb();
+      const store = db.transaction(STORE).objectStore(STORE);
+      const reads = keys.map((key) => done(store.get(key)));
+      // The full read starts behind these few, so they aren't held up by it.
+      void loadDevicePhotos();
+      const entries = await Promise.all(reads);
+      // The full read may have finished first: its copy is the one to keep.
+      if (loaded) return;
+      for (const entry of entries) if (isEntry(entry)) known.set(entry.key, entry);
+    } catch (e) {
+      // The full read reports trouble, and this one falls back to it.
+      console.warn('Could not read the first photos ahead of the rest:', e);
+      await loadDevicePhotos();
+    }
+  })();
+}
+
 /** Calls `listener` once the photos kept on this device are read. Returns a cancel function. */
 export function whenDevicePhotosLoad(listener: () => void): () => void {
   let active = true;

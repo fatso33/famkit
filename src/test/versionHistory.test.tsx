@@ -57,7 +57,7 @@ describe('version history', () => {
     window.matchMedia = vi.fn().mockReturnValue({ matches: false });
     window.scrollTo = vi.fn();
     Element.prototype.scrollIntoView = vi.fn();
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(screen.getByRole('button', { name: 'Babka' }));
   });
 

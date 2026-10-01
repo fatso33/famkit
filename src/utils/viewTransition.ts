@@ -11,6 +11,9 @@ import { flushSync } from 'react-dom';
  * - vault: the vault's recipes re-filtered, re-sorted or re-laid out, gliding to their new places
  * - flip-open: a recipe card lifted out of the box flips over, and the recipe unfolds from its
  *   back; flip-close folds the recipe away and the card flips back into its place (setFlipAxis)
+ * - window-open: one of My Counter's windows opens out into its page (the Recipe Box, Makes),
+ *   what it shows gliding to its place there; window-close folds the page back into the window
+ *   (setWindowRect, nameGlide)
  */
 export type NavMotion =
   | 'forward'
@@ -22,7 +25,9 @@ export type NavMotion =
   | 'zoom'
   | 'vault'
   | 'flip-open'
-  | 'flip-close';
+  | 'flip-close'
+  | 'window-open'
+  | 'window-close';
 
 /**
  * What morphs between its old and new place: a step photo and the full-screen viewer, or a
@@ -39,6 +44,11 @@ interface Options {
   relayout?: boolean;
   /** Once it has finished (at once where nothing animates). */
   onFinished?: () => void;
+  /**
+   * Once it has finished or been cut short by another (onFinished is left to the newer one):
+   * undoes what was set up for this one alone, such as names given to elements.
+   */
+  always?: () => void;
 }
 
 let current: ViewTransition | null = null;
@@ -50,10 +60,11 @@ let current: ViewTransition | null = null;
  */
 export function transitionView(
   update: () => void,
-  { motion, morph, animated = true, relayout = false, onFinished }: Options,
+  { motion, morph, animated = true, relayout = false, onFinished, always }: Options,
 ) {
   if (!animated || !document.startViewTransition) {
     update();
+    always?.();
     onFinished?.();
     return;
   }
@@ -62,7 +73,7 @@ export function transitionView(
   if (morph) root.dataset.morph = morph;
   else delete root.dataset.morph;
 
-  const restore: (() => void)[] = [];
+  const restore: (() => void)[] = always ? [always] : [];
   const vault = motion === 'vault';
   const before = vault ? nameVaultItems(relayout) : null;
   if (before) restore.push(before.clear);
@@ -79,6 +90,7 @@ export function transitionView(
     delete root.dataset.nav;
     delete root.dataset.morph;
     root.style.removeProperty('--flip-y');
+    for (const side of WINDOW_SIDES) root.style.removeProperty(`--win-${side}`);
     onFinished?.();
   };
   void transition.finished.then(cleanUp, cleanUp);
@@ -104,6 +116,44 @@ export function setFlipAxis(card: Element | null): boolean {
   const { top, height } = card.getBoundingClientRect();
   document.documentElement.style.setProperty('--flip-y', `${Math.round(top + height / 2)}px`);
   return true;
+}
+
+const WINDOW_SIDES = ['top', 'right', 'bottom', 'left'] as const;
+
+/**
+ * Where a window of My Counter is on screen (index.css, the window motions): its page opens out
+ * of it, or folds back into it. Returns false, setting nothing, when it isn't on screen.
+ */
+export function setWindowRect(win: Element | null): boolean {
+  if (!win || !isOnScreen(win)) return false;
+  const { top, right, bottom, left } = win.getBoundingClientRect();
+  const inset = {
+    top,
+    right: window.innerWidth - right,
+    bottom: window.innerHeight - bottom,
+    left,
+  };
+  const root = document.documentElement;
+  for (const side of WINDOW_SIDES) {
+    root.style.setProperty(`--win-${side}`, `${Math.round(inset[side])}px`);
+  }
+  return true;
+}
+
+/**
+ * Names an element so it glides on its own in the next view transition, between it and the
+ * element given the same name on the other page: a recipe's name or photo, or a make's photo
+ * (index.css, the glide classes). Returns a function that takes the name away again.
+ */
+export function nameGlide(el: Element | null, name: string, kind: 'name' | 'photo'): () => void {
+  if (!(el instanceof HTMLElement || el instanceof SVGElement)) return noop;
+  el.style.setProperty('view-transition-name', name);
+  el.style.setProperty('view-transition-class', `glide-${kind}`);
+  return () => {
+    if (el.style.getPropertyValue('view-transition-name') !== name) return;
+    el.style.removeProperty('view-transition-name');
+    el.style.removeProperty('view-transition-class');
+  };
 }
 
 /** Whether the viewer asked the system for less motion. */

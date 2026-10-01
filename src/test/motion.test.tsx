@@ -63,7 +63,7 @@ describe('motion', () => {
   });
 
   it("returns to the vault's filter and scroll position after a recipe", () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(screen.getByRole('button', { name: t.filterRecipes }));
     const filter = screen.getByRole('dialog', { name: t.filterRecipes });
     fireEvent.click(
@@ -87,7 +87,7 @@ describe('motion', () => {
   });
 
   it('sets the remembered scroll on the vault itself, not on the recipe it replaces', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     Object.defineProperty(window, 'scrollY', { value: 1800, configurable: true });
     fireEvent.click(card('Babka')!);
     // A recipe page shorter than the vault can't scroll that far, so a jump made while it is
@@ -105,7 +105,7 @@ describe('motion', () => {
 
   it('keeps the editor on screen until its exit animation ends', async () => {
     const { finishExit } = playExitAnimations();
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(card('Babka')!);
     chooseFromMenu(UI_TEXT.en.editRecipe);
 
@@ -142,7 +142,7 @@ describe('motion', () => {
       return { finished: Promise.resolve() };
     }) as unknown as typeof document.startViewTransition;
 
-    render(<App />);
+    render(<App initialPage="recipes" />);
     snapshots.length = 0; // Only the photo's transitions matter here.
     fireEvent.click(screen.getByRole('button', { name: 'Babka' }));
     snapshots.length = 0;
@@ -156,7 +156,7 @@ describe('motion', () => {
 
   it('still closes the editor when its exit animation stalls', async () => {
     playExitAnimations(); // Never finished, as when the app is backgrounded mid-close.
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(card('Babka')!);
     chooseFromMenu(UI_TEXT.en.editRecipe);
     fireEvent.click(within(editor()!).getByRole('button', { name: t.closeDialog }));
@@ -167,7 +167,7 @@ describe('motion', () => {
 
   it('slides the saved recipe away, rather than an emptied or new-recipe form', async () => {
     const { finishExit } = playExitAnimations();
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(card('Babka')!);
     chooseFromMenu(UI_TEXT.en.editRecipe);
     fireEvent.change(within(editor()!).getByLabelText(t.recipeTitle), {

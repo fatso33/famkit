@@ -1,0 +1,235 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, within, act, waitFor } from '@testing-library/react';
+import App from '../App';
+import { CurrentUserContext } from '../hooks/useCurrentUser';
+import { UI_TEXT } from '../i18n/translations';
+import { GREETING_IDS } from '../utils/greeting';
+import { Recipe, RecipeDraft } from '../types/recipe';
+import { Make } from '../types/make';
+
+vi.mock('../services/gemini', () => ({
+  isTranslationAvailable: false,
+  translateDocuments: vi.fn(() => Promise.reject(new Error('offline'))),
+}));
+
+const t = UI_TEXT.en;
+const ola = { email: 'ola@example.com', name: 'Ola Nowak' };
+const PHOTO = 'data:image/jpeg;base64,AAAA';
+
+const recipe = (id: string, name: string, extra: Partial<Recipe> = {}): Recipe => ({
+  id,
+  name,
+  author: 'Wanda',
+  authorMode: 'custom',
+  category: 'breads',
+  heroImage: '',
+  yieldHeader: 'For 1 loaf:',
+  ingredients: [{ text: 'Flour - 500g' }],
+  steps: [{ num: 1, text: 'Mix.' }],
+  version: 1,
+  ...extra,
+});
+
+const recipes = [
+  recipe('rye', 'Rye bread', { createdAt: 1000 }),
+  recipe('babka', 'Babka', { createdAt: 3000, ownerEmail: 'raye@example.com', ownerName: 'Raye' }),
+  recipe('bigos', 'Bigos', { createdAt: 2000, updatedAt: 5000, version: 2 }),
+  recipe('barszcz', 'Barszcz', { createdAt: 500 }),
+];
+
+const make = (extra: Partial<Make> = {}): Make => ({
+  id: 'make-1',
+  recipeId: 'babka',
+  title: 'Sunday babka',
+  photo: PHOTO,
+  ownerEmail: 'raye@example.com',
+  ownerName: 'Raye',
+  createdAt: 100,
+  updatedAt: 100,
+  ...extra,
+});
+
+const draft: RecipeDraft = {
+  id: 'draft-1',
+  recipe: { ...recipe('draft-1', 'Pierogi'), category: '' },
+  language: 'en',
+  savedAt: Date.now() - 2 * 3_600_000,
+};
+
+const renderCounter = () =>
+  render(
+    <CurrentUserContext value={ola}>
+      <App />
+    </CurrentUserContext>,
+  );
+
+const region = (name: string) => screen.getByRole('region', { name });
+const heading = () => screen.getByRole('heading', { level: 1 });
+const editor = () =>
+  screen.queryByRole('dialog', {
+    name: new RegExp(`${t.editorTitleEdit}|${t.editorTitleNew}`, 'i'),
+  });
+const prefsKey = () =>
+  within(document.querySelector('.counter-tools')!).getByRole('button', {
+    name: new RegExp(`^(${t.preferences}|${t.settings})$`),
+  });
+
+describe('My Counter', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('wandas_recipes', JSON.stringify(recipes));
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+    window.scrollTo = vi.fn();
+  });
+
+  it('opens the app, greeting this person by their first name', () => {
+    renderCounter();
+    expect(document.getElementById('viewCounter')).toBeInTheDocument();
+    expect(heading()).toHaveTextContent('Ola');
+    expect(heading()).not.toHaveTextContent('Nowak');
+    // One of the greetings, with the name in it.
+    const greetings = GREETING_IDS.map((id) => t.greetings[id].replace('{name}', 'Ola'));
+    expect(greetings).toContain(heading().textContent);
+  });
+
+  it("shows the box's latest three recipes, the latest first, new or updated", () => {
+    renderCounter();
+    const rows = within(region(t.freshInBox)).getAllByRole('listitem');
+    expect(rows.map((row) => row.querySelector('[data-counter-name]')?.textContent)).toEqual([
+      'Bigos',
+      'Babka',
+      'Rye bread',
+    ]);
+    expect(within(rows[0]).getByText(t.recipeUpdated)).toBeInTheDocument();
+    expect(within(rows[1]).getByText(t.recipeNew)).toBeInTheDocument();
+    // None opened yet.
+    expect(within(rows[1]).getByText(t.unseen)).toBeInTheDocument();
+  });
+
+  it('opens a recipe from it, through the Recipe Box, and back goes to the box', async () => {
+    renderCounter();
+    const babka = within(region(t.freshInBox))
+      .getAllByRole('button')
+      .find((b) => b.textContent?.startsWith('Babka'))!;
+    fireEvent.click(babka);
+    expect(await screen.findByRole('heading', { name: 'Babka', level: 1 })).toBeInTheDocument();
+    // Opened now, so no longer unseen.
+    expect(JSON.parse(localStorage.getItem('family_kitchen_seen_recipes') ?? '{}')).toEqual({
+      [ola.email]: ['babka'],
+    });
+  });
+
+  it('opens the Recipe Box from "See all"', () => {
+    renderCounter();
+    fireEvent.click(screen.getByRole('button', { name: t.seeAllRecipes }));
+    expect(heading()).toHaveTextContent(t.vaultTitle);
+  });
+
+  it('says so while there are no makes, and shows the latest once there are', () => {
+    renderCounter();
+    expect(within(region(t.latestMakes)).getByText(t.makesEmptyTitle)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.seeAllMakes })).toBeNull();
+  });
+
+  it('goes from a make to it on the Makes page', () => {
+    localStorage.setItem('family_kitchen_makes', JSON.stringify([make()]));
+    renderCounter();
+    const tile = within(region(t.latestMakes)).getByRole('button', {
+      name: t.openMakeNamed('Sunday babka'),
+    });
+    expect(within(tile).getByText('Raye')).toBeInTheDocument();
+    fireEvent.click(tile);
+    expect(heading()).toHaveTextContent(t.makes);
+    expect(document.getElementById('make-make-1')).toBeInTheDocument();
+  });
+
+  it('says so while this person has no drafts', () => {
+    renderCounter();
+    expect(within(region(t.yourDrafts)).getByText(t.noDrafts)).toBeInTheDocument();
+  });
+
+  it('opens a draft in the editor from its row', async () => {
+    localStorage.setItem('family_kitchen_drafts', JSON.stringify({ [ola.email]: [draft] }));
+    renderCounter();
+    const row = await within(region(t.yourDrafts)).findByRole('button', {
+      name: t.draftNamed('Pierogi'),
+    });
+    expect(within(row).getByText(t.draftLabel(1))).toBeInTheDocument();
+    expect(within(row).getByText(/2 hours ago/)).toBeInTheDocument();
+    fireEvent.click(row);
+    expect(within(editor()!).getByLabelText(t.recipeTitle)).toHaveValue('Pierogi');
+  });
+
+  it('has Add Recipe and Add Make keys of its own', () => {
+    renderCounter();
+    fireEvent.click(screen.getByRole('button', { name: t.addRecipe }));
+    expect(editor()).toBeInTheDocument();
+  });
+
+  it('opens the preferences in a bar, whose key then goes to Settings', () => {
+    renderCounter();
+    const bar = screen.getByRole('group', { name: t.preferences });
+    expect(prefsKey()).toHaveAccessibleName(t.preferences);
+    expect(prefsKey()).toHaveAttribute('aria-expanded', 'false');
+    expect(bar).toHaveAttribute('inert');
+
+    fireEvent.click(prefsKey());
+    expect(bar).not.toHaveAttribute('inert');
+    expect(prefsKey()).toHaveAccessibleName(t.settings);
+
+    // The language changes at once, the bar staying open.
+    fireEvent.click(within(bar).getByRole('button', { name: t.languageToggle }));
+    expect(screen.getByRole('region', { name: UI_TEXT.pl.freshInBox })).toBeInTheDocument();
+    fireEvent.click(within(bar).getByRole('button', { name: UI_TEXT.pl.languageToggle }));
+
+    fireEvent.click(prefsKey());
+    expect(heading()).toHaveTextContent(t.settings);
+  });
+
+  it('folds the bar away on a tap outside it, without pressing what was tapped', () => {
+    renderCounter();
+    fireEvent.click(prefsKey());
+    const seeAll = screen.getByRole('button', { name: t.seeAllRecipes });
+    fireEvent.pointerDown(seeAll);
+    fireEvent.click(seeAll);
+    expect(prefsKey()).toHaveAccessibleName(t.preferences);
+    expect(document.getElementById('viewCounter')).toBeInTheDocument();
+
+    // A touch outside that turns into a scroll closes it too, and the next tap goes through.
+    fireEvent.click(prefsKey());
+    fireEvent.pointerDown(document.body);
+    fireEvent.pointerCancel(document.body);
+    expect(prefsKey()).toHaveAccessibleName(t.preferences);
+    fireEvent.click(screen.getByRole('button', { name: t.seeAllRecipes }));
+    expect(heading()).toHaveTextContent(t.vaultTitle);
+  });
+
+  it('folds the bar away on Escape, handing focus back to its key', () => {
+    renderCounter();
+    fireEvent.click(prefsKey());
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(prefsKey()).toHaveAccessibleName(t.preferences);
+    expect(prefsKey()).toHaveFocus();
+  });
+
+  it('tells this person of new hearts on their make, once', async () => {
+    localStorage.setItem(
+      'family_kitchen_makes',
+      JSON.stringify([
+        make({
+          ownerEmail: ola.email,
+          ownerName: ola.name,
+          hearts: { 'raye@example.com': true },
+        }),
+      ]),
+    );
+    const first = renderCounter();
+    expect(screen.getByText(t.heartNews(['Raye'], 1, 'Sunday babka'))).toBeInTheDocument();
+    first.unmount();
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+    renderCounter();
+    await waitFor(() => expect(document.getElementById('viewCounter')).toBeInTheDocument());
+    expect(screen.queryByText(t.heartNews(['Raye'], 1, 'Sunday babka'))).toBeNull();
+  });
+});

@@ -8,6 +8,7 @@ import { resolveSeason, Season, SEASONS } from '../../utils/season';
 import { getStoredSeasonPreference } from '../../services/storage';
 import { SplashEmblem } from './SplashEmblem';
 import { SeasonalField } from './SeasonalField';
+import { skyClock } from '../../utils/sky';
 import { at } from './introTiming';
 
 /**
@@ -72,6 +73,98 @@ interface SplashScreenProps {
 // Longer than its fade (index.css, .fk-splash.is-leaving).
 const LEAVE_MS = 600;
 
+// The hand-off to My Counter, in ms from its start. The counter's own entrance is timed to
+// match (index.css, My Counter): its flourish shows as this one lands, its preferences key pops
+// up as the pills reach it.
+const HANDOFF_FLOURISH = { delay: 120, duration: 900 };
+const HANDOFF_PILLS = { delay: 140, stagger: 60, duration: 720 };
+// Just after the flourish lands, when nothing of the splash is left but its particles, which
+// are the counter's own.
+const HANDOFF_MS = HANDOFF_FLOURISH.delay + HANDOFF_FLOURISH.duration + 60;
+// Leaving, things speed up as they go.
+const HANDOFF_AWAY = 'cubic-bezier(0.4, 0, 0.9, 0.6)';
+// Travelling, they ease out and settle into place.
+const HANDOFF_GLIDE = 'cubic-bezier(0.45, 0, 0.2, 1)';
+
+/** An element's centre and width on screen. */
+const placeOf = (el: Element) => {
+  const { left, top, width, height } = el.getBoundingClientRect();
+  return { x: left + width / 2, y: top + height / 2, width };
+};
+
+/**
+ * Hands the splash over to My Counter arriving beneath it, piece by piece (transforms and
+ * opacity, so all of it runs on the compositor): "Welcome to Family Kitchen" blurs away as the
+ * greeting comes into focus in its place, the heart flourish glides into the greeting's, the
+ * language, theme and text-size pills fold into the counter's preferences key (where those
+ * settings now live), the pot and the Google button sink away, and the page's colour clears to
+ * show the counter. The particles stay: the counter's are the same ones. False, doing nothing,
+ * when the page beneath isn't the counter.
+ */
+function handOver(root: HTMLElement): boolean {
+  const flourish = document.querySelector('[data-handoff="flourish"] svg');
+  const prefsKey = document.querySelector('[data-handoff="prefs"]');
+  const ownFlourish = root.querySelector('.fk-splash-flourish');
+  if (!flourish || !prefsKey || !ownFlourish || typeof root.animate !== 'function') return false;
+  root.classList.add('is-handing-over');
+
+  const away = (el: Element, keyframes: Keyframe[], delay: number, duration: number) =>
+    el.animate(keyframes, { delay, duration, easing: HANDOFF_AWAY, fill: 'both' });
+
+  root.querySelectorAll('.fk-splash-welcome > *, .fk-splash-word').forEach((word, i) =>
+    away(
+      word,
+      [
+        { opacity: 1, transform: 'none', filter: 'blur(0)' },
+        { opacity: 0, transform: 'translateY(-0.35em)', filter: 'blur(6px)' },
+      ],
+      i * 55,
+      420,
+    ),
+  );
+
+  const from = placeOf(ownFlourish);
+  const to = placeOf(flourish);
+  ownFlourish.animate(
+    [
+      { transform: 'none' },
+      {
+        transform: `translate(${to.x - from.x}px, ${to.y - from.y}px) scale(${to.width / from.width})`,
+      },
+    ],
+    { ...HANDOFF_FLOURISH, easing: HANDOFF_GLIDE, fill: 'both' },
+  );
+
+  const key = placeOf(prefsKey);
+  root.querySelectorAll('.fk-splash-pill').forEach((pill, i) => {
+    const at = placeOf(pill);
+    pill.animate(
+      [
+        { transform: 'none', opacity: 1 },
+        { opacity: 1, offset: 0.55 },
+        { transform: `translate(${key.x - at.x}px, ${key.y - at.y}px) scale(0.3)`, opacity: 0 },
+      ],
+      {
+        delay: HANDOFF_PILLS.delay + i * HANDOFF_PILLS.stagger,
+        duration: HANDOFF_PILLS.duration,
+        easing: HANDOFF_GLIDE,
+        fill: 'both',
+      },
+    );
+  });
+
+  const sink = [
+    { opacity: 1, transform: 'none' },
+    { opacity: 0, transform: 'translateY(2.5rem) scale(0.94)' },
+  ];
+  const emblem = root.querySelector('.fk-emblem');
+  if (emblem) away(emblem, sink, 60, 520);
+  root
+    .querySelectorAll('.fk-splash-google-wrap, .fk-splash-error')
+    .forEach((el) => away(el, sink, 100, 480));
+  return true;
+}
+
 /**
  * The signed-out page: the emblem draws itself, "Welcome to Family Kitchen" arrives, then the
  * language, theme and text-size pills and the Google button. It reads the stored preferences
@@ -101,7 +194,13 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     let timer = 0;
     let frame = requestAnimationFrame(() => {
       frame = requestAnimationFrame(() => {
-        rootRef.current?.classList.add('is-fading');
+        const root = rootRef.current;
+        // Over My Counter, the splash hands its pieces over to it; over anything else it fades.
+        if (root && !prefersReducedMotion() && handOver(root)) {
+          timer = window.setTimeout(onLeft, HANDOFF_MS);
+          return;
+        }
+        root?.classList.add('is-fading');
         timer = window.setTimeout(onLeft, prefersReducedMotion() ? 0 : LEAVE_MS);
       });
     });
@@ -111,7 +210,14 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     };
   }, [leaving, onLeft]);
 
-  const skipIntro = () => setPhase((p) => (p === 'intro' ? 'skipped' : p));
+  // The sky's clock when the particles start drifting (with the intro over), so they stand
+  // exactly where My Counter's particles will when the splash hands over to it.
+  const [skyAge, setSkyAge] = useState<number | undefined>();
+  const endIntro = (next: Phase) => {
+    setPhase((p) => (p === 'intro' ? next : p));
+    setSkyAge((age) => age ?? skyClock());
+  };
+  const skipIntro = () => endIntro('skipped');
 
   const swapLanguage = () => {
     toggleLanguage();
@@ -148,7 +254,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         if (isKeyboardFocus(e.target)) skipIntro();
       }}
     >
-      <SeasonalField season={season} layer="back" />
+      <SeasonalField season={season} layer="back" age={skyAge} />
       <main className="fk-splash-stage">
         {/* The greeting at the top, the pot centred below it, the controls within thumb reach. */}
         <div className="fk-splash-heading">
@@ -256,7 +362,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
               className="fk-stepper fk-splash-pill fk-a fk-anim-pill-right"
               style={at(3.5, 0.8)}
               onAnimationEnd={(e) => {
-                if (e.target === e.currentTarget) setPhase((p) => (p === 'intro' ? 'live' : p));
+                if (e.target === e.currentTarget) endIntro('live');
               }}
             >
               <button type="button" aria-label={t.decreaseTextSize} onClick={() => resize('down')}>
@@ -316,7 +422,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
           )}
         </div>
       </main>
-      <SeasonalField season={season} layer="front" />
+      <SeasonalField season={season} layer="front" age={skyAge} />
     </div>
   );
 };

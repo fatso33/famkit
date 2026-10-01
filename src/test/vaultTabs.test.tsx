@@ -46,7 +46,7 @@ describe("the Recipe Box's divider tabs", () => {
   });
 
   it('arrive with their first card, never on their own', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     expect(screen.getByRole('heading', { name: t.vaultTitle, level: 1 })).toBeInTheDocument();
     const enterAt = (el: HTMLElement) => el.style.getPropertyValue('--enter-i');
     expect(dividers().map(enterAt)).toEqual(['0', '2']);
@@ -55,7 +55,7 @@ describe("the Recipe Box's divider tabs", () => {
 
   it('drive the pinned tab by the scroll where the browser can', () => {
     vi.stubGlobal('CSS', { supports: () => true });
-    render(<App />);
+    render(<App initialPage="recipes" />);
     const tabs = dividers().map((divider) => divider.querySelector<HTMLElement>('.vault-tab')!);
     expect(tabs.map((tab) => tab.style.getPropertyValue('--tab-timeline'))).toEqual([
       '--vault-tab-0',
@@ -74,7 +74,7 @@ describe("the Recipe Box's divider tabs", () => {
   });
 
   it("leave the timelines out where the browser can't follow them", () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     const tab = document.querySelector<HTMLElement>('.vault-box .vault-tab')!;
     expect(tab.style.getPropertyValue('--tab-timeline')).toBe('');
   });

@@ -36,7 +36,7 @@ describe('the back button over a full-screen photo', () => {
   });
 
   it("takes the menu button's place, closes the photo, then goes home beside it", async () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(screen.getByRole('button', { name: 'Babka' }));
     expect(fabs().dataset.back).toBe('shown');
 
@@ -56,7 +56,7 @@ describe('the back button over a full-screen photo', () => {
   });
 
   it('comes back the same way when the photo closes by other means', async () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(screen.getByRole('button', { name: 'Babka' }));
     fireEvent.click(screen.getByRole('button', { name: 'Dough' }));
     fireEvent.keyDown(window, { key: 'Escape' });

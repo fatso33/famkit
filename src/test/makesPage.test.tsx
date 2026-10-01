@@ -46,7 +46,7 @@ describe('the Makes page', () => {
   });
 
   it('shows each make with its photo, its recipe, its words and who made it', async () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await goFromMenu(t.makes);
 
     const card = screen
@@ -65,7 +65,7 @@ describe('the Makes page', () => {
 
   it("goes from a make to its recipe, leaving this person's Recipe Box view as it was", async () => {
     localStorage.setItem('family_kitchen_vault_view', 'list');
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await goFromMenu(t.makes);
 
     fireEvent.click(
@@ -87,7 +87,7 @@ describe('the Makes page', () => {
       'family_kitchen_makes',
       JSON.stringify([{ ...make, recipeId: 'deleted-recipe' }]),
     );
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await goFromMenu(t.makes);
 
     fireEvent.click(screen.getByRole('button', { name: t.editMakeNamed('Sunday loaves') }));
@@ -107,7 +107,7 @@ describe('the Makes page', () => {
         { ...make, id: 'make-2', recipeId: 'deleted-recipe', title: 'Old loaf', createdAt: 50 },
       ]),
     );
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await goFromMenu(t.makes);
 
     expect(
@@ -120,7 +120,7 @@ describe('the Makes page', () => {
 
   it('asks for a photo and a recipe before a new make can be shared', async () => {
     localStorage.setItem('family_kitchen_makes', '[]');
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await goFromMenu(t.makes);
     expect(screen.getByText(t.makesEmptyTitle)).toBeInTheDocument();
 
@@ -135,7 +135,7 @@ describe('the Makes page', () => {
   });
 
   it('starts a make from a recipe page with that recipe picked', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(screen.getByRole('button', { name: WANDAS_CHEESE_BREAD.name }));
     chooseFromMenu(t.addMake);
 
@@ -152,7 +152,7 @@ describe('the Makes page', () => {
 
   it('picks the recipe from a searchable list', async () => {
     localStorage.setItem('family_kitchen_makes', '[]');
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await goFromMenu(t.makes);
     chooseFromMenu(t.addMake);
     const form = screen.getByRole('dialog', { name: t.addMake });
@@ -178,7 +178,7 @@ describe('the Makes page', () => {
       'family_kitchen_makes',
       JSON.stringify([{ ...make, hearts: { 'zosia@example.com': true } }]),
     );
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await goFromMenu(t.makes);
 
     fireEvent.click(screen.getByRole('button', { name: t.editMakeNamed('Sunday loaves') }));
@@ -199,7 +199,7 @@ describe('the Makes page', () => {
   });
 
   it('asks before deleting a make, and can bring it back', async () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await goFromMenu(t.makes);
 
     fireEvent.click(screen.getByRole('button', { name: t.editMakeNamed('Sunday loaves') }));
@@ -219,7 +219,7 @@ describe('the Makes page', () => {
   });
 
   it("lists a recipe's makes from its badge, and goes to one", async () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(screen.getByRole('button', { name: WANDAS_CHEESE_BREAD.name }));
 
     fireEvent.click(screen.getByRole('button', { name: t.makeCount(1) }));
@@ -232,7 +232,7 @@ describe('the Makes page', () => {
   });
 
   it('counts the makes on the recipe card, after any remixes', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     const card = screen.getByRole('button', { name: WANDAS_CHEESE_BREAD.name });
     const badge = card.querySelector('.vault-badges .make-badge');
     expect(badge).toHaveTextContent('1');

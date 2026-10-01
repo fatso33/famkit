@@ -39,7 +39,7 @@ describe('a recipe whose photos are still on their way', () => {
     window.matchMedia = vi.fn().mockReturnValue({ matches: false });
     window.scrollTo = vi.fn();
     Element.prototype.scrollIntoView = vi.fn();
-    render(<App />);
+    render(<App initialPage="recipes" />);
   });
 
   it('keeps its photo frame empty in the vault, rather than showing the no-photo tile', () => {

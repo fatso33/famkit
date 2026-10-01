@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { CurrentUser, CurrentUserContext } from '../../hooks/useCurrentUser';
+import { SplashUpContext } from '../../hooks/useSplashUp';
 import { useTheme } from '../../hooks/useTheme';
 import { useLanguage } from '../../hooks/useLanguage';
 import { ThemeToggle } from '../common/ThemeToggle';
@@ -191,7 +192,9 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
             </span>
           </div>
         )}
-        <CurrentUserContext value={currentUser}>{children}</CurrentUserContext>
+        <SplashUpContext value={Boolean(splash)}>
+          <CurrentUserContext value={currentUser}>{children}</CurrentUserContext>
+        </SplashUpContext>
       </>
     );
   };

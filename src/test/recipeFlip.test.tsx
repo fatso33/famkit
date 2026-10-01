@@ -78,7 +78,7 @@ describe('a recipe card flipping open and shut', () => {
 
   it('lifts the card out of the box, flips it open, then offers the way back', async () => {
     const transitions = playViewTransitions();
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(card());
     // Lifting first: the page hasn't changed yet.
     expect(card()).toHaveAttribute('data-lifted');
@@ -99,7 +99,7 @@ describe('a recipe card flipping open and shut', () => {
 
   it('ignores a second tap while the card lifts', () => {
     const transitions = playViewTransitions();
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(card());
     fireEvent.click(card());
     act(() => {
@@ -110,7 +110,7 @@ describe('a recipe card flipping open and shut', () => {
 
   it('folds the recipe onto its card, which flips home lifted and then drops into place', async () => {
     const transitions = playViewTransitions();
-    render(<App />);
+    render(<App initialPage="recipes" />);
     open();
     await transitions[0].finish();
 
@@ -135,7 +135,7 @@ describe('a recipe card flipping open and shut', () => {
       JSON.stringify([babka, { ...babka, id: 'sernik', name: 'Sernik', createdAt: 2000 }]),
     );
     const transitions = playViewTransitions();
-    render(<App />);
+    render(<App initialPage="recipes" />);
     open();
     await transitions[0].finish();
     fireEvent.click(backButton()!);
@@ -149,7 +149,7 @@ describe('a recipe card flipping open and shut', () => {
 
   it('fades the box in instead where the card is out of sight', async () => {
     const transitions = playViewTransitions();
-    render(<App />);
+    render(<App initialPage="recipes" />);
     open();
     await transitions[0].finish();
 
@@ -162,7 +162,7 @@ describe('a recipe card flipping open and shut', () => {
   it('opens straight away from a card out of sight', () => {
     const transitions = playViewTransitions();
     placeCards(-2000);
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(card());
     expect(transitions[0].nav).toBe('forward');
     expect(recipeHeading()).toBeInTheDocument();
@@ -170,7 +170,7 @@ describe('a recipe card flipping open and shut', () => {
 
   it('keeps the back button out beside the menu button while the menu is open', async () => {
     const transitions = playViewTransitions();
-    render(<App />);
+    render(<App initialPage="recipes" />);
     open();
     await transitions[0].finish();
 
@@ -183,7 +183,7 @@ describe('a recipe card flipping open and shut', () => {
   });
 
   it('shows the recipe and its back button at once where nothing animates', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(card());
     expect(backButton()).toBeInTheDocument();
 

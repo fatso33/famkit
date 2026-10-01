@@ -1,5 +1,5 @@
 import React, { useCallback, useId, useLayoutEffect, useRef, useState } from 'react';
-import { ArrowLeft, CookingPot, Moon, Settings, Sun, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ChefHat, CookingPot, Moon, Settings, Sun, type LucideIcon } from 'lucide-react';
 import { Language, Theme } from '../../types/recipe';
 import { AppPage } from '../../types/navigation';
 import { UiTranslations } from '../../i18n/translations';
@@ -7,6 +7,7 @@ import { useBackStep } from '../../hooks/useBackStep';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { transitionStarted } from '../../utils/viewTransition';
 import { RecipeBoxIcon } from '../common/RecipeBoxIcon';
+import { PrefsGlyph } from '../common/PrefsGlyph';
 
 /** Something to do on the current page (e.g. "Add recipe" on the vault), held in its card. */
 export interface MenuAction {
@@ -232,6 +233,8 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
 
   const settingsPage: PageEntry = { id: 'settings', label: t.settings, icon: Settings };
   const pages: PageEntry[] = [
+    // Home: the family member's own counter.
+    { id: 'counter', label: t.counter, icon: ChefHat },
     // The Recipe Box's own tin has more lines, so a lighter stroke keeps them apart.
     { id: 'recipes', label: t.recipeVault, icon: RecipeBoxIcon, strokeWidth: 1.75 },
     { id: 'makes', label: t.makes, icon: CookingPot },
@@ -448,23 +451,3 @@ const MenuPanel: React.FC<MenuPanelProps> = ({
     </div>
   );
 };
-
-/** Three sliders, whose knobs glide to new settings while the preferences are open. */
-const PrefsGlyph: React.FC = () => (
-  <svg
-    className="fk-prefs-glyph"
-    viewBox="0 0 24 24"
-    width="1.3em"
-    height="1.3em"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={1.9}
-    strokeLinecap="round"
-    aria-hidden="true"
-  >
-    <path d="M4 6.5h16M4 12h16M4 17.5h16" />
-    <circle cx="9" cy="6.5" r="2.4" />
-    <circle cx="15.5" cy="12" r="2.4" />
-    <circle cx="7.5" cy="17.5" r="2.4" />
-  </svg>
-);

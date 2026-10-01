@@ -1,6 +1,7 @@
 import { Language, RecipeCategory, VaultSortKey } from '../types/recipe';
 import { plPlural } from '../utils/polish';
 import type { Season } from '../utils/season';
+import type { GreetingId } from '../utils/greeting';
 
 /** "2h 05m" ("45m" under an hour), from a number of minutes: short, to fit a card's row. */
 function duration(minutes: number, hourMark: string): string {
@@ -15,6 +16,10 @@ const durationEn = (minutes: number) => duration(minutes, 'h');
 
 /** "2g 05m" (godziny, minuty). */
 const durationPl = (minutes: number) => duration(minutes, 'g');
+
+/** "Raye, Wanda and Ola": names joined as a sentence would. */
+const listNames = (names: readonly string[], and: string) =>
+  names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} ${and} ${names.at(-1)}`;
 
 export interface UiTranslations {
   vaultTitle: string;
@@ -414,6 +419,29 @@ export interface UiTranslations {
   recipeGone: string;
   makePhotoAlt: (title: string) => string;
   viewMakePhoto: (title: string) => string;
+  /** The home page. */
+  counter: string;
+  /** Each greeting, with {name} where the first name goes (utils/greeting). */
+  greetings: Record<GreetingId, string>;
+  /** New hearts on one of your makes: who gave them (where known), how many, and the make. */
+  heartNews: (names: readonly string[], count: number, title: string) => string;
+  freshInBox: string;
+  latestMakes: string;
+  seeAll: string;
+  seeAllRecipes: string;
+  seeAllMakes: string;
+  noDrafts: string;
+  boxEmpty: string;
+  recipeNew: string;
+  recipeUpdated: string;
+  /** Under a draft on the counter: whether it's a new recipe or an edit, and when it was saved. */
+  draftOfNew: string;
+  draftOfEdit: string;
+  draftSavedAgo: (ago: string) => string;
+  themeLabel: string;
+  /** The text size preference's label, with its size. */
+  textLabel: (percent: number) => string;
+  openMakeNamed: (title: string) => string;
   seasonSection: string;
   seasonInfo: string;
   seasonAuto: string;
@@ -814,6 +842,59 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     recipeGone: 'No longer in the Recipe Box',
     makePhotoAlt: (title: string) => `Photo: ${title}`,
     viewMakePhoto: (title: string) => `View the photo of ${title}`,
+    counter: 'My Counter',
+    greetings: {
+      goodMorning: 'Good morning, {name}',
+      coffeeFirst: 'Coffee first, {name}?',
+      breakfast: "What's for breakfast, {name}?",
+      goodAfternoon: 'Good afternoon, {name}',
+      whatsCooking: 'What are we cooking today, {name}?',
+      somethingSweet: 'Time for something sweet, {name}?',
+      goodEvening: 'Good evening, {name}',
+      dinner: "What's for dinner, {name}?",
+      tonight: 'What are we cooking tonight, {name}?',
+      midnightSnack: 'A midnight snack, {name}?',
+      stillUp: 'Still up, {name}?',
+      weekendBaking: 'Weekend baking, {name}?',
+      sundayDinner: 'Sunday dinner, {name}?',
+      seasonSpring: 'Spring is in the kitchen, {name}',
+      seasonSummer: 'Something fresh today, {name}?',
+      seasonAutumn: 'Soup weather, {name}',
+      seasonWinter: 'Something warm today, {name}?',
+      newInBox: 'Something new in the box, {name}',
+      welcomeBack: 'Welcome back, {name}',
+      wigilia: 'A peaceful Wigilia, {name}',
+      christmas: 'Merry Christmas, {name}',
+      newYear: 'Happy New Year, {name}',
+      easter: 'Happy Easter, {name}',
+      fatThursday: 'Happy Pączki Day, {name}',
+      thanksgiving: 'Happy Thanksgiving, {name}',
+    },
+    heartNews: (names: readonly string[], count: number, title: string) => {
+      const extra = count - names.length;
+      const who =
+        names.length === 0
+          ? count === 1
+            ? 'Someone in the family'
+            : `${count} of the family`
+          : listNames([...names, ...(extra > 0 ? [`${extra} more`] : [])], 'and');
+      return `${who} loved your ${title}`;
+    },
+    freshInBox: 'Fresh in the box',
+    latestMakes: 'Latest makes',
+    seeAll: 'See all',
+    seeAllRecipes: 'See all recipes',
+    seeAllMakes: 'See all makes',
+    noDrafts: 'No drafts',
+    boxEmpty: 'The Recipe Box is empty',
+    recipeNew: 'New',
+    recipeUpdated: 'Updated',
+    draftOfNew: 'New recipe',
+    draftOfEdit: 'Edit',
+    draftSavedAgo: (ago: string) => `saved ${ago}`,
+    themeLabel: 'Theme',
+    textLabel: (percent: number) => `Text ${percent}%`,
+    openMakeNamed: (title: string) => `Open the make ${title}`,
     seasonSection: 'Seasons',
     seasonInfo:
       'The colours change with the seasons. Text stays just as easy to read all year round.',
@@ -1225,6 +1306,61 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     recipeGone: 'Nie ma go już w Przepiśniku',
     makePhotoAlt: (title: string) => `Zdjęcie: ${title}`,
     viewMakePhoto: (title: string) => `Powiększ zdjęcie: ${title}`,
+    counter: 'Mój blat',
+    greetings: {
+      goodMorning: 'Dzień dobry, {name}',
+      coffeeFirst: 'Najpierw kawa, {name}?',
+      breakfast: 'Co na śniadanie, {name}?',
+      goodAfternoon: 'Miłego popołudnia, {name}',
+      whatsCooking: 'Co dziś gotujemy, {name}?',
+      somethingSweet: 'Może coś słodkiego, {name}?',
+      goodEvening: 'Dobry wieczór, {name}',
+      dinner: 'Co na kolację, {name}?',
+      tonight: 'Co gotujemy dziś wieczorem, {name}?',
+      midnightSnack: 'Coś na nocny głód, {name}?',
+      stillUp: 'Jeszcze nie śpisz, {name}?',
+      weekendBaking: 'Weekendowe pieczenie, {name}?',
+      sundayDinner: 'Niedzielny obiad, {name}?',
+      seasonSpring: 'Wiosna w kuchni, {name}',
+      seasonSummer: 'Coś lekkiego na lato, {name}?',
+      seasonAutumn: 'Pogoda na zupę, {name}',
+      seasonWinter: 'Coś na rozgrzewkę, {name}?',
+      newInBox: 'W Przepiśniku coś nowego, {name}',
+      welcomeBack: 'Witaj z powrotem, {name}',
+      wigilia: 'Spokojnej Wigilii, {name}',
+      christmas: 'Wesołych Świąt, {name}',
+      newYear: 'Szczęśliwego Nowego Roku, {name}',
+      easter: 'Wesołego Alleluja, {name}',
+      fatThursday: 'Smacznego Tłustego Czwartku, {name}',
+      thanksgiving: 'Szczęśliwego Święta Dziękczynienia, {name}',
+    },
+    heartNews: (names: readonly string[], count: number, title: string) => {
+      if (names.length === 0) {
+        return count === 1
+          ? `Nowe serduszko dla „${title}”`
+          : `${count} ${plPlural(count, 'nowe serduszko', 'nowe serduszka', 'nowych serduszek')} dla „${title}”`;
+      }
+      const extra = count - names.length;
+      const noun = count === 1 ? 'Nowe serduszko' : 'Nowe serduszka';
+      const more =
+        extra > 0 ? [`jeszcze ${extra} ${plPlural(extra, 'osoba', 'osoby', 'osób')}`] : [];
+      return `${noun} dla „${title}”: ${listNames([...names, ...more], 'i')}`;
+    },
+    freshInBox: 'Świeżo w Przepiśniku',
+    latestMakes: 'Najnowsze popisy',
+    seeAll: 'Wszystkie',
+    seeAllRecipes: 'Wszystkie przepisy',
+    seeAllMakes: 'Wszystkie popisy',
+    noDrafts: 'Nie masz szkiców',
+    boxEmpty: 'Przepiśnik jest jeszcze pusty',
+    recipeNew: 'Nowy',
+    recipeUpdated: 'Zmieniony',
+    draftOfNew: 'Nowy przepis',
+    draftOfEdit: 'Edycja',
+    draftSavedAgo: (ago: string) => `zapisany ${ago}`,
+    themeLabel: 'Motyw',
+    textLabel: (percent: number) => `Tekst ${percent}%`,
+    openMakeNamed: (title: string) => `Otwórz popis: ${title}`,
     seasonSection: 'Pory roku',
     seasonInfo:
       'Kolory zmieniają się razem z porami roku. Tekst przez cały rok czyta się równie łatwo.',

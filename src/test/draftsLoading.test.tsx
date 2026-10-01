@@ -50,7 +50,7 @@ describe('editing before the drafts have loaded', () => {
   it("offers no draft, which could replace one it hasn't seen (regression)", () => {
     render(
       <CurrentUserContext value={ola}>
-        <App />
+        <App initialPage="recipes" />
       </CurrentUserContext>,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Babka' }));

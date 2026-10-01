@@ -84,13 +84,13 @@ describe('the vault toolbar', () => {
   });
 
   it('counts the recipes and cooks under the title', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     expect(screen.getByRole('heading', { name: t.vaultTitle, level: 1 })).toBeInTheDocument();
     expect(screen.getByText(t.vaultCaption(3, 3))).toBeInTheDocument();
   });
 
   it('searches names, cooks and ingredients, ignoring accents, until the search is closed', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(screen.getByRole('button', { name: t.openSearch }));
     const field = screen.getByRole('searchbox', { name: t.openSearch });
     expect(field).toHaveFocus();
@@ -110,7 +110,7 @@ describe('the vault toolbar', () => {
   });
 
   it('filters by category from its drop-down, and the chip that shows it takes it off', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     const menu = openMenu(t.filterRecipes);
     expect(field(menu, t.categoryLabel)).toHaveFocus();
     expect(screen.queryByRole('listbox')).toBeNull();
@@ -148,7 +148,7 @@ describe('the vault toolbar', () => {
   });
 
   it('opens one drop-down at a time, and Escape folds it without closing the menu', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     const menu = openMenu(t.filterRecipes);
     unfold(menu, t.categoryLabel);
     unfold(menu, t.filterAuthor);
@@ -170,7 +170,7 @@ describe('the vault toolbar', () => {
       'wandas_recipes',
       JSON.stringify([...RECIPES, recipe('Makowiec', { author: 'babcia zosia', createdAt: 500 })]),
     );
-    render(<App />);
+    render(<App initialPage="recipes" />);
     const menu = openMenu(t.filterRecipes);
     const list = unfold(menu, t.filterAuthor);
     expect(
@@ -186,7 +186,7 @@ describe('the vault toolbar', () => {
   });
 
   it("shows only the recipes not yet opened, keeping one opened from there until it's changed", () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(screen.getByRole('button', { name: 'Plum Kompot' }));
     fireEvent.click(screen.getByRole('button', { name: t.backToRecipes }));
 
@@ -216,7 +216,7 @@ describe('the vault toolbar', () => {
     );
     render(
       <CurrentUserContext.Provider value={{ email: 'ola@example.com', name: 'Ola' }}>
-        <App />
+        <App initialPage="recipes" />
       </CurrentUserContext.Provider>,
     );
     fireEvent.click(within(openMenu(t.filterRecipes)).getByRole('switch'));
@@ -225,7 +225,7 @@ describe('the vault toolbar', () => {
   });
 
   it("doesn't say everything was opened when the rest of the filter already matches nothing", () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     const menu = openMenu(t.filterRecipes);
     fireEvent.click(option(unfold(menu, t.categoryLabel), t.recipeCategories.breakfast));
     fireEvent.click(within(menu).getByRole('switch'));
@@ -235,7 +235,7 @@ describe('the vault toolbar', () => {
   });
 
   it('keeps showing a chosen author whose last recipe was removed', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     const menu = openMenu(t.filterRecipes);
     fireEvent.click(option(unfold(menu, t.filterAuthor), 'Kasia'));
     fireEvent.keyDown(window, { key: 'Escape' });
@@ -260,7 +260,7 @@ describe('the vault toolbar', () => {
   });
 
   it('closes a menu on Escape, handing focus back to its button', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     openMenu(t.sortRecipes);
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByRole('dialog', { name: t.sortRecipes })).toBeNull();
@@ -274,7 +274,7 @@ describe('the vault toolbar', () => {
         RECIPES.map((r) => (r.name === 'Plum Kompot' ? { ...r, updatedAt: 4000 } : r)),
       ),
     );
-    const { unmount } = render(<App />);
+    const { unmount } = render(<App initialPage="recipes" />);
     expect(shownRecipes()).toEqual(['Sunday Żurek', 'Easter Babka', 'Plum Kompot']);
 
     // Last added counts a recipe's new version as added.
@@ -290,12 +290,12 @@ describe('the vault toolbar', () => {
     expect(shownRecipes()).toEqual(['Easter Babka', 'Plum Kompot', 'Sunday Żurek']);
 
     unmount();
-    render(<App />);
+    render(<App initialPage="recipes" />);
     expect(shownRecipes()).toEqual(['Easter Babka', 'Plum Kompot', 'Sunday Żurek']);
   });
 
   it('turns the chosen sort round when it is tapped again, saying which way it now runs', () => {
-    const { unmount } = render(<App />);
+    const { unmount } = render(<App initialPage="recipes" />);
     const [aToZ, zToA] = t.vaultSortOrders.name;
     const menu = openMenu(t.sortRecipes);
     const byName = choice(menu, t.vaultSorts.name);
@@ -311,12 +311,12 @@ describe('the vault toolbar', () => {
     expect(time).toHaveAccessibleName(`${t.vaultSorts.time} ${t.vaultSortOrders.time[0]}`);
 
     unmount();
-    render(<App />);
+    render(<App initialPage="recipes" />);
     expect(shownRecipes()).toEqual(['Sunday Żurek', 'Plum Kompot', 'Easter Babka']);
   });
 
   it('heads each cook’s recipes with their name when sorted by cook', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(choice(openMenu(t.sortRecipes), t.vaultSorts.cook));
     const tabs = screen.getAllByRole('heading', { level: 2 });
     expect(tabs).toHaveLength(3);
@@ -326,7 +326,7 @@ describe('the vault toolbar', () => {
   });
 
   it('heads the recipes with the category or cook filtered to, whatever the sort', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(choice(openMenu(t.sortRecipes), t.vaultSorts.name));
     expect(screen.queryByRole('heading', { level: 2 })).toBeNull();
 
@@ -338,7 +338,7 @@ describe('the vault toolbar', () => {
   });
 
   it('starts as a list, switching to cards and back with a tap anywhere on the switch', () => {
-    const { unmount } = render(<App />);
+    const { unmount } = render(<App initialPage="recipes" />);
     const layout = screen.getByRole('button', { name: `${t.recipeLayout}: ${t.layoutList}` });
     expect(document.querySelectorAll('.vault-row')).toHaveLength(3);
     // Its list half is the one showing, so a tap there switches too.
@@ -347,7 +347,7 @@ describe('the vault toolbar', () => {
     expect(document.querySelectorAll('.vault-row')).toHaveLength(0);
 
     unmount();
-    render(<App />);
+    render(<App initialPage="recipes" />);
     expect(document.querySelectorAll('.vault-row')).toHaveLength(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Easter Babka' }));
@@ -355,7 +355,7 @@ describe('the vault toolbar', () => {
   });
 
   it('offers every recipe again when nothing matches', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(screen.getByRole('button', { name: t.openSearch }));
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'pizza' } });
     expect(screen.getByText(t.noMatches)).toBeInTheDocument();

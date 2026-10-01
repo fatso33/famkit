@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within, act, waitFor } from '@testing-library/react';
 import App from '../App';
+import type { AppPage } from '../types/navigation';
 import { AddRecipeModal } from '../components/recipe-form/AddRecipeModal';
 import { CurrentUserContext } from '../hooks/useCurrentUser';
 import { UI_TEXT } from '../i18n/translations';
@@ -76,10 +77,10 @@ function openMenuItem(name: string) {
   if (panel) fireEvent.animationEnd(panel);
 }
 
-const renderApp = () =>
+const renderApp = (initialPage: AppPage = 'recipes') =>
   render(
     <CurrentUserContext value={ola}>
-      <App />
+      <App initialPage={initialPage} />
     </CurrentUserContext>,
   );
 
@@ -238,7 +239,8 @@ describe('the back gesture in the editor', () => {
   });
 
   it('closes an editor with nothing changed, like the ✕', async () => {
-    renderApp();
+    // From My Counter, which holds no entry of its own.
+    renderApp('counter');
     openMenuItem(t.addRecipe);
     await settle();
     await waitFor(() => expect(depth()).toBe(1));
@@ -248,7 +250,8 @@ describe('the back gesture in the editor', () => {
   });
 
   it('asks before closing with changes; back again keeps editing', async () => {
-    renderApp();
+    // From My Counter, which holds no entry of its own.
+    renderApp('counter');
     openMenuItem(t.addRecipe);
     await settle();
     await waitFor(() => expect(depth()).toBe(1));

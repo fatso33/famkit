@@ -14,7 +14,7 @@ describe('recipe page in Polish', () => {
   });
 
   it('shows the author, cooking time, title and back button in Polish', () => {
-    const { container } = render(<App />);
+    const { container } = render(<App initialPage="recipes" />);
     fireEvent.click(screen.getByText('Chleb Serowy Wandy'));
 
     const meta = container.querySelector<HTMLElement>('.detail-meta');

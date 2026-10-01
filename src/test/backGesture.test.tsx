@@ -34,6 +34,7 @@ const babka: Recipe = {
 };
 
 const heading = () => screen.getByRole('heading', { level: 1 });
+const counter = () => document.getElementById('viewCounter');
 const photo = () => screen.queryByRole('dialog', { name: t.photoZoomDialog });
 const editor = () =>
   screen.queryByRole('dialog', {
@@ -79,7 +80,7 @@ describe('back gesture', () => {
   });
 
   it('goes from a recipe back to the vault', async () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     openBabka();
     expect(heading()).toHaveTextContent('Babka');
 
@@ -87,19 +88,32 @@ describe('back gesture', () => {
     expect(heading()).toHaveTextContent(t.vaultTitle);
   });
 
-  it('goes from Makes back to the Recipe Box, and only from there leaves the app', async () => {
+  it('goes from the Recipe Box home to My Counter, and only from there leaves the app', async () => {
+    render(<App initialPage="recipes" />);
+    // The Recipe Box holds an entry of its own, which back undoes.
+    await historyAt(1);
+
+    await swipeBack();
+    expect(counter()).toBeInTheDocument();
+    await historyAt(0);
+    // Nothing animated it (no view transitions here), so no page motion is left marked.
+    expect(document.documentElement.dataset.nav).toBeUndefined();
+  });
+
+  it('goes from Makes home to My Counter too', async () => {
     render(<App />);
+    expect(counter()).toBeInTheDocument();
     await openMenuItem(t.makes);
     await settle();
     expect(heading()).toHaveTextContent(t.makes);
     expect(depth()).toBe(1);
 
     await swipeBack();
-    expect(heading()).toHaveTextContent(t.vaultTitle);
+    expect(counter()).toBeInTheDocument();
     await historyAt(0);
   });
 
-  it('closes a photo open on Makes first, then goes back to the Recipe Box', async () => {
+  it('closes a photo open on Makes first, then goes home', async () => {
     localStorage.setItem(
       'family_kitchen_makes',
       JSON.stringify([
@@ -113,7 +127,7 @@ describe('back gesture', () => {
         },
       ]),
     );
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await openMenuItem(t.makes);
     // The menu's entry gives way to Makes' own.
     await settle();
@@ -127,37 +141,37 @@ describe('back gesture', () => {
     expect(heading()).toHaveTextContent(t.makes);
 
     await swipeBack();
-    expect(heading()).toHaveTextContent(t.vaultTitle);
+    expect(counter()).toBeInTheDocument();
   });
 
   it('goes from Settings back to Makes when it was opened from Makes', async () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await openMenuItem(t.makes);
     await openMenuItem(t.settings);
     expect(heading()).toHaveTextContent(t.settings);
-    // The menu's own entry gives way to Settings'.
+    // The menu's own entry gives way to Settings', over Makes' own.
     await settle();
-    expect(depth()).toBe(1);
+    expect(depth()).toBe(2);
 
     await swipeBack();
     expect(heading()).toHaveTextContent(t.makes);
   });
 
   it('goes from Settings back to the vault, not the recipe it was opened from', async () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     openBabka();
     await openMenuItem(t.settings);
-    await historyAt(1);
+    await historyAt(2);
 
     await swipeBack();
     expect(heading()).toHaveTextContent(t.vaultTitle);
   });
 
   it('closes an open menu first, then goes back to the vault', async () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     openBabka();
     fireEvent.click(screen.getByRole('button', { name: t.openMenu }));
-    expect(depth()).toBe(2);
+    expect(depth()).toBe(3);
 
     await swipeBack();
     const panel = document.querySelector('.fk-menu-panel');
@@ -169,14 +183,14 @@ describe('back gesture', () => {
     expect(heading()).toHaveTextContent(t.vaultTitle);
   });
 
-  it('closes an open menu on the vault instead of leaving the app', async () => {
+  it('closes an open menu on My Counter instead of leaving the app', async () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: t.openMenu }));
     expect(depth()).toBe(1);
 
     await swipeBack();
     expect(screen.getByRole('button', { name: t.openMenu })).toBeInTheDocument();
-    expect(heading()).toHaveTextContent(t.vaultTitle);
+    expect(counter()).toBeInTheDocument();
     await historyAt(0);
   });
 
@@ -189,11 +203,11 @@ describe('back gesture', () => {
   });
 
   it('closes a photo first, then goes back to the vault', async () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     openBabka();
     fireEvent.click(screen.getByRole('button', { name: 'Kneaded dough' }));
     expect(photo()).toBeInTheDocument();
-    expect(depth()).toBe(2);
+    expect(depth()).toBe(3);
 
     await swipeBack();
     expect(photo()).toBeNull();
@@ -204,19 +218,19 @@ describe('back gesture', () => {
   });
 
   it("drops its history entries when the app's own buttons close things", async () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     openBabka();
     fireEvent.click(screen.getByRole('button', { name: 'Kneaded dough' }));
     fireEvent.click(within(photo()!).getByRole('button', { name: t.closePhotoPreview }));
-    await historyAt(1);
+    await historyAt(2);
 
     fireEvent.click(screen.getByRole('button', { name: t.backToRecipes }));
-    // Back on the main page's own entry, so the next back gesture leaves the app as usual.
-    await historyAt(0);
+    // Back on the Recipe Box's own entry, so the next back gesture goes home.
+    await historyAt(1);
   });
 
   it('asks before going back from an edit with changes, keeping them meanwhile', async () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     openBabka();
     await openMenuItem(t.editRecipe);
     fireEvent.change(within(editor()!).getByLabelText(t.recipeTitle), {
@@ -243,24 +257,24 @@ describe('back gesture', () => {
         name: t.discard,
       }),
     );
-    await historyAt(1);
+    await historyAt(2);
     await swipeBack();
     expect(heading()).toHaveTextContent(t.vaultTitle);
   });
 
   it('closes a new recipe on back, keeping what was typed on this phone', async () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     await openMenuItem(t.addRecipe);
     fireEvent.change(within(editor()!).getByLabelText(t.recipeTitle), {
       target: { value: 'Pierniczki' },
     });
     await settle();
-    await historyAt(1);
+    await historyAt(2);
 
     await swipeBack();
     await settle();
     expect(editor()).toBeNull();
     expect(localStorage.getItem('family_kitchen_recipe_draft')).toContain('Pierniczki');
-    await historyAt(0);
+    await historyAt(1);
   });
 });

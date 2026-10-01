@@ -41,7 +41,7 @@ describe('floating menu', () => {
   });
 
   it('replaces the top banner and toggles open and closed', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     expect(document.querySelector('.app-header')).toBeNull();
     expect(menuButton()).toHaveAttribute('aria-expanded', 'false');
 
@@ -55,7 +55,7 @@ describe('floating menu', () => {
   });
 
   it('marks the current page and offers Add Recipe on the vault', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     const menu = openMenu();
 
     expect(within(menu).getByRole('button', { name: t.recipeVault })).toHaveAttribute(
@@ -69,7 +69,7 @@ describe('floating menu', () => {
   });
 
   it('switches to the Makes page and swaps the page action', async () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(within(openMenu()).getByRole('button', { name: t.makes }));
     await finishMenuClosing();
 
@@ -86,7 +86,7 @@ describe('floating menu', () => {
   });
 
   it('switches language without a toast, since the whole page changes', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     const menu = openMenu();
     openPreferences(menu);
     fireEvent.click(within(menu).getByRole('button', { name: t.languageToggle }));
@@ -98,7 +98,7 @@ describe('floating menu', () => {
   });
 
   it('opens the Settings page, which explains translation and asks for no API key', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     const menu = openMenu();
     openPreferences(menu);
     fireEvent.click(within(menu).getByRole('button', { name: t.settings }));
@@ -110,11 +110,16 @@ describe('floating menu', () => {
   });
 
   it('lists the current page last, holding its own actions', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     const pages = within(openMenu()).getByRole('navigation', { name: t.pages });
     const items = within(pages).getAllByRole('button');
 
-    expect(items.map((b) => b.textContent)).toEqual([t.makes, t.recipeVault, t.addRecipe]);
+    expect(items.map((b) => b.textContent)).toEqual([
+      t.counter,
+      t.makes,
+      t.recipeVault,
+      t.addRecipe,
+    ]);
     const current = within(pages).getByRole('button', { name: t.recipeVault });
     expect(current).toHaveAttribute('aria-current', 'page');
     expect(within(pages).getByRole('list', { name: t.recipeVault })).toContainElement(
@@ -123,7 +128,7 @@ describe('floating menu', () => {
   });
 
   it('keeps the preferences folded until asked, above the pages', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     const menu = openMenu();
     const toggle = within(menu).getByRole('button', { name: t.preferences });
     const drawer = document.getElementById(toggle.getAttribute('aria-controls') ?? '');
@@ -146,7 +151,7 @@ describe('floating menu', () => {
   });
 
   it('shows Settings as the current page while on it, not in the preferences', async () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     let menu = openMenu();
     openPreferences(menu);
     fireEvent.click(within(menu).getByRole('button', { name: t.settings }));
@@ -158,7 +163,7 @@ describe('floating menu', () => {
       within(pages)
         .getAllByRole('button')
         .map((b) => b.textContent),
-    ).toEqual([t.recipeVault, t.makes, t.settings]);
+    ).toEqual([t.counter, t.recipeVault, t.makes, t.settings]);
     expect(within(pages).getByRole('button', { name: t.settings })).toHaveAttribute(
       'aria-current',
       'page',
@@ -167,7 +172,7 @@ describe('floating menu', () => {
   });
 
   it('closes on Escape and returns focus to the menu button', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     openMenu();
 
     fireEvent.keyDown(window, { key: 'Escape' });
@@ -178,7 +183,7 @@ describe('floating menu', () => {
   });
 
   it('closes when keyboard focus leaves it for the page behind', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     openMenu();
     const card = screen.getByRole('button', { name: WANDAS_CHEESE_BREAD.name });
 
@@ -191,7 +196,7 @@ describe('floating menu', () => {
   });
 
   it('stays open when focus moves between its own controls or to the menu button', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     const menu = openMenu();
 
     act(() => within(menu).getByRole('button', { name: t.makes }).focus());
@@ -201,7 +206,7 @@ describe('floating menu', () => {
   });
 
   it('offers Remix on a recipe page, whose back pill returns to the vault', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(screen.getByRole('button', { name: WANDAS_CHEESE_BREAD.name }));
 
     const menu = openMenu();
@@ -216,7 +221,7 @@ describe('floating menu', () => {
   });
 
   it("holds Download, Remix, Add Make and (last, on its own row) Edit in the recipe page's card", () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(screen.getByRole('button', { name: WANDAS_CHEESE_BREAD.name }));
     expect(screen.queryByRole('button', { name: t.editRecipe })).toBeNull();
 
@@ -243,7 +248,7 @@ describe('floating menu', () => {
   });
 
   it('keeps the back button out while the menu is open, where it closes only the menu', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     fireEvent.click(screen.getByRole('button', { name: WANDAS_CHEESE_BREAD.name }));
     const menu = openMenu();
 
@@ -269,7 +274,7 @@ describe('floating menu', () => {
   });
 
   it('switches to dark mode from the sun and moon pill', () => {
-    render(<App />);
+    render(<App initialPage="recipes" />);
     const menu = openMenu();
     openPreferences(menu);
     const dark = within(menu).getByRole('switch', { name: t.darkMode });
@@ -287,7 +292,7 @@ describe('floating menu', () => {
       return { ready: new Promise(() => {}), finished: new Promise(() => {}) };
     });
     document.startViewTransition = start as unknown as typeof document.startViewTransition;
-    render(<App />);
+    render(<App initialPage="recipes" />);
     const menu = openMenu();
     openPreferences(menu);
     const dark = within(menu).getByRole('switch', { name: t.darkMode });
