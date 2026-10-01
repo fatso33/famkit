@@ -15,6 +15,7 @@ import { useDrafts } from './hooks/useDrafts';
 import { useMakes } from './hooks/useMakes';
 import { useCounterMemory } from './hooks/useCounter';
 import { useSplashUp } from './hooks/useSplashUp';
+import { useWideScreen } from './hooks/useWideScreen';
 import { isFirebaseConfigured } from './services/firebase';
 import { canEditRecipe, isOwnRecipe } from './utils/ownership';
 import { hasLeftOutPhotos } from './utils/deviceCopy';
@@ -46,6 +47,7 @@ import {
   prefersReducedMotion,
   setFlipAxis,
   setWindowRect,
+  nameOpeningWindow,
   transitionTheme,
   transitionView,
   vaultItemKey,
@@ -65,6 +67,9 @@ import { CookingPot, Download, PencilLine, Plus, Shuffle } from 'lucide-react';
 import { canEditMake, makeCounts, makesOf } from './utils/makes';
 import { localizeMake } from './utils/makeTranslation';
 import { NavIsland, MenuAction } from './components/layout/NavIsland';
+import { NavDeck, NavDeckScrim, type DeckKind } from './components/layout/NavDeck';
+import { RecipeDeck } from './components/recipe-grid/RecipeDeck';
+import { MakesDeck } from './components/makes/MakesDeck';
 import { InstallCard } from './components/layout/InstallCard';
 import { RecipeGridView } from './components/recipe-grid/RecipeGridView';
 import {
@@ -246,8 +251,22 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
   // The recipe last opened from the vault: its card is the one that flips open and shut.
   const [lastRecipeId, setLastRecipeId] = useState<string | null>(null);
   // The page an open recipe was opened over, where back folds it onto its card: the Recipe Box,
-  // or My Counter's latest recipes.
-  const [recipeHome, setRecipeHome] = useState<'recipes' | 'counter'>('recipes');
+  // or My Counter's latest recipes; on a tablet, whatever page a card deck was raised over.
+  const [recipeHome, setRecipeHome] = useState<AppPage>('recipes');
+  // On a tablet or desktop, the Recipe Box and Makes tabs raise their card decks over the page
+  // (NavDeck). The one open, and one still folding back into its tab.
+  const wide = useWideScreen();
+  const [deck, setDeck] = useState<DeckKind | null>(null);
+  const [deckLeaving, setDeckLeaving] = useState<DeckKind | null>(null);
+  // A phone (or the window narrowed) has no decks.
+  if (!wide && (deck || deckLeaving)) {
+    setDeck(null);
+    setDeckLeaving(null);
+  }
+  const shownDeck = deckLeaving ?? deck;
+  // The open recipe was picked from a deck: with no card of its own on the page beneath to fold
+  // onto, it folds down towards the Recipe Box tab the deck rose from.
+  const [recipeFromDeck, setRecipeFromDeck] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   // The draft the editor carried on with, if any: saving it again replaces it.
@@ -375,22 +394,47 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
   // Sub-pages (a recipe, Settings) sit one level above the main pages.
   const onSubPage = page === 'settings' || (page === 'recipes' && !!selectedRecipe);
 
+  // The deck folds back into its tab (its exit, then deckLeaving clears).
+  const closeDeck = () => {
+    if (!deck) return;
+    // Mid-swap, the one already folding carries on; the one waiting to rise never does.
+    if (!deckLeaving) setDeckLeaving(deck);
+    setDeck(null);
+  };
+  // Gone at once, with a page change: it leaves with the page it was over.
+  const dropDeck = () => {
+    setDeck(null);
+    setDeckLeaving(null);
+  };
+  // Remembers where the main page on screen was scrolled to, as it's left (not from a recipe or
+  // Settings over it, whose scroll is their own).
+  const keepMainScroll = () => {
+    if (!onSubPage) mainScroll.current[page as MainPage] = window.scrollY;
+  };
+  // The tabs that raise a deck: on a tablet, the Recipe Box's and Makes', except over their own
+  // page, where the tab returns to its top as on a phone. Over a recipe both do.
+  const deckTabs: DeckKind[] = wide
+    ? (['recipes', 'makes'] as const).filter((tab) => onSubPage || tab !== page)
+    : [];
+
   // Opening a recipe: its card lifts out of the box, flips over on its middle, and the recipe
   // unfolds from the card's back (the flip motions in index.css). Then the back button springs
   // out from behind the navigation island.
   // `marked`: it was marked seen already, on the way here (a make's link).
   // `home`: the page it's opened over, the Recipe Box or My Counter, where back returns it.
+  // `fromDeck`: picked from a card deck (on a tablet), over whatever page was there.
   const handleSelectRecipe = (
     id: string,
     card?: HTMLElement,
     marked = false,
-    home: 'recipes' | 'counter' = 'recipes',
+    home: AppPage = 'recipes',
+    fromDeck = false,
   ) => {
     if (liftingCard.current) return;
     // A card left lifted by a return cut short (another page change took over) drops back first.
     dropFlippedCard();
     centreOnReturn.current = null;
-    mainScroll.current[home] = window.scrollY;
+    keepMainScroll();
     if (!marked) markSeen(id);
     // Marks the tapped card before the browser snapshots the page.
     flushSync(() => setLastRecipeId(id));
@@ -398,6 +442,9 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
       transitionView(
         () => {
           setBackShown(false);
+          // The deck goes with the page behind as the recipe unfolds from its card.
+          dropDeck();
+          setRecipeFromDeck(fromDeck);
           // Behind the recipe, the Recipe Box goes back to this person's own view.
           setBoxShowcase(null);
           setRecipeHome(home);
@@ -461,7 +508,7 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
     const fromDepth = onSubPage ? 1 : 0;
     const toDepth = target === 'settings' ? 1 : 0;
     const goingBack = toDepth < fromDepth || back;
-    if (page !== 'settings' && !onSubPage) mainScroll.current[page] = window.scrollY;
+    keepMainScroll();
     // The recipe folds away onto its card, which flips back into the page it was opened over
     // (landFlippedCard).
     const flipsBack =
@@ -479,6 +526,7 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
         flushSync(() => {
           alongside?.();
           setBackShown(false);
+          dropDeck();
           setBoxShowcase(null);
           setArrivingMake(null);
           setMakePhotoOpen(false);
@@ -496,8 +544,13 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
         centreOnReturn.current = null;
         const flipTarget = centre && document.querySelector('.vault-item.is-flip-target');
         if (flipTarget) centreOnScreen(flipTarget);
-        // Only now is the card there to measure. Out of sight, the vault simply fades in.
-        if (motion === 'flip-close' && !landFlippedCard())
+        // Only now is the card there to measure. Out of sight, the vault simply fades in; a
+        // recipe picked from a deck folds down towards the Recipe Box tab the deck rose from.
+        if (
+          motion === 'flip-close' &&
+          !landFlippedCard() &&
+          !(recipeFromDeck && setFlipAxis(document.querySelector('.nav-tab[data-tab="recipes"]')))
+        )
           document.documentElement.dataset.nav = 'fade';
       },
       {
@@ -532,8 +585,25 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
   // A tab on the navigation island. Its page slides in from the side its tab sits on; on a
   // recipe, the tab of the page it was opened over takes it back to its card, as back does
   // (the Recipe Box's tab, lit under every recipe, slides the box in when that was My Counter);
-  // the current page's own tab returns to its top.
+  // the current page's own tab returns to its top. On a tablet, the Recipe Box and Makes tabs
+  // raise their card decks instead, over any page but their own (deckTabs); tapped again, the
+  // deck folds away, and the other one swaps it.
   const selectTab = (target: MainPage) => {
+    const kind = deckTabs.find((tab) => tab === target);
+    if (kind) {
+      if (deck === kind) {
+        closeDeck();
+      } else if (deckLeaving === kind) {
+        // Tapped again as it folds away: it rises again, and any deck waiting on it never does.
+        setDeckLeaving(null);
+        setDeck(kind);
+      } else {
+        // The open one folds away first (one already folding carries on), then this one rises.
+        if (deck && !deckLeaving) setDeckLeaving(deck);
+        setDeck(kind);
+      }
+      return;
+    }
     if (page === 'recipes' && selectedRecipe) {
       if (target === recipeHome) leaveRecipe();
       else navigateTo(target, { motion: sideFrom('recipes', target), morph: false });
@@ -544,7 +614,9 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
       return;
     }
     if (target === page) {
-      window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'instant' : 'smooth' });
+      // Over its own page, the tab only folds the deck away.
+      if (deck) closeDeck();
+      else window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'instant' : 'smooth' });
       return;
     }
     navigateTo(target, { motion: sideFrom(page, target) });
@@ -570,17 +642,21 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
 
   // "See all" on a window of My Counter: the window opens out into its page, the Recipe Box or
   // Makes, which comes up inside it as it grows (the 'window-open' motion). Only the newest
-  // make's photo glides out to its card, the one sure to be at the top of Makes.
-  const openCounterWindow = (win: 'recipes' | 'makes') => {
-    mainScroll.current.counter = window.scrollY;
-    const opens =
-      !prefersReducedMotion() &&
-      setWindowRect(document.querySelector(`[data-counter-window="${win}"]`));
-    const glides = opens && win === 'makes' ? nameGlides(makeGlides(false).slice(0, 1)) : null;
+  // make's photo glides out to its card, the one sure to be at the top of Makes. A card deck's
+  // "See all" opens out of the deck the same way.
+  const openWindow = (win: 'recipes' | 'makes', from: Element | null) => {
+    keepMainScroll();
+    const opens = !prefersReducedMotion() && setWindowRect(from);
+    const glides =
+      opens && win === 'makes' && page === 'counter' && !shownDeck
+        ? nameGlides(makeGlides(false).slice(0, 1))
+        : null;
+    const unnameWindow = opens ? nameOpeningWindow(from) : null;
     transitionView(
       () => {
         flushSync(() => {
           setBackShown(false);
+          dropDeck();
           setBoxShowcase(null);
           setArrivingMake(null);
           setMakePhotoOpen(false);
@@ -593,7 +669,13 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
         jumpTo(0);
         glides?.arrive();
       },
-      { motion: opens ? 'window-open' : 'fade', always: glides?.clear },
+      {
+        motion: opens ? 'window-open' : 'fade',
+        always: () => {
+          glides?.clear();
+          unnameWindow?.();
+        },
+      },
     );
   };
 
@@ -609,6 +691,7 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
       () => {
         flushSync(() => {
           setBackShown(false);
+          dropDeck();
           setBoxShowcase(null);
           setArrivingMake(null);
           setMakePhotoOpen(false);
@@ -639,6 +722,8 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
       ? leaveRecipe(animated)
       : navigateTo(mainPage, { animated }),
   );
+  // An open card deck is the newest step: the gesture folds it away first.
+  useBackStep(deck !== null, closeDeck);
 
   // The editor opens out of the button that asked for it: the island's actions button, where "Add recipe"
   // or "Edit recipe" was chosen, unless a draft's card or chip was tapped.
@@ -856,10 +941,10 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
     );
   };
 
-  // From a make on My Counter to it on the Makes page: its photo grows from the tile into the
-  // make's card as the Makes page fades up (the 'hop' motion), opened on it.
-  const openMakeFromCounter = (makeId: string, photo: HTMLElement) => {
-    mainScroll.current.counter = window.scrollY;
+  // From a make on My Counter, or in the Makes deck, to it on the Makes page: its photo grows from
+  // the tile into the make's card as the Makes page fades up (the 'hop' motion), opened on it.
+  const openMakeFromTile = (makeId: string, photo: HTMLElement) => {
+    keepMainScroll();
     const key = vaultItemKey(makeId);
     const glides = prefersReducedMotion()
       ? null
@@ -876,6 +961,8 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
       () => {
         flushSync(() => {
           setBackShown(false);
+          dropDeck();
+          setPhotoOpenFor(null);
           setBoxShowcase(null);
           setVaultEntrance(false);
           setArrivingMake({ id: makeId, kind: 'visit' });
@@ -1073,10 +1160,15 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
             onAddMake={(from) => openMakeEditor(null, undefined, from)}
             onOpenSettings={() => navigateTo('settings')}
             onOpenRecipe={(id, card) => handleSelectRecipe(id, card, false, 'counter')}
-            flipRecipeId={lastRecipeId}
-            onSeeAllRecipes={() => openCounterWindow('recipes')}
-            onOpenMake={openMakeFromCounter}
-            onSeeAllMakes={() => openCounterWindow('makes')}
+            // While a deck is up, its card is the one that flips open (names must be unique).
+            flipRecipeId={shownDeck ? null : lastRecipeId}
+            onSeeAllRecipes={() =>
+              openWindow('recipes', document.querySelector('[data-counter-window="recipes"]'))
+            }
+            onOpenMake={openMakeFromTile}
+            onSeeAllMakes={() =>
+              openWindow('makes', document.querySelector('[data-counter-window="makes"]'))
+            }
             onOpenDraft={openDraftFromCounter}
             t={t}
           />
@@ -1140,7 +1232,8 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
             makeCounts={makeCounts(makes)}
             isSeen={(recipe) => vaultSeen.has(recipe.id) || isOwnRecipe(recipe, currentUser)}
             animateIn={vaultEntrance}
-            flipRecipeId={lastRecipeId}
+            // While a deck is up, its card is the one that flips open (names must be unique).
+            flipRecipeId={shownDeck ? null : lastRecipeId}
             onSelectRecipe={handleSelectRecipe}
             drafts={newRecipeDrafts(drafts)}
             onOpenDraft={(draft, from) => openEditor(null, draft, from)}
@@ -1158,12 +1251,57 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
         )}
       </main>
 
+      {shownDeck && <NavDeckScrim closing={!deck} onClose={closeDeck} />}
+      {shownDeck && (
+        <NavDeck
+          key={shownDeck}
+          kind={shownDeck}
+          title={shownDeck === 'recipes' ? t.recipeVault : t.makes}
+          viewAllLabel={shownDeck === 'recipes' ? t.seeAllRecipes : t.seeAllMakes}
+          onViewAll={(from) => openWindow(shownDeck, from)}
+          closing={deckLeaving !== null}
+          swapping={deck !== null}
+          onClose={closeDeck}
+          onClosed={() => setDeckLeaving(null)}
+          t={t}
+        >
+          {shownDeck === 'recipes' ? (
+            <RecipeDeck
+              recipes={recipes}
+              language={language}
+              filter={vaultFilter}
+              onFilterChange={changeVaultFilter}
+              sort={vaultSort}
+              onSortChange={changeVaultSort}
+              isSeen={(recipe) => vaultSeen.has(recipe.id) || isOwnRecipe(recipe, currentUser)}
+              makeCounts={makeCounts(makes)}
+              flipRecipeId={lastRecipeId}
+              onSelectRecipe={(id, card) =>
+                handleSelectRecipe(id, card, false, onRecipe ? recipeHome : page, true)
+              }
+              t={t}
+            />
+          ) : (
+            <MakesDeck
+              makes={makes}
+              recipes={recipes}
+              language={language}
+              onOpenMake={openMakeFromTile}
+              t={t}
+            />
+          )}
+        </NavDeck>
+      )}
+
       <NavIsland
         page={page}
         // While a recipe is open, the Recipe Box's tab is lit, its tin holding the recipe's card.
         litTab={onRecipe ? 'recipes' : mainPage}
         onRecipe={onRecipe}
         onSelectTab={selectTab}
+        deckTabs={deckTabs}
+        deck={deck}
+        onActionsOpen={closeDeck}
         // Under the panel's blurring scrim, Settings cross-fades in as the scrim clears. Never
         // the card flip back from a recipe: the scrim and panel would fold away with the recipe.
         onOpenSettings={() => navigateTo('settings', { motion: 'menu', morph: false })}
@@ -1187,7 +1325,7 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
           (photoOpen && page === 'makes') ||
           page === 'settings'
         }
-        backLabel={page === 'settings' || recipeHome === 'counter' ? t.goBack : t.backToRecipes}
+        backLabel={page === 'settings' || recipeHome !== 'recipes' ? t.goBack : t.backToRecipes}
         photoOpen={photoOpen}
         onBack={() =>
           photoOpen

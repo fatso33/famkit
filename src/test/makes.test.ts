@@ -10,6 +10,7 @@ import {
   makesOf,
   parseIsoDay,
   parseMake,
+  searchMakes,
   shownMakes,
   withHeart,
 } from '../utils/makes';
@@ -103,5 +104,32 @@ describe('makes', () => {
     expect(parseMake({ ...make(), recipeId: undefined })).toBeNull();
     expect(parseMake({ ...make(), photo: '' })).toBeNull();
     expect(parseMake('make')).toBeNull();
+  });
+
+  it('finds makes by title, recipe or maker, ignoring case and accents', () => {
+    const entries = [
+      {
+        make: make({ id: 'a', ownerName: 'Ola Kowalska' }),
+        title: 'Sunday loaves',
+        recipeName: 'Chleb',
+      },
+      {
+        make: make({ id: 'b', ownerName: 'Raye' }),
+        title: 'Chili night',
+        recipeName: "Raye's Chili",
+      },
+      { make: make({ id: 'c' }), title: 'Pierogi party', recipeName: 'Pierogi ruskie' },
+    ];
+    const ids = (query: string) => searchMakes(entries, query).map((e) => e.make.id);
+    expect(ids('')).toEqual(['a', 'b', 'c']);
+    expect(ids('   ')).toEqual(['a', 'b', 'c']);
+    expect(ids('LOAVES')).toEqual(['a']);
+    expect(ids('ruskie')).toEqual(['c']);
+    expect(ids('raye')).toEqual(['b']);
+    // The maker by the name shown on the tile ("Ola K."), not their full Google name.
+    expect(ids('ola k')).toEqual(['a']);
+    expect(ids('kowalska')).toEqual([]);
+    expect(ids('chlèb')).toEqual(['a']);
+    expect(ids('bigos')).toEqual([]);
   });
 });

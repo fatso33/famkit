@@ -2,6 +2,7 @@ import { Language } from '../types/recipe';
 import { Make, MakeTranslation } from '../types/make';
 import type { CurrentUser } from '../hooks/useCurrentUser';
 import { memberName } from './ownership';
+import { findMatch } from './vault';
 
 /**
  * Makes: what family members made from the Recipe Box's recipes, each with a photo, shared on
@@ -68,6 +69,24 @@ export function canEditMake(
 /** The maker's name, as the family's names are shown everywhere (memberName). */
 export function makerName(make: Pick<Make, 'ownerName' | 'ownerNameAsTyped'>): string {
   return make.ownerName ? memberName(make.ownerName, make.ownerNameAsTyped) : '';
+}
+
+/** A make as a list shows it: its title (or its recipe's name) in the viewer's language. */
+export interface MakeEntry {
+  make: Make;
+  title: string;
+  recipeName: string;
+}
+
+/**
+ * The makes whose title, recipe or maker has the search text in it, ignoring case and accents
+ * (as the Recipe Box's search does). Every one of them while there's no search.
+ */
+export function searchMakes<T extends MakeEntry>(entries: readonly T[], query: string): T[] {
+  if (!query.trim()) return [...entries];
+  return entries.filter(({ make, title, recipeName }) =>
+    [title, recipeName, makerName(make)].some((text) => text && findMatch(text, query)),
+  );
 }
 
 // --- Hearts --------------------------------------------------------------------------------

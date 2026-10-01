@@ -145,6 +145,19 @@ export function setWindowRect(win: Element | null): boolean {
 }
 
 /**
+ * The window a page opens out of (index.css, window-open), taken on its own so what it showed
+ * clears before the page's text comes up inside it. Returns a function that takes the name away.
+ */
+export function nameOpeningWindow(win: Element | null): () => void {
+  if (!(win instanceof HTMLElement)) return noop;
+  win.style.setProperty('view-transition-name', 'opening-window');
+  return () => {
+    if (win.style.getPropertyValue('view-transition-name') !== 'opening-window') return;
+    win.style.removeProperty('view-transition-name');
+  };
+}
+
+/**
  * Names an element so it glides on its own in the next view transition, between it and the
  * element given the same name on the other page: a recipe's name or photo, or a make's photo
  * (index.css, the glide classes). Returns a function that takes the name away again.

@@ -29,6 +29,12 @@ interface NavIslandProps {
   /** A recipe is open: the Recipe Box tab's tin holds its card pulled up (the recipe icon). */
   onRecipe: boolean;
   onSelectTab: (page: MainPage) => void;
+  /** The tabs that raise a card deck when tapped, here and now (tablets and desktops). */
+  deckTabs: readonly MainPage[];
+  /** The tab whose card deck is open, if any. */
+  deck: MainPage | null;
+  /** The actions panel opening: an open card deck makes way for it. */
+  onActionsOpen: () => void;
   onOpenSettings: () => void;
   actions: MenuAction[];
   /** What the actions panel is headed with: the page's name, or the open recipe's. */
@@ -63,7 +69,20 @@ type MenuState = 'closed' | 'open' | 'closing';
  * own small thing as it's chosen (index.css, the nav- rules).
  */
 export const NavIsland: React.FC<NavIslandProps> = (props) => {
-  const { page, litTab, onRecipe, onSelectTab, showBack, backLabel, photoOpen, onBack, t } = props;
+  const {
+    page,
+    litTab,
+    onRecipe,
+    onSelectTab,
+    deckTabs,
+    deck,
+    onActionsOpen,
+    showBack,
+    backLabel,
+    photoOpen,
+    onBack,
+    t,
+  } = props;
   const [state, setState] = useState<MenuState>('closed');
   const actionsRef = useRef<HTMLButtonElement>(null);
   const islandRef = useRef<HTMLDivElement>(null);
@@ -303,6 +322,11 @@ export const NavIsland: React.FC<NavIslandProps> = (props) => {
                 aria-label={tabNames[tab]}
                 aria-current={tab === litTab && page !== 'settings' ? 'page' : undefined}
                 data-lit={tab === litTab ? '' : undefined}
+                data-tab={tab}
+                // On a tablet the Recipe Box and Makes tabs raise their card decks (NavDeck).
+                data-deck={tab === deck ? '' : undefined}
+                aria-haspopup={deckTabs.includes(tab) ? 'dialog' : undefined}
+                aria-expanded={deckTabs.includes(tab) ? tab === deck : undefined}
                 onClick={() => chooseTab(tab)}
               >
                 <NavTabIcon page={tab} />
@@ -324,7 +348,14 @@ export const NavIsland: React.FC<NavIslandProps> = (props) => {
           aria-label={isOpen ? t.closeMenu : t.openMenu}
           aria-expanded={isOpen}
           aria-controls={state !== 'closed' ? panelId : undefined}
-          onClick={() => (isOpen ? close() : setState('open'))}
+          onClick={() => {
+            if (isOpen) {
+              close();
+              return;
+            }
+            onActionsOpen();
+            setState('open');
+          }}
         >
           <span className="nav-glyph" aria-hidden="true">
             <span />

@@ -5408,23 +5408,23 @@
         opacity: 0;
       }
 
-      .nav-tab[data-lit] .nav-hat {
+      .nav-tab:is([data-lit], [data-deck]) .nav-hat {
         animation: nav-hat-puff 0.52s ease-out;
       }
 
-      .nav-tab[data-lit] .nav-card {
+      .nav-tab:is([data-lit], [data-deck]) .nav-card {
         animation: nav-card-pop 0.76s var(--ease-glide);
       }
 
-      .nav-tab[data-lit] .nav-lid {
+      .nav-tab:is([data-lit], [data-deck]) .nav-lid {
         animation: nav-lid-lift 0.62s var(--spring-soft);
       }
 
-      .nav-tab[data-lit] .nav-steam {
+      .nav-tab:is([data-lit], [data-deck]) .nav-steam {
         animation: nav-steam 0.9s ease-out 0.12s;
       }
 
-      .nav-tab[data-lit] .nav-steam + .nav-steam {
+      .nav-tab:is([data-lit], [data-deck]) .nav-steam + .nav-steam {
         animation-delay: 0.24s;
       }
 
@@ -5486,7 +5486,7 @@
           opacity: 1;
           translate: 0 0;
         }
-        .nav-tab[data-lit] .nav-card {
+        .nav-tab:is([data-lit], [data-deck]) .nav-card {
           animation: nav-card-bob 0.76s var(--ease-glide);
         }
         @keyframes nav-card-bob {
@@ -5741,6 +5741,302 @@
         padding-top: 0.25rem;
         margin-bottom: 0;
         border-bottom: 0;
+      }
+
+      /* Card decks (NavDeck): on a tablet or desktop, the Recipe Box and Makes tabs raise their
+         cards over the page as a deck, just above the island. It opens out of its tab as a
+         growing circle (NavDeck measures the tab), its header and tools rising and its cards
+         dealt in one after another, each with a little tilt. Closing, its contents sink away
+         and the circle shrinks back into the tab. Once open, nothing clips it, so a filter or
+         sort menu can reach past its edge. */
+      .fk-menu-layer.nav-deck-scrim {
+        z-index: 60;
+      }
+
+      .nav-deck {
+        --deck-bottom: calc(1rem + env(safe-area-inset-bottom) + 3.75rem + 0.875rem);
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: var(--deck-bottom);
+        z-index: 61;
+        display: flex;
+        flex-direction: column;
+        width: min(28rem, calc(100vw - 2rem));
+        /* As tall as its cards, up to this; never shorter than it has been (NavDeck's
+           --deck-held), so a search narrowing it doesn't make it jump. */
+        --deck-max: min(
+          40rem,
+          calc(100dvh - var(--deck-bottom) - 1.5rem - env(safe-area-inset-top))
+        );
+        min-height: min(var(--deck-held, 0px), var(--deck-max));
+        max-height: var(--deck-max);
+        margin-inline: auto;
+        background: color-mix(in srgb, var(--bg-card) 60%, var(--bg-surface));
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-xl);
+        box-shadow:
+          inset 0 1px 0 var(--card-sheen),
+          0 0.875rem 1.875rem -0.875rem rgba(60, 35, 20, 0.45),
+          0 0.2rem 0.5rem -0.25rem rgba(60, 35, 20, 0.18);
+        outline: none;
+        animation: nav-deck-in 0.56s var(--ease-glide) backwards;
+      }
+
+      [data-theme='dark'] .nav-deck {
+        box-shadow:
+          inset 0 1px 0 var(--card-sheen),
+          0 0.875rem 1.875rem -0.75rem rgba(0, 0, 0, 0.8),
+          0 0.2rem 0.5rem -0.25rem rgba(0, 0, 0, 0.5);
+      }
+
+      .nav-deck.is-closing {
+        pointer-events: none;
+        animation: nav-deck-out 0.42s cubic-bezier(0.5, 0, 0.2, 1) 0.06s both;
+      }
+
+      /* Making way for the other deck, it folds away quicker, so the swap doesn't drag. */
+      @media (prefers-reduced-motion: no-preference) {
+        .nav-deck.is-closing.is-swapping {
+          animation-duration: 0.26s;
+          animation-delay: 0s;
+        }
+
+        .nav-deck.is-closing.is-swapping > * {
+          animation-duration: 0.12s;
+        }
+      }
+
+      @keyframes nav-deck-in {
+        from {
+          clip-path: circle(var(--from-r, 0px) at var(--from-x, 50%) var(--from-y, 100%));
+        }
+        to {
+          clip-path: circle(var(--to-r, 150%) at var(--from-x, 50%) var(--from-y, 100%));
+        }
+      }
+
+      @keyframes nav-deck-out {
+        from {
+          clip-path: circle(var(--to-r, 150%) at var(--from-x, 50%) var(--from-y, 100%));
+        }
+        to {
+          clip-path: circle(var(--from-r, 0px) at var(--from-x, 50%) var(--from-y, 100%));
+        }
+      }
+
+      .nav-deck-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.9rem 1rem 0.4rem 1.25rem;
+        animation: nav-deck-rise 0.38s var(--ease-glide) 0.12s backwards;
+      }
+
+      .nav-deck-title {
+        min-width: 0;
+        margin: 0;
+        font-family: var(--font-serif);
+        font-size: 1.3rem;
+        font-weight: var(--weight-heading);
+        line-height: 1.2;
+        color: var(--text-primary);
+      }
+
+      .nav-deck-all {
+        flex: none;
+        margin: 0 -0.25rem 0 0;
+      }
+
+      .nav-deck-tools {
+        padding: 0 0.85rem 0.35rem;
+        animation: nav-deck-rise 0.38s var(--ease-glide) 0.16s backwards;
+      }
+
+      /* The cards scroll inside the deck, fading out at its foot. */
+      .nav-deck-list {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 0.6rem 0.85rem 2rem;
+        scrollbar-width: thin;
+        mask-image: linear-gradient(to bottom, transparent, #000 0.6rem, #000 calc(100% - 2rem), transparent);
+      }
+
+      .nav-deck {
+        --vault-key: max(44px, 2.75rem);
+      }
+
+      .nav-deck .vault-box {
+        --vault-tab-height: 2.35rem;
+        max-width: none;
+      }
+
+      /* No scroll lean here: there's no pinned tab in the deck for cards to slip under. */
+      .nav-deck .vault-box .vault-group > .vault-slot {
+        animation: none;
+      }
+
+      .nav-deck .vault-box .vault-group > .nav-deck-deal,
+      .nav-deck-deal {
+        animation: nav-deck-deal 0.52s var(--ease-glide) calc(170ms + var(--deal, 0) * 34ms) backwards;
+      }
+
+      .nav-deck.is-closing > * {
+        animation: nav-deck-sink 0.18s ease-in both;
+      }
+
+      @keyframes nav-deck-rise {
+        from { opacity: 0; transform: translateY(0.6rem); }
+      }
+
+      @keyframes nav-deck-deal {
+        from { opacity: 0; transform: translateY(2.9rem) rotate(var(--tilt, 0deg)); }
+      }
+
+      @keyframes nav-deck-sink {
+        to { opacity: 0; transform: translateY(1.25rem); }
+      }
+
+      /* The Makes deck: a search field, and the makes as photo tiles two to a row. */
+      .nav-deck-search {
+        display: flex;
+        align-items: center;
+        min-height: var(--vault-key);
+        padding: 0 0 0 1rem;
+        border: 1px solid var(--key-edge);
+        border-radius: var(--radius-full);
+        background: var(--key-face);
+        box-shadow: var(--key-lift);
+        color: var(--text-muted);
+      }
+
+      .nav-deck-search:focus-within {
+        border-color: color-mix(in srgb, var(--accent) 55%, var(--key-edge));
+      }
+
+      .nav-deck-search-field {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        min-width: 0;
+        min-height: calc(var(--vault-key) - 2px);
+        padding-right: 1rem;
+        cursor: text;
+      }
+
+      .nav-deck-search input::-webkit-search-cancel-button {
+        appearance: none;
+      }
+
+      .nav-deck-search-clear {
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: var(--vault-key);
+        /* A full 44px target, reaching over the field's 1px border top and bottom. */
+        height: var(--vault-key);
+        margin: -1px 0 -1px -1rem;
+        border: 0;
+        border-radius: var(--radius-full);
+        background: none;
+        color: var(--text-muted);
+        cursor: pointer;
+      }
+
+      .nav-deck-search-clear:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: -4px;
+      }
+
+      .nav-deck-search input {
+        flex: 1;
+        min-width: 0;
+        padding: 0.5rem 0;
+        border: 0;
+        background: none;
+        color: var(--text-primary);
+        font: inherit;
+        font-size: 1rem;
+        outline: none;
+      }
+
+      .nav-deck-search input::placeholder {
+        color: var(--text-muted);
+      }
+
+      .nav-deck-tiles {
+        list-style: none;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+        margin: 0;
+        padding: 0.2rem 0 0;
+      }
+
+      .counter-tile.nav-deck-tile {
+        padding: 0.4rem 0.4rem 0.55rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        background: var(--bg-surface);
+        box-shadow: inset 0 1px 0 var(--card-sheen);
+      }
+
+      .nav-deck-tile .counter-tile-photo {
+        aspect-ratio: 4 / 3;
+      }
+
+      .nav-deck-tile :is(.counter-tile-title, .counter-tile-maker) {
+        padding-inline: 0.25rem;
+      }
+
+      .nav-deck-tile .counter-tile-title {
+        font-family: var(--font-serif);
+        font-size: 0.95rem;
+        font-weight: var(--weight-heading);
+      }
+
+      .nav-deck-tile:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      /* The tab whose deck is open: a short bar under it. */
+      .nav-tab[data-deck]::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        bottom: calc(var(--nav-u) * -0.3);
+        width: 1rem;
+        height: 3px;
+        margin-left: -0.5rem;
+        border-radius: 2px;
+        background: var(--accent);
+        animation: nav-deck-mark 0.36s var(--spring-soft) both;
+      }
+
+      @keyframes nav-deck-mark {
+        from { scale: 0 1; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .nav-deck {
+          animation: fk-fade-in 0.15s ease both;
+        }
+        .nav-deck.is-closing {
+          animation: fk-fade-out 0.15s ease both;
+        }
+        .nav-deck-head,
+        .nav-deck-tools,
+        .nav-deck .vault-box .vault-group > .nav-deck-deal,
+        .nav-deck-deal,
+        .nav-deck.is-closing > *,
+        .nav-tab[data-deck]::after {
+          animation: none;
+        }
       }
 
       /* Menu layer: the page behind softens into a blur + panel that blooms out of the button.
@@ -6042,13 +6338,14 @@
       .fk-menu-panel,
       .scaler-control,
       .vault-page,
+      .nav-deck,
       .editor-layer {
         --key-face: var(--bg-surface);
         --key-edge: color-mix(in srgb, var(--border-strong) 55%, var(--border-subtle));
         --key-lift: 0 1px 1px rgba(0, 0, 0, 0.04), 0 2px 5px -1px rgba(60, 35, 20, 0.16);
       }
 
-      [data-theme='dark'] :is(.fk-stepper, .fk-menu-panel, .scaler-control, .vault-page, .editor-layer) {
+      [data-theme='dark'] :is(.fk-stepper, .fk-menu-panel, .scaler-control, .vault-page, .nav-deck, .editor-layer) {
         --key-face: var(--menu-well-hover);
         --key-edge: var(--border-strong);
         --key-lift: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 2px 5px -1px rgba(0, 0, 0, 0.5);
@@ -11353,6 +11650,13 @@
         :root[data-nav='window-open']::view-transition-new(root) {
           animation: vt-window-open 0.66s cubic-bezier(0.55, 0, 0.15, 1) both;
         }
+        /* What the window showed clears first, so no text shows through the page's. */
+        :root[data-nav='window-open']::view-transition-group(opening-window) {
+          animation: none;
+        }
+        :root[data-nav='window-open']::view-transition-old(opening-window) {
+          animation: vt-fade-out 0.1s linear both;
+        }
         :root[data-nav='window-close']::view-transition-old(root) {
           z-index: 1;
           animation: vt-window-close 0.52s var(--ease-glide) both;
@@ -11367,7 +11671,9 @@
           opacity: 0;
           clip-path: inset(var(--win-top) var(--win-right) var(--win-bottom) var(--win-left) round var(--radius-lg));
         }
-        22% { opacity: 1; }
+        /* Only once what the window showed has cleared (opening-window, above). */
+        15% { opacity: 0; }
+        34% { opacity: 1; }
         to {
           clip-path: inset(0 round 0);
         }

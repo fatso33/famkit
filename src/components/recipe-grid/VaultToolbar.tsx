@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useId, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import {
   ArrowDown,
@@ -39,6 +39,8 @@ interface VaultToolbarProps {
   onSortChange: (sort: VaultSort) => void;
   view: VaultView;
   onViewChange: (view: VaultView) => void;
+  /** The list/cards switch, left out where the recipes only ever show one way (the Box deck). */
+  layoutSwitch?: boolean;
   t: UiTranslations;
 }
 
@@ -64,8 +66,10 @@ export const VaultToolbar: React.FC<VaultToolbarProps> = ({
   onSortChange,
   view,
   onViewChange,
+  layoutSwitch = true,
   t,
 }) => {
+  const searchId = useId();
   const rowRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const filterButton = useRef<HTMLButtonElement>(null);
@@ -118,21 +122,23 @@ export const VaultToolbar: React.FC<VaultToolbarProps> = ({
       <div ref={rowRef} className={`vault-toolbar${searching ? ' is-searching' : ''}`}>
         <div className="vault-tools" inert={searching}>
           {/* One switch: a tap anywhere on it moves the thumb to the other layout. */}
-          <button
-            type="button"
-            className="vault-layout"
-            data-view={view}
-            aria-label={`${t.recipeLayout}: ${view === 'cards' ? t.layoutCards : t.layoutList}`}
-            onClick={() => onViewChange(view === 'cards' ? 'list' : 'cards')}
-          >
-            <span className="vault-layout-thumb" aria-hidden="true" />
-            <span className={`vault-layout-icon${view === 'list' ? ' is-active' : ''}`}>
-              <List size="1.25em" strokeWidth={2} aria-hidden="true" />
-            </span>
-            <span className={`vault-layout-icon${view === 'cards' ? ' is-active' : ''}`}>
-              <LayoutGrid size="1.2em" strokeWidth={2} aria-hidden="true" />
-            </span>
-          </button>
+          {layoutSwitch && (
+            <button
+              type="button"
+              className="vault-layout"
+              data-view={view}
+              aria-label={`${t.recipeLayout}: ${view === 'cards' ? t.layoutCards : t.layoutList}`}
+              onClick={() => onViewChange(view === 'cards' ? 'list' : 'cards')}
+            >
+              <span className="vault-layout-thumb" aria-hidden="true" />
+              <span className={`vault-layout-icon${view === 'list' ? ' is-active' : ''}`}>
+                <List size="1.25em" strokeWidth={2} aria-hidden="true" />
+              </span>
+              <span className={`vault-layout-icon${view === 'cards' ? ' is-active' : ''}`}>
+                <LayoutGrid size="1.2em" strokeWidth={2} aria-hidden="true" />
+              </span>
+            </button>
+          )}
           <button
             ref={filterButton}
             type="button"
@@ -173,14 +179,14 @@ export const VaultToolbar: React.FC<VaultToolbarProps> = ({
             className="vault-key vault-search-key"
             aria-label={t.openSearch}
             aria-expanded={searching}
-            aria-controls="vaultSearchInput"
+            aria-controls={searchId}
             onClick={searching ? () => inputRef.current?.focus() : openSearch}
           >
             <Search size="1.3em" strokeWidth={2} aria-hidden="true" />
           </button>
           <input
             ref={inputRef}
-            id="vaultSearchInput"
+            id={searchId}
             className="vault-search-input"
             type="search"
             enterKeyHint="search"

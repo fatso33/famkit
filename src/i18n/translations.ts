@@ -448,6 +448,11 @@ export interface UiTranslations {
   /** The text size preference's label, with its size. */
   textLabel: (percent: number) => string;
   openMakeNamed: (title: string) => string;
+  /** The Makes deck's search field: its label, what it hints at, and when nothing matches. */
+  searchMakes: string;
+  searchMakesHint: string;
+  clearSearch: string;
+  noMakesMatch: string;
   seasonSection: string;
   seasonInfo: string;
   seasonAuto: string;
@@ -905,6 +910,10 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     themeLabel: 'Theme',
     textLabel: (percent: number) => `Text ${percent}%`,
     openMakeNamed: (title: string) => `Open the make ${title}`,
+    searchMakes: 'Search makes',
+    searchMakesHint: 'Makes, recipes, cooks…',
+    clearSearch: 'Clear search',
+    noMakesMatch: 'No makes match that.',
     seasonSection: 'Seasons',
     seasonInfo:
       'The colours change with the seasons. Text stays just as easy to read all year round.',
@@ -1375,6 +1384,10 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     themeLabel: 'Motyw',
     textLabel: (percent: number) => `Tekst ${percent}%`,
     openMakeNamed: (title: string) => `Otwórz popis: ${title}`,
+    searchMakes: 'Szukaj popisów',
+    searchMakesHint: 'Popisy, przepisy, autorzy…',
+    clearSearch: 'Wyczyść wyszukiwanie',
+    noMakesMatch: 'Żaden popis tu nie pasuje.',
     seasonSection: 'Pory roku',
     seasonInfo:
       'Kolory zmieniają się razem z porami roku. Tekst przez cały rok czyta się równie łatwo.',
