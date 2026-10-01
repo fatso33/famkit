@@ -241,6 +241,20 @@ describe('the navigation island', () => {
     expect(island()).toHaveAttribute('data-back', 'in');
   });
 
+  it("closes the actions panel when a tab is chosen, rather than keeping the old page's actions", async () => {
+    render(<App initialPage="recipes" />);
+    openRecipe();
+    const panel = openPanel();
+    expect(within(panel).getByRole('button', { name: t.editRecipe })).toBeInTheDocument();
+
+    fireEvent.click(tab(t.makes));
+    await act(async () => {});
+    expect(panel).toHaveClass('is-closing');
+    finishClosing();
+    expect(screen.queryByRole('dialog', { name: t.menu })).toBeNull();
+    expect(screen.getByRole('heading', { name: t.makes, level: 1 })).toBeInTheDocument();
+  });
+
   it('keeps the back button out while the panel is open, where it closes only the panel', () => {
     render(<App initialPage="recipes" />);
     openRecipe();
@@ -284,6 +298,24 @@ describe('the navigation island', () => {
     scrollTo(700);
     expect(island()).toHaveAttribute('data-compact');
     scrollTo(500);
+    expect(island()).not.toHaveAttribute('data-compact');
+    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
+  });
+
+  it('opens out again on the next page, even one of the same kind as where it shrank', () => {
+    let now = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    render(<App initialPage="recipes" />);
+    openRecipe();
+    now = 5000;
+    Object.defineProperty(window, 'scrollY', { value: 400, configurable: true });
+    fireEvent.scroll(window);
+    expect(island()).toHaveAttribute('data-compact');
+
+    // Back to the box, then another recipe (the same one will do): it opens at its top.
+    fireEvent.click(screen.getByRole('button', { name: t.backToRecipes }));
+    expect(island()).not.toHaveAttribute('data-compact');
+    openRecipe();
     expect(island()).not.toHaveAttribute('data-compact');
     Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
   });

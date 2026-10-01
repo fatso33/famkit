@@ -88,7 +88,7 @@ import {
   VaultSort,
   VaultView,
 } from './types/recipe';
-import { AppPage, MainPage } from './types/navigation';
+import { AppPage, MAIN_PAGES, MainPage } from './types/navigation';
 import { Make, MakeContent } from './types/make';
 
 // Page changes jump straight to their scroll position: html's smooth scrolling would
@@ -108,10 +108,9 @@ const centreOnScreen = (el: Element) => {
   jumpTo(Math.max(0, window.scrollY + top + height / 2 - window.innerHeight / 2));
 };
 
-// The navigation island's tabs, left to right: a page slides in from its tab's side.
-const TAB_ORDER: MainPage[] = ['counter', 'recipes', 'makes'];
+// A main page slides in from the side its tab sits on, on the navigation island.
 const sideFrom = (from: MainPage, to: MainPage): NavMotion =>
-  TAB_ORDER.indexOf(to) > TAB_ORDER.indexOf(from) ? 'side-next' : 'side-prev';
+  MAIN_PAGES.indexOf(to) > MAIN_PAGES.indexOf(from) ? 'side-next' : 'side-prev';
 
 // How long a tapped card takes to lift out of the box before it flips (index.css, data-lifted).
 const CARD_LIFT_MS = 200;

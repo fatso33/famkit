@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { EMBLEM_PATHS as P } from './emblemPaths';
 import { at } from './introTiming';
 import { prefersReducedMotion } from '../../utils/viewTransition';
+import { tick } from '../../utils/haptics';
 import type { Season } from '../../utils/season';
 import { between, LANDER, scatter } from '../../utils/splashParticles';
 import { useLidLander } from '../../hooks/useLidLander';
@@ -122,7 +123,7 @@ export const SplashEmblem: React.FC<SplashEmblemProps> = ({ label, canTap, seaso
   const buzzOnLanding = (e: React.AnimationEvent) => {
     // A light buzz as the lid lands on the pot (Android; other phones ignore it).
     if (e.target === e.currentTarget && e.animationName === 'fk-emblem-jolt') {
-      navigator.vibrate?.(12);
+      tick(12);
     }
   };
 

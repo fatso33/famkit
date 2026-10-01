@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState
 import { createPortal } from 'react-dom';
 import { ArrowLeft, ChefHat, CookingPot, Moon, Settings, Sun, type LucideIcon } from 'lucide-react';
 import { Language, Theme } from '../../types/recipe';
-import { AppPage, MainPage } from '../../types/navigation';
+import { AppPage, MAIN_PAGES, MainPage } from '../../types/navigation';
 import { UiTranslations } from '../../i18n/translations';
 import { useBackStep } from '../../hooks/useBackStep';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
@@ -50,7 +50,7 @@ interface NavIslandProps {
   t: UiTranslations;
 }
 
-const TABS: MainPage[] = ['counter', 'recipes', 'makes'];
+const TABS = MAIN_PAGES;
 
 // 'closing' keeps the panel mounted until its exit animation ends.
 type MenuState = 'closed' | 'open' | 'closing';
@@ -81,6 +81,12 @@ export const NavIsland: React.FC<NavIslandProps> = (props) => {
   // page's remembered spot as it arrives isn't the reader scrolling, so a moment is let pass.
   const view = onRecipe ? 'recipe' : page;
   const [compactOn, setCompactOn] = useState<string | null>(null);
+  // Leaving the page forgets it, so the next page of the same kind (another recipe) starts open.
+  const [compactView, setCompactView] = useState(view);
+  if (compactView !== view) {
+    setCompactView(view);
+    setCompactOn(null);
+  }
   const compact = compactOn === view && state === 'closed' && !photoOpen;
   const viewRef = useRef(view);
   const viewSince = useRef(0);
@@ -138,10 +144,10 @@ export const NavIsland: React.FC<NavIslandProps> = (props) => {
   // letting go there chooses it.
   const drag = useRef<{ x: number; over: number; moving: boolean } | null>(null);
   const dragged = useRef(false);
-  const tabAt = (clientX: number, nav: HTMLElement) => {
-    const r = nav.getBoundingClientRect();
-    const w = r.width / TABS.length;
-    return Math.max(0, Math.min(TABS.length - 1, Math.floor((clientX - r.left) / w)));
+  // The tabs start past the pill's padding, where the highlight rests (its offsetLeft).
+  const tabAt = (clientX: number, nav: HTMLElement, ind: HTMLElement) => {
+    const x = clientX - nav.getBoundingClientRect().left - ind.offsetLeft;
+    return Math.max(0, Math.min(TABS.length - 1, Math.floor(x / ind.offsetWidth)));
   };
   const onPointerDown = (e: React.PointerEvent<HTMLElement>) => {
     // A drag's own click may never arrive (the pointer was captured), so it's forgotten here.
@@ -160,9 +166,9 @@ export const NavIsland: React.FC<NavIslandProps> = (props) => {
     }
     const nav = e.currentTarget;
     const w = ind.offsetWidth;
-    const x = e.clientX - nav.getBoundingClientRect().left - w / 2;
+    const x = e.clientX - nav.getBoundingClientRect().left - ind.offsetLeft - w / 2;
     ind.style.transform = `translateX(${Math.max(0, Math.min((TABS.length - 1) * w, x))}px)`;
-    const over = tabAt(e.clientX, nav);
+    const over = tabAt(e.clientX, nav, ind);
     if (over !== d.over) {
       d.over = over;
       tick();
@@ -179,19 +185,25 @@ export const NavIsland: React.FC<NavIslandProps> = (props) => {
     drag.current = null;
     if (!d?.moving) return;
     dragged.current = true;
+    // Let go back on the current tab, or cut short, the drag chooses nothing.
+    const chosen = e.type === 'pointerup' && d.over !== lit;
+    const to = chosen ? d.over : lit;
     const ind = indRef.current;
     if (ind) {
       const from = ind.style.transform;
       ind.style.removeProperty('transform');
-      ind.animate?.(
-        [{ transform: from }, { transform: `translateX(${d.over * ind.offsetWidth}px)` }],
-        {
-          duration: 320,
-          easing: 'cubic-bezier(0.32, 0.72, 0, 1)',
-        },
-      );
+      ind.animate?.([{ transform: from }, { transform: `translateX(${to * ind.offsetWidth}px)` }], {
+        duration: 320,
+        easing: 'cubic-bezier(0.32, 0.72, 0, 1)',
+      });
     }
-    if (e.type === 'pointerup') onSelectTab(TABS[d.over]);
+    if (chosen) selectTab(TABS[d.over]);
+  };
+
+  // A page chosen with the panel open takes the panel away with the page it belonged to.
+  const selectTab = (target: MainPage) => {
+    if (isOpen) setState('closing');
+    onSelectTab(target);
   };
 
   const chooseTab = (target: MainPage) => {
@@ -200,7 +212,7 @@ export const NavIsland: React.FC<NavIslandProps> = (props) => {
       return;
     }
     if (TABS[lit] !== target) tick();
-    onSelectTab(target);
+    selectTab(target);
   };
 
   const back = photoOpen ? 'photo' : backOut ? 'out' : backEverShown ? 'in' : 'none';
