@@ -190,6 +190,31 @@ describe('remixing a recipe', () => {
     expect(original).toEqual(babka);
   });
 
+  it("takes a remix saved from a make's recipe back to its card in the box, not to Makes", async () => {
+    localStorage.setItem(
+      'family_kitchen_makes',
+      JSON.stringify([
+        { id: 'make-1', recipeId: 'babka', title: 'Sunday babka', photo: 'data:,', createdAt: 1 },
+      ]),
+    );
+    renderApp();
+    fireEvent.click(screen.getByRole('button', { name: t.makes }));
+    await act(async () => {});
+    fireEvent.click(screen.getByRole('button', { name: t.openRecipeNamed('Babka') }));
+    expect(heading()).toHaveTextContent('Babka');
+
+    openMenuItem(t.remixRecipe);
+    fireEvent.change(within(editor()!).getByLabelText(t.recipeTitle), {
+      target: { value: 'Babka Kasi' },
+    });
+    chooseSave(/^Save to Recipe Box/);
+    await waitFor(() => expect(editor()).toBeNull());
+    expect(heading()).toHaveTextContent('Babka Kasi');
+
+    backToVault();
+    expect(heading()).toHaveTextContent(t.vaultTitle);
+  });
+
   it('links a remix and its original both ways from their pages', async () => {
     localStorage.setItem(
       'wandas_recipes',

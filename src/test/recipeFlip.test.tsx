@@ -182,6 +182,52 @@ describe('a recipe card flipping open and shut', () => {
     expect(within(menu).getByRole('button', { name: t.remixRecipe })).toBeInTheDocument();
   });
 
+  it("returns from a make's recipe to Makes where it was left, the name flying into the link", async () => {
+    localStorage.setItem(
+      'family_kitchen_makes',
+      JSON.stringify([
+        {
+          id: 'make-1',
+          recipeId: 'babka',
+          title: 'Sunday babka',
+          photo: 'data:image/jpeg;base64,BABKA',
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ]),
+    );
+    const realScrollY = Object.getOwnPropertyDescriptor(window, 'scrollY');
+    let scrollY = 640;
+    Object.defineProperty(window, 'scrollY', { get: () => scrollY, configurable: true });
+    const transitions = playViewTransitions();
+    try {
+      render(<App initialPage="makes" />);
+      fireEvent.click(screen.getByRole('button', { name: t.openRecipeNamed('Babka') }));
+      expect(transitions[0].nav).toBe('to-box');
+      // The box scrolled its card into the middle: the page Makes was left at mustn't take that.
+      scrollY = 900;
+      await transitions[0].finish();
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+      expect(transitions[1].nav).toBe('flip-open');
+      await transitions[1].finish();
+
+      fireEvent.click(screen.getByRole('button', { name: t.goBack }));
+      expect(transitions[2].nav).toBe('to-makes');
+      expect(screen.getByRole('heading', { name: t.makes, level: 1 })).toBeInTheDocument();
+      expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 640, behavior: 'instant' });
+      const link = document.querySelector<HTMLElement>('#make-make-1 .make-recipe-name')!;
+      expect(link.style.viewTransitionName).toBe('recipe-title');
+
+      await transitions[2].finish();
+      expect(link.style.viewTransitionName).toBe('');
+    } finally {
+      if (realScrollY) Object.defineProperty(window, 'scrollY', realScrollY);
+      else Reflect.deleteProperty(window, 'scrollY');
+    }
+  });
+
   it('shows the recipe and its back button at once where nothing animates', () => {
     render(<App initialPage="recipes" />);
     fireEvent.click(card());

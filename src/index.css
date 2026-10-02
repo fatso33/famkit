@@ -496,23 +496,23 @@
          group (a lifted snapshot only sees itself, so the glass would turn clear mid-move). A
          photo opening or closing leaves the pill and its menu capsule in the page, fading with
          it, so no blur lingers over the photo where the pill was. */
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='to-makes'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
         .nav-pill {
         view-transition-name: fk-pill;
       }
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='to-makes'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
         .nav-actions {
         view-transition-name: fk-cap;
       }
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='to-makes'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
         .nav-panel-shade {
         view-transition-name: fk-panel;
       }
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'], [data-nav='zoom'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='to-makes'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'], [data-nav='zoom'])
         .nav-island:is([data-back='out'], [data-back='photo']) .nav-back {
         view-transition-name: fk-back;
       }
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='to-makes'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
         .app-toast {
         view-transition-name: fk-toast;
       }
@@ -10886,6 +10886,34 @@
       :root[data-nav='to-box']::view-transition-new(root) {
         animation: vt-box-forward 0.42s var(--ease-glide) 0.14s both;
       }
+      /* Back from a recipe opened from a make's link (App, the 'to-makes' motion): the recipe
+         recedes and Makes comes forward where it was left, while the recipe's title flies back
+         into the link and shrinks into its name there. The big title is the one that flies (a
+         raster shrunk stays sharp), handing over to the link's own name as it lands. */
+      :root[data-nav='to-makes']::view-transition-old(root) {
+        animation: vt-recede 0.16s var(--ease-accelerate) both;
+      }
+      :root[data-nav='to-makes']::view-transition-new(root) {
+        animation: vt-come-forward 0.42s var(--ease-glide) 0.18s both;
+      }
+      :root[data-nav='to-makes']::view-transition-old(recipe-title),
+      :root[data-nav='to-makes']::view-transition-new(recipe-title) {
+        display: block;
+        height: 100%;
+        object-fit: contain;
+        object-position: left center;
+      }
+      :root[data-nav='to-makes']::view-transition-old(recipe-title) {
+        animation: vt-fade-out 0.14s linear 0.34s both;
+      }
+      :root[data-nav='to-makes']::view-transition-new(recipe-title) {
+        animation: fk-fade-in 0.14s linear 0.32s both;
+      }
+      /* The link isn't there to land in: the title goes with the recipe. */
+      :root[data-nav='to-makes']:not([data-morph])::view-transition-old(recipe-title) {
+        animation: vt-recede 0.2s var(--ease-accelerate) both;
+      }
+
       @keyframes vt-box-forward {
         from {
           opacity: 0;

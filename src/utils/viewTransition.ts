@@ -9,6 +9,8 @@ import { holdLean, releaseLean } from './vaultLean';
  * - side-next / side-prev: a main page chosen on the navigation island, sliding in from the side
  *   its tab sits on (next: from the right)
  * - hop: from one recipe to another (a remix popover's link): the new page fades up over the old
+ * - to-box: from a make's recipe link to the recipe's card in the Recipe Box; to-makes: back from
+ *   that recipe to Makes, its name flying back into the link
  * - menu: a page chosen from the open menu, cross-fading under its blurring scrim as it clears
  * - zoom: a photo opening over the page, or closing
  * - vault: the vault's recipes re-filtered or re-sorted, gliding to their new places
@@ -26,6 +28,7 @@ export type NavMotion =
   | 'side-prev'
   | 'hop'
   | 'to-box'
+  | 'to-makes'
   | 'menu'
   | 'zoom'
   | 'vault'

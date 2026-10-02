@@ -75,11 +75,26 @@ describe('the Makes page', () => {
       await screen.findByRole('heading', { name: WANDAS_CHEESE_BREAD.name, level: 1 }),
     ).toBeInTheDocument();
     expect(localStorage.getItem('family_kitchen_vault_view')).toBe('list');
+  });
 
-    // Back returns to the Recipe Box, in this person's own view.
-    fireEvent.click(screen.getByRole('button', { name: t.backToRecipes }));
-    expect(screen.getByRole('heading', { name: t.vaultTitle, level: 1 })).toBeInTheDocument();
-    expect(document.querySelector('.vault-box')).toHaveClass('is-list');
+  it('goes back from a make’s recipe to Makes, where it was left', async () => {
+    render(<App initialPage="recipes" />);
+    await goFromMenu(t.makes);
+    const realScrollY = Object.getOwnPropertyDescriptor(window, 'scrollY');
+    Object.defineProperty(window, 'scrollY', { value: 640, configurable: true });
+    try {
+      fireEvent.click(
+        screen.getByRole('button', { name: t.openRecipeNamed(WANDAS_CHEESE_BREAD.name) }),
+      );
+      await screen.findByRole('heading', { name: WANDAS_CHEESE_BREAD.name, level: 1 });
+
+      fireEvent.click(screen.getByRole('button', { name: t.goBack }));
+      expect(screen.getByRole('heading', { name: t.makes, level: 1 })).toBeInTheDocument();
+      expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 640, behavior: 'instant' });
+    } finally {
+      if (realScrollY) Object.defineProperty(window, 'scrollY', realScrollY);
+      else Reflect.deleteProperty(window, 'scrollY');
+    }
   });
 
   it('saves an edit to a make whose recipe has since been deleted', async () => {
