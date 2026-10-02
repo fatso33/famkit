@@ -2,6 +2,7 @@ import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { useBackStep } from '../../hooks/useBackStep';
 import { UiTranslations } from '../../i18n/translations';
+import { lockPageScroll } from '../../utils/scrollLock';
 
 interface ImageZoomModalProps {
   imageSrc: string;
@@ -22,12 +23,7 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClos
   useBackStep(true, onClose);
 
   // Lock page scroll behind the lightbox.
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, []);
+  useEffect(() => lockPageScroll(), []);
 
   // Setters only, so these stay the same across renders and the key listener is added once.
   const handleZoomIn = useCallback(

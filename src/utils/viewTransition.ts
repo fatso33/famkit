@@ -109,6 +109,16 @@ export function transitionStarted(): Promise<void> {
   return current ? current.ready.then(noop, noop) : Promise.resolve();
 }
 
+/**
+ * Resolves once no page transition is under way: the one running has finished, and so has any
+ * that cut it short. Resolves at once when nothing is running.
+ */
+export async function transitionFinished(): Promise<void> {
+  // Each one's own tidying up (transitionView) runs first, clearing `current` unless a newer
+  // transition has taken over.
+  while (current) await current.finished.then(noop, noop);
+}
+
 const noop = () => {};
 
 /**
