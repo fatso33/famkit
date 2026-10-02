@@ -50,6 +50,7 @@ import {
   setFlipAxis,
   setWindowRect,
   nameOpeningWindow,
+  nameTransitionPart,
   transitionTheme,
   transitionView,
   vaultItemKey,
@@ -696,6 +697,11 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
     // Only a transition the app animates itself folds the page away (not the iOS back swipe).
     const folds = animated && !prefersReducedMotion() && !!document.startViewTransition;
     const glides = folds && win === 'makes' ? nameGlides(makeGlides(true)) : null;
+    // The page shrinks from the whole screen into the window, as a card (index.css): the frame
+    // is the card, taken from the page being left only.
+    const unnameFrame = folds
+      ? nameTransitionPart(document.querySelector('.vt-page-frame'), 'page-window')
+      : null;
     transitionView(
       () => {
         flushSync(() => {
@@ -709,6 +715,7 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
           setSelectedRecipeId(null);
         });
         jumpTo(mainScroll.current.counter);
+        unnameFrame?.();
         // Only now is the window there to measure. Out of sight, the counter simply comes back.
         if (!folds) return;
         if (setWindowRect(document.querySelector(`[data-counter-window="${win}"]`))) {
@@ -717,7 +724,14 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
           document.documentElement.dataset.nav = 'back';
         }
       },
-      { motion: 'window-close', animated, always: glides?.clear },
+      {
+        motion: 'window-close',
+        animated,
+        always: () => {
+          glides?.clear();
+          unnameFrame?.();
+        },
+      },
     );
   };
 
@@ -1262,6 +1276,9 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
           />
         )}
       </main>
+
+      {/* The screen-sized frame a page shrinks from into its window on My Counter. */}
+      <div className="vt-page-frame" aria-hidden="true" />
 
       {shownDeck && <NavDeckScrim closing={!deck} onClose={closeDeck} />}
       {shownDeck && (

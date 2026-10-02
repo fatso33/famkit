@@ -11828,13 +11828,57 @@
         :root[data-nav='window-open']::view-transition-old(opening-window) {
           animation: vt-fade-out 0.1s linear both;
         }
+        /* Back, the page shrinks into its window as a card (App, returnToCounter): what the page
+           showed dissolves into the card's plain face early on, so it's never squeezed into the
+           window, and the face clears off the counter's own window as the card lands there. The
+           page and the card (the screen-sized frame, page-window) shrink on one curve, so they
+           stay one shape. Only the page being left is a snapshot: WebKit draws a window's snapshot
+           taken on the arriving page blank. Layered explicitly, as WebKit lets the page's
+           z-index reach past its own group: the page, its card's face over it, the photos gliding
+           home over that, the island over all (fk-pill). */
         :root[data-nav='window-close']::view-transition-old(root) {
           z-index: 1;
-          animation: vt-window-close 0.52s var(--ease-glide) both;
+          animation:
+            vt-window-close var(--window-fold) both,
+            vt-fade-out 0.06s linear 0.14s both;
         }
         :root[data-nav='window-close']::view-transition-new(root) {
-          animation: vt-come-forward 0.5s var(--ease-soft) 0.04s both;
+          animation: vt-counter-settle var(--window-fold) both;
         }
+        :root[data-nav='window-close']::view-transition-group(page-window) {
+          z-index: 2;
+          animation: vt-window-close var(--window-fold) both;
+        }
+        :root[data-nav='window-close']::view-transition-old(page-window) {
+          height: 100%;
+          background: var(--bg-surface);
+          animation: vt-card-face 0.56s linear both;
+        }
+        :root[data-nav='window-close']::view-transition-group(*.glide-photo) {
+          z-index: 3;
+        }
+      }
+      /* The card's plain face: over the page as it dissolves, then clearing off the window. */
+      @keyframes vt-card-face {
+        from { opacity: 0; }
+        25% { opacity: 1; }
+        50% { opacity: 1; }
+        85% { opacity: 0; }
+        to { opacity: 0; }
+      }
+      :root {
+        --window-fold-curve: var(--ease-glide);
+        --window-fold: 0.56s var(--window-fold-curve);
+      }
+      /* The frame the page shrinks from: the screen, with nothing on it (App). */
+      .vt-page-frame {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+      }
+      @keyframes vt-counter-settle {
+        from { transform: scale(0.985); }
       }
       /* The page comes up inside the window as it grows, rather than cutting in at once. */
       @keyframes vt-window-open {
@@ -11853,10 +11897,8 @@
         from {
           clip-path: inset(0 round 0);
         }
-        70% { opacity: 1; }
         to {
           clip-path: inset(var(--win-top) var(--win-right) var(--win-bottom) var(--win-left) round var(--radius-lg));
-          opacity: 0;
         }
       }
 

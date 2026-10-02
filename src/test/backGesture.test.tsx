@@ -113,6 +113,48 @@ describe('back gesture', () => {
     await historyAt(0);
   });
 
+  it('folds the Recipe Box into its window as a card', async () => {
+    const realRect = Element.prototype.getBoundingClientRect;
+    // Everything on screen, so the window is there to fold into.
+    Element.prototype.getBoundingClientRect = () =>
+      ({ top: 300, bottom: 400, height: 100, width: 320, left: 0, right: 320 }) as DOMRect;
+    let finish = () => {};
+    let frameAtCapture = '';
+    document.startViewTransition = vi.fn((update: () => void) => {
+      frameAtCapture =
+        document.querySelector<HTMLElement>('.vt-page-frame')!.style.viewTransitionName;
+      update();
+      return {
+        finished: new Promise<void>((resolve) => (finish = resolve)),
+        ready: Promise.resolve(),
+      } as unknown as ViewTransition;
+    }) as unknown as typeof document.startViewTransition;
+    try {
+      render(<App initialPage="recipes" />);
+      await historyAt(1);
+
+      await swipeBack();
+      expect(counter()).toBeInTheDocument();
+      expect(document.documentElement.dataset.nav).toBe('window-close');
+      // The page's end of the card is the screen-sized frame, named as the old page is captured.
+      expect(frameAtCapture).toBe('page-window');
+      // The card is the old page's alone (WebKit draws one taken on the new page blank), shrinking
+      // to the window's place.
+      const frame = document.querySelector<HTMLElement>('.vt-page-frame')!;
+      expect(frame.style.viewTransitionName).toBe('');
+      const root = document.documentElement;
+      expect(root.style.getPropertyValue('--win-top')).toBe('300px');
+      expect(root.style.getPropertyValue('--win-bottom')).toBe(`${window.innerHeight - 400}px`);
+
+      await act(async () => finish());
+      expect(root.dataset.nav).toBeUndefined();
+      expect(root.style.getPropertyValue('--win-top')).toBe('');
+    } finally {
+      Element.prototype.getBoundingClientRect = realRect;
+      Reflect.deleteProperty(document, 'startViewTransition');
+    }
+  });
+
   it('closes a photo open on Makes first, then goes home', async () => {
     localStorage.setItem(
       'family_kitchen_makes',

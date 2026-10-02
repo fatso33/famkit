@@ -166,11 +166,19 @@ export function setWindowRect(win: Element | null): boolean {
  * clears before the page's text comes up inside it. Returns a function that takes the name away.
  */
 export function nameOpeningWindow(win: Element | null): () => void {
-  if (!(win instanceof HTMLElement)) return noop;
-  win.style.setProperty('view-transition-name', 'opening-window');
+  return nameTransitionPart(win, 'opening-window');
+}
+
+/**
+ * Gives an element a view transition name of its own, for the next transition. Returns a
+ * function that takes the name away again, unless it has been given another one since.
+ */
+export function nameTransitionPart(el: Element | null, name: string): () => void {
+  if (!(el instanceof HTMLElement)) return noop;
+  el.style.setProperty('view-transition-name', name);
   return () => {
-    if (win.style.getPropertyValue('view-transition-name') !== 'opening-window') return;
-    win.style.removeProperty('view-transition-name');
+    if (el.style.getPropertyValue('view-transition-name') !== name) return;
+    el.style.removeProperty('view-transition-name');
   };
 }
 
