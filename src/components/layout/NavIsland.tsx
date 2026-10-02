@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, ChefHat, CookingPot, Moon, Settings, Sun, type LucideIcon } from 'lucide-react';
 import { Language, Theme } from '../../types/recipe';
@@ -64,9 +64,8 @@ type MenuState = 'closed' | 'open' | 'closing';
 /**
  * The navigation island: a pill of the three main pages, centred at the foot of the screen,
  * with two capsules tucked behind its ends. The one on the right unrolls into the current page's
- * actions; on a recipe or Settings, a back button slides out from behind the left end. The pill
- * shrinks to the current page while the page scrolls down, and the current tab's icon does its
- * own small thing as it's chosen (index.css, the nav- rules).
+ * actions; on a recipe or Settings, a back button slides out from behind the left end. The
+ * current tab's icon does its own small thing as it's chosen (index.css, the nav- rules).
  */
 export const NavIsland: React.FC<NavIslandProps> = (props) => {
   const {
@@ -94,38 +93,6 @@ export const NavIsland: React.FC<NavIslandProps> = (props) => {
   const [backEverShown, setBackEverShown] = useState(false);
   const backOut = showBack || photoOpen;
   if (backOut && !backEverShown) setBackEverShown(true);
-
-  // While the page scrolls down the pill shrinks to the current page; scrolling up opens it out.
-  // It belongs to the page it shrank on: any other page starts with it open. The jump to a
-  // page's remembered spot as it arrives isn't the reader scrolling, so a moment is let pass.
-  const view = onRecipe ? 'recipe' : page;
-  const [compactOn, setCompactOn] = useState<string | null>(null);
-  // Leaving the page forgets it, so the next page of the same kind (another recipe) starts open.
-  const [compactView, setCompactView] = useState(view);
-  if (compactView !== view) {
-    setCompactView(view);
-    setCompactOn(null);
-  }
-  const compact = compactOn === view && state === 'closed' && !photoOpen;
-  const viewRef = useRef(view);
-  const viewSince = useRef(0);
-  useEffect(() => {
-    viewRef.current = view;
-    viewSince.current = performance.now();
-  }, [view]);
-  useEffect(() => {
-    let last = window.scrollY;
-    const onScroll = () => {
-      const y = window.scrollY;
-      const dy = y - last;
-      if (Math.abs(dy) < 6) return;
-      last = y;
-      if (performance.now() - viewSince.current < 700) return;
-      setCompactOn(dy > 0 && y > 160 ? viewRef.current : null);
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   const close = useCallback(() => {
     setState('closing');
@@ -171,7 +138,7 @@ export const NavIsland: React.FC<NavIslandProps> = (props) => {
   const onPointerDown = (e: React.PointerEvent<HTMLElement>) => {
     // A drag's own click may never arrive (the pointer was captured), so it's forgotten here.
     dragged.current = false;
-    if (compact || e.pointerType === 'mouse') return;
+    if (e.pointerType === 'mouse') return;
     drag.current = { x: e.clientX, over: lit, moving: false };
   };
   const onPointerMove = (e: React.PointerEvent<HTMLElement>) => {
@@ -253,7 +220,6 @@ export const NavIsland: React.FC<NavIslandProps> = (props) => {
         className="nav-island"
         data-back={back}
         data-menu={state === 'closed' ? undefined : state}
-        data-compact={compact ? '' : undefined}
         data-recipe={onRecipe ? '' : undefined}
         style={{ '--lit': lit } as React.CSSProperties}
       >
@@ -293,11 +259,6 @@ export const NavIsland: React.FC<NavIslandProps> = (props) => {
         </button>
 
         <div className="nav-pill" inert={photoOpen} aria-hidden={photoOpen || undefined}>
-          <span className="nav-shade" aria-hidden="true" />
-          <span className="nav-shade is-compact" aria-hidden="true" />
-          <span className="nav-mid" aria-hidden="true" />
-          <span className="nav-end is-left" aria-hidden="true" />
-          <span className="nav-end is-right" aria-hidden="true" />
           <nav
             className="nav-tabs"
             aria-label={t.pages}
@@ -305,18 +266,6 @@ export const NavIsland: React.FC<NavIslandProps> = (props) => {
             onPointerMove={onPointerMove}
             onPointerUp={endDrag}
             onPointerCancel={endDrag}
-            onClickCapture={(e) => {
-              // A tap on the shrunk pill only opens it out again.
-              if (!compact) return;
-              e.preventDefault();
-              e.stopPropagation();
-              setCompactOn(null);
-            }}
-            onFocus={(e) => {
-              // The keyboard reaching the shrunk pill opens it out, so the tab it's on shows and
-              // works at once (a tap's focus isn't :focus-visible, and keeps the tap's own rule).
-              if (compact && e.target.matches(':focus-visible')) setCompactOn(null);
-            }}
           >
             <span ref={indRef} className="nav-ind" aria-hidden="true" />
             {TABS.map((tab) => (
@@ -389,7 +338,7 @@ interface ActionsPanelProps extends NavIslandProps {
  * becomes the panel's corner. It only needs measuring for where that shape sits.
  */
 function measureCapsule(panel: HTMLElement) {
-  const cap = panel.parentElement?.querySelector<HTMLElement>('.nav-actions');
+  const cap = panel.closest('.nav-island')?.querySelector<HTMLElement>('.nav-actions');
   if (!cap) return;
   panel.style.setProperty('--cap-top', `${panel.offsetHeight - cap.offsetHeight}px`);
   panel.style.setProperty('--cap-left', `${panel.offsetWidth - cap.offsetWidth}px`);
@@ -481,169 +430,175 @@ const ActionsPanel: React.FC<ActionsPanelProps> = ({
         />,
         document.body,
       )}
-      <div
-        ref={focusFirst}
-        id={id}
-        role="dialog"
-        aria-label={t.menu}
-        className={`fk-menu-panel nav-panel ${isClosing ? 'is-closing' : ''}`}
-        onBlur={(e) => {
-          // Close when keyboard focus leaves for the page behind the scrim. A tap on a
-          // non-focusable part of the panel has no relatedTarget and keeps it open.
-          const next = e.relatedTarget;
-          if (
-            !isClosing &&
-            next instanceof Node &&
-            !e.currentTarget.contains(next) &&
-            !islandRef.current?.contains(next)
-          ) {
-            onFocusLeave();
-          }
-        }}
-        onAnimationEnd={(e) => {
-          if (isClosing && e.target === e.currentTarget) onClosed();
-        }}
-      >
-        <div className="nav-panel-body">
-          <div id={titleId} className="nav-panel-title fk-menu-row" style={rise()}>
-            <span className="nav-panel-chip" aria-hidden="true">
-              <TitleIcon size="1.15em" strokeWidth={onRecipe || page === 'recipes' ? 1.75 : 1.9} />
-            </span>
-            <span className="nav-panel-name">{title}</span>
-          </div>
-
-          {actions.length > 0 && (
-            <ul className="fk-menu-actions nav-panel-actions" aria-labelledby={titleId}>
-              {actions.map(({ id: actionId, label, icon: Icon, onSelect, wide }) => (
-                <li
-                  key={actionId}
-                  className={`fk-menu-row ${wide ? 'is-wide' : ''}`}
-                  style={rise()}
-                >
-                  <button
-                    type="button"
-                    className="fk-menu-action"
-                    onClick={() => {
-                      onClose();
-                      onSelect();
-                    }}
-                  >
-                    <Icon
-                      className="fk-menu-action-icon"
-                      size="1.15em"
-                      strokeWidth={2.1}
-                      aria-hidden="true"
-                    />
-                    <span>{label}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <div
-            className="fk-menu-content nav-panel-foot"
-            data-prefs={prefsOpen ? 'open' : 'closed'}
-          >
-            <div className="nav-panel-settings fk-menu-row" style={rise()}>
-              {page !== 'settings' && (
-                <button type="button" className="fk-menu-item" onClick={openSettings}>
-                  <span className="fk-menu-chip" aria-hidden="true">
-                    <Settings size="1.1em" strokeWidth={1.9} />
-                  </span>
-                  <span className="fk-menu-item-label">{t.settings}</span>
-                </button>
-              )}
-              <button
-                type="button"
-                className="fk-prefs-toggle"
-                aria-label={t.preferences}
-                aria-expanded={prefsOpen}
-                aria-controls={prefsDrawerId}
-                onClick={() => setPrefsOpen((open) => !open)}
-              >
-                <span className="fk-prefs-key">
-                  <PrefsGlyph />
-                </span>
-              </button>
+      {/* Casts the panel's shadow, so it follows the unroll rather than appearing after. */}
+      <div className="nav-panel-shade">
+        <div
+          ref={focusFirst}
+          id={id}
+          role="dialog"
+          aria-label={t.menu}
+          className={`fk-menu-panel nav-panel ${isClosing ? 'is-closing' : ''}`}
+          onBlur={(e) => {
+            // Close when keyboard focus leaves for the page behind the scrim. A tap on a
+            // non-focusable part of the panel has no relatedTarget and keeps it open.
+            const next = e.relatedTarget;
+            if (
+              !isClosing &&
+              next instanceof Node &&
+              !e.currentTarget.contains(next) &&
+              !islandRef.current?.contains(next)
+            ) {
+              onFocusLeave();
+            }
+          }}
+          onAnimationEnd={(e) => {
+            if (isClosing && e.target === e.currentTarget) onClosed();
+          }}
+        >
+          <div className="nav-panel-body">
+            <div id={titleId} className="nav-panel-title fk-menu-row" style={rise()}>
+              <span className="nav-panel-chip" aria-hidden="true">
+                <TitleIcon
+                  size="1.15em"
+                  strokeWidth={onRecipe || page === 'recipes' ? 1.75 : 1.9}
+                />
+              </span>
+              <span className="nav-panel-name">{title}</span>
             </div>
 
-            <div
-              id={prefsDrawerId}
-              className="fk-prefs-drawer"
-              role="group"
-              aria-label={t.preferences}
-              inert={!prefsOpen}
-            >
-              <div className="fk-prefs-clip">
-                <div className="fk-prefs-body">
-                  <div className="fk-pref-row fk-prefs-row" style={unfold()}>
-                    <span className="fk-pref-label">{t.language}</span>
+            {actions.length > 0 && (
+              <ul className="fk-menu-actions nav-panel-actions" aria-labelledby={titleId}>
+                {actions.map(({ id: actionId, label, icon: Icon, onSelect, wide }) => (
+                  <li
+                    key={actionId}
+                    className={`fk-menu-row ${wide ? 'is-wide' : ''}`}
+                    style={rise()}
+                  >
                     <button
                       type="button"
-                      className="fk-segmented"
-                      data-value={language}
-                      aria-label={t.languageToggle}
-                      onClick={onToggleLanguage}
-                    >
-                      <span className="fk-segmented-thumb" aria-hidden="true" />
-                      <span className={language === 'en' ? 'is-active' : ''}>EN</span>
-                      <span className={language === 'pl' ? 'is-active' : ''}>PL</span>
-                    </button>
-                  </div>
-
-                  <div className="fk-pref-row fk-prefs-row" style={unfold()}>
-                    <span id={darkLabelId} className="fk-pref-label">
-                      {t.darkMode}
-                    </span>
-                    {/* The splash's sun and moon pill, the size of its neighbours. */}
-                    <button
-                      type="button"
-                      role="switch"
-                      className="fk-segmented"
-                      data-value={theme}
-                      aria-checked={theme === 'dark'}
-                      aria-labelledby={darkLabelId}
-                      onClick={(e) => {
-                        const pill = e.currentTarget.getBoundingClientRect();
-                        onToggleTheme({
-                          x: pill.left + pill.width / 2,
-                          y: pill.top + pill.height / 2,
-                        });
+                      className="fk-menu-action"
+                      onClick={() => {
+                        onClose();
+                        onSelect();
                       }}
                     >
-                      <span className="fk-segmented-thumb" aria-hidden="true" />
-                      <span className={theme === 'light' ? 'is-active' : ''}>
-                        <Sun size="1.45em" strokeWidth={2} aria-hidden="true" />
-                      </span>
-                      <span className={theme === 'dark' ? 'is-active' : ''}>
-                        <Moon size="1.35em" strokeWidth={2} aria-hidden="true" />
-                      </span>
+                      <Icon
+                        className="fk-menu-action-icon"
+                        size="1.15em"
+                        strokeWidth={2.1}
+                        aria-hidden="true"
+                      />
+                      <span>{label}</span>
                     </button>
-                  </div>
+                  </li>
+                ))}
+              </ul>
+            )}
 
-                  <div className="fk-pref-row fk-prefs-row" style={unfold()}>
-                    <span id={textLabelId} className="fk-pref-label">
-                      {t.textScaling}
+            <div
+              className="fk-menu-content nav-panel-foot"
+              data-prefs={prefsOpen ? 'open' : 'closed'}
+            >
+              <div className="nav-panel-settings fk-menu-row" style={rise()}>
+                {page !== 'settings' && (
+                  <button type="button" className="fk-menu-item" onClick={openSettings}>
+                    <span className="fk-menu-chip" aria-hidden="true">
+                      <Settings size="1.1em" strokeWidth={1.9} />
                     </span>
-                    <div className="fk-stepper" role="group" aria-labelledby={textLabelId}>
+                    <span className="fk-menu-item-label">{t.settings}</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="fk-prefs-toggle"
+                  aria-label={t.preferences}
+                  aria-expanded={prefsOpen}
+                  aria-controls={prefsDrawerId}
+                  onClick={() => setPrefsOpen((open) => !open)}
+                >
+                  <span className="fk-prefs-key">
+                    <PrefsGlyph />
+                  </span>
+                </button>
+              </div>
+
+              <div
+                id={prefsDrawerId}
+                className="fk-prefs-drawer"
+                role="group"
+                aria-label={t.preferences}
+                inert={!prefsOpen}
+              >
+                <div className="fk-prefs-clip">
+                  <div className="fk-prefs-body">
+                    <div className="fk-pref-row fk-prefs-row" style={unfold()}>
+                      <span className="fk-pref-label">{t.language}</span>
                       <button
                         type="button"
-                        aria-label={t.decreaseTextSize}
-                        onClick={onDecreaseFont}
+                        className="fk-segmented"
+                        data-value={language}
+                        aria-label={t.languageToggle}
+                        onClick={onToggleLanguage}
                       >
-                        A−
+                        <span className="fk-segmented-thumb" aria-hidden="true" />
+                        <span className={language === 'en' ? 'is-active' : ''}>EN</span>
+                        <span className={language === 'pl' ? 'is-active' : ''}>PL</span>
                       </button>
-                      <span className="fk-stepper-value" aria-live="polite">
-                        {fontPercent}%
+                    </div>
+
+                    <div className="fk-pref-row fk-prefs-row" style={unfold()}>
+                      <span id={darkLabelId} className="fk-pref-label">
+                        {t.darkMode}
                       </span>
+                      {/* The splash's sun and moon pill, the size of its neighbours. */}
                       <button
                         type="button"
-                        aria-label={t.increaseTextSize}
-                        onClick={onIncreaseFont}
+                        role="switch"
+                        className="fk-segmented"
+                        data-value={theme}
+                        aria-checked={theme === 'dark'}
+                        aria-labelledby={darkLabelId}
+                        onClick={(e) => {
+                          const pill = e.currentTarget.getBoundingClientRect();
+                          onToggleTheme({
+                            x: pill.left + pill.width / 2,
+                            y: pill.top + pill.height / 2,
+                          });
+                        }}
                       >
-                        A+
+                        <span className="fk-segmented-thumb" aria-hidden="true" />
+                        <span className={theme === 'light' ? 'is-active' : ''}>
+                          <Sun size="1.45em" strokeWidth={2} aria-hidden="true" />
+                        </span>
+                        <span className={theme === 'dark' ? 'is-active' : ''}>
+                          <Moon size="1.35em" strokeWidth={2} aria-hidden="true" />
+                        </span>
                       </button>
+                    </div>
+
+                    <div className="fk-pref-row fk-prefs-row" style={unfold()}>
+                      <span id={textLabelId} className="fk-pref-label">
+                        {t.textScaling}
+                      </span>
+                      <div className="fk-stepper" role="group" aria-labelledby={textLabelId}>
+                        <button
+                          type="button"
+                          aria-label={t.decreaseTextSize}
+                          onClick={onDecreaseFont}
+                        >
+                          A−
+                        </button>
+                        <span className="fk-stepper-value" aria-live="polite">
+                          {fontPercent}%
+                        </span>
+                        <button
+                          type="button"
+                          aria-label={t.increaseTextSize}
+                          onClick={onIncreaseFont}
+                        >
+                          A+
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

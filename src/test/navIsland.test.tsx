@@ -278,62 +278,16 @@ describe('the navigation island', () => {
     expect(screen.getByRole('heading', { name: t.vaultTitle, level: 1 })).toBeInTheDocument();
   });
 
-  it('shrinks to the current page while the page scrolls down, and opens on a tap', () => {
+  it('stays whole while the page scrolls, every tab in reach', () => {
     let now = 0;
     vi.spyOn(performance, 'now').mockImplementation(() => now);
     render(<App initialPage="recipes" />);
-    const scrollTo = (y: number) => {
-      Object.defineProperty(window, 'scrollY', { value: y, configurable: true });
-      fireEvent.scroll(window);
-    };
-
+    // Long after the page arrived, so the old shrink-on-scroll would have taken it.
     now = 5000;
-    scrollTo(400);
-    expect(island()).toHaveAttribute('data-compact');
-    // A tap only opens it out again, without changing page.
-    fireEvent.click(tab(t.makes));
-    expect(island()).not.toHaveAttribute('data-compact');
-    expect(screen.getByRole('heading', { name: t.vaultTitle, level: 1 })).toBeInTheDocument();
-
-    scrollTo(700);
-    expect(island()).toHaveAttribute('data-compact');
-    scrollTo(500);
-    expect(island()).not.toHaveAttribute('data-compact');
-    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
-  });
-
-  it('opens out when the keyboard reaches the shrunk pill, so its tabs show and work', () => {
-    let now = 0;
-    vi.spyOn(performance, 'now').mockImplementation(() => now);
-    render(<App initialPage="recipes" />);
-    now = 5000;
-    Object.defineProperty(window, 'scrollY', { value: 400, configurable: true });
+    Object.defineProperty(window, 'scrollY', { value: 900, configurable: true });
     fireEvent.scroll(window);
-    expect(island()).toHaveAttribute('data-compact');
-
-    // Tabbing onto a hidden tab shows the whole pill; Enter then goes there at once.
-    act(() => tab(t.makes).focus());
-    expect(island()).not.toHaveAttribute('data-compact');
     fireEvent.click(tab(t.makes));
     expect(tab(t.makes)).toHaveAttribute('aria-current', 'page');
-    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
-  });
-
-  it('opens out again on the next page, even one of the same kind as where it shrank', () => {
-    let now = 0;
-    vi.spyOn(performance, 'now').mockImplementation(() => now);
-    render(<App initialPage="recipes" />);
-    openRecipe();
-    now = 5000;
-    Object.defineProperty(window, 'scrollY', { value: 400, configurable: true });
-    fireEvent.scroll(window);
-    expect(island()).toHaveAttribute('data-compact');
-
-    // Back to the box, then another recipe (the same one will do): it opens at its top.
-    fireEvent.click(screen.getByRole('button', { name: t.backToRecipes }));
-    expect(island()).not.toHaveAttribute('data-compact');
-    openRecipe();
-    expect(island()).not.toHaveAttribute('data-compact');
     Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
   });
 

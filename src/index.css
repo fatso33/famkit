@@ -491,24 +491,55 @@
       /* The navigation island and the toast stay put while the page moves: only their live
          selves show, never a sliding snapshot. (The panel's scrim isn't lifted out like them: it
          scrim blurs the page behind, which a separate snapshot can't carry, so the blur would
-         vanish at once. A page chosen from it cross-fades under the scrim instead, see above.) */
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='zoom'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
-        .nav-island {
-        view-transition-name: fk-fab;
+         vanish at once. A page chosen from it cross-fades under the scrim instead, see above.)
+         The island's glass is lifted out piece by piece, each piece's blur carried by its own
+         group (a lifted snapshot only sees itself, so the glass would turn clear mid-move). A
+         photo opening or closing leaves the pill and its menu capsule in the page, fading with
+         it, so no blur lingers over the photo where the pill was. */
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
+        .nav-pill {
+        view-transition-name: fk-pill;
+      }
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
+        .nav-actions {
+        view-transition-name: fk-cap;
+      }
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
+        .nav-panel-shade {
+        view-transition-name: fk-panel;
+      }
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'], [data-nav='zoom'])
+        .nav-island:is([data-back='out'], [data-back='photo']) .nav-back {
+        view-transition-name: fk-back;
       }
       :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
         .app-toast {
         view-transition-name: fk-toast;
       }
-      ::view-transition-group(fk-fab),
+      ::view-transition-group(fk-pill),
+      ::view-transition-group(fk-cap),
+      ::view-transition-group(fk-back),
+      ::view-transition-group(fk-panel),
       ::view-transition-group(fk-toast),
-      ::view-transition-new(fk-fab),
+      ::view-transition-new(fk-pill),
+      ::view-transition-new(fk-cap),
+      ::view-transition-new(fk-back),
+      ::view-transition-new(fk-panel),
       ::view-transition-new(fk-toast) {
         animation: none;
       }
-      ::view-transition-old(fk-fab),
+      ::view-transition-old(fk-pill),
+      ::view-transition-old(fk-cap),
+      ::view-transition-old(fk-back),
+      ::view-transition-old(fk-panel),
       ::view-transition-old(fk-toast) {
         display: none;
+      }
+      ::view-transition-group(fk-pill),
+      ::view-transition-group(fk-cap),
+      ::view-transition-group(fk-back) {
+        border-radius: 999px;
+        backdrop-filter: blur(14px) saturate(1.6);
       }
 
       /* The vault re-filtered or re-sorted (utils/viewTransition, nameVaultItems): each recipe
@@ -528,7 +559,10 @@
       }
       /* Above the gliding recipes, which would otherwise pass over them. */
       :root[data-nav='vault']::view-transition-group(vault-bar),
-      :root[data-nav='vault']::view-transition-group(fk-fab),
+      :root[data-nav='vault']::view-transition-group(fk-pill),
+      :root[data-nav='vault']::view-transition-group(fk-cap),
+      :root[data-nav='vault']::view-transition-group(fk-back),
+      :root[data-nav='vault']::view-transition-group(fk-panel),
       :root[data-nav='vault']::view-transition-group(fk-toast) {
         z-index: 1;
       }
@@ -5234,13 +5268,16 @@
       /* The navigation island (NavIsland): a pill of the three main pages, centred at the foot
          of the screen, with two shorter capsules tucked behind its ends, in the same material:
          the page's actions on the right, and on a recipe or Settings the back button on the
-         left. Sized from --nav-u, a rem that gives way on a narrow phone at a large text size, so
-         the island always fits. The pill is drawn as two halves, so it can shrink to the current
-         page by moving them together (transforms only, on the compositor). The editor preview's
-         back capsule (EditorPreview) is drawn from the same sizes and material. */
+         left. Sized from --nav-u: a rem that grows a little with a wider phone (an S21 FE's 360px
+         keeps 1rem, a Pixel's 412px gets the 1.125rem cap, so it looks the same size on both) and
+         gives way on a narrow phone at a large text size, so the island always fits. The pill and
+         capsules are frosted glass in a frame of the page's own colour, which parts them from
+         white cards scrolling beneath. The editor preview's back capsule (EditorPreview) is drawn
+         from the same sizes and material, and the card decks (NavDeck) sit just above them. */
       .nav-island,
-      .editor-preview-back {
-        --nav-u: min(1rem, calc((100vw - 1.5rem) / 19.5));
+      .editor-preview-back,
+      .nav-deck {
+        --nav-u: min(clamp(1rem, 4.45vw, 1.125rem), calc((100vw - 1.5rem) / 19.5));
         --nav-tab: calc(var(--nav-u) * 3.875);
         --nav-pad: calc(var(--nav-u) * 0.375);
         --nav-h: calc(var(--nav-u) * 3.75);
@@ -5251,12 +5288,17 @@
         --cap-out: calc(var(--nav-u) * 3.375);
         --nav-face: var(--elev-menu);
         --cap-face: color-mix(in srgb, var(--bg-card) 60%, var(--bg-surface));
-        --nav-edge: var(--border-subtle);
-        --nav-shadow:
-          0 0.875rem 1.875rem -0.875rem rgba(60, 35, 20, 0.45),
-          0 0.2rem 0.5rem -0.25rem rgba(60, 35, 20, 0.18);
-        /* The pill's soft shadow over the capsules tucked under its ends. */
-        --nav-lap: 0 0 1rem -0.3rem rgba(60, 35, 20, 0.4);
+        /* The glass: the faces let a blur of the page through, held in a ring of the page's
+           colour (outside the glass, so never blurred) and lifted on a deeper shadow. */
+        --nav-glass: color-mix(in srgb, var(--nav-face) 66%, transparent);
+        --cap-glass: color-mix(in srgb, var(--cap-face) 66%, transparent);
+        --glass-edge: color-mix(in srgb, var(--border-strong) 75%, transparent);
+        --nav-ring: calc(var(--nav-u) * 0.1875);
+        --nav-frame:
+          0 0 0 var(--nav-ring) var(--bg-main),
+          inset 0 1px 0 var(--card-sheen),
+          0 1.125rem 2.125rem -0.75rem rgba(60, 35, 20, 0.45),
+          0 0.25rem 0.625rem -0.25rem rgba(60, 35, 20, 0.18);
       }
 
       .nav-island {
@@ -5272,16 +5314,25 @@
       }
 
       [data-theme='dark'] :is(.nav-island, .editor-preview-back) {
-        --nav-shadow:
-          0 0.875rem 1.875rem -0.75rem rgba(0, 0, 0, 0.8),
-          0 0.2rem 0.5rem -0.25rem rgba(0, 0, 0, 0.5);
-        --nav-lap: 0 0 1rem -0.25rem rgba(0, 0, 0, 0.85);
+        --nav-frame:
+          0 0 0 var(--nav-ring) var(--bg-main),
+          inset 0 1px 0 var(--card-sheen),
+          0 1.125rem 2.125rem -0.75rem rgba(0, 0, 0, 0.8),
+          0 0.25rem 0.625rem -0.25rem rgba(0, 0, 0, 0.5);
       }
 
+      /* The blur sits on the faces themselves, never under an ancestor that fades: that would cut
+         the glass off from the page behind it. (A page change lifts each face out on its own and
+         gives its group the blur, see fk-pill.) */
       .nav-pill {
         position: absolute;
         inset: 0;
         z-index: 3;
+        border: 1px solid var(--glass-edge);
+        border-radius: calc(var(--nav-h) / 2);
+        background: var(--nav-glass);
+        backdrop-filter: blur(14px) saturate(1.6);
+        box-shadow: var(--nav-frame);
         pointer-events: auto;
         transition: scale 0.42s var(--spring-soft), opacity 0.25s ease;
       }
@@ -5292,64 +5343,14 @@
         transition-duration: 0.12s;
       }
 
-      .nav-shade {
-        position: absolute;
-        inset: 0;
-        border-radius: calc(var(--nav-h) / 2);
-        box-shadow: var(--nav-shadow), var(--nav-lap);
-        pointer-events: none;
-        transition: opacity 0.4s ease;
-      }
-
-      /* The shrunk pill's own shadow, shaped for it, which the full one fades into. */
-      .nav-shade.is-compact {
-        inset: 0 calc(var(--nav-tab) + 1px);
-        opacity: 0;
-      }
-
-      /* The pill's face: two rounded ends and the strip between them, which narrows as the ends
-         close in (the pill shrinking to the current page). Each keeps its own shape. */
-      .nav-end,
-      .nav-mid {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        background: var(--nav-face);
-        border: 1px solid var(--nav-edge);
-        box-shadow: inset 0 1px 0 var(--card-sheen);
-        transition: transform 0.5s var(--ease-glide);
-      }
-
-      .nav-end {
-        width: calc(var(--nav-h) / 2 + 2px);
-      }
-
-      .nav-end.is-left {
-        left: 0;
-        border-right: 0;
-        border-radius: calc(var(--nav-h) / 2) 0 0 calc(var(--nav-h) / 2);
-      }
-
-      .nav-end.is-right {
-        right: 0;
-        border-left: 0;
-        border-radius: 0 calc(var(--nav-h) / 2) calc(var(--nav-h) / 2) 0;
-      }
-
-      .nav-mid {
-        left: calc(var(--nav-h) / 2);
-        right: calc(var(--nav-h) / 2);
-        border-inline: 0;
-      }
-
+      /* Over the whole pill, its edge included, so the tabs sit as if it had none. */
       .nav-tabs {
         position: absolute;
-        inset: 0;
+        inset: -1px;
         display: flex;
         align-items: center;
         padding: 0 var(--nav-pad);
         touch-action: none;
-        transition: transform 0.5s var(--ease-glide);
       }
 
       /* The current page's highlight. It rests by --lit (NavIsland stretches it from one tab to
@@ -5523,7 +5524,7 @@
         }
       }
 
-      /* The capsules: shorter than the pill and tucked behind its ends, the same material. */
+      /* The capsules: shorter than the pill and tucked behind its ends, the same glass. */
       .nav-cap {
         position: absolute;
         top: calc((var(--nav-h) - var(--cap-h)) / 2);
@@ -5533,16 +5534,17 @@
         display: flex;
         align-items: center;
         padding: 0;
-        border: 1px solid var(--nav-edge);
+        border: 1px solid var(--glass-edge);
         border-radius: calc(var(--cap-h) / 2);
-        background: var(--cap-face);
+        background: var(--cap-glass);
+        backdrop-filter: blur(14px) saturate(1.6);
         color: var(--text-primary);
-        box-shadow: inset 0 1px 0 var(--card-sheen), var(--nav-shadow);
+        box-shadow: var(--nav-frame);
         cursor: pointer;
         pointer-events: auto;
         -webkit-tap-highlight-color: transparent;
         transition:
-          translate 0.5s var(--ease-glide),
+          background-color 0.3s ease,
           border-color 0.3s ease,
           box-shadow 0.3s ease,
           opacity 0.25s ease;
@@ -5551,6 +5553,32 @@
       .nav-cap:focus-visible {
         outline: 2px solid var(--accent);
         outline-offset: 2px;
+      }
+
+      /* Each capsule answers a little past what it shows: outward towards the screen's edge
+         (never past it) and a little above and below, so a thumb going for back or the menu
+         that lands just off it doesn't open the recipe card behind. The pill keeps its own
+         end. With the panel up the reach stops at the capsule's top, clear of the panel's keys. */
+      .nav-cap::before {
+        content: '';
+        position: absolute;
+        top: -0.75rem;
+        bottom: -0.75rem;
+        --cap-reach: max(0px, min(2.5rem, (100vw - 19.125 * var(--nav-u)) / 2));
+      }
+
+      .nav-back::before {
+        left: calc(-1 * var(--cap-reach));
+        right: 0;
+      }
+
+      .nav-actions::before {
+        left: 0;
+        right: calc(-1 * var(--cap-reach));
+      }
+
+      .nav-island[data-menu] .nav-cap::before {
+        top: 0;
       }
 
       .nav-actions {
@@ -5568,7 +5596,6 @@
         visibility: hidden;
         transition:
           transform 0.38s cubic-bezier(0.5, 0, 0.6, 1),
-          translate 0.5s var(--ease-glide),
           visibility 0s linear 0.38s;
       }
 
@@ -5578,7 +5605,6 @@
         visibility: visible;
         transition:
           transform 0.62s var(--spring-soft),
-          translate 0.5s var(--ease-glide),
           visibility 0s;
       }
 
@@ -5622,30 +5648,15 @@
         transform: translateY(calc(var(--nav-u) * -0.4375 + 1px)) rotate(-45deg);
       }
 
-      /* While its panel is open, the actions capsule is the panel's own corner. */
+      /* While its panel is open, the actions capsule is the panel's own corner. It's solid while
+         the panel is up, rolling away included, as glass over the panel would tint it. */
       .nav-island[data-menu='open'] .nav-actions {
         border-color: transparent;
         box-shadow: none;
       }
-
-      /* Scrolling down, the pill shrinks to the current page, its capsules still tucked at its
-         ends; a tap or scrolling up opens it out again. */
-      .nav-island[data-compact] .nav-end.is-left { transform: translateX(var(--nav-tab)); }
-      .nav-island[data-compact] .nav-end.is-right { transform: translateX(calc(-1 * var(--nav-tab))); }
-      /* What's left of the strip between the ends: (4.625 - 3.75) / (12.375 - 3.75) of it. */
-      .nav-island[data-compact] .nav-mid { transform: scaleX(0.102); }
-      /* The pill's width over its full width (see the sizes above). */
-      .nav-island[data-compact] .nav-shade { opacity: 0; }
-      .nav-island[data-compact] .nav-shade.is-compact { opacity: 1; }
-      .nav-island[data-compact] .nav-tabs {
-        transform: translateX(calc((1 - var(--lit, 0)) * var(--nav-tab)));
+      .nav-island[data-menu] .nav-actions {
+        background: var(--cap-face);
       }
-      .nav-island[data-compact] .nav-tab:not([data-lit]) {
-        opacity: 0;
-        pointer-events: none;
-      }
-      .nav-island[data-compact] .nav-actions { translate: calc(-1 * var(--nav-tab)) 0; }
-      .nav-island[data-compact] .nav-back { translate: var(--nav-tab) 0; }
 
       /* A photo open full screen: only the back button stays, over it, and closes it. */
       .nav-island[data-back='photo'] {
@@ -5673,33 +5684,55 @@
         flex-direction: column-reverse;
         padding: 0.875rem 0.75rem calc(var(--nav-h) + 0.125rem);
         background: var(--cap-face);
-        border: 1px solid var(--nav-edge);
+        border: 1px solid var(--glass-edge);
         border-radius: var(--radius-xl) var(--radius-xl) calc(var(--cap-h) / 2) var(--radius-xl);
-        box-shadow: inset 0 1px 0 var(--card-sheen), var(--nav-shadow);
+        /* The island's frame runs round the panel too, from the capsule it unrolls out of. Its
+           shadow is cast by .nav-panel-shade, so it follows the unroll instead of the clip
+           hiding it until the end. */
+        box-shadow:
+          0 0 0 var(--nav-ring) var(--bg-main),
+          inset 0 1px 0 var(--card-sheen);
         pointer-events: auto;
         /* Backwards only: once open, nothing clips the panel, so it can grow (larger text). */
         animation: nav-panel-in 0.54s var(--ease-glide) backwards;
+      }
+
+      /* Over the island's box, so the panel inside is placed as before. A drop shadow follows
+         whatever shows of the panel, its unroll included. */
+      .nav-panel-shade {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+        filter: drop-shadow(0 0.75rem 0.875rem rgba(60, 35, 20, 0.22))
+          drop-shadow(0 0.15rem 0.25rem rgba(60, 35, 20, 0.12));
+      }
+
+      [data-theme='dark'] .nav-panel-shade {
+        filter: drop-shadow(0 0.75rem 0.875rem rgba(0, 0, 0, 0.55))
+          drop-shadow(0 0.15rem 0.25rem rgba(0, 0, 0, 0.35));
       }
 
       .nav-panel.is-closing {
         animation: nav-panel-out 0.4s cubic-bezier(0.5, 0, 0.2, 1) both;
       }
 
+      /* The clip reaches out past the edge by the frame's width, so the frame unrolls with it. */
       @keyframes nav-panel-in {
         from {
-          clip-path: inset(var(--cap-top, 0) 0 0 var(--cap-left, 0) round calc(var(--cap-h) / 2));
+          clip-path: inset(calc(var(--cap-top, 0px) - var(--nav-ring)) calc(-1 * var(--nav-ring)) calc(-1 * var(--nav-ring)) calc(var(--cap-left, 0px) - var(--nav-ring)) round calc(var(--cap-h) / 2 + var(--nav-ring)));
         }
         to {
-          clip-path: inset(0 round var(--radius-xl) var(--radius-xl) calc(var(--cap-h) / 2) var(--radius-xl));
+          clip-path: inset(calc(-1 * var(--nav-ring)) round calc(var(--radius-xl) + var(--nav-ring)) calc(var(--radius-xl) + var(--nav-ring)) calc(var(--cap-h) / 2 + var(--nav-ring)) calc(var(--radius-xl) + var(--nav-ring)));
         }
       }
 
       @keyframes nav-panel-out {
         from {
-          clip-path: inset(0 round var(--radius-xl) var(--radius-xl) calc(var(--cap-h) / 2) var(--radius-xl));
+          clip-path: inset(calc(-1 * var(--nav-ring)) round calc(var(--radius-xl) + var(--nav-ring)) calc(var(--radius-xl) + var(--nav-ring)) calc(var(--cap-h) / 2 + var(--nav-ring)) calc(var(--radius-xl) + var(--nav-ring)));
         }
         to {
-          clip-path: inset(var(--cap-top, 0) 0 0 var(--cap-left, 0) round calc(var(--cap-h) / 2));
+          clip-path: inset(calc(var(--cap-top, 0px) - var(--nav-ring)) calc(-1 * var(--nav-ring)) calc(-1 * var(--nav-ring)) calc(var(--cap-left, 0px) - var(--nav-ring)) round calc(var(--cap-h) / 2 + var(--nav-ring)));
         }
       }
 
@@ -5755,6 +5788,8 @@
         align-items: center;
         gap: 0.25rem;
         min-height: 48px;
+        /* The Settings key lines up with the action keys above it. */
+        padding-left: 0.25rem;
       }
 
       .nav-panel-settings .fk-menu-item {
@@ -5782,7 +5817,7 @@
       }
 
       .nav-deck {
-        --deck-bottom: calc(1rem + env(safe-area-inset-bottom) + 3.75rem + 0.875rem);
+        --deck-bottom: calc(1rem + env(safe-area-inset-bottom) + var(--nav-h) + 0.875rem);
         position: fixed;
         left: 0;
         right: 0;
@@ -6238,7 +6273,8 @@
         transition-delay: calc(var(--j, 0) * 30ms);
       }
 
-      /* Settings in the actions panel: a flat row, where the actions are raised keys. */
+      /* Settings in the actions panel: a raised key like the actions above it, so it reads as
+         one to press, keeping its own chip and label. */
       .fk-menu-item {
         position: relative;
         width: 100%;
@@ -6247,22 +6283,32 @@
         align-items: center;
         gap: 0.75rem;
         padding: 0.4rem 0.5rem;
-        border: none;
+        border: 1px solid var(--key-edge);
         border-radius: var(--radius-md);
-        background: transparent;
+        background: var(--key-face);
+        box-shadow: var(--key-lift);
         color: var(--text-primary);
         font-family: inherit;
         font-size: 0.95rem;
         font-weight: 600;
         text-align: left;
         cursor: pointer;
-        transition: background-color 0.18s ease, color 0.18s ease;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          border-color 0.18s ease,
+          box-shadow 0.18s ease,
+          scale 0.15s ease;
       }
 
       @media (hover: hover) {
         .fk-menu-item:hover {
-          background: var(--menu-well);
+          border-color: color-mix(in srgb, var(--accent) 50%, var(--key-edge));
         }
+      }
+
+      .fk-menu-item:active {
+        scale: 0.96;
+        box-shadow: none;
       }
 
       .fk-menu-item:focus-visible,
@@ -6551,10 +6597,6 @@
         .nav-icon *,
         .nav-panel.is-closing .nav-panel-body { animation: none; }
         .nav-pill,
-        .nav-shade,
-        .nav-end,
-        .nav-mid,
-        .nav-tabs,
         .nav-cap,
         .nav-card,
         .nav-card-line,
@@ -6567,6 +6609,7 @@
         .fk-prefs-key,
         .fk-prefs-glyph circle,
         .fk-menu-action,
+        .fk-menu-item,
         .fk-prefs-drawer,
         .recipe-subheader,
         .recipe-subheader-crumb,
@@ -9435,11 +9478,12 @@
         display: grid;
         place-items: center;
         padding: 0;
-        border: 1px solid var(--nav-edge);
+        border: 1px solid var(--glass-edge);
         border-radius: calc(var(--cap-h) / 2);
-        background: var(--nav-face);
+        background: var(--nav-glass);
+        backdrop-filter: blur(14px) saturate(1.6);
         color: var(--text-primary);
-        box-shadow: inset 0 1px 0 var(--card-sheen), var(--nav-shadow);
+        box-shadow: var(--nav-frame);
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
         animation: editor-back-in 0.62s var(--spring-soft) 0.12s backwards;
