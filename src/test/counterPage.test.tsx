@@ -176,15 +176,24 @@ describe('My Counter', () => {
   });
 
   it('opens a draft in the editor from its row', async () => {
-    localStorage.setItem('family_kitchen_drafts', JSON.stringify({ [ola.email]: [draft] }));
-    renderCounter();
-    const row = await within(region(t.yourDrafts)).findByRole('button', {
-      name: t.draftNamed('Pierogi'),
-    });
-    expect(within(row).getByText(t.draftLabel(1))).toBeInTheDocument();
-    expect(within(row).getByText(/2 hours ago/)).toBeInTheDocument();
-    fireEvent.click(row);
-    expect(within(editor()!).getByLabelText(t.recipeTitle)).toHaveValue('Pierogi');
+    // At midday, so two hours before is still today: run just after midnight, it read "saved
+    // yesterday".
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2027, 2, 10, 12));
+    try {
+      const saved = { ...draft, savedAt: Date.now() - 2 * 3_600_000 };
+      localStorage.setItem('family_kitchen_drafts', JSON.stringify({ [ola.email]: [saved] }));
+      renderCounter();
+      const row = await within(region(t.yourDrafts)).findByRole('button', {
+        name: t.draftNamed('Pierogi'),
+      });
+      expect(within(row).getByText(t.draftLabel(1))).toBeInTheDocument();
+      expect(within(row).getByText(/2 hours ago/)).toBeInTheDocument();
+      fireEvent.click(row);
+      expect(within(editor()!).getByLabelText(t.recipeTitle)).toHaveValue('Pierogi');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('has Add Recipe and Add Make keys of its own', () => {
