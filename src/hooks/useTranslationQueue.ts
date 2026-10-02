@@ -1,16 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { Language } from '../types/recipe';
 import {
+  clearTranslationBusy,
   getTranslationFailures,
   getTranslationPause,
+  noteTranslationBusy,
   recordTranslationFailure,
   setTranslationPause,
 } from '../services/storage';
 import { isTranslationAvailable, translateDocuments } from '../services/gemini';
 import {
   PieceTranslation,
+  TranslationBusyError,
   TranslationQuotaError,
   TranslationRejectedError,
+  busyPauseMs,
   retryDelayMs,
 } from '../utils/recipeTranslation';
 import { pickBatch } from '../utils/translationQueue';
@@ -62,6 +66,25 @@ async function askOnceMore(docs: TranslationDoc[]): Promise<DocReply[]> {
   }
 }
 
+/** Failures that pause every request on this device: a used-up allowance, an overloaded Gemini. */
+type TranslationPause = TranslationQuotaError | TranslationBusyError;
+
+const isPause = (err: unknown): err is TranslationPause =>
+  err instanceof TranslationQuotaError || err instanceof TranslationBusyError;
+
+/**
+ * Pauses every request: until the allowance is back, or, when Gemini is overloaded, for longer
+ * each time in a row (busyPauseMs). An overloaded request costs several of the day's allowance.
+ */
+function pauseRequests(err: TranslationPause) {
+  const now = Date.now();
+  setTranslationPause(
+    err instanceof TranslationQuotaError
+      ? err.retryAt
+      : now + busyPauseMs(noteTranslationBusy(now)),
+  );
+}
+
 /** A reply's language, when it's one the document can have (a new document's is checked). */
 function replyLanguage(job: TranslationJob, doc: TranslationDoc, reply: DocReply) {
   const language = reply.detectedLanguage;
@@ -75,12 +98,12 @@ function replyLanguage(job: TranslationJob, doc: TranslationDoc, reply: DocReply
  * Translates the jobs in one request, checking every piece (reviewReply). Whatever didn't pass
  * (left out, amounts changed, still in the original language, or a new document whose language
  * the reply got wrong) is asked for once more, together, in one more request. Resolves to each
- * job's translation (by id; missing when nothing usable came back), and to a quota pause when
- * the second request found the allowance used up.
+ * job's translation (by id; missing when nothing usable came back), and to a pause when the
+ * second request found the allowance used up or Gemini overloaded.
  */
 async function requestTranslations(jobs: TranslationJob[]): Promise<{
   results: Map<string, PieceTranslation>;
-  quota?: TranslationQuotaError;
+  stopped?: TranslationPause;
 }> {
   const docs = jobs.map((job) => job.doc(job.pieces));
   const first = await askOnceMore(docs);
@@ -97,7 +120,7 @@ async function requestTranslations(jobs: TranslationJob[]): Promise<{
     const sofar = language ? { detectedLanguage: language, values } : undefined;
     return [{ i, doc: job.doc(retry, sofar) }];
   });
-  let quota: TranslationQuotaError | undefined;
+  let stopped: TranslationPause | undefined;
   if (again.length > 0) {
     try {
       const second = await translateDocuments(again.map((a) => a.doc));
@@ -112,7 +135,7 @@ async function requestTranslations(jobs: TranslationJob[]): Promise<{
       });
     } catch (err) {
       // What passed the first time is kept; the rest waits for a later request.
-      if (err instanceof TranslationQuotaError) quota = err;
+      if (isPause(err)) stopped = err;
       else console.warn('Second translation request failed (keeping the first):', err);
     }
   }
@@ -124,7 +147,7 @@ async function requestTranslations(jobs: TranslationJob[]): Promise<{
       results.set(job.id, { detectedLanguage: language, values, gaveUp });
     }
   });
-  return { results, quota };
+  return { results, stopped };
 }
 
 /**
@@ -133,7 +156,7 @@ async function requestTranslations(jobs: TranslationJob[]): Promise<{
  * `collectors` list each kind's waiting documents (memoize it: a new list rescans). Each request
  * is tried once per session; coming back online or reopening the app retries lost connections;
  * an unusable answer is asked for once more at once, then waits longer; a used-up allowance
- * pauses every request until it resets.
+ * pauses every request until it resets, and an overloaded Gemini for half an hour, then longer.
  */
 export function useTranslationQueue(collectors: readonly ((now: number) => TranslationJob[])[]) {
   const triedKeys = useRef(new Set<string>());
@@ -198,7 +221,8 @@ export function useTranslationQueue(collectors: readonly ((now: number) => Trans
     const work = asking.length > 0 ? requestTranslations(asking) : Promise.resolve(null);
     work
       .then((answer) => {
-        if (answer?.quota) setTranslationPause(answer.quota.retryAt);
+        if (answer) clearTranslationBusy();
+        if (answer?.stopped) pauseRequests(answer.stopped);
         for (const job of batch) {
           if (job.pieces.length === 0) {
             stamp(job);
@@ -206,16 +230,17 @@ export function useTranslationQueue(collectors: readonly ((now: number) => Trans
           }
           const result = answer?.results.get(job.id);
           if (result) store(job, result);
-          // Its second try found the allowance used up: asked for again once it's back.
-          else if (answer?.quota) triedKeys.current.delete(keys.get(job)!);
+          // Its second try found the allowance used up or Gemini overloaded: asked for again
+          // once the pause is over.
+          else if (answer?.stopped) triedKeys.current.delete(keys.get(job)!);
           else recordTranslationFailure(keys.get(job)!, Date.now());
         }
       })
       .catch((err: unknown) => {
         for (const job of rebuilt) stamp(job);
-        if (err instanceof TranslationQuotaError) {
-          // Asked for again once the allowance is back, even in this session.
-          setTranslationPause(err.retryAt);
+        if (isPause(err)) {
+          // Asked for again once the pause is over, even in this session.
+          pauseRequests(err);
           for (const job of asking) triedKeys.current.delete(keys.get(job)!);
         } else if (err instanceof TranslationRejectedError) {
           for (const job of asking) recordTranslationFailure(keys.get(job)!, Date.now());

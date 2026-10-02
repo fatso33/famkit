@@ -1,5 +1,9 @@
 import { app, isFirebaseConfigured } from './firebase';
-import { TranslationQuotaError, TranslationRejectedError } from '../utils/recipeTranslation';
+import {
+  TranslationBusyError,
+  TranslationQuotaError,
+  TranslationRejectedError,
+} from '../utils/recipeTranslation';
 import { nextDailyReset } from '../utils/translationQueue';
 import {
   DocReply,
@@ -43,11 +47,15 @@ type Detail = { retryDelay?: unknown };
 
 /**
  * Google's "too many requests" as a pause: the daily allowance until it resets (midnight
- * Pacific), a per-minute one for as long as Google says. Anything else is passed on as it is.
+ * Pacific), a per-minute one for as long as Google says. An overloaded Gemini (5xx) is a busy
+ * error, for the queue to pause too. Anything else is passed on as it is.
  */
-function asQuotaError(err: unknown): unknown {
+function asPauseError(err: unknown): unknown {
   const data = (err as { customErrorData?: { status?: number; errorDetails?: unknown } })
     .customErrorData;
+  if (data?.status !== undefined && data.status >= 500) {
+    return new TranslationBusyError('Gemini is overloaded', { cause: err });
+  }
   if (data?.status !== 429) return err;
   const details: Detail[] = Array.isArray(data.errorDetails) ? data.errorDetails : [];
   const now = Date.now();
@@ -70,7 +78,8 @@ function asQuotaError(err: unknown): unknown {
  * Translates the documents' pieces in one request (see utils/translationRequest), each into its
  * other language. What comes back is read against what was asked; checking each piece's words
  * is the caller's (reviewReply). Throws TranslationRejectedError when the answer is unusable
- * (blocked, not JSON, nothing translated), TranslationQuotaError when the allowance is used up.
+ * (blocked, not JSON, nothing translated), TranslationQuotaError when the allowance is used up,
+ * TranslationBusyError when Gemini is overloaded.
  */
 export async function translateDocuments(docs: TranslationDoc[]): Promise<DocReply[]> {
   if (!isTranslationAvailable || !app) {
@@ -138,7 +147,7 @@ export async function translateDocuments(docs: TranslationDoc[]): Promise<DocRep
     if ((err as { code?: string }).code === 'response-error') {
       throw new TranslationRejectedError('Translation response was blocked', { cause: err });
     }
-    throw asQuotaError(err);
+    throw asPauseError(err);
   }
 
   let replies: DocReply[];

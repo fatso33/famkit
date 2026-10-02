@@ -92,6 +92,44 @@ export function setTranslationPause(until: number): void {
   }
 }
 
+// How many times in a row Gemini was overloaded on this device, and when last (busyPauseMs).
+const TRANSLATION_BUSY_KEY = 'family_kitchen_translation_busy';
+
+/**
+ * Notes that Gemini was overloaded, and returns how many times in a row it has been. A run more
+ * than a day old starts again.
+ */
+export function noteTranslationBusy(now: number): number {
+  const day = 24 * 60 * 60 * 1000;
+  let times = 1;
+  try {
+    const last = JSON.parse(localStorage.getItem(TRANSLATION_BUSY_KEY) || 'null') as {
+      count?: unknown;
+      at?: unknown;
+    } | null;
+    if (typeof last?.count === 'number' && typeof last.at === 'number' && now - last.at < day) {
+      times = last.count + 1;
+    }
+  } catch {
+    // Unreadable: start a new run.
+  }
+  try {
+    localStorage.setItem(TRANSLATION_BUSY_KEY, JSON.stringify({ count: times, at: now }));
+  } catch (e) {
+    console.warn('Could not note that Gemini was overloaded on this device (storage full?):', e);
+  }
+  return times;
+}
+
+/** Gemini answered: the next overload starts the pauses from the shortest again. */
+export function clearTranslationBusy(): void {
+  try {
+    localStorage.removeItem(TRANSLATION_BUSY_KEY);
+  } catch {
+    // Nothing to clear.
+  }
+}
+
 /**
  * This device's copy of the vault. Every recipe was added by a family member; none is built in.
  * With the cloud, the copy holds the words and the photos are kept apart (services/photoStore):

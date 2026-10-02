@@ -345,6 +345,22 @@ describe('translateDocuments', () => {
     expect(models).toMatchObject([{ model: 'gemini-3.8-flash' }]);
   });
 
+  it.each([500, 503])(
+    'says Gemini is busy when it answers %i (overloaded), for the queue to pause',
+    async (status) => {
+      const { translateDocuments } = await load();
+      generateContent.mockRejectedValue(
+        Object.assign(new Error(`[${status} ] This model is currently experiencing high demand.`), {
+          code: 'fetch-error',
+          customErrorData: { status, errorDetails: [] },
+        }),
+      );
+
+      const failure = await translateDocuments([docOf(testRecipe)]).catch((e: unknown) => e);
+      expect(failure).toMatchObject({ name: 'TranslationBusyError' });
+    },
+  );
+
   it('pauses until midnight Pacific when the day’s allowance is used up', async () => {
     vi.useFakeTimers();
     // 11:29 in Los Angeles (14:29 in Peter's Eastern time zone).

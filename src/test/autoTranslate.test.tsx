@@ -6,6 +6,7 @@ import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 import { Recipe } from '../types/recipe';
 import { UI_TEXT } from '../i18n/translations';
 import {
+  TranslationBusyError,
   TranslationQuotaError,
   TranslationRejectedError,
   resolveEdit,
@@ -445,6 +446,46 @@ describe('translation that holds up', () => {
     expect(translate).toHaveBeenCalledTimes(1);
     // Not an unusable answer: no longer wait once the allowance is back.
     expect(localStorage.getItem('family_kitchen_translation_failures')).toBeNull();
+  });
+
+  it('pauses this phone when Gemini is overloaded, longer each time, until it answers', async () => {
+    // 2026-10-02: each overloaded request was retried by Firebase's servers, every try counting
+    // toward the family's 20 a day, so asking again at every app opening used the day up.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const minute = 60 * 1000;
+    seed(customRecipe);
+    translate.mockRejectedValue(new TranslationBusyError('overloaded'));
+    const { unmount } = render(<App initialPage="recipes" />);
+    await settle();
+    expect(translate).toHaveBeenCalledTimes(1);
+    const firstPause = Number(localStorage.getItem('family_kitchen_translation_paused_until'));
+    expect(firstPause - Date.now()).toBeGreaterThan(29 * minute);
+    expect(firstPause - Date.now()).toBeLessThanOrEqual(30 * minute);
+    // Not an unusable answer: once Gemini answers, nothing waits longer.
+    expect(localStorage.getItem('family_kitchen_translation_failures')).toBeNull();
+    unmount();
+
+    // Opening the app again during the pause asks for nothing.
+    render(<App initialPage="recipes" />);
+    await settle();
+    expect(translate).toHaveBeenCalledTimes(1);
+
+    // Asked again once the pause is over; still overloaded, so the next pause is longer.
+    await later(30 * minute);
+    expect(translate).toHaveBeenCalledTimes(2);
+    const secondPause = Number(localStorage.getItem('family_kitchen_translation_paused_until'));
+    expect(secondPause - Date.now()).toBeGreaterThan(59 * minute);
+    expect(secondPause - Date.now()).toBeLessThanOrEqual(60 * minute);
+
+    // Gemini answers again: translated, and the next overload starts from half an hour.
+    translate.mockImplementation(dictionaryTranslator(POLISH, 'en'));
+    await later(60 * minute);
+    expect(translate).toHaveBeenCalledTimes(3);
+    const stored = JSON.parse(localStorage.getItem('wandas_recipes')!) as Recipe[];
+    expect(stored.find((r) => r.id === 'custom-1')?.translations?.pl).toMatchObject({
+      name: 'Pierogi cioci Oli',
+    });
+    expect(localStorage.getItem('family_kitchen_translation_busy')).toBeNull();
   });
 
   it('keeps the original’s amount when a reply changes it twice, and asks no more', async () => {

@@ -276,6 +276,16 @@ export function retryDelayMs(failures: number): number {
   return Math.min(24 * hour, hour * 2 ** Math.max(0, failures - 1));
 }
 
+/**
+ * How long this device asks for no translations after Gemini was overloaded this many times in a
+ * row: half an hour, doubling, at most four hours. Every overloaded request costs several of the
+ * family's daily allowance (Firebase retries it on its side), so it isn't asked at every opening.
+ */
+export function busyPauseMs(times: number): number {
+  const minute = 60 * 1000;
+  return Math.min(240 * minute, 30 * minute * 2 ** Math.max(0, times - 1));
+}
+
 /** Language a viewer actually sees: theirs if a usable translation exists, else the original. */
 export function displayedLanguage(recipe: Recipe, viewerLanguage: Language): Language {
   const status = translationStatus(recipe, viewerLanguage);
@@ -662,5 +672,13 @@ export class TranslationQuotaError extends Error {
   ) {
     super(message, options);
     this.name = 'TranslationQuotaError';
+  }
+}
+
+/** Gemini is overloaded (a 5xx answer): this device pauses (busyPauseMs) before asking again. */
+export class TranslationBusyError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = 'TranslationBusyError';
   }
 }

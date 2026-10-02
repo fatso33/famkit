@@ -6,6 +6,7 @@ import { formFromRecipe, formText, formToRecipe } from '../utils/recipeForm';
 import {
   PieceTranslation,
   applyTranslation,
+  busyPauseMs,
   localizeRecipe,
   needsTranslation,
   pendingPieces,
@@ -182,6 +183,20 @@ describe('retryDelayMs', () => {
       16 * hour,
       24 * hour,
       24 * hour,
+    ]);
+  });
+});
+
+describe('busyPauseMs', () => {
+  it('pauses half an hour when Gemini is overloaded, doubling up to four hours', () => {
+    const minute = 60 * 1000;
+    expect([1, 2, 3, 4, 5, 9].map(busyPauseMs)).toEqual([
+      30 * minute,
+      60 * minute,
+      120 * minute,
+      240 * minute,
+      240 * minute,
+      240 * minute,
     ]);
   });
 });
