@@ -10391,8 +10391,13 @@
          is a card led by its photo, square and mounted like a recipe card's, then a link to the
          recipe it was made from, its title and note, and who made it when, with its hearts.
          Every animation here moves only transform and opacity. */
+      /* One column, never wider than the page: a card's recipe pill gives way to its hearts (its
+         name trimmed), but an auto column grew to the name's full width instead, and at large
+         text the cards ran off the side of the screen (and the page crashed WebKit as Makes
+         opened). */
       .makes-feed {
         display: grid;
+        grid-template-columns: minmax(0, 1fr);
         gap: 1.5rem;
         max-width: 34rem;
         margin: 0 auto;
