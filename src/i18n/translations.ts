@@ -1,4 +1,5 @@
 import { Language, RecipeCategory, VaultSortKey } from '../types/recipe';
+import type { MakesSortKey } from '../types/make';
 import { plPlural } from '../utils/polish';
 import type { Season } from '../utils/season';
 import type { GreetingId } from '../utils/greeting';
@@ -386,6 +387,24 @@ export interface UiTranslations {
   addMake: string;
   makesEmptyTitle: string;
   makesEmptyBody: string;
+  /** Under the Makes title: how many makes, by how many of the family. */
+  makesCaption: (makes: number, cooks: number) => string;
+  filterMakes: string;
+  sortMakes: string;
+  makesSorts: Record<MakesSortKey, string>;
+  /** Each sort's two directions: its natural order, then turned round. */
+  makesSortOrders: Record<MakesSortKey, readonly [string, string]>;
+  filterMaker: string;
+  allMakers: string;
+  filterRecipe: string;
+  allCategories: string;
+  /** The filter for the makes this person has hearted. */
+  heartedByMe: string;
+  heartedCaption: (n: number) => string;
+  /** Nothing left to show with only the makes this person hearted. */
+  noneHearted: string;
+  makesShown: (n: number) => string;
+  showAllMakes: string;
   editMakeTitle: string;
   makePhoto: string;
   makePhotoHint: string;
@@ -821,6 +840,32 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     addMake: 'Add Make',
     makesEmptyTitle: 'No makes yet',
     makesEmptyBody: 'Made something from the Recipe Box? Share a photo of it here for the family.',
+    makesCaption: (makes: number, cooks: number) =>
+      `${makes} make${makes === 1 ? '' : 's'} from ${cooks} cook${cooks === 1 ? '' : 's'}`,
+    filterMakes: 'Filter makes',
+    sortMakes: 'Sort makes',
+    makesSorts: {
+      newest: 'Last shared',
+      hearts: 'Hearts',
+      recipe: 'Recipe',
+      maker: 'Made by',
+    },
+    makesSortOrders: {
+      newest: ['Newest first', 'Oldest first'],
+      hearts: ['Most first', 'Fewest first'],
+      recipe: ['A to Z', 'Z to A'],
+      maker: ['A to Z', 'Z to A'],
+    },
+    filterMaker: 'Made by',
+    allMakers: 'Everyone',
+    filterRecipe: 'Recipe',
+    allCategories: 'All categories',
+    heartedByMe: 'Hearted by me',
+    heartedCaption: (n: number) =>
+      n === 0 ? "You haven't hearted any yet" : `${n} with your heart`,
+    noneHearted: 'Nothing here has your heart yet.',
+    makesShown: (n: number) => `${n} make${n === 1 ? '' : 's'}`,
+    showAllMakes: 'Show all makes',
     editMakeTitle: 'Edit Make',
     makePhoto: 'Photo',
     makePhotoHint: 'Show the family what you made',
@@ -1292,6 +1337,34 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     addMake: 'Dodaj popis',
     makesEmptyTitle: 'Nie ma jeszcze popisów',
     makesEmptyBody: 'Coś wyszło z przepisu z Przepiśnika? Pochwal się tu zdjęciem przed rodziną.',
+    makesCaption: (makes: number, cooks: number) =>
+      `${makes} ${plPlural(makes, 'popis', 'popisy', 'popisów')} od ${cooks} ${cooks === 1 ? 'osoby' : 'osób'}`,
+    filterMakes: 'Filtruj popisy',
+    sortMakes: 'Sortuj popisy',
+    makesSorts: {
+      newest: 'Ostatnio dodane',
+      hearts: 'Serduszka',
+      recipe: 'Przepis',
+      maker: 'Autor',
+    },
+    makesSortOrders: {
+      newest: ['Najpierw najnowsze', 'Najpierw najstarsze'],
+      hearts: ['Najpierw najwięcej', 'Najpierw najmniej'],
+      recipe: ['Od A do Z', 'Od Z do A'],
+      maker: ['Od A do Z', 'Od Z do A'],
+    },
+    filterMaker: 'Autor',
+    allMakers: 'Wszyscy',
+    filterRecipe: 'Przepis',
+    allCategories: 'Wszystkie kategorie',
+    heartedByMe: 'Z moim serduszkiem',
+    heartedCaption: (n: number) =>
+      n === 0
+        ? 'Jeszcze żaden nie ma Twojego serduszka'
+        : `${n} ${plPlural(n, 'popis', 'popisy', 'popisów')} z Twoim serduszkiem`,
+    noneHearted: 'Tu jeszcze nic nie ma Twojego serduszka.',
+    makesShown: (n: number) => `${n} ${plPlural(n, 'popis', 'popisy', 'popisów')}`,
+    showAllMakes: 'Pokaż wszystkie popisy',
     editMakeTitle: 'Edytuj popis',
     makePhoto: 'Zdjęcie',
     makePhotoHint: 'Pokaż rodzinie swoje dzieło',

@@ -1,17 +1,18 @@
 import React, { useLayoutEffect, useRef } from 'react';
-import { UiTranslations } from '../../i18n/translations';
 import { condenseGeometry } from '../../utils/vaultCondense';
 import { HeartFlourish } from '../common/HeartFlourish';
 
 interface VaultHeaderProps {
-  counts: { recipes: number; cooks: number };
+  /** The page's name: "Recipe Box", "Makes". */
+  title: string;
+  /** Under it, what the page holds ("6 recipes from 4 cooks"), once there's anything. */
+  caption?: string;
   /** Plays the banner's entrance (arriving at the vault, not coming back from a recipe). */
   entering: boolean;
   /** The toolbar, pinned under the title while the vault scrolls. */
   children: React.ReactNode;
   /** The pinned divider tab (VaultShelf), under the toolbar and tucking up with it. */
   shelf?: React.ReactNode;
-  t: UiTranslations;
 }
 
 // How far the page must travel down before the pinned toolbar tucks away, and back up before
@@ -20,9 +21,9 @@ const TUCK_AFTER_PX = 24;
 const SHOW_AFTER_PX = 6;
 
 /**
- * The vault's banner: "Recipe Box" over the splash's heart flourish and a count of recipes
- * and cooks. When the bar holding the toolbar reaches the top it pins there, gaining a
- * background and a small "Recipe Box" title. Where the browser has scroll-driven animations,
+ * A main page's banner, the Recipe Box's and Makes': its title over the splash's heart flourish
+ * and a count of what it holds. When the bar holding the toolbar reaches the top it pins there,
+ * gaining a background and a small copy of the title. Where the browser has scroll-driven animations,
  * the big title shrinks into the small one as the page scrolls, tracking the finger (index.css,
  * from the geometry measured here), and grows back out of it on the way up. Wherever the page
  * comes to rest, the title stays as the scroll left it: the page never scrolls itself.
@@ -39,11 +40,11 @@ const SHOW_AFTER_PX = 6;
  * scrolling never re-renders the vault.
  */
 export const VaultHeader: React.FC<VaultHeaderProps> = ({
-  counts,
+  title,
+  caption,
   entering,
   children,
   shelf,
-  t,
 }) => {
   const mastheadRef = useRef<HTMLElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -164,7 +165,7 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({
     };
   }, []);
 
-  const words = t.vaultTitle.split(' ');
+  const words = title.split(' ');
 
   return (
     <>
@@ -173,7 +174,7 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({
           <h1 ref={headingRef} className="vault-heading">
             <span ref={titleRef} className="vault-title">
               {words.map((word, i) => (
-                <React.Fragment key={`${t.vaultTitle}-${i}`}>
+                <React.Fragment key={`${title}-${i}`}>
                   {i > 0 && ' '}
                   <span className="vault-word" style={{ '--i': i } as React.CSSProperties}>
                     {word}
@@ -184,9 +185,7 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({
           </h1>
           <div className="vault-masthead-extras">
             <HeartFlourish className="vault-flourish" />
-            {counts.recipes > 0 && (
-              <p className="vault-caption">{t.vaultCaption(counts.recipes, counts.cooks)}</p>
-            )}
+            {caption && <p className="vault-caption">{caption}</p>}
           </div>
         </div>
       </header>
@@ -195,7 +194,7 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({
         {/* The pinned title repeats the heading for sighted users only. */}
         <div ref={stripRef} className="vault-bar-title" aria-hidden="true">
           <span ref={nameRef} className="vault-bar-name">
-            {t.vaultTitle}
+            {title}
           </span>
           <HeartFlourish className="vault-bar-flourish" />
         </div>

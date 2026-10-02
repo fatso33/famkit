@@ -1,4 +1,4 @@
-import { Language } from './recipe';
+import { Language, RecipeCategory } from './recipe';
 
 /** A make's words in its other language (see utils/makeTranslation). */
 export interface MakeTranslation {
@@ -55,3 +55,27 @@ export interface Make {
 
 /** What the Add Make form saves: everything its maker writes. */
 export type MakeContent = Pick<Make, 'recipeId' | 'title' | 'note' | 'photo' | 'madeOn'>;
+
+/** What the Makes page orders its makes by. */
+export type MakesSortKey = 'newest' | 'hearts' | 'recipe' | 'maker';
+
+/**
+ * How the Makes page orders its makes: by what, and whether the other way round from that key's
+ * natural order (the newest shared, the most hearted, recipes A to Z, makers A to Z).
+ */
+export interface MakesSort {
+  by: MakesSortKey;
+  reversed: boolean;
+}
+
+/** Which makes the Makes page shows. */
+export interface MakesFilter {
+  /** One maker, by makerKey; '' for everyone's makes. */
+  maker: string;
+  /** The category of the recipe each was made from, or every one. */
+  category: RecipeCategory | 'all';
+  /** One recipe's makes, by its id; '' for every recipe's. */
+  recipeId: string;
+  /** Only the makes this person has hearted. */
+  hearted: boolean;
+}

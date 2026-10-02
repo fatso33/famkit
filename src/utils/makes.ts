@@ -1,8 +1,8 @@
-import { Language } from '../types/recipe';
-import { Make, MakeTranslation } from '../types/make';
+import { Language, RecipeCategory } from '../types/recipe';
+import { Make, MakeTranslation, MakesFilter, MakesSort, MakesSortKey } from '../types/make';
 import type { CurrentUser } from '../hooks/useCurrentUser';
 import { memberName } from './ownership';
-import { findMatch } from './vault';
+import { RECIPE_CATEGORIES, findMatch } from './vault';
 
 /**
  * Makes: what family members made from the Recipe Box's recipes, each with a photo, shared on
@@ -87,6 +87,173 @@ export function searchMakes<T extends MakeEntry>(entries: readonly T[], query: s
   return entries.filter(({ make, title, recipeName }) =>
     [title, recipeName, makerName(make)].some((text) => text && findMatch(text, query)),
   );
+}
+
+// --- The Makes page's filter and sort -------------------------------------------------------
+
+export const MAKES_SORT_KEYS: readonly MakesSortKey[] = ['newest', 'hearts', 'recipe', 'maker'];
+
+export const DEFAULT_MAKES_SORT: MakesSort = { by: 'newest', reversed: false };
+
+export const NO_MAKES_FILTER: MakesFilter = {
+  maker: '',
+  category: 'all',
+  recipeId: '',
+  hearted: false,
+};
+
+/** Whether the sort is the page's own (the newest shared first), so its key shows no dot. */
+export const isDefaultMakesSort = (sort: MakesSort) =>
+  sort.by === DEFAULT_MAKES_SORT.by && sort.reversed === DEFAULT_MAKES_SORT.reversed;
+
+/** Whether anything narrows the makes shown. */
+export const isMakesFiltered = (filter: MakesFilter) =>
+  filter.maker !== '' || filter.category !== 'all' || filter.recipeId !== '' || filter.hearted;
+
+const isMakesSortKey = (key: string): key is MakesSortKey =>
+  (MAKES_SORT_KEYS as readonly string[]).includes(key);
+
+/** A sort as this device keeps it: its key, with ":reversed" when turned round. */
+export function formatMakesSort(sort: MakesSort): string {
+  return sort.reversed ? `${sort.by}:reversed` : sort.by;
+}
+
+/** A kept sort, or null when it isn't one. */
+export function parseMakesSort(value: string | null): MakesSort | null {
+  if (!value) return null;
+  const [by, direction] = value.split(':');
+  if (!isMakesSortKey(by) || (direction !== undefined && direction !== 'reversed')) return null;
+  return { by, reversed: direction === 'reversed' };
+}
+
+/** A make on the Makes page, with the category of its recipe (null once the recipe has gone). */
+export interface MakesEntry extends MakeEntry {
+  category: RecipeCategory | null;
+}
+
+/** Who made it, as the filter tells makers apart: their email, or their name without one. */
+export function makerKey(make: Pick<Make, 'ownerEmail' | 'ownerName' | 'ownerNameAsTyped'>) {
+  return make.ownerEmail?.trim().toLowerCase() || makerName(make).toLowerCase();
+}
+
+type MakesFilterPart = 'maker' | 'category' | 'recipe' | 'hearted';
+
+/** Whether a make passes the filter, leaving out one part of it (for that part's counts). */
+function passes(
+  entry: MakesEntry,
+  filter: MakesFilter,
+  hearted: (make: Make) => boolean,
+  skip?: MakesFilterPart,
+) {
+  const { make } = entry;
+  if (skip !== 'maker' && filter.maker && makerKey(make) !== filter.maker) return false;
+  if (skip !== 'category' && filter.category !== 'all' && entry.category !== filter.category) {
+    return false;
+  }
+  if (skip !== 'recipe' && filter.recipeId && make.recipeId !== filter.recipeId) return false;
+  if (skip !== 'hearted' && filter.hearted && !hearted(make)) return false;
+  return true;
+}
+
+/** The makes the filter leaves; `hearted` says which this person has hearted. */
+export function filterMakes<T extends MakesEntry>(
+  entries: readonly T[],
+  filter: MakesFilter,
+  hearted: (make: Make) => boolean,
+): T[] {
+  return entries.filter((entry) => passes(entry, filter, hearted));
+}
+
+export interface MakesFilterCounts {
+  categories: Record<RecipeCategory | 'all', number>;
+  /** Everyone who has made something, A to Z, including those the rest leaves at 0. */
+  makers: { key: string; name: string; count: number }[];
+  allMakers: number;
+  /** Every recipe something was made from (and still in the box), A to Z. */
+  recipes: { id: string; name: string; count: number }[];
+  allRecipes: number;
+  /** The makes this person has hearted, with the rest of the filter. */
+  hearted: number;
+}
+
+/** What each choice in the filter menu would show, with the rest of the filter as it is. */
+export function makesFilterCounts(
+  entries: readonly MakesEntry[],
+  filter: MakesFilter,
+  hearted: (make: Make) => boolean,
+  lang: Language,
+): MakesFilterCounts {
+  const categories = { all: 0 } as Record<RecipeCategory | 'all', number>;
+  for (const category of RECIPE_CATEGORIES) categories[category] = 0;
+  const makers = new Map<string, { key: string; name: string; count: number }>();
+  const recipes = new Map<string, { id: string; name: string; count: number }>();
+  let allMakers = 0;
+  let allRecipes = 0;
+  let heartedCount = 0;
+  for (const entry of entries) {
+    const { make } = entry;
+    if (passes(entry, filter, hearted, 'category')) {
+      categories.all++;
+      if (entry.category) categories[entry.category]++;
+    }
+    const key = makerKey(make);
+    let maker = makers.get(key);
+    if (!maker && key) makers.set(key, (maker = { key, name: makerName(make) || key, count: 0 }));
+    if (passes(entry, filter, hearted, 'maker')) {
+      allMakers++;
+      if (maker) maker.count++;
+    }
+    let recipe = recipes.get(make.recipeId);
+    if (!recipe && entry.recipeName && entry.category) {
+      recipe = { id: make.recipeId, name: entry.recipeName, count: 0 };
+      recipes.set(make.recipeId, recipe);
+    }
+    if (passes(entry, filter, hearted, 'recipe')) {
+      allRecipes++;
+      if (recipe) recipe.count++;
+    }
+    if (hearted(make) && passes(entry, filter, hearted, 'hearted')) heartedCount++;
+  }
+  const collator = new Intl.Collator(lang, { sensitivity: 'base', numeric: true });
+  const byName = (a: { name: string }, b: { name: string }) => collator.compare(a.name, b.name);
+  return {
+    categories,
+    makers: [...makers.values()].sort(byName),
+    allMakers,
+    recipes: [...recipes.values()].sort(byName),
+    allRecipes,
+    hearted: heartedCount,
+  };
+}
+
+/**
+ * The makes in the chosen order, turned round if asked. Ties go the newest shared first either
+ * way. By recipe or maker, makes with none to go by (a recipe that has gone) come last.
+ */
+export function sortMakes<T extends MakesEntry>(
+  entries: readonly T[],
+  sort: MakesSort,
+  lang: Language,
+): T[] {
+  const collator = new Intl.Collator(lang, { sensitivity: 'base', numeric: true });
+  const newest = (a: T, b: T) => b.make.createdAt - a.make.createdAt;
+  const text: Partial<Record<MakesSortKey, (entry: T) => string>> = {
+    recipe: (entry) => entry.recipeName,
+    maker: (entry) => makerName(entry.make),
+  };
+  const natural: Record<MakesSortKey, (a: T, b: T) => number> = {
+    newest,
+    hearts: (a, b) => heartCount(b.make) - heartCount(a.make),
+    recipe: (a, b) => collator.compare(a.recipeName, b.recipeName),
+    maker: (a, b) => collator.compare(makerName(a.make), makerName(b.make)),
+  };
+  const textOf = text[sort.by];
+  const compare = natural[sort.by];
+  return [...entries].sort((a, b) => {
+    if (textOf && !textOf(a) !== !textOf(b)) return textOf(a) ? -1 : 1;
+    const order = sort.reversed ? compare(b, a) : compare(a, b);
+    return order || (sort.by === 'newest' ? 0 : newest(a, b));
+  });
 }
 
 // --- Hearts --------------------------------------------------------------------------------

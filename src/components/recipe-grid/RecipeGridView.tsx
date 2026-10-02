@@ -123,6 +123,7 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
   }));
   const shown = sortEntries(filterEntries(entries, filter), sort, language);
   const counts = filterCounts(entries, filter, language);
+  const boxCounts = vaultCounts(recipes);
   const groups = groupEntries(shown, sort.by, filter);
   // How many remixes each recipe has, for the badge on its card.
   const remixes = remixCounts(recipes);
@@ -353,10 +354,12 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
       {banner}
 
       <VaultHeader
-        counts={vaultCounts(recipes)}
+        title={t.vaultTitle}
+        caption={
+          boxCounts.recipes > 0 ? t.vaultCaption(boxCounts.recipes, boxCounts.cooks) : undefined
+        }
         entering={entering}
         shelf={tabs.length > 0 && <VaultShelf tabs={tabs} list={listRef} />}
-        t={t}
       >
         {recipes.length > 0 && (
           <VaultToolbar

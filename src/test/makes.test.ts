@@ -1,7 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { Make } from '../types/make';
+import { Make, MakesSort } from '../types/make';
 import {
+  DEFAULT_MAKES_SORT,
+  NO_MAKES_FILTER,
   canEditMake,
+  filterMakes,
+  formatMakesSort,
+  isDefaultMakesSort,
+  isMakesFiltered,
+  makesFilterCounts,
+  parseMakesSort,
+  sortMakes,
+  type MakesEntry,
   hasHearted,
   heartCount,
   isoDay,
@@ -131,5 +141,124 @@ describe('makes', () => {
     expect(ids('kowalska')).toEqual([]);
     expect(ids('chlèb')).toEqual(['a']);
     expect(ids('bigos')).toEqual([]);
+  });
+});
+
+describe("the Makes page's filter and sort", () => {
+  const entry = (over: Partial<Make>, recipeName: string, category: MakesEntry['category']) => {
+    const m = make(over);
+    return { make: m, title: m.title || recipeName, recipeName, category };
+  };
+  const ENTRIES: MakesEntry[] = [
+    entry(
+      {
+        id: 'a',
+        recipeId: 'bread',
+        ownerEmail: 'Ola@example.com',
+        ownerName: 'Ola',
+        createdAt: 300,
+      },
+      'Cheese bread',
+      'breads',
+    ),
+    entry(
+      {
+        id: 'b',
+        recipeId: 'zurek',
+        ownerEmail: 'kasia@example.com',
+        ownerName: 'Kasia',
+        createdAt: 200,
+        hearts: { 'ola@example.com': true, 'piotr@example.com': true },
+      },
+      'Żurek',
+      'soups',
+    ),
+    entry(
+      {
+        id: 'c',
+        recipeId: 'bread',
+        ownerEmail: 'kasia@example.com',
+        ownerName: 'Kasia',
+        createdAt: 100,
+        hearts: { 'piotr@example.com': true },
+      },
+      'Cheese bread',
+      'breads',
+    ),
+    // Its recipe has gone from the box.
+    entry(
+      { id: 'd', recipeId: 'gone', ownerName: 'Wanda', ownerEmail: '', createdAt: 50 },
+      '',
+      null,
+    ),
+  ];
+  const ids = (list: MakesEntry[]) => list.map((e) => e.make.id);
+  const olaHearted = (m: Make) => hasHearted(m, 'ola@example.com');
+
+  it('keeps a sort as text and reads it back', () => {
+    expect(parseMakesSort(formatMakesSort({ by: 'hearts', reversed: true }))).toEqual({
+      by: 'hearts',
+      reversed: true,
+    });
+    expect(parseMakesSort('maker')).toEqual({ by: 'maker', reversed: false });
+    expect(parseMakesSort('time')).toBeNull();
+    expect(parseMakesSort('newest:sideways')).toBeNull();
+    expect(isDefaultMakesSort(DEFAULT_MAKES_SORT)).toBe(true);
+    expect(isDefaultMakesSort({ by: 'newest', reversed: true })).toBe(false);
+  });
+
+  it('filters by maker, category, recipe and hearts, together', () => {
+    const f = (over: Partial<typeof NO_MAKES_FILTER>) =>
+      ids(filterMakes(ENTRIES, { ...NO_MAKES_FILTER, ...over }, olaHearted));
+    expect(f({})).toEqual(['a', 'b', 'c', 'd']);
+    expect(isMakesFiltered(NO_MAKES_FILTER)).toBe(false);
+    // Makers go by email, however it was capitalised.
+    expect(f({ maker: 'ola@example.com' })).toEqual(['a']);
+    expect(f({ maker: 'kasia@example.com' })).toEqual(['b', 'c']);
+    // Without an email, by name.
+    expect(f({ maker: 'wanda' })).toEqual(['d']);
+    expect(f({ category: 'breads' })).toEqual(['a', 'c']);
+    expect(f({ recipeId: 'bread', maker: 'kasia@example.com' })).toEqual(['c']);
+    expect(f({ hearted: true })).toEqual(['b']);
+    expect(f({ hearted: true, category: 'breads' })).toEqual([]);
+  });
+
+  it('counts what each choice would show, with the rest of the filter', () => {
+    const counts = makesFilterCounts(
+      ENTRIES,
+      { ...NO_MAKES_FILTER, category: 'breads' },
+      olaHearted,
+      'en',
+    );
+    expect(counts.categories.all).toBe(4);
+    expect(counts.categories.breads).toBe(2);
+    expect(counts.categories.soups).toBe(1);
+    expect(counts.makers).toEqual([
+      { key: 'kasia@example.com', name: 'Kasia', count: 1 },
+      { key: 'ola@example.com', name: 'Ola', count: 1 },
+      { key: 'wanda', name: 'Wanda', count: 0 },
+    ]);
+    expect(counts.allMakers).toBe(2);
+    // Only recipes still in the box, once each.
+    expect(counts.recipes).toEqual([
+      { id: 'bread', name: 'Cheese bread', count: 2 },
+      { id: 'zurek', name: 'Żurek', count: 0 },
+    ]);
+    expect(counts.hearted).toBe(0);
+    expect(makesFilterCounts(ENTRIES, NO_MAKES_FILTER, olaHearted, 'en').hearted).toBe(1);
+  });
+
+  it('sorts by each key, either way round, ties going the newest first', () => {
+    const s = (by: MakesSort['by'], reversed = false) =>
+      ids(sortMakes(ENTRIES, { by, reversed }, 'en'));
+    expect(s('newest')).toEqual(['a', 'b', 'c', 'd']);
+    expect(s('newest', true)).toEqual(['d', 'c', 'b', 'a']);
+    expect(s('hearts')).toEqual(['b', 'c', 'a', 'd']);
+    expect(s('hearts', true)).toEqual(['a', 'd', 'c', 'b']);
+    // A gone recipe comes last either way.
+    expect(s('recipe')).toEqual(['a', 'c', 'b', 'd']);
+    expect(s('recipe', true)).toEqual(['b', 'a', 'c', 'd']);
+    expect(s('maker')).toEqual(['b', 'c', 'a', 'd']);
+    expect(s('maker', true)).toEqual(['d', 'a', 'b', 'c']);
   });
 });

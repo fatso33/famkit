@@ -1510,6 +1510,11 @@
           transform 0.5s var(--ease-glide) 0.05s;
       }
 
+      /* Keys only (Makes: filter and sort, no search): they hold the row's right end. */
+      .vault-toolbar.is-keys-only .vault-tools {
+        padding-right: 0;
+      }
+
       .vault-toolbar.is-searching .vault-tools {
         opacity: 0;
         transform: translateX(-1.25rem);
@@ -10752,10 +10757,11 @@
           animation: make-heart-ring 0.6s var(--ease-decelerate) 0.08s both;
         }
 
-        /* Arriving at the page: the first makes rise into place in turn, once the page's first
-           frame is drawn (MakesView sets data-entrance). */
+        /* Arriving at the page: under the banner (as the Recipe Box's, .vault-page.is-entering),
+           the first makes rise into place in turn, once the page's first frame is drawn
+           (MakesView sets data-entrance). */
         .makes-page.is-entering .make-card {
-          animation: vault-item-in 0.85s var(--ease-glide) calc(0.12s + var(--enter-i, 0) * 90ms)
+          animation: vault-item-in 0.85s var(--ease-glide) calc(0.55s + var(--enter-i, 0) * 90ms)
             both;
         }
         .makes-page.is-entering:not([data-entrance]) .make-card {

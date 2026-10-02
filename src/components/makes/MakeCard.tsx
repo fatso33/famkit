@@ -5,6 +5,7 @@ import { Make } from '../../types/make';
 import { UiTranslations } from '../../i18n/translations';
 import { RecipeCardIcon } from '../common/RecipeBoxIcon';
 import { heartCount, madeOnLabel, makerName } from '../../utils/makes';
+import { vaultItemKey } from '../../utils/viewTransition';
 
 interface MakeCardProps {
   /** In the viewer's language. */
@@ -64,6 +65,8 @@ export const MakeCard: React.FC<MakeCardProps> = ({
     <article
       className={`make-card${arrival ? ` is-arriving-${arrival}` : ''}`}
       id={`make-${make.id}`}
+      // Glides to its new place when the page is filtered or sorted (utils/viewTransition).
+      data-vault-item={vaultItemKey(make.id)}
       style={
         enterIndex === undefined ? undefined : ({ '--enter-i': enterIndex } as React.CSSProperties)
       }

@@ -36,8 +36,10 @@ import {
 } from './utils/recipeDrafts';
 import { NO_FILTER } from './utils/vault';
 import {
+  getStoredMakesSort,
   getStoredVaultSort,
   getStoredVaultView,
+  setStoredMakesSort,
   setStoredVaultSort,
   setStoredVaultView,
 } from './services/storage';
@@ -64,7 +66,7 @@ import {
   remixesOf,
 } from './utils/recipeRemix';
 import { CookingPot, Download, PencilLine, Plus, Shuffle } from 'lucide-react';
-import { canEditMake, makeCounts, makesOf } from './utils/makes';
+import { NO_MAKES_FILTER, canEditMake, makeCounts, makesOf } from './utils/makes';
 import { localizeMake } from './utils/makeTranslation';
 import { NavIsland, MenuAction } from './components/layout/NavIsland';
 import { NavDeck, NavDeckScrim, type DeckKind } from './components/layout/NavDeck';
@@ -94,7 +96,7 @@ import {
   VaultView,
 } from './types/recipe';
 import { AppPage, MAIN_PAGES, MainPage } from './types/navigation';
-import { Make, MakeContent } from './types/make';
+import { Make, MakeContent, MakesFilter, MakesSort } from './types/make';
 
 // Page changes jump straight to their scroll position: html's smooth scrolling would
 // otherwise play out in the middle of the page transition.
@@ -244,6 +246,9 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
   // How the vault is ordered and laid out is this person's preference, kept on the device.
   const [vaultSort, setVaultSort] = useState<VaultSort>(getStoredVaultSort);
   const [vaultView, setVaultView] = useState<VaultView>(getStoredVaultView);
+  // The same for Makes: its filter for the session, its order kept on the device.
+  const [makesFilter, setMakesFilter] = useState<MakesFilter>(NO_MAKES_FILTER);
+  const [makesSort, setMakesSort] = useState<MakesSort>(getStoredMakesSort);
   // The vault's banner plays its entrance when the vault arrives, not when a recipe or
   // Settings slides back to reveal it.
   const [vaultEntrance, setVaultEntrance] = useState(true);
@@ -570,6 +575,10 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
   const changeVaultSort = (sort: VaultSort) => {
     setVaultSort(sort);
     setStoredVaultSort(sort);
+  };
+  const changeMakesSort = (sort: MakesSort) => {
+    setMakesSort(sort);
+    setStoredMakesSort(sort);
   };
   const changeVaultView = (view: VaultView) => {
     setVaultView(view);
@@ -1180,6 +1189,10 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
             canEdit={(make) => canEditMake(make, currentUser, isFirebaseConfigured)}
             arriving={arrivingMake}
             animateIn={vaultEntrance}
+            filter={makesFilter}
+            onFilterChange={setMakesFilter}
+            sort={makesSort}
+            onSortChange={changeMakesSort}
             onOpenRecipe={openRecipeThroughBox}
             onEditMake={(make, from) => openMakeEditor(make, undefined, from)}
             onHeart={heartMake}

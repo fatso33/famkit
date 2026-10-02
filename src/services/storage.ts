@@ -1,6 +1,12 @@
 import { Recipe, RecipeVersion, Language, Theme, VaultSort, VaultView } from '../types/recipe';
-import { Make } from '../types/make';
-import { leaveMakePhotoOut, parseMake } from '../utils/makes';
+import { Make, MakesSort } from '../types/make';
+import {
+  DEFAULT_MAKES_SORT,
+  formatMakesSort,
+  leaveMakePhotoOut,
+  parseMakesSort,
+  parseMake,
+} from '../utils/makes';
 import {
   leavePhotosOut,
   makePhotoKey,
@@ -25,9 +31,10 @@ const FONT_SCALE_KEY = 'wandas_font_scale';
 const SEASON_KEY = 'wandas_season';
 const LEGACY_API_KEY_STORAGE = 'wandas_gemini_api_key';
 const INSTALL_DISMISSED_KEY = 'family_kitchen_install_dismissed';
-// How this person likes the vault laid out and ordered, kept per device.
+// How this person likes the vault (and Makes) laid out and ordered, kept per device.
 const VAULT_VIEW_KEY = 'family_kitchen_vault_view';
 const VAULT_SORT_KEY = 'family_kitchen_vault_sort';
+const MAKES_SORT_KEY = 'family_kitchen_makes_sort';
 // Earlier recipe versions, only when there is no cloud (local dev). With Firebase they live in
 // Firestore, whose offline cache already covers them.
 const LOCAL_VERSIONS_KEY = 'family_kitchen_versions';
@@ -405,6 +412,16 @@ export function getStoredVaultSort(): VaultSort {
 export function setStoredVaultSort(sort: VaultSort): void {
   if (typeof window === 'undefined') return;
   writeSetting(VAULT_SORT_KEY, formatVaultSort(sort));
+}
+
+export function getStoredMakesSort(): MakesSort {
+  if (typeof window === 'undefined') return DEFAULT_MAKES_SORT;
+  return parseMakesSort(readSetting(MAKES_SORT_KEY)) ?? DEFAULT_MAKES_SORT;
+}
+
+export function setStoredMakesSort(sort: MakesSort): void {
+  if (typeof window === 'undefined') return;
+  writeSetting(MAKES_SORT_KEY, formatMakesSort(sort));
 }
 
 // The recipes each person has opened on this device, for the vault's Unseen filter:

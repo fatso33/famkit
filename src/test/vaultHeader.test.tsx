@@ -13,7 +13,7 @@ function renderHeader() {
     value: 5000,
   });
   const view = render(
-    <VaultHeader counts={{ recipes: 3, cooks: 2 }} entering={false} t={t}>
+    <VaultHeader title={t.vaultTitle} caption={t.vaultCaption(3, 2)} entering={false}>
       <input aria-label="search" />
       <button type="button">filter</button>
     </VaultHeader>,
