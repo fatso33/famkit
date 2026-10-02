@@ -900,7 +900,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     viewMakePhoto: (title: string) => `View the photo of ${title}`,
     counter: 'My Counter',
     navCounter: 'Counter',
-    navRecipes: 'Box',
+    navRecipes: 'Recipes',
     navMakes: 'Makes',
     goBack: 'Back',
     greetings: {
