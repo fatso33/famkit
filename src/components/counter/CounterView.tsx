@@ -54,7 +54,6 @@ interface CounterViewProps {
   onDecreaseFont: () => void;
   onAddRecipe: (from: HTMLElement) => void;
   onAddMake: (from: HTMLElement) => void;
-  onOpenSettings: () => void;
   /** A recipe tapped: its card, which lifts and flips open into the recipe, as in the box. */
   onOpenRecipe: (id: string, card: HTMLElement) => void;
   /** The recipe last opened from here: its card is the one the recipe folds back onto. */
@@ -93,7 +92,6 @@ export const CounterView: React.FC<CounterViewProps> = ({
   onDecreaseFont,
   onAddRecipe,
   onAddMake,
-  onOpenSettings,
   onOpenRecipe,
   flipRecipeId,
   onSeeAllRecipes,
@@ -237,7 +235,6 @@ export const CounterView: React.FC<CounterViewProps> = ({
           onDecreaseFont={onDecreaseFont}
           onAddRecipe={onAddRecipe}
           onAddMake={onAddMake}
-          onOpenSettings={onOpenSettings}
           t={t}
         />
 

@@ -10,7 +10,7 @@ import {
 } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
 import { getLocalizedRecipe } from '../../hooks/useRecipes';
-import { transitionView } from '../../utils/viewTransition';
+import { isOnScreen, prefersReducedMotion, transitionView } from '../../utils/viewTransition';
 import { shelfEndTimeline, shelfFollowsScroll, shelfTimeline } from '../../utils/vaultShelf';
 import {
   NO_FILTER,
@@ -27,13 +27,22 @@ import { RecipeCard } from './RecipeCard';
 import { RecipeRow } from './RecipeRow';
 import { VaultHeader } from './VaultHeader';
 import { VaultShelf } from './VaultShelf';
-import { VaultTabLabel, type VaultTab } from './VaultTabLabel';
+import { VaultDivider } from './VaultDivider';
+import { VaultEmpty } from './VaultEmpty';
+import { type VaultTab } from './VaultTabLabel';
 import { VaultToolbar } from './VaultToolbar';
 
 // Longer than the entrance's last animation (index.css, .vault-page.is-entering).
 const ENTRANCE_MS = 1800;
 // Only the first few recipes join the entrance; the rest are below the fold anyway.
 const ENTRANCE_ITEMS = 6;
+// Cards or list: how long the box takes to lift away (index.css, vault-swap-out). Every recipe
+// and tab on screen is then dealt back in, one after another, though past the first ten (a tall
+// tablet's list) the rest land together with the tenth.
+const SWAP_OUT_MS = 160;
+const DEAL_STAGGER = 10;
+// Longer than the last one's deal (index.css, vault-deal-in: 34ms apart, 0.52s each).
+const DEAL_MS = DEAL_STAGGER * 34 + 600;
 
 interface RecipeGridViewProps {
   recipes: Recipe[];
@@ -135,16 +144,76 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
     if (window.scrollY > top) window.scrollTo({ top, behavior: 'instant' });
   };
 
-  // Recipes glide to their new places (utils/viewTransition, motion 'vault'), changing shape
-  // when the layout switches.
-  const changeVault = (change: () => void, relayout = false) =>
+  // Recipes glide to their new places (utils/viewTransition, motion 'vault').
+  const changeVault = (change: () => void) =>
     transitionView(
       () => {
         flushSync(change);
         keepListInView();
       },
-      { motion: 'vault', relayout },
+      { motion: 'vault' },
     );
+
+  // Cards or list: the box lifts away, the layout changes behind it, and the recipes and tabs on
+  // screen are dealt back in, one after another, tilting as they land (index.css, the vault
+  // swap). Only opacity and transforms move, on the box and those few, with no page snapshots,
+  // so a phone builds the new layout once while nothing on screen waits on it. The switch's
+  // thumb crosses at the tap.
+  const [swapTo, setSwapTo] = useState<VaultView | null>(null);
+  const swapTimer = useRef(0);
+  const dealTimer = useRef(0);
+  // The layout chosen and still lifting away: the box left meanwhile keeps it all the same, as
+  // its switch already showed it.
+  const pendingSwap = useRef<{ view: VaultView; apply: (view: VaultView) => void } | null>(null);
+  useEffect(
+    () => () => {
+      window.clearTimeout(swapTimer.current);
+      window.clearTimeout(dealTimer.current);
+      const pending = pendingSwap.current;
+      if (pending) pending.apply(pending.view);
+    },
+    [],
+  );
+  const dealIn = () => {
+    const list = listRef.current;
+    if (!list) return;
+    const dealt = [...list.querySelectorAll<HTMLElement>('.vault-divider, .vault-item')].filter(
+      isOnScreen,
+    );
+    dealt.forEach((el, i) => {
+      el.style.setProperty('--deal', String(Math.min(i, DEAL_STAGGER - 1)));
+      el.style.setProperty('--tilt', `${i % 2 ? 1.2 : -1.4}deg`);
+      el.dataset.deal = '';
+    });
+    window.clearTimeout(dealTimer.current);
+    dealTimer.current = window.setTimeout(() => {
+      for (const el of dealt) {
+        delete el.dataset.deal;
+        el.style.removeProperty('--deal');
+        el.style.removeProperty('--tilt');
+      }
+    }, DEAL_MS);
+  };
+  const switchView = (next: VaultView) => {
+    window.clearTimeout(swapTimer.current);
+    pendingSwap.current = null;
+    if (prefersReducedMotion()) {
+      flushSync(() => onViewChange(next));
+      keepListInView();
+      return;
+    }
+    setSwapTo(next);
+    pendingSwap.current = { view: next, apply: onViewChange };
+    swapTimer.current = window.setTimeout(() => {
+      pendingSwap.current = null;
+      flushSync(() => {
+        onViewChange(next);
+        setSwapTo(null);
+      });
+      keepListInView();
+      dealIn();
+    }, SWAP_OUT_MS);
+  };
 
   const typeQuery = (query: string) => {
     flushSync(() => onFilterChange({ ...filter, query }));
@@ -298,59 +367,45 @@ export const RecipeGridView: React.FC<RecipeGridViewProps> = ({
             onQueryChange={typeQuery}
             sort={sort}
             onSortChange={(next) => changeVault(() => onSortChange(next))}
-            view={view}
-            onViewChange={(next) => changeVault(() => onViewChange(next), true)}
+            view={swapTo ?? view}
+            onViewChange={switchView}
             t={t}
           />
         )}
       </VaultHeader>
 
       {/* The Recipe Box: its recipes as index cards, filed behind divider tabs. */}
-      <div ref={listRef} className={`vault-box is-${view}`} id="recipesGrid">
-        {recipes.length === 0 && shownDrafts.length === 0 && (
-          <p className="vault-empty">{t.emptyVault}</p>
-        )}
-        {recipes.length > 0 && shown.length === 0 && (
-          <div className="vault-empty">
-            {/* Only the unseen filter came up empty: everything else would show something. */}
-            <p>
-              {filter.unseen && filterEntries(entries, { ...filter, unseen: false }).length > 0
-                ? t.allSeen
-                : t.noMatches}
-            </p>
-            <button
-              type="button"
-              className="vault-empty-reset"
-              onClick={() => changeVault(() => onFilterChange(NO_FILTER))}
-            >
-              {t.showAllRecipes}
-            </button>
-          </div>
-        )}
+      <div
+        ref={listRef}
+        className={`vault-box is-${view}`}
+        id="recipesGrid"
+        data-swap={swapTo ? 'out' : undefined}
+      >
+        <VaultEmpty
+          boxEmpty={recipes.length === 0 && shownDrafts.length === 0}
+          entries={entries}
+          filter={filter}
+          shownCount={shown.length}
+          onShowAll={() => changeVault(() => onFilterChange(NO_FILTER))}
+          t={t}
+        />
         {sections.map(({ key, tab, index, cards, enterAt }) => (
           <section key={key} className="vault-group">
             {tab && (
-              <div
-                className="vault-divider"
+              <VaultDivider
+                tab={tab}
                 // Joins the entrance with its first card, so the tabs never arrive alone.
                 style={
                   enterAt === undefined
                     ? undefined
                     : ({ '--enter-i': enterAt } as React.CSSProperties)
                 }
-              >
-                <h2
-                  className="vault-tab"
-                  style={
-                    tabTimelines
-                      ? ({ '--tab-timeline': shelfTimeline(index) } as React.CSSProperties)
-                      : undefined
-                  }
-                >
-                  <VaultTabLabel tab={tab} />
-                </h2>
-                <div className="vault-tab-edge" aria-hidden="true" />
-              </div>
+                tabStyle={
+                  tabTimelines
+                    ? ({ '--tab-timeline': shelfTimeline(index) } as React.CSSProperties)
+                    : undefined
+                }
+              />
             )}
             {cards}
           </section>

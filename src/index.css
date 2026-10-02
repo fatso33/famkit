@@ -420,34 +420,41 @@
         animation: vt-fade-through 0.38s var(--ease-soft) both;
       }
 
-      /* A main page chosen on the navigation island slides in from the side its tab sits on,
-         as the old page drifts the other way and clears; the new one starts just after, so the
-         two pages' text never shows through each other. */
+      /* A main page chosen on the navigation island: the pages lie side by side in tab order,
+         and the new one pushes the old one off, the two travelling together, in step with the
+         island's highlight (same time and curve, NavIsland). Nothing fades, so the two pages'
+         text never shows through each other, and only two snapshots move. */
+      :root:is([data-nav='side-next'], [data-nav='side-prev'])::view-transition-old(root),
+      :root:is([data-nav='side-next'], [data-nav='side-prev'])::view-transition-new(root) {
+        animation-duration: 0.48s;
+        animation-timing-function: cubic-bezier(0.3, 0.7, 0.3, 1);
+        animation-fill-mode: both;
+        /* The pages' own blend would mix them where they meet. */
+        mix-blend-mode: normal;
+      }
       :root[data-nav='side-next']::view-transition-old(root) {
-        animation: vt-side-out-left 0.26s cubic-bezier(0.4, 0, 1, 1) both;
+        animation-name: vt-push-out-left;
       }
       :root[data-nav='side-next']::view-transition-new(root) {
-        animation: vt-side-in-right 0.44s var(--ease-glide) 0.12s both;
+        animation-name: vt-push-in-right;
       }
       :root[data-nav='side-prev']::view-transition-old(root) {
-        animation: vt-side-out-right 0.26s cubic-bezier(0.4, 0, 1, 1) both;
+        animation-name: vt-push-out-right;
       }
       :root[data-nav='side-prev']::view-transition-new(root) {
-        animation: vt-side-in-left 0.44s var(--ease-glide) 0.12s both;
+        animation-name: vt-push-in-left;
       }
-      @keyframes vt-side-out-left {
-        60% { opacity: 0; }
-        to { opacity: 0; transform: translateX(-18%); }
+      @keyframes vt-push-out-left {
+        to { transform: translateX(-100%); }
       }
-      @keyframes vt-side-out-right {
-        60% { opacity: 0; }
-        to { opacity: 0; transform: translateX(18%); }
+      @keyframes vt-push-out-right {
+        to { transform: translateX(100%); }
       }
-      @keyframes vt-side-in-right {
-        from { opacity: 0; transform: translateX(22%); }
+      @keyframes vt-push-in-right {
+        from { transform: translateX(100%); }
       }
-      @keyframes vt-side-in-left {
-        from { opacity: 0; transform: translateX(-22%); }
+      @keyframes vt-push-in-left {
+        from { transform: translateX(-100%); }
       }
 
       /* One recipe to another (from a remix popover): the old page clears quickly and the new
@@ -504,12 +511,11 @@
         display: none;
       }
 
-      /* The vault re-filtered, re-sorted or switched between cards and list (utils/viewTransition,
-         nameVaultItems): each recipe on screen glides to its new place. Between cards and list
-         its photo and name fly on their own, so a card's photo shrinks into its row's, and the
-         rest of it cross-fades inside its moving outline. A filter or sort leaves a recipe as
-         it was, so one that stays (vault-kept) glides as it is, with nothing to cross-fade;
-         recipes that arrive or leave fade. The bar with the toolbar stays live on top. */
+      /* The vault re-filtered or re-sorted (utils/viewTransition, nameVaultItems): each recipe
+         on screen glides to its new place. A filter or sort leaves a recipe as it was, so one
+         that stays (vault-kept) glides as it is, with nothing to cross-fade; recipes that
+         arrive or leave fade. The bar with the toolbar stays live on top. (Cards or list deals
+         the cards again instead: the vault swap, by the Recipe Box's cards.) */
       :root[data-nav='vault'] .vault-bar {
         view-transition-name: vault-bar;
       }
@@ -532,9 +538,7 @@
       :root[data-nav='vault']::view-transition-new(root) {
         animation: fk-fade-in 0.3s ease both;
       }
-      ::view-transition-group(*.vault-item),
-      ::view-transition-group(*.vault-photo),
-      ::view-transition-group(*.vault-name) {
+      ::view-transition-group(*.vault-item) {
         animation-duration: 0.56s;
         animation-timing-function: var(--ease-glide);
       }
@@ -557,21 +561,6 @@
       }
       ::view-transition-new(*.vault-kept) {
         animation: none;
-      }
-      ::view-transition-old(*.vault-photo),
-      ::view-transition-new(*.vault-photo) {
-        height: 100%;
-        object-fit: cover;
-        overflow: clip;
-        animation-duration: 0.56s;
-        animation-timing-function: var(--ease-glide);
-      }
-      ::view-transition-old(*.vault-name),
-      ::view-transition-new(*.vault-name) {
-        height: 100%;
-        object-fit: contain;
-        object-position: left top;
-        animation-duration: 0.4s;
       }
 
       /* A recipe opened from a remix popover: the name tapped there flies up into the new
@@ -1353,7 +1342,16 @@
         padding-bottom: 0.8rem;
       }
 
+      /* The row's width, which the keys are sized against. */
+      .vault-tools-block {
+        container-type: inline-size;
+      }
+
+      /* With large text on a narrow phone, the keys give up a little size rather than overlap:
+         the row holds five keys' widths (the layout switch is two), three gaps and the switch's
+         4px of padding and border. Never under 44px. */
       .vault-toolbar {
+        --vault-key: max(44px, min(2.75rem, (100cqi - 1.5rem - 4px) / 5));
         position: relative;
         display: flex;
         align-items: center;
@@ -2800,6 +2798,32 @@
         .vault-page.is-entering:not([data-entrance])
           :is(.vault-word, .vault-flourish-line, .vault-flourish-heart, .vault-caption, .vault-search, .vault-tools > *, .vault-item, .vault-divider) {
           animation-play-state: paused;
+        }
+
+        /* The vault swap, between cards and list (RecipeGridView): the box lifts away, and once
+           the new layout is behind it, the recipes and tabs on screen are dealt back in from
+           below, one after another, each landing from a slight tilt (as a card deck deals).
+           One layer fades out, then a few cards move: opacity and transforms only. */
+        .vault-box[data-swap='out'] {
+          animation: vault-swap-out 0.16s cubic-bezier(0.4, 0, 1, 1) both;
+        }
+        .vault-box :is(.vault-item, .vault-divider)[data-deal] {
+          animation: vault-deal-in 0.52s var(--ease-glide) calc(var(--deal, 0) * 34ms) backwards;
+        }
+      }
+
+      @keyframes vault-swap-out {
+        to {
+          opacity: 0;
+          translate: 0 -0.5rem;
+        }
+      }
+
+      @keyframes vault-deal-in {
+        from {
+          opacity: 0;
+          translate: 0 2.4rem;
+          rotate: var(--tilt, 0deg);
         }
       }
 
@@ -5183,48 +5207,15 @@
          attribution text instead, as Google permits. */
       .grecaptcha-badge { visibility: hidden; }
 
-      /* The editor preview's round back button (EditorPreview). */
-      .fab-back {
-        position: relative;
-        z-index: 1;
-        width: var(--fab-size);
-        height: var(--fab-size);
-        display: grid;
-        place-items: center;
-        padding: 0;
-        border: 1px solid var(--border-subtle);
-        border-radius: 50%;
-        background: var(--bg-surface);
-        color: var(--accent);
-        box-shadow: var(--shadow-md);
-        cursor: pointer;
-        -webkit-tap-highlight-color: transparent;
-        transition:
-          background-color 0.2s ease,
-          transform 0.3s var(--spring-soft);
-      }
-
-      @media (hover: hover) {
-        .fab-back:hover { background: var(--bg-card-hover); }
-      }
-      .fab-back:active { transform: scale(0.92); }
-
-      .fab-back:focus-visible {
-        outline: 3px solid var(--accent);
-        outline-offset: 3px;
-      }
-
-      @keyframes fab-arrow-in {
-        from { translate: 0.5rem 0; opacity: 0; }
-      }
-
       /* The navigation island (NavIsland): a pill of the three main pages, centred at the foot
          of the screen, with two shorter capsules tucked behind its ends, in the same material:
          the page's actions on the right, and on a recipe or Settings the back button on the
          left. Sized from --nav-u, a rem that gives way on a narrow phone at a large text size, so
          the island always fits. The pill is drawn as two halves, so it can shrink to the current
-         page by moving them together (transforms only, on the compositor). */
-      .nav-island {
+         page by moving them together (transforms only, on the compositor). The editor preview's
+         back capsule (EditorPreview) is drawn from the same sizes and material. */
+      .nav-island,
+      .editor-preview-back {
         --nav-u: min(1rem, calc((100vw - 1.5rem) / 19.5));
         --nav-tab: calc(var(--nav-u) * 3.875);
         --nav-pad: calc(var(--nav-u) * 0.375);
@@ -5242,6 +5233,9 @@
           0 0.2rem 0.5rem -0.25rem rgba(60, 35, 20, 0.18);
         /* The pill's soft shadow over the capsules tucked under its ends. */
         --nav-lap: 0 0 1rem -0.3rem rgba(60, 35, 20, 0.4);
+      }
+
+      .nav-island {
         position: fixed;
         left: 0;
         right: 0;
@@ -5253,7 +5247,7 @@
         pointer-events: none;
       }
 
-      [data-theme='dark'] .nav-island {
+      [data-theme='dark'] :is(.nav-island, .editor-preview-back) {
         --nav-shadow:
           0 0.875rem 1.875rem -0.75rem rgba(0, 0, 0, 0.8),
           0 0.2rem 0.5rem -0.25rem rgba(0, 0, 0, 0.5);
@@ -6532,7 +6526,6 @@
         .install-card,
         .nav-icon *,
         .nav-panel.is-closing .nav-panel-body { animation: none; }
-        .fab-back,
         .nav-pill,
         .nav-shade,
         .nav-end,
@@ -9404,18 +9397,41 @@
         to { opacity: 0; transform: translateY(1.5rem); }
       }
 
-      /* The back button, in glass at the foot of the screen, on the right. */
+      /* The back button: the navigation island's back capsule on its own, centred where the
+         island sits, in the pill's material. It rises into place with the preview. */
       .editor-preview-back {
         position: fixed;
-        right: calc(1.25rem - 0.375rem + env(safe-area-inset-right));
-        bottom: calc(1.25rem - 0.375rem + env(safe-area-inset-bottom));
+        left: 0;
+        right: 0;
+        bottom: calc(1rem + env(safe-area-inset-bottom) + (var(--nav-h) - var(--cap-h)) / 2);
         z-index: 2;
-        padding: 0.375rem;
-        border: 1px solid var(--border-strong);
-        border-radius: var(--radius-full);
-        background: color-mix(in srgb, var(--bg-card) 90%, transparent);
-        backdrop-filter: blur(16px) saturate(1.4);
-        animation: editor-back-in 0.7s var(--spring-soft) 0.12s backwards;
+        width: var(--cap-w);
+        height: var(--cap-h);
+        margin-inline: auto;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 1px solid var(--nav-edge);
+        border-radius: calc(var(--cap-h) / 2);
+        background: var(--nav-face);
+        color: var(--text-primary);
+        box-shadow: inset 0 1px 0 var(--card-sheen), var(--nav-shadow);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        animation: editor-back-in 0.62s var(--spring-soft) 0.12s backwards;
+      }
+
+      .editor-preview-back:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .editor-preview-back .nav-back-arrow {
+        transition: scale 0.15s ease;
+      }
+
+      .editor-preview-back:active .nav-back-arrow {
+        scale: 0.88;
       }
 
       /* Over a step photo open full screen, which it closes. */
@@ -9423,13 +9439,12 @@
         z-index: 201;
       }
 
-      .editor-preview-back .fab-back-arrow {
-        animation: fab-arrow-in 0.5s var(--ease-glide) 0.28s backwards;
-      }
-
       @keyframes editor-back-in {
-        from { opacity: 0; scale: 0.4; }
-        30% { opacity: 1; }
+        from {
+          opacity: 0;
+          translate: 0 calc(100% + 1rem);
+        }
+        40% { opacity: 1; }
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -9461,7 +9476,6 @@
         .save-option,
         .editor-bar-status,
         .editor-preview-back,
-        .editor-preview-back .fab-back-arrow,
         .editor-layer.is-closing .editor-save,
         .editor-layer.is-closing .editor-save-icon,
         .category-option,
@@ -11187,42 +11201,13 @@
         height: 3rem;
       }
 
-      /* Open, the key is the way to Settings: the sliders' knobs glide, then the sliders turn
-         away as a cog turns in. Closing, the cog turns back into the sliders. */
+      /* Open, the key stays pressed in, as the menu's does, and the sliders' knobs glide to new
+         settings; pressed again, it folds the bar back into itself and the knobs glide home. */
       .counter-tools[data-prefs='open'] .fk-prefs-key {
         --prefs-key-bg: var(--accent-subtle);
         border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.14);
         color: var(--accent);
-      }
-
-      .counter-glyph {
-        grid-area: 1 / 1;
-        display: grid;
-        place-items: center;
-        transition:
-          opacity 0.22s ease,
-          transform 0.5s var(--ease-glide);
-      }
-
-      .counter-glyph.is-cog {
-        opacity: 0;
-        transform: rotate(-120deg) scale(0.5);
-      }
-
-      .counter-tools[data-prefs='open'] .counter-glyph.is-prefs {
-        opacity: 0;
-        transform: rotate(90deg) scale(0.55);
-        transition:
-          opacity 0.2s ease 0.2s,
-          transform 0.45s var(--ease-glide) 0.16s;
-      }
-
-      .counter-tools[data-prefs='open'] .counter-glyph.is-cog {
-        opacity: 1;
-        transform: none;
-        transition:
-          opacity 0.25s ease 0.24s,
-          transform 0.6s var(--spring-soft) 0.2s;
       }
 
       .counter-tools[data-prefs='open'] .fk-prefs-glyph circle:nth-of-type(1) { transform: translateX(6px); }

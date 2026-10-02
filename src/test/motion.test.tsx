@@ -139,7 +139,7 @@ describe('motion', () => {
       snapshots.push(morphing() as string[]);
       update();
       snapshots.push(morphing() as string[]);
-      return { finished: Promise.resolve() };
+      return { ready: Promise.resolve(), finished: Promise.resolve() };
     }) as unknown as typeof document.startViewTransition;
 
     render(<App initialPage="recipes" />);

@@ -10,7 +10,7 @@ import { flushSync } from 'react-dom';
  * - hop: from one recipe to another (a remix popover's link): the new page fades up over the old
  * - menu: a page chosen from the open menu, cross-fading under its blurring scrim as it clears
  * - zoom: a photo opening over the page, or closing
- * - vault: the vault's recipes re-filtered, re-sorted or re-laid out, gliding to their new places
+ * - vault: the vault's recipes re-filtered or re-sorted, gliding to their new places
  * - flip-open: a recipe card lifted out of the box flips over, and the recipe unfolds from its
  *   back; flip-close folds the recipe away and the card flips back into its place (setFlipAxis)
  * - window-open: one of My Counter's windows opens out into its page (the Recipe Box, Makes),
@@ -44,8 +44,6 @@ interface Options {
   morph?: Morph;
   /** False when the browser already animated it (the iOS back swipe draws its own). */
   animated?: boolean;
-  /** The vault switches between cards and list, so recipes change shape as they glide. */
-  relayout?: boolean;
   /** Once it has finished (at once where nothing animates). */
   onFinished?: () => void;
   /**
@@ -64,7 +62,7 @@ let current: ViewTransition | null = null;
  */
 export function transitionView(
   update: () => void,
-  { motion, morph, animated = true, relayout = false, onFinished, always }: Options,
+  { motion, morph, animated = true, onFinished, always }: Options,
 ) {
   if (!animated || !document.startViewTransition) {
     update();
@@ -79,13 +77,16 @@ export function transitionView(
 
   const restore: (() => void)[] = always ? [always] : [];
   const vault = motion === 'vault';
-  const before = vault ? nameVaultItems(relayout) : null;
+  const before = vault ? nameVaultItems() : null;
   if (before) restore.push(before.clear);
   const transition = document.startViewTransition(() => {
     flushSync(update);
-    if (before) restore.push(nameVaultItems(relayout, before.keys).clear);
+    if (before) restore.push(nameVaultItems(before.keys).clear);
   });
   current = transition;
+  // A transition cut short (another one starting, the viewport resizing) rejects `ready`; the
+  // page has still changed, and `finished` below tidies up either way.
+  transition.ready.catch(noop);
   const cleanUp = () => {
     for (const undo of restore) undo();
     // A newer transition skips this one; its markers belong to the newer one now.
@@ -280,33 +281,25 @@ export function isOnScreen(el: Element | null): boolean {
   return rect.bottom > 0 && rect.top < window.innerHeight && rect.width > 0;
 }
 
-/** The parts of a vault recipe that glide on their own when the vault changes (index.css). */
-const VAULT_PARTS = [
-  ['item', null],
-  ['photo', '[data-vault-photo]'],
-  ['name', '[data-vault-name]'],
-] as const;
-
-/** Which naming pass last named each part, so an older pass never clears a newer one's names. */
+/** Which naming pass last named each recipe, so an older pass never clears a newer one's names. */
 const vaultNamer = new WeakMap<HTMLElement, object>();
 
 /**
  * Names the vault's recipes on or near the screen for a view transition, so each glides from
- * where it was to where it lands: to a new place in the order, or from a card into a list row.
- * Only a change of layout also names each photo and name, so a card's photo shrinks into its
- * row's; a filter or sort keeps every recipe's shape, so each glides whole, with a third of the
- * animations. The rest fade with the page, which keeps a large vault cheap to snapshot.
+ * where it was to where it lands in the new order. A filter or sort keeps every recipe's shape,
+ * so each glides whole. The rest fade with the page, which keeps a large vault cheap to snapshot.
+ * (Switching between cards and list deals the cards instead: RecipeGridView.)
  *
  * Called again after the change with the recipes named before it (`keys`): on a filter or sort,
  * those that were there already look the same at both ends, so they are marked vault-kept and
  * glide as they are, with nothing to cross-fade. Returns the recipes named and a function that
- * removes the names again, except where a later change has named a part since: a change that
+ * removes the names again, except where a later change has named one since: a change that
  * interrupts another names the same elements before the first one's clean-up runs.
  */
-export function nameVaultItems(
-  relayout: boolean,
-  before?: ReadonlySet<string>,
-): { keys: Set<string>; clear: () => void } {
+export function nameVaultItems(before?: ReadonlySet<string>): {
+  keys: Set<string>;
+  clear: () => void;
+} {
   const keys = new Set<string>();
   const named: HTMLElement[] = [];
   const pass = {};
@@ -316,15 +309,11 @@ export function nameVaultItems(
     const key = item.dataset.vaultItem;
     if (!key || bottom < -margin || top > window.innerHeight + margin) continue;
     keys.add(key);
-    const kept = !relayout && before?.has(key) ? ' vault-kept' : '';
-    for (const [part, selector] of relayout ? VAULT_PARTS : VAULT_PARTS.slice(0, 1)) {
-      const el = selector ? item.querySelector<HTMLElement>(selector) : item;
-      if (!el) continue;
-      el.style.setProperty('view-transition-name', `vault-${part}-${key}`);
-      el.style.setProperty('view-transition-class', `vault-${part}${kept}`);
-      vaultNamer.set(el, pass);
-      named.push(el);
-    }
+    const kept = before?.has(key) ? ' vault-kept' : '';
+    item.style.setProperty('view-transition-name', `vault-item-${key}`);
+    item.style.setProperty('view-transition-class', `vault-item${kept}`);
+    vaultNamer.set(item, pass);
+    named.push(item);
   }
   const clear = () => {
     for (const el of named) {

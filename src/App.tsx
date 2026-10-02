@@ -1158,7 +1158,6 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
             onDecreaseFont={decreaseScale}
             onAddRecipe={(from) => openEditor(null, null, from)}
             onAddMake={(from) => openMakeEditor(null, undefined, from)}
-            onOpenSettings={() => navigateTo('settings')}
             onOpenRecipe={(id, card) => handleSelectRecipe(id, card, false, 'counter')}
             // While a deck is up, its card is the one that flips open (names must be unique).
             flipRecipeId={shownDeck ? null : lastRecipeId}

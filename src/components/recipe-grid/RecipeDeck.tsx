@@ -12,7 +12,8 @@ import {
 } from '../../utils/vault';
 import { remixCounts, remixOriginalId } from '../../utils/recipeRemix';
 import { RecipeRow } from './RecipeRow';
-import { VaultTabLabel } from './VaultTabLabel';
+import { VaultDivider } from './VaultDivider';
+import { VaultEmpty } from './VaultEmpty';
 import { VaultToolbar } from './VaultToolbar';
 
 // Only the first cards are dealt in one by one; the rest are below the deck's fold anyway.
@@ -71,15 +72,19 @@ export const RecipeDeck: React.FC<RecipeDeckProps> = ({
   const dealKey = [filter.category, filter.author, filter.unseen, sort.by, sort.reversed].join();
 
   let dealt = 0;
-  // The first few cards and tabs, by their class and place in the deal (index.css, nav-deck-deal).
-  const deal = (base: string) => {
+  // The first few cards and tabs, by their place in the deal (index.css, nav-deck-deal).
+  const deal = (): { className?: string; style?: React.CSSProperties } => {
     const i = dealt++;
     return i < DEALT
       ? {
-          className: base + ' nav-deck-deal',
+          className: 'nav-deck-deal',
           style: { '--deal': i, '--tilt': i % 2 ? '2.5deg' : '-2.5deg' } as React.CSSProperties,
         }
-      : { className: base };
+      : {};
+  };
+  const dealSlot = () => {
+    const { className, style } = deal();
+    return { className: className ? `vault-slot ${className}` : 'vault-slot', style };
   };
 
   return (
@@ -103,23 +108,14 @@ export const RecipeDeck: React.FC<RecipeDeckProps> = ({
       )}
       <div ref={listRef} className="nav-deck-list">
         <div key={dealKey} className="vault-box is-list">
-          {recipes.length === 0 && <p className="vault-empty">{t.emptyVault}</p>}
-          {recipes.length > 0 && shown.length === 0 && (
-            <div className="vault-empty">
-              <p>
-                {filter.unseen && filterEntries(entries, { ...filter, unseen: false }).length > 0
-                  ? t.allSeen
-                  : t.noMatches}
-              </p>
-              <button
-                type="button"
-                className="vault-empty-reset"
-                onClick={() => redeal(() => onFilterChange(NO_FILTER))}
-              >
-                {t.showAllRecipes}
-              </button>
-            </div>
-          )}
+          <VaultEmpty
+            boxEmpty={recipes.length === 0}
+            entries={entries}
+            filter={filter}
+            shownCount={shown.length}
+            onShowAll={() => redeal(() => onFilterChange(NO_FILTER))}
+            t={t}
+          />
           {groups.map(({ key, category, cook, entries: group }) => {
             const label = [category && t.recipeCategories[category], cook]
               .filter(Boolean)
@@ -127,15 +123,14 @@ export const RecipeDeck: React.FC<RecipeDeckProps> = ({
             return (
               <section key={key || 'all'} className="vault-group">
                 {label && (
-                  <div {...deal('vault-divider')}>
-                    <h3 className="vault-tab">
-                      <VaultTabLabel tab={{ key, label, count: group.length, category, cook }} />
-                    </h3>
-                    <div className="vault-tab-edge" aria-hidden="true" />
-                  </div>
+                  <VaultDivider
+                    tab={{ key, label, count: group.length, category, cook }}
+                    heading="h3"
+                    {...deal()}
+                  />
                 )}
                 {group.map(({ recipe, shown: text }) => (
-                  <div key={recipe.id} {...deal('vault-slot')}>
+                  <div key={recipe.id} {...dealSlot()}>
                     <RecipeRow
                       recipe={recipe}
                       shown={text}

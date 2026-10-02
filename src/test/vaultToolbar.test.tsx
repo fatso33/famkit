@@ -341,10 +341,17 @@ describe('the vault toolbar', () => {
     const { unmount } = render(<App initialPage="recipes" />);
     const layout = screen.getByRole('button', { name: `${t.recipeLayout}: ${t.layoutList}` });
     expect(document.querySelectorAll('.vault-row')).toHaveLength(3);
-    // Its list half is the one showing, so a tap there switches too.
+    // Its list half is the one showing, so a tap there switches too. The switch turns at once
+    // as the box lifts away; the cards are dealt in behind it.
     fireEvent.click(layout.querySelector('.vault-layout-icon.is-active')!);
     expect(layout).toHaveAccessibleName(`${t.recipeLayout}: ${t.layoutCards}`);
+    expect(document.getElementById('recipesGrid')).toHaveAttribute('data-swap', 'out');
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(document.getElementById('recipesGrid')).not.toHaveAttribute('data-swap');
     expect(document.querySelectorAll('.vault-row')).toHaveLength(0);
+    expect(document.querySelectorAll('.recipe-card')).toHaveLength(3);
 
     unmount();
     render(<App initialPage="recipes" />);
@@ -352,6 +359,22 @@ describe('the vault toolbar', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Easter Babka' }));
     expect(screen.getByRole('heading', { name: 'Easter Babka', level: 1 })).toBeInTheDocument();
+  });
+
+  it('keeps the layout chosen when the box is left before its cards are dealt', () => {
+    render(<App initialPage="recipes" />);
+    fireEvent.click(screen.getByRole('button', { name: `${t.recipeLayout}: ${t.layoutList}` }));
+    // Straight off to My Counter, as the box is still lifting away.
+    const tabs = screen.getByRole('navigation', { name: t.pages });
+    fireEvent.click(within(tabs).getByRole('button', { name: t.counter }));
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    fireEvent.click(within(tabs).getByRole('button', { name: t.recipeVault }));
+    expect(
+      screen.getByRole('button', { name: `${t.recipeLayout}: ${t.layoutCards}` }),
+    ).toBeInTheDocument();
+    expect(document.querySelectorAll('.recipe-card')).toHaveLength(3);
   });
 
   it('offers every recipe again when nothing matches', () => {

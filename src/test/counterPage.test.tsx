@@ -71,7 +71,7 @@ const editor = () =>
   });
 const prefsKey = () =>
   within(document.querySelector('.counter-tools')!).getByRole('button', {
-    name: new RegExp(`^(${t.preferences}|${t.settings})$`),
+    name: t.preferences,
   });
 
 describe('My Counter', () => {
@@ -193,16 +193,17 @@ describe('My Counter', () => {
     expect(editor()).toBeInTheDocument();
   });
 
-  it('opens the preferences in a bar, whose key then goes to Settings', () => {
+  it('opens the preferences in a bar, which its key folds away again', () => {
     renderCounter();
     const bar = screen.getByRole('group', { name: t.preferences });
-    expect(prefsKey()).toHaveAccessibleName(t.preferences);
     expect(prefsKey()).toHaveAttribute('aria-expanded', 'false');
     expect(bar).toHaveAttribute('inert');
 
     fireEvent.click(prefsKey());
     expect(bar).not.toHaveAttribute('inert');
-    expect(prefsKey()).toHaveAccessibleName(t.settings);
+    // Still the preferences key, not a way to Settings.
+    expect(prefsKey()).toHaveAccessibleName(t.preferences);
+    expect(prefsKey()).toHaveAttribute('aria-expanded', 'true');
 
     // The language changes at once, the bar staying open.
     fireEvent.click(within(bar).getByRole('button', { name: t.languageToggle }));
@@ -210,7 +211,9 @@ describe('My Counter', () => {
     fireEvent.click(within(bar).getByRole('button', { name: UI_TEXT.pl.languageToggle }));
 
     fireEvent.click(prefsKey());
-    expect(heading()).toHaveTextContent(t.settings);
+    expect(bar).toHaveAttribute('inert');
+    expect(prefsKey()).toHaveAttribute('aria-expanded', 'false');
+    expect(document.getElementById('viewCounter')).toBeInTheDocument();
   });
 
   it('folds the bar away on a tap outside it, without pressing what was tapped', () => {
@@ -219,14 +222,14 @@ describe('My Counter', () => {
     const seeAll = screen.getByRole('button', { name: t.seeAllRecipes });
     fireEvent.pointerDown(seeAll);
     fireEvent.click(seeAll);
-    expect(prefsKey()).toHaveAccessibleName(t.preferences);
+    expect(prefsKey()).toHaveAttribute('aria-expanded', 'false');
     expect(document.getElementById('viewCounter')).toBeInTheDocument();
 
     // A touch outside that turns into a scroll closes it too, and the next tap goes through.
     fireEvent.click(prefsKey());
     fireEvent.pointerDown(document.body);
     fireEvent.pointerCancel(document.body);
-    expect(prefsKey()).toHaveAccessibleName(t.preferences);
+    expect(prefsKey()).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(screen.getByRole('button', { name: t.seeAllRecipes }));
     expect(heading()).toHaveTextContent(t.vaultTitle);
   });
@@ -235,7 +238,7 @@ describe('My Counter', () => {
     renderCounter();
     fireEvent.click(prefsKey());
     fireEvent.keyDown(document.body, { key: 'Escape' });
-    expect(prefsKey()).toHaveAccessibleName(t.preferences);
+    expect(prefsKey()).toHaveAttribute('aria-expanded', 'false');
     expect(prefsKey()).toHaveFocus();
   });
 

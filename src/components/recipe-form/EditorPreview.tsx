@@ -18,9 +18,9 @@ interface EditorPreviewProps {
 const noop = () => {};
 
 /**
- * The recipe page exactly as the family will see it, opened over the editor. The back button
- * springs out at the foot of the screen, on the right; it, Escape and the phone's back
- * gesture all return to the form. While a step photo is open full screen, the back button rises
+ * The recipe page exactly as the family will see it, opened over the editor. The back button,
+ * the navigation island's back capsule on its own, rises into the island's place at the foot of
+ * the screen; it, Escape and the phone's back gesture all return to the form. While a step photo is open full screen, the back button rises
  * over it and closes it instead. Mount only while open.
  */
 export const EditorPreview: React.FC<EditorPreviewProps> = ({ recipe, language, onClose, t }) => {
@@ -48,21 +48,14 @@ export const EditorPreview: React.FC<EditorPreviewProps> = ({ recipe, language, 
           t={t}
         />
       </div>
-      <div className={`editor-preview-back${photoOpen ? ' is-over-photo' : ''}`}>
-        <button
-          type="button"
-          className="fab-back editor-preview-back-button"
-          aria-label={photoOpen ? t.closePhotoPreview : t.backToEditing}
-          onClick={() => (photoOpen ? page.current?.closePhoto() : requestClose())}
-        >
-          <ArrowLeft
-            className="fab-back-arrow"
-            size="1.6rem"
-            strokeWidth={2.2}
-            aria-hidden="true"
-          />
-        </button>
-      </div>
+      <button
+        type="button"
+        className={`editor-preview-back${photoOpen ? ' is-over-photo' : ''}`}
+        aria-label={photoOpen ? t.closePhotoPreview : t.backToEditing}
+        onClick={() => (photoOpen ? page.current?.closePhoto() : requestClose())}
+      >
+        <ArrowLeft className="nav-back-arrow" size="1.4em" strokeWidth={2.2} aria-hidden="true" />
+      </button>
     </div>
   );
 };

@@ -15,7 +15,7 @@ function fakeViewTransitions() {
   const start = vi.fn((update: () => void) => {
     update();
     const finished = new Promise<void>((resolve) => finishers.push(resolve));
-    return { finished } as unknown as ViewTransition;
+    return { ready: Promise.resolve(), finished } as unknown as ViewTransition;
   });
   document.startViewTransition = start as unknown as typeof document.startViewTransition;
   return { start, finish: (i: number) => finishers[i]() };
@@ -52,6 +52,27 @@ describe('transitionView', () => {
     await settle();
     expect(root.dataset.nav).toBeUndefined();
     expect(root.dataset.morph).toBeUndefined();
+  });
+
+  it('leaves no unhandled rejection when a transition is cut short', async () => {
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    // The browser rejects `ready` when a transition aborts (e.g. "Viewport size changed").
+    const start = vi.fn((update: () => void) => {
+      update();
+      return {
+        ready: Promise.reject(new DOMException('Transition was aborted', 'AbortError')),
+        finished: Promise.resolve(),
+      } as unknown as ViewTransition;
+    });
+    document.startViewTransition = start as unknown as typeof document.startViewTransition;
+    const done = vi.fn();
+    transitionView(() => {}, { motion: 'forward', onFinished: done });
+    await settle();
+    process.off('unhandledRejection', unhandled);
+    expect(unhandled).not.toHaveBeenCalled();
+    expect(done).toHaveBeenCalledOnce();
+    expect(root.dataset.nav).toBeUndefined();
   });
 
   it('says when it has finished: once it ends, or at once where nothing animates', async () => {
@@ -224,7 +245,7 @@ describe('vault transitions', () => {
     return card;
   };
 
-  const namesDuring = (card: HTMLElement, relayout: boolean) => {
+  const namesDuring = (card: HTMLElement) => {
     let during: string[] = [];
     transitionView(
       () => {
@@ -232,39 +253,23 @@ describe('vault transitions', () => {
           (el as HTMLElement).style.getPropertyValue('view-transition-name'),
         );
       },
-      { motion: 'vault', relayout },
+      { motion: 'vault' },
     );
     return during;
   };
 
-  it('names each recipe, its photo and its name when the layout changes, and clears them after', async () => {
+  // A filter or sort keeps every card's shape, so each glides whole: a third of the
+  // animations, which kept the glide from dropping frames on a slow phone.
+  it('names only the recipe itself when it is re-filtered or re-sorted, and clears it after', async () => {
     const { finish } = fakeViewTransitions();
-    const card = item('recipe 1/ż');
-    const during = namesDuring(card, true);
-    expect(during).toEqual([
-      'vault-item-recipe_1__',
-      'vault-photo-recipe_1__',
-      'vault-name-recipe_1__',
-    ]);
+    const card = item('babka');
+    expect(namesDuring(card)).toEqual(['vault-item-babka', '', '']);
     expect(root.dataset.nav).toBe('vault');
 
     finish(0);
     await settle();
     expect(card.style.getPropertyValue('view-transition-name')).toBe('');
-    expect(card.children[0].getAttribute('style') ?? '').toBe('');
     expect(root.dataset.nav).toBeUndefined();
-  });
-
-  // A filter or sort keeps every card's shape, so each glides whole: a third of the
-  // animations, which kept the glide from dropping frames on a slow phone.
-  it('names only the recipe itself when it is re-filtered or re-sorted', async () => {
-    const { finish } = fakeViewTransitions();
-    const card = item('babka');
-    expect(namesDuring(card, false)).toEqual(['vault-item-babka', '', '']);
-
-    finish(0);
-    await settle();
-    expect(card.style.getPropertyValue('view-transition-name')).toBe('');
   });
 
   it('lets a recipe that stays glide as it is, while one that arrives fades in', () => {
@@ -293,13 +298,6 @@ describe('vault transitions', () => {
     finish(1);
     await settle();
     expect(card.style.getPropertyValue('view-transition-name')).toBe('');
-  });
-
-  it('cross-fades every recipe when the layout changes, as each one changes shape', () => {
-    fakeViewTransitions();
-    const card = item('babka');
-    transitionView(() => {}, { motion: 'vault', relayout: true });
-    expect(card.style.getPropertyValue('view-transition-class')).toBe('vault-item');
   });
 });
 

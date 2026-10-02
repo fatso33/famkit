@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { CookingPot, Moon, Plus, Settings, Sun } from 'lucide-react';
+import { CookingPot, Moon, Plus, Sun } from 'lucide-react';
 import { Language, Theme } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
 import { useBackStep } from '../../hooks/useBackStep';
@@ -17,7 +17,6 @@ interface CounterToolsProps {
   /** Given the key, which the editor opens out of. */
   onAddRecipe: (from: HTMLElement) => void;
   onAddMake: (from: HTMLElement) => void;
-  onOpenSettings: () => void;
   t: UiTranslations;
 }
 
@@ -25,8 +24,8 @@ interface CounterToolsProps {
  * The row under the greeting: Add Recipe and Add Make on the left, the preferences key on the
  * right. The key opens a bar that sweeps out leftwards from it over the two keys, holding the
  * language, theme and text size, each pill under its label so all three fit one row on a phone.
- * While the bar is open the key turns into a settings cog, which takes you to Settings; a tap
- * anywhere outside the bar folds it away, and the cog turns back into the sliders.
+ * While the bar is open the sliders' knobs glide to new settings. The key folds it away again,
+ * as do a tap anywhere outside the bar, Escape and the back gesture.
  */
 export const CounterTools: React.FC<CounterToolsProps> = ({
   language,
@@ -38,7 +37,6 @@ export const CounterTools: React.FC<CounterToolsProps> = ({
   onDecreaseFont,
   onAddRecipe,
   onAddMake,
-  onOpenSettings,
   t,
 }) => {
   const [open, setOpen] = useState(false);
@@ -204,20 +202,13 @@ export const CounterTools: React.FC<CounterToolsProps> = ({
         type="button"
         className="fk-prefs-toggle counter-prefs-toggle"
         data-handoff="prefs"
-        // Closed, it opens the preferences; open, it's the way to Settings (Escape, a tap
-        // outside or the back gesture fold the bar away).
-        aria-label={open ? t.settings : t.preferences}
-        aria-expanded={open ? undefined : false}
-        aria-controls={open ? undefined : barId}
-        onClick={() => (open ? onOpenSettings() : setOpen(true))}
+        aria-label={t.preferences}
+        aria-expanded={open}
+        aria-controls={barId}
+        onClick={() => setOpen((was) => !was)}
       >
         <span className="fk-prefs-key">
-          <span className="counter-glyph is-prefs">
-            <PrefsGlyph />
-          </span>
-          <span className="counter-glyph is-cog">
-            <Settings size="1.3em" strokeWidth={1.9} aria-hidden="true" />
-          </span>
+          <PrefsGlyph />
         </span>
       </button>
     </div>
