@@ -55,14 +55,13 @@ describe('production CSS', () => {
     expect(zeroLength).toEqual([]);
   });
 
-  // An auto grid column grows to its widest card's longest unbreakable line. At large text a
+  // An auto grid column grows to its widest item's longest unbreakable line. At large text a
   // make's recipe name pushed the Makes cards off the side of the screen (and WebKit's page
-  // crashed opening Makes), instead of the name being trimmed.
-  it("keeps the Makes page's cards within the screen", () => {
-    const feed = [...built.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(
-      (m) => m[1].trim() === '.makes-feed',
-    );
-    expect(feed?.[2]).toMatch(/grid-template-columns:minmax\(0(px)?,1fr\)/);
+  // crashed opening Makes), instead of the name being trimmed; Settings' season picker did the
+  // same with its words.
+  it.each(['.makes-feed', '.season-picker'])('keeps %s within the screen', (selector) => {
+    const grid = [...built.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find((m) => m[1].trim() === selector);
+    expect(grid?.[2]).toMatch(/grid-template-columns:minmax\(0(px)?,1fr\)/);
   });
 
   // Two @keyframes of one name: the later one wins everywhere, silently. The Recipe Box's

@@ -1,4 +1,5 @@
-import React, { useId } from 'react';
+import React, { useId, useRef } from 'react';
+import { useFitText } from '../../hooks/useFitText';
 import {
   CalendarSync,
   Check,
@@ -33,8 +34,11 @@ interface SeasonPickerProps {
   t: UiTranslations;
 }
 
+// How wide a line of the option's text is with its longest word unbroken.
+const lineWidth = (line: HTMLElement) => line.scrollWidth;
+
 /**
- * Radio options for the app's season: "Automatic", then one tile per season. Each tile carries
+ * Radio options for the app's season: "Auto", then one tile per season. Each tile carries
  * its own `data-season`, so it's drawn in that season's colours whatever the app shows now.
  */
 export const SeasonPicker: React.FC<SeasonPickerProps> = ({
@@ -44,6 +48,12 @@ export const SeasonPicker: React.FC<SeasonPickerProps> = ({
   t,
 }) => {
   const name = useId();
+  // On a narrow phone at large text, each line of "Auto" shrinks until its words fit beside the
+  // wheel: the name stays full size wherever it fits, whatever the note beneath it needs.
+  const autoNameRef = useRef<HTMLSpanElement>(null);
+  const autoNoteRef = useRef<HTMLSpanElement>(null);
+  useFitText(autoNameRef, lineWidth, t.seasonAuto);
+  useFitText(autoNoteRef, lineWidth, t.seasonAutoNow(calendarSeason));
 
   const pick = (event: React.ChangeEvent<HTMLInputElement>) => {
     const rect = (
@@ -81,8 +91,12 @@ export const SeasonPicker: React.FC<SeasonPickerProps> = ({
           </span>
         </span>
         <span className="season-option-text">
-          <span className="season-option-name">{t.seasonAuto}</span>
-          <span className="season-option-sub">{t.seasonAutoNow(calendarSeason)}</span>
+          <span ref={autoNameRef} className="season-option-name">
+            {t.seasonAuto}
+          </span>
+          <span ref={autoNoteRef} className="season-option-sub">
+            {t.seasonAutoNow(calendarSeason)}
+          </span>
         </span>
         <Check className="season-check" size="1.15em" strokeWidth={2.6} aria-hidden="true" />
       </label>

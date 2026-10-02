@@ -917,7 +917,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     seasonSection: 'Seasons',
     seasonInfo:
       'The colours change with the seasons. Text stays just as easy to read all year round.',
-    seasonAuto: 'Automatic',
+    seasonAuto: 'Auto',
     seasonAutoNow: (season: Season) =>
       `Follows the calendar, now ${UI_TEXT.en.seasonNames[season].toLowerCase()}`,
     seasonNames: { spring: 'Spring', summer: 'Summer', autumn: 'Autumn', winter: 'Winter' },
@@ -1391,7 +1391,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     seasonSection: 'Pory roku',
     seasonInfo:
       'Kolory zmieniają się razem z porami roku. Tekst przez cały rok czyta się równie łatwo.',
-    seasonAuto: 'Automatycznie',
+    seasonAuto: 'Auto',
     seasonAutoNow: (season: Season) =>
       `Według kalendarza, teraz ${UI_TEXT.pl.seasonNames[season].toLowerCase()}`,
     seasonNames: { spring: 'Wiosna', summer: 'Lato', autumn: 'Jesień', winter: 'Zima' },

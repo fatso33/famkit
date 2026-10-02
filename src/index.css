@@ -4813,6 +4813,9 @@
          Automatic wheel) carries its own data-season, so it's drawn in that season's colours. */
       .season-picker {
         display: grid;
+        /* Never wider than the card: an auto column took the tiles' widest words, and at large
+           text the picker ran off the side of the screen. */
+        grid-template-columns: minmax(0, 1fr);
         gap: 0.75rem;
         min-width: 0;
         margin-top: 1.1rem;
@@ -4823,6 +4826,8 @@
       .season-auto,
       .season-tile {
         position: relative;
+        /* As narrow as their column: left to their words' width, they spilled out of the card. */
+        min-width: 0;
         border: 1.5px solid var(--border-subtle);
         border-radius: var(--radius-md);
         color: var(--text-primary);
@@ -4992,15 +4997,16 @@
         padding-inline: 0.2rem;
         line-height: 1.25;
       }
+      /* --fit: shrunk to fit a narrow phone at large text (useFitText). */
       .season-option-name {
         font-family: var(--font-serif);
-        font-size: 1.0625rem;
+        font-size: calc(1.0625rem * var(--fit, 1));
         font-weight: var(--weight-heading);
         letter-spacing: -0.01em;
       }
       .season-option-sub {
         margin-top: 0.1rem;
-        font-size: 0.8125rem;
+        font-size: calc(0.8125rem * var(--fit, 1));
         color: var(--text-muted);
       }
 
