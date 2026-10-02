@@ -1342,16 +1342,13 @@
         padding-bottom: 0.8rem;
       }
 
-      /* The row's width, which the keys are sized against. */
-      .vault-tools-block {
-        container-type: inline-size;
-      }
-
       /* With large text on a narrow phone, the keys give up a little size rather than overlap:
-         the row holds five keys' widths (the layout switch is two), three gaps and the switch's
-         4px of padding and border. Never under 44px. */
+         the row (the page's width inside its 1.25rem gutters) holds five keys' widths (the
+         layout switch is two), three gaps and the switch's 4px of padding and border. Never
+         under 44px. Sized from the screen rather than a size container, which keeps container
+         queries out of the view transitions' snapshots. */
       .vault-toolbar {
-        --vault-key: max(44px, min(2.75rem, (100cqi - 1.5rem - 4px) / 5));
+        --vault-key: max(44px, min(2.75rem, (min(100vw, 1080px) - 4rem - 4px) / 5));
         position: relative;
         display: flex;
         align-items: center;
@@ -2805,14 +2802,14 @@
            below, one after another, each landing from a slight tilt (as a card deck deals).
            One layer fades out, then a few cards move: opacity and transforms only. */
         .vault-box[data-swap='out'] {
-          animation: vault-swap-out 0.16s cubic-bezier(0.4, 0, 1, 1) both;
+          animation: vault-box-lift 0.16s cubic-bezier(0.4, 0, 1, 1) both;
         }
         .vault-box :is(.vault-item, .vault-divider)[data-deal] {
           animation: vault-deal-in 0.52s var(--ease-glide) calc(var(--deal, 0) * 34ms) backwards;
         }
       }
 
-      @keyframes vault-swap-out {
+      @keyframes vault-box-lift {
         to {
           opacity: 0;
           translate: 0 -0.5rem;

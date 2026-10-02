@@ -54,4 +54,12 @@ describe('production CSS', () => {
     const zeroLength = scrollDriven.filter((b) => /animation(-duration)?:[^;]*\b0s\b/.test(b));
     expect(zeroLength).toEqual([]);
   });
+
+  // Two @keyframes of one name: the later one wins everywhere, silently. The Recipe Box's
+  // lift-away once took the title condense's name and ran its opacity-only keyframes.
+  it('names every set of keyframes once', () => {
+    const names = [...source.matchAll(/@keyframes\s+([\w-]+)/g)].map((m) => m[1]);
+    const twice = names.filter((name, i) => names.indexOf(name) !== i);
+    expect(twice).toEqual([]);
+  });
 });

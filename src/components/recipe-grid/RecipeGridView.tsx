@@ -36,7 +36,7 @@ import { VaultToolbar } from './VaultToolbar';
 const ENTRANCE_MS = 1800;
 // Only the first few recipes join the entrance; the rest are below the fold anyway.
 const ENTRANCE_ITEMS = 6;
-// Cards or list: how long the box takes to lift away (index.css, vault-swap-out). Every recipe
+// Cards or list: how long the box takes to lift away (index.css, vault-box-lift). Every recipe
 // and tab on screen is then dealt back in, one after another, though past the first ten (a tall
 // tablet's list) the rest land together with the tenth.
 const SWAP_OUT_MS = 160;
