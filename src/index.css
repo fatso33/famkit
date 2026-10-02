@@ -541,6 +541,15 @@
         border-radius: 999px;
         backdrop-filter: blur(14px) saturate(1.6);
       }
+      /* Above whatever moves on its own in the page beneath (a card flipping home, a photo or
+         name gliding, the vault's recipes), which would otherwise pass over the island. */
+      ::view-transition-group(fk-pill),
+      ::view-transition-group(fk-cap),
+      ::view-transition-group(fk-back),
+      ::view-transition-group(fk-panel),
+      ::view-transition-group(fk-toast) {
+        z-index: 10;
+      }
 
       /* The vault re-filtered or re-sorted (utils/viewTransition, nameVaultItems): each recipe
          on screen glides to its new place. A filter or sort leaves a recipe as it was, so one
@@ -557,13 +566,8 @@
       ::view-transition-old(vault-bar) {
         display: none;
       }
-      /* Above the gliding recipes, which would otherwise pass over them. */
-      :root[data-nav='vault']::view-transition-group(vault-bar),
-      :root[data-nav='vault']::view-transition-group(fk-pill),
-      :root[data-nav='vault']::view-transition-group(fk-cap),
-      :root[data-nav='vault']::view-transition-group(fk-back),
-      :root[data-nav='vault']::view-transition-group(fk-panel),
-      :root[data-nav='vault']::view-transition-group(fk-toast) {
+      /* Above the gliding recipes, which would otherwise pass over it (under the island). */
+      :root[data-nav='vault']::view-transition-group(vault-bar) {
         z-index: 1;
       }
       :root[data-nav='vault']::view-transition-old(root) {
