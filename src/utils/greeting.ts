@@ -3,8 +3,8 @@ import type { Season } from './season';
 /**
  * My Counter's greeting: one line a launch, picked from what's true right now (the time of day,
  * the weekend, the season, new recipes in the box, a holiday) so it reads like someone noticed,
- * never the same line twice in a row. The words live in translations (`greetings`), each with a
- * `{name}` where the first name goes.
+ * never the same line twice in a row. The words live in translations (`greetings`); a few end
+ * with a `{name}` where the first name goes.
  */
 
 export type HolidayId =

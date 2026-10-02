@@ -89,13 +89,28 @@ describe('greeting', () => {
     expect(pickGreeting(context(at(2026, 12, 25), { lastId: 'christmas' }), 0.5)).toBe('christmas');
   });
 
-  it('has words with one place for the name, in both languages', () => {
+  it('has words in both languages, a name only at the end of a sentence', () => {
     for (const language of ['en', 'pl'] as const) {
       for (const id of GREETING_IDS) {
         const words = UI_TEXT[language].greetings[id];
-        expect(words.split('{name}')).toHaveLength(2);
+        expect(words.trim()).not.toBe('');
+        const parts = words.split('{name}');
+        expect(parts.length).toBeLessThanOrEqual(2);
+        // The name and what follows it come into focus as one piece, which a line can't break.
+        if (parts.length === 2) expect(parts[1]).toMatch(/^[.?!]?$/);
       }
     }
+    // Without a name to put in, a greeting that has a place for one reads without it.
+    expect(splitGreeting('Apron on, {name}.', '')).toEqual({
+      before: 'Apron on.',
+      name: '',
+      after: '',
+    });
+    expect(splitGreeting('Soup season is open.', 'Peter')).toEqual({
+      before: 'Soup season is open.',
+      name: '',
+      after: '',
+    });
     expect(splitGreeting('Good evening, {name}', 'Peter')).toEqual({
       before: 'Good evening, ',
       name: 'Peter',

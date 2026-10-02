@@ -82,14 +82,15 @@ describe('My Counter', () => {
     window.scrollTo = vi.fn();
   });
 
-  it('opens the app, greeting this person by their first name', () => {
+  it('opens the app with a greeting, using only the first name where it has one', () => {
     renderCounter();
     expect(document.getElementById('viewCounter')).toBeInTheDocument();
-    expect(heading()).toHaveTextContent('Ola');
     expect(heading()).not.toHaveTextContent('Nowak');
-    // One of the greetings, with the name in it.
-    const greetings = GREETING_IDS.map((id) => t.greetings[id].replace('{name}', 'Ola'));
-    expect(greetings).toContain(heading().textContent);
+    const greeting = GREETING_IDS.map((id) => t.greetings[id]).find(
+      (words) => words.replace('{name}', 'Ola') === heading().textContent,
+    );
+    expect(greeting).toBeDefined();
+    if (greeting?.includes('{name}')) expect(heading()).toHaveTextContent('Ola');
   });
 
   it("files the box's latest three recipes as its cards, the latest first, new or updated", () => {
