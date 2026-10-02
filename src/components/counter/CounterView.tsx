@@ -330,8 +330,12 @@ export const CounterView: React.FC<CounterViewProps> = ({
                 aria-label={t.seeAllMakes}
                 onClick={onSeeAllMakes}
               >
-                {t.seeAll}
-                <ChevronRight size="1.05em" strokeWidth={2.2} aria-hidden="true" />
+                {/* As beside the Recipe Box window's tab: the arrow always shows, the word only
+                    where there's room (index.css, counter-window-head). */}
+                <span className="counter-see-all-fit">
+                  <ChevronRight size="1.05em" strokeWidth={2.2} aria-hidden="true" />
+                  <span>{t.seeAll}</span>
+                </span>
               </button>
             )}
           </div>

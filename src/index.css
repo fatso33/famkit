@@ -11403,6 +11403,20 @@
         margin: 0 -0.45rem 0 0;
       }
 
+      /* The Makes window's head likewise: its title keeps its words, and See all gives way to its
+         arrow. Its no-wrap word had pushed it off the side of a small phone at large text (and
+         the page then crashed WebKit as it changed). */
+      .counter-window-head .counter-window-title {
+        flex: none;
+        max-width: calc(100% - 44px - 1rem);
+      }
+
+      .counter-window-head .counter-see-all {
+        flex: 0 1 auto;
+        justify-content: flex-end;
+        min-width: 44px;
+      }
+
       .counter-see-all-fit {
         display: flex;
         flex-flow: row-reverse wrap;

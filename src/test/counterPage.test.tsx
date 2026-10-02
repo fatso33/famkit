@@ -170,6 +170,19 @@ describe('My Counter', () => {
     expect(document.getElementById('make-make-1')).toBeInTheDocument();
   });
 
+  // Where a window's title and See all don't both fit (large text, a small phone), See all keeps
+  // only its arrow. The Makes window's word once pushed it off the side of the screen.
+  it("lays out the Makes window's See all as the Recipe Box window's", () => {
+    localStorage.setItem('family_kitchen_makes', JSON.stringify([make()]));
+    renderCounter();
+    for (const name of [t.seeAllRecipes, t.seeAllMakes]) {
+      const fit = screen.getByRole('button', { name }).firstElementChild;
+      expect(fit).toHaveClass('counter-see-all-fit');
+      // The arrow first: laid out from the right, it's the part that always shows.
+      expect(fit?.firstElementChild?.tagName.toLowerCase()).toBe('svg');
+    }
+  });
+
   it('says so while this person has no drafts', () => {
     renderCounter();
     expect(within(region(t.yourDrafts)).getByText(t.noDrafts)).toBeInTheDocument();
