@@ -12,6 +12,8 @@ import { localizeMake } from '../../utils/makeTranslation';
 import { draftVersion } from '../../utils/recipeDrafts';
 import { latestMakes, latestRecipes, recipeChange, timeAgo } from '../../utils/counter';
 import { splitGreeting } from '../../utils/greeting';
+import { widestRun } from '../../utils/fitText';
+import { useFitText } from '../../hooks/useFitText';
 import { prefersReducedMotion, vaultItemKey } from '../../utils/viewTransition';
 import { HeartFlourish } from '../common/HeartFlourish';
 import { RecipeRow } from '../recipe-grid/RecipeRow';
@@ -26,6 +28,14 @@ import { COUNTER_ENTRANCE_MS, COUNTER_SINK_MS } from './counterTiming';
  * sign-in splash, or come back to from another page (whose transition carries it in).
  */
 export type CounterEntrance = 'launch' | 'handoff' | 'return';
+
+// The greeting's widest run of words a line can't break: a word, or a name and the "?" after it.
+const greetingWidth = (hello: HTMLElement) =>
+  widestRun(
+    [...hello.childNodes].map((node) =>
+      node instanceof HTMLElement ? node.offsetWidth : /\S/.test(node.textContent ?? '') ? 0 : null,
+    ),
+  );
 
 /** The hearts line under the greeting. */
 export interface CounterNews {
@@ -101,6 +111,7 @@ export const CounterView: React.FC<CounterViewProps> = ({
   t,
 }) => {
   const pageRef = useRef<HTMLElement>(null);
+  const helloRef = useRef<HTMLHeadingElement>(null);
   const splashUp = useSplashUp();
   // The sky's clock as the counter arrives, which its particles carry on from.
   const [skyAge] = useState(skyClock);
@@ -145,6 +156,8 @@ export const CounterView: React.FC<CounterViewProps> = ({
   const [hadDrafts] = useState(() => drafts.length > 0);
 
   const words = splitGreeting(greeting, firstName);
+  // At large text on a narrow phone, the greeting shrinks until its longest word fits.
+  useFitText(helloRef, greetingWidth, `${words.before}${words.name}${words.after}`);
   const latest = latestRecipes(recipes);
   // Their remix and make badges, as in the box.
   const remixes = remixCounts(recipes);
@@ -189,7 +202,7 @@ export const CounterView: React.FC<CounterViewProps> = ({
 
       <div className="counter-content">
         <header className="counter-greeting">
-          <h1 className="counter-hello">
+          <h1 ref={helloRef} className="counter-hello">
             {wordSpans(words.before)}
             {words.name && (
               <em

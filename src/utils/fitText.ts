@@ -1,0 +1,26 @@
+/** The least text is shrunk to: past this, a word is better off running over than unreadable. */
+export const MIN_FIT = 0.5;
+
+/**
+ * How much text must shrink, as a factor of its full size, for something `needed` wide at full
+ * size to fit `available`: 1 where it already fits. Rounded down to hundredths, so what it gives
+ * always fits; never below MIN_FIT.
+ */
+export function fitScale(available: number, needed: number): number {
+  if (!(available > 0) || !(needed > available)) return 1;
+  return Math.max(MIN_FIT, Math.floor((available / needed) * 100) / 100);
+}
+
+/**
+ * The widest run of parts a line can't break between: the widths of words set side by side,
+ * with null wherever a space lets the line break (e.g. a name and the "?" after it are one run).
+ */
+export function widestRun(parts: readonly (number | null)[]): number {
+  let widest = 0;
+  let run = 0;
+  for (const part of parts) {
+    run = part === null ? 0 : run + part;
+    widest = Math.max(widest, run);
+  }
+  return widest;
+}

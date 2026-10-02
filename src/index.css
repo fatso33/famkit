@@ -10982,6 +10982,9 @@
       .counter-hello {
         margin: 0;
         font: var(--weight-heading) 2.25rem/1.12 var(--font-serif);
+        /* Shrunk only where its longest word wouldn't fit: a narrow phone at large text
+           (useFitText). */
+        font-size: calc(2.25rem * var(--fit, 1));
         letter-spacing: -0.015em;
         text-wrap: balance;
         color: var(--text-primary);
