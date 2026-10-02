@@ -1,4 +1,5 @@
 import { flushSync } from 'react-dom';
+import { holdLean, releaseLean } from './vaultLean';
 
 /**
  * How a view change moves, read by the `::view-transition` rules in index.css:
@@ -72,6 +73,9 @@ export function transitionView(
   }
   const root = document.documentElement;
   root.dataset.nav = motion;
+  // The Box's leaning cards hold their pose while the lean is off (utils/vaultLean), measured
+  // upright, as the lean leaves them in this same frame.
+  holdLean();
   if (morph) root.dataset.morph = morph;
   else delete root.dataset.morph;
 
@@ -81,6 +85,7 @@ export function transitionView(
   if (before) restore.push(before.clear);
   const transition = document.startViewTransition(() => {
     flushSync(update);
+    holdLean();
     if (before) restore.push(nameVaultItems(before.keys).clear);
   });
   current = transition;
@@ -92,6 +97,7 @@ export function transitionView(
     // A newer transition skips this one; its markers belong to the newer one now.
     if (current !== transition) return;
     current = null;
+    releaseLean();
     delete root.dataset.nav;
     delete root.dataset.morph;
     root.style.removeProperty('--flip-y');

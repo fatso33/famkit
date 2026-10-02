@@ -2704,8 +2704,8 @@
           }
           /* While a page change snapshots the page (a view transition), no card leans: WebKit's
              page process crashed snapshotting a scrolled box of leaning cards (Safari's engine;
-             pausing the lean wasn't enough). The card under the tab shows upright for that
-             moment. */
+             pausing the lean wasn't enough). Each card is held in its pose instead, as a plain
+             transform (utils/vaultLean), so nothing jolts as the change starts or ends. */
           :root[data-nav] .vault-slot {
             animation-name: none;
           }
