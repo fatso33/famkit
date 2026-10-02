@@ -9624,12 +9624,18 @@
       }
 
       .fk-splash {
+        /* The room above and below the stage, and the least it gives way to on a short screen
+           at large text (the stage's ::before and ::after hold the difference). */
+        --fk-pad-top: max(2.5rem, env(safe-area-inset-top) + 1rem);
+        --fk-pad-top-least: max(1rem, env(safe-area-inset-top) + 0.5rem);
+        --fk-pad-bottom: max(2.5rem, env(safe-area-inset-bottom) + 1.25rem);
+        --fk-pad-bottom-least: max(1rem, env(safe-area-inset-bottom) + 0.75rem);
         min-height: 100vh;
         min-height: 100dvh;
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: max(2.5rem, env(safe-area-inset-top) + 1rem) 1rem max(2.5rem, env(safe-area-inset-bottom) + 1.25rem);
+        padding: var(--fk-pad-top-least) 1rem var(--fk-pad-bottom-least);
         /* The glow and motes reach past the emblem; never let them widen the page. */
         overflow-x: hidden;
         overflow-x: clip;
@@ -9692,18 +9698,45 @@
         position: relative;
         z-index: 1;
         /* The whole screen on a phone, spread top to bottom; on a tall monitor it stops
-           growing and sits in the middle. */
+           growing and sits in the middle. Never taller than the screen: on a short phone at
+           large text the pot and the room around it give way (below), so the Google button
+           stays on screen rather than below the fold with nothing hinting it's there. */
+        --fk-room-top: calc(var(--fk-pad-top) - var(--fk-pad-top-least));
+        --fk-room-bottom: calc(var(--fk-pad-bottom) - var(--fk-pad-bottom-least));
         flex: 1;
-        max-height: 54em;
+        min-height: 0;
+        max-height: calc(54em + var(--fk-room-top) + var(--fk-room-bottom));
+        max-height: min(
+          54em + var(--fk-room-top) + var(--fk-room-bottom),
+          100vh - var(--fk-pad-top-least) - var(--fk-pad-bottom-least)
+        );
+        max-height: min(
+          54em + var(--fk-room-top) + var(--fk-room-bottom),
+          100dvh - var(--fk-pad-top-least) - var(--fk-pad-bottom-least)
+        );
         margin-block: auto;
         width: 100%;
         max-width: 28em;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 1.75em;
         text-align: center;
       }
+      /* The room above and below, and between the greeting, the pot and the controls: each
+         gives way on a short screen (with the pot) down to its least. The greeting is nudged
+         down (20px at 100% text) towards the pot, so its room is that much more, and the gap
+         under it that much less. */
+      .fk-splash-stage::before,
+      .fk-splash-stage::after,
+      .fk-splash-gap {
+        content: '';
+        flex: 0 3 1.75em;
+        min-height: 0;
+      }
+      .fk-splash-stage::before { flex-basis: calc(var(--fk-room-top) + 1.33em); }
+      .fk-splash-stage::after { flex-basis: var(--fk-room-bottom); }
+      .fk-splash-gap { min-height: 0.3em; }
+      .fk-splash-gap.is-nudged { flex-basis: 0.42em; }
       /* Spare height goes 10 : 5.5 : 5.5 : 10 above the pot, between the pot and the pills,
          between the pills and the button, and below the button (the controls' fr rows), so
          the pot sits a little above the middle and the controls clear the bottom edge. A
@@ -9711,9 +9744,7 @@
          greeting keeps its text at its top, so only the room under it grows. */
       .fk-splash-heading {
         flex-grow: 10;
-        /* Nudged down (20px at 100% text) without moving the pot or growing the page. */
         position: relative;
-        top: 1.33em;
       }
       /* Taps during the intro reach the page (which skips it), not the controls. */
       .fk-splash.is-intro .fk-splash-controls,
@@ -9722,11 +9753,14 @@
       }
 
       /* Emblem */
+      /* Sized by its height, so on a short screen it gives way whole: narrower as it gets
+         shorter, down to its least. */
       .fk-emblem {
         position: relative;
-        flex: none;
-        width: min(66vw, 32vh, 290px);
-        width: min(66vw, 32svh, 290px);
+        flex: 0 1 auto;
+        height: calc(min(66vw, 32vh, 290px) * 536 / 469);
+        height: calc(min(66vw, 32svh, 290px) * 536 / 469);
+        min-height: 4em;
         aspect-ratio: 469 / 536;
       }
       .fk-emblem-glow {

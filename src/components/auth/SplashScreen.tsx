@@ -318,7 +318,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
           </svg>
         </div>
 
+        {/* Gaps that give way on a short screen at large text (index.css). */}
+        <span className="fk-splash-gap is-nudged" aria-hidden="true" />
         <SplashEmblem label={t.liftTheLid} canTap={phase !== 'intro'} season={season} />
+        <span className="fk-splash-gap" aria-hidden="true" />
 
         <div className="fk-splash-controls">
           <div className="fk-splash-prefs">
