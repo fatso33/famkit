@@ -4809,8 +4809,8 @@
         margin-top: 1.25rem;
       }
 
-      /* Seasons: "Automatic", then a tile per season. Each tile (and each slice of the
-         Automatic wheel) carries its own data-season, so it's drawn in that season's colours. */
+      /* Seasons: "Auto", then a tile per season. Each tile (and each slice of the Auto wheel)
+         carries its own data-season, so it's drawn in that season's colours. */
       .season-picker {
         display: grid;
         /* Never wider than the card: an auto column took the tiles' widest words, and at large
@@ -4871,12 +4871,27 @@
       }
 
       .season-auto {
+        container: season-auto / inline-size;
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
-        gap: 0.9rem;
+        gap: 0.6rem 0.9rem;
         min-height: 4.25rem;
         padding: 0.7rem 1rem;
         background: var(--bg-card);
+      }
+      /* The words take what the wheel and the tick leave, never pushing the tick to a line of
+         its own. */
+      .season-auto > .season-option-text {
+        flex: 1 1 0;
+      }
+      /* Too narrow for its words beside the wheel (a small phone, or large text): the wheel and
+         the tick share the top line, and the words take the full width under them, full size. */
+      @container season-auto (width < 14.5em) {
+        .season-auto > .season-option-text {
+          flex-basis: 100%;
+          order: 1;
+        }
       }
 
       /* The four seasons' accents as a pinwheel, clockwise from spring at the top left. */
@@ -4997,16 +5012,17 @@
         padding-inline: 0.2rem;
         line-height: 1.25;
       }
-      /* --fit: shrunk to fit a narrow phone at large text (useFitText). */
+      /* Shrunk to fit a narrow phone at large text (useFitText): --fit for a line of Auto's,
+         --fit-name and --fit-note (set on the grid) for all four tiles' alike. */
       .season-option-name {
         font-family: var(--font-serif);
-        font-size: calc(1.0625rem * var(--fit, 1));
+        font-size: calc(1.0625rem * var(--fit, 1) * var(--fit-name, 1));
         font-weight: var(--weight-heading);
         letter-spacing: -0.01em;
       }
       .season-option-sub {
         margin-top: 0.1rem;
-        font-size: calc(0.8125rem * var(--fit, 1));
+        font-size: calc(0.8125rem * var(--fit, 1) * var(--fit-note, 1));
         color: var(--text-muted);
       }
 

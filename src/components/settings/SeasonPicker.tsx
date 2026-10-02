@@ -1,5 +1,6 @@
 import React, { useId, useRef } from 'react';
 import { useFitText } from '../../hooks/useFitText';
+import { mostCrowded } from '../../utils/fitText';
 import {
   CalendarSync,
   Check,
@@ -27,7 +28,7 @@ export const SeasonIcon: React.FC<{ season: Season } & LucideProps> = ({ season,
 
 interface SeasonPickerProps {
   preference: SeasonPreference;
-  /** The season the calendar gives today, shown under "Automatic". */
+  /** The season the calendar gives today, shown under "Auto". */
   calendarSeason: Season;
   /** `origin` is the centre of the tapped option, where the new colours spread from. */
   onChange: (preference: SeasonPreference, origin: { x: number; y: number }) => void;
@@ -36,6 +37,33 @@ interface SeasonPickerProps {
 
 // How wide a line of the option's text is with its longest word unbroken.
 const lineWidth = (line: HTMLElement) => line.scrollWidth;
+
+// The tiles' names (or notes) share one size: as wide as the grid, times how many times wider
+// than its line the most crowded of them is.
+const tilesWidth = (line: string) => (grid: HTMLElement) =>
+  grid.clientWidth *
+  mostCrowded(
+    [...grid.querySelectorAll<HTMLElement>(line)].map((el) => ({
+      needed: el.scrollWidth,
+      available: el.clientWidth,
+    })),
+  );
+const tileNamesWidth = tilesWidth('.season-option-name');
+const tileNotesWidth = tilesWidth('.season-option-sub');
+
+/**
+ * A line of "Auto"'s text. On a narrow phone at large text it shrinks until its longest word
+ * fits: full size wherever it fits, whatever the other line needs.
+ */
+const FitLine: React.FC<{ className: string; text: string }> = ({ className, text }) => {
+  const ref = useRef<HTMLSpanElement>(null);
+  useFitText(ref, lineWidth, text);
+  return (
+    <span ref={ref} className={className}>
+      {text}
+    </span>
+  );
+};
 
 /**
  * Radio options for the app's season: "Auto", then one tile per season. Each tile carries
@@ -48,12 +76,11 @@ export const SeasonPicker: React.FC<SeasonPickerProps> = ({
   t,
 }) => {
   const name = useId();
-  // On a narrow phone at large text, each line of "Auto" shrinks until its words fit beside the
-  // wheel: the name stays full size wherever it fits, whatever the note beneath it needs.
-  const autoNameRef = useRef<HTMLSpanElement>(null);
-  const autoNoteRef = useRef<HTMLSpanElement>(null);
-  useFitText(autoNameRef, lineWidth, t.seasonAuto);
-  useFitText(autoNoteRef, lineWidth, t.seasonAutoNow(calendarSeason));
+  // On a narrow phone at large text the tiles' names, and their notes, shrink alike until the
+  // longest word of each fits its tile ("Wiosna" on a 320px screen), so the tiles stay matched.
+  const gridRef = useRef<HTMLDivElement>(null);
+  useFitText(gridRef, tileNamesWidth, SEASONS.map((s) => t.seasonNames[s]).join(), '--fit-name');
+  useFitText(gridRef, tileNotesWidth, SEASONS.map((s) => t.seasonPalettes[s]).join(), '--fit-note');
 
   const pick = (event: React.ChangeEvent<HTMLInputElement>) => {
     const rect = (
@@ -91,17 +118,13 @@ export const SeasonPicker: React.FC<SeasonPickerProps> = ({
           </span>
         </span>
         <span className="season-option-text">
-          <span ref={autoNameRef} className="season-option-name">
-            {t.seasonAuto}
-          </span>
-          <span ref={autoNoteRef} className="season-option-sub">
-            {t.seasonAutoNow(calendarSeason)}
-          </span>
+          <FitLine className="season-option-name" text={t.seasonAuto} />
+          <FitLine className="season-option-sub" text={t.seasonAutoNow(calendarSeason)} />
         </span>
         <Check className="season-check" size="1.15em" strokeWidth={2.6} aria-hidden="true" />
       </label>
 
-      <div className="season-grid">
+      <div ref={gridRef} className="season-grid">
         {SEASONS.map((season) => {
           return (
             <label

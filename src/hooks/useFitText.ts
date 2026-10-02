@@ -10,25 +10,27 @@ import { fitScale } from '../utils/fitText';
  * element changes size (text size, rotation), whenever a font finishes loading, and when `text`
  * changes. (A font arriving widens the words without resizing the element, and `fonts.ready`
  * can resolve before a font has even started loading: measured only then, the greeting kept the
- * fallback font's narrower words and ran off the screen.)
+ * fallback font's narrower words and ran off the screen.) `property` names another variable
+ * than --fit, for a scale that lines inside the element share (the season tiles' names).
  */
 export function useFitText<T extends HTMLElement>(
   ref: RefObject<T | null>,
   needed: (el: T) => number,
   text: string,
+  property = '--fit',
 ) {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     const fit = () => {
-      el.style.removeProperty('--fit');
+      el.style.removeProperty(property);
       const style = getComputedStyle(el);
       const available =
         el.clientWidth -
         parseFloat(style.paddingLeft || '0') -
         parseFloat(style.paddingRight || '0');
       const scale = fitScale(available, needed(el));
-      if (scale < 1) el.style.setProperty('--fit', String(scale));
+      if (scale < 1) el.style.setProperty(property, String(scale));
     };
     fit();
     // A frame later, so resizing the text here isn't reported as a resize within the observer's
@@ -51,5 +53,5 @@ export function useFitText<T extends HTMLElement>(
       observer?.disconnect();
       document.fonts?.removeEventListener?.('loadingdone', later);
     };
-  }, [ref, needed, text]);
+  }, [ref, needed, text, property]);
 }

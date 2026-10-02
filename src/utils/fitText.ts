@@ -12,6 +12,18 @@ export function fitScale(available: number, needed: number): number {
 }
 
 /**
+ * How many times wider than its room the most crowded of several lines is at full size, so they
+ * can all shrink alike until it fits: below 1 where all fit, 0 where none has room to measure.
+ */
+export function mostCrowded(lines: readonly { needed: number; available: number }[]): number {
+  let most = 0;
+  for (const { needed, available } of lines) {
+    if (available > 0) most = Math.max(most, needed / available);
+  }
+  return most;
+}
+
+/**
  * The widest run of parts a line can't break between: the widths of words set side by side,
  * with null wherever a space lets the line break (e.g. a name and the "?" after it are one run).
  */
