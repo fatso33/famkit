@@ -8929,6 +8929,10 @@
         gap: 0.5rem;
       }
 
+      .ingredient-row-main {
+        position: relative;
+      }
+
       .ingredient-table-head {
         padding: 0.65rem 0.75rem;
         border-bottom: 1px solid var(--border-subtle);
@@ -8949,31 +8953,160 @@
 
       .ingredient-row {
         position: relative;
+        z-index: 1;
         padding: 0.5rem 0.6rem;
         border-bottom: 1px solid var(--border-subtle);
-        transition: background-color 0.25s ease;
+        transition:
+          background-color 0.25s ease,
+          border-radius 0.25s ease,
+          translate 0.42s var(--ease-glide),
+          scale 0.42s var(--ease-glide),
+          rotate 0.32s var(--ease-glide),
+          z-index 0s linear 0.42s;
       }
 
-      /* The row being edited: a tint and an accent bar down its left edge. */
-      .ingredient-row::before {
+      /* ── Lift to edit ──
+         The row or step being edited rises off the page into a card holding its tools: a 2px
+         rise, a touch bigger, a soft shadow (its own layer, so only its opacity changes) and
+         solid edges on its fields. It settles back when another is tapped. While dragged by its
+         grip it tilts and floats higher. Only translate, scale, rotate and opacity move. */
+      .ingredient-row::before,
+      .step-editor::before {
         content: '';
         position: absolute;
-        top: 0.5rem;
-        bottom: 0.5rem;
-        left: 0;
-        width: 3px;
-        border-radius: 0 3px 3px 0;
-        background: var(--accent);
-        transform: scaleY(0);
-        transition: transform 0.4s var(--spring-soft);
+        z-index: -1;
+        inset: 0;
+        border-radius: inherit;
+        box-shadow:
+          0 0 0 1px var(--border-subtle),
+          0 12px 28px -6px rgba(42, 32, 27, 0.2),
+          0 2px 6px rgba(42, 32, 27, 0.08);
+        opacity: 0;
+        transition: opacity 0.35s ease;
+        pointer-events: none;
+      }
+
+      [data-theme='dark'] .ingredient-row::before,
+      [data-theme='dark'] .step-editor::before {
+        box-shadow:
+          0 0 0 1px var(--border-subtle),
+          0 14px 30px -6px rgba(0, 0, 0, 0.6),
+          0 2px 6px rgba(0, 0, 0, 0.35);
+      }
+
+      .ingredient-row.is-active,
+      .step-editor.is-active {
+        z-index: 3;
+        translate: 0 -2px;
+        scale: 1.012;
+        transition-delay: 0s;
       }
 
       .ingredient-row.is-active {
-        background: color-mix(in srgb, var(--accent-subtle) 55%, transparent);
+        border-bottom-color: transparent;
+        border-radius: var(--radius-sm);
+        background-color: var(--bg-surface);
       }
 
-      .ingredient-row.is-active::before {
+      .ingredient-row.is-active::before,
+      .step-editor.is-active::before {
+        opacity: 1;
+      }
+
+      .editor-layer .ingredient-row.is-active .form-control:not(:focus),
+      .editor-layer .step-editor.is-active .form-control:not(:focus) {
+        border-style: solid;
+      }
+
+      .ingredient-row.is-dragging,
+      .step-editor.is-dragging {
+        z-index: 5;
+        scale: 1.03;
+        rotate: 1.2deg;
+        transition:
+          scale 0.3s var(--ease-glide),
+          rotate 0.3s var(--ease-glide);
+      }
+
+      .ingredient-row.is-dragging::before,
+      .step-editor.is-dragging::before {
+        box-shadow:
+          0 0 0 1px var(--border-subtle),
+          0 22px 40px -8px rgba(42, 32, 27, 0.3),
+          0 4px 10px rgba(42, 32, 27, 0.12);
+      }
+
+      [data-theme='dark'] .ingredient-row.is-dragging::before,
+      [data-theme='dark'] .step-editor.is-dragging::before {
+        box-shadow:
+          0 0 0 1px var(--border-subtle),
+          0 22px 40px -8px rgba(0, 0, 0, 0.7),
+          0 4px 10px rgba(0, 0, 0, 0.4);
+      }
+
+      html.is-reordering,
+      html.is-reordering * {
+        cursor: grabbing !important;
+      }
+
+      /* The grip, half over the lifted card's right edge, level with its first line. It grows in
+         as the card lifts. Touch on it drags the card, never the page. */
+      .drag-grip {
+        position: absolute;
+        z-index: 4;
+        right: -0.75rem;
+        width: 1.5rem;
+        height: 2.5rem;
+        display: grid;
+        place-items: center;
+        border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border-subtle));
+        border-radius: var(--radius-full);
+        background: var(--accent-subtle);
+        box-shadow: 0 0 0 3px var(--bg-surface);
+        color: var(--accent);
+        cursor: grab;
+        touch-action: none;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        user-select: none;
+        -webkit-user-select: none;
+        opacity: 0;
+        transform: scale(0.5);
+        pointer-events: none;
+        transition:
+          opacity 0.2s ease,
+          transform 0.35s var(--ease-glide);
+      }
+
+      /* A finger-sized target around the small grip. */
+      .drag-grip::before {
+        content: '';
+        position: absolute;
+        inset: -0.5rem -0.6rem;
+      }
+
+      .is-active > .drag-grip,
+      .is-active > * > .drag-grip {
+        opacity: 1;
         transform: none;
+        pointer-events: auto;
+        transition:
+          opacity 0.25s ease 0.08s,
+          transform 0.5s var(--spring-soft) 0.04s;
+      }
+
+      .ingredient-row-main > .drag-grip {
+        top: 50%;
+        right: -1.35rem;
+        margin-top: -1.25rem;
+      }
+
+      .ingredient-heading-row > .drag-grip {
+        top: calc(0.5rem + 22px - 1.25rem);
+      }
+
+      .step-editor > .drag-grip {
+        top: 1.75rem;
       }
 
       /* Rows sit close together: a ring inside the row that doesn't reach the neighbours. */
@@ -9219,17 +9352,18 @@
         border-radius: var(--radius-md);
         background: var(--bg-surface);
         box-shadow: var(--shadow-sm);
+        z-index: 1;
         transition:
           border-color 0.25s ease,
-          box-shadow 0.3s ease,
-          background-color 0.25s ease;
+          background-color 0.25s ease,
+          translate 0.42s var(--ease-glide),
+          scale 0.42s var(--ease-glide),
+          rotate 0.32s var(--ease-glide),
+          z-index 0s linear 0.42s;
       }
 
       .step-editor.is-active {
-        border-color: color-mix(in srgb, var(--accent) 55%, var(--border-subtle));
-        box-shadow:
-          0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent),
-          var(--shadow-md);
+        border-color: color-mix(in srgb, var(--accent) 40%, var(--border-subtle));
       }
 
       /* The tab, and the move keys beside it, on the tile's top edge (the fork's card too). */
@@ -10641,7 +10775,11 @@
         .fork-step-path,
         .reveal,
         .reveal-inner,
+        .ingredient-row,
         .ingredient-row::before,
+        .step-editor,
+        .step-editor::before,
+        .drag-grip,
         .step-move-pill,
         .step-number-remove,
         .editor-version-chevron,

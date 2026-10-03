@@ -25,6 +25,7 @@ import { ForkIcon } from '../common/ForkIcon';
 import { NumberRoll } from '../common/NumberRoll';
 import { Reveal } from '../common/Reveal';
 import { ToolStrip } from '../common/ToolStrip';
+import { DragGrip } from './DragGrip';
 import { ForkEditor } from './ForkEditor';
 import { ImagePickerWithPreview } from './ImagePickerWithPreview';
 
@@ -44,6 +45,8 @@ interface StepEditorProps {
   canMoveDown: boolean;
   onChange: (change: (step: StepState) => StepState) => void;
   onMove: (dir: -1 | 1) => void;
+  /** Puts it in the place of the step it was dragged to. */
+  onDrop: (id: string, targetId: string) => void;
   /** Removes it, given its element to fold away first. */
   onRemove: (el: HTMLElement | null) => void;
   onToast: (message: string, action?: ToastAction) => void;
@@ -67,6 +70,7 @@ export const StepEditor: React.FC<StepEditorProps> = ({
   canMoveDown,
   onChange,
   onMove,
+  onDrop,
   onRemove,
   onToast,
   t,
@@ -154,6 +158,7 @@ export const StepEditor: React.FC<StepEditorProps> = ({
         className={`step-editor is-plain is-photo${active ? ' is-active' : ''}${restored ? ' is-restored' : ''}`}
       >
         {restored && <span className="restored-chip">{t.restoredChip}</span>}
+        <DragGrip onDrop={onDrop} />
         <div className="step-editor-rail">
           <div className="step-editor-number">
             <span className="step-photo-mark" aria-hidden="true">
@@ -362,6 +367,7 @@ export const StepEditor: React.FC<StepEditorProps> = ({
       className={`step-editor${plain ? ' is-plain' : ''}${fork ? ' is-fork' : ''}${active ? ' is-active' : ''}${restored ? ' is-restored' : ''}${fork && join ? ' has-join' : ''}`}
     >
       {restored && <span className="restored-chip">{t.restoredChip}</span>}
+      <DragGrip onDrop={onDrop} />
 
       {fork ? (
         <ForkEditor

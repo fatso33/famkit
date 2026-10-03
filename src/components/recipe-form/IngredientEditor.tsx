@@ -11,6 +11,8 @@ import {
 import { UiTranslations } from '../../i18n/translations';
 import { IngredientRowState, emptyRow, headingRow } from '../../utils/recipeForm';
 import { collapseAway, useListMotion } from '../../hooks/useListMotion';
+import { moveToPlaceOf } from '../../hooks/dragToReorder';
+import { DragGrip } from './DragGrip';
 import { Reveal } from '../common/Reveal';
 import { ToolStrip } from '../common/ToolStrip';
 import { AutoGrowTextarea } from '../common/AutoGrowTextarea';
@@ -87,6 +89,9 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
       return next;
     });
   };
+
+  const drop = (id: string, targetId: string) =>
+    onChange((current) => moveToPlaceOf(current, id, targetId));
 
   const remove = (id: string, el: HTMLElement | null, heading = false) => {
     void collapseAway(el).then(() => {
@@ -213,6 +218,7 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
                       addRow(row.id);
                     }}
                   />
+                  <DragGrip onDrop={drop} />
                   {size > 0 && (
                     <span className="ingredient-group-count" aria-hidden="true">
                       {size}
@@ -255,6 +261,7 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
                 {restored && <span className="sr-only">{t.restoredChip}</span>}
                 {/* Long names and amounts wrap onto more lines rather than being cut off. */}
                 <div className="ingredient-row-main">
+                  <DragGrip onDrop={drop} />
                   <AutoGrowTextarea
                     className="ingredient-name"
                     data-field="name"

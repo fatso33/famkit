@@ -14,6 +14,7 @@ import {
   updateStep,
 } from '../../utils/recipeForm';
 import { collapseAway, useListMotion } from '../../hooks/useListMotion';
+import { moveToPlaceOf } from '../../hooks/dragToReorder';
 import type { ToastAction } from '../../hooks/useToast';
 import { StepEditor } from './StepEditor';
 
@@ -249,6 +250,15 @@ export const MethodEditor: React.FC<MethodEditorProps> = ({
                       motion.beforeMove();
                       onChange((current) => moveStep(current, step.id, dir));
                     }}
+                    onDrop={(id, targetId) =>
+                      onChange((current) =>
+                        current.map((sec) =>
+                          sec.id === section.id
+                            ? { ...sec, steps: moveToPlaceOf(sec.steps, id, targetId) }
+                            : sec,
+                        ),
+                      )
+                    }
                     onRemove={(el) => remove(step.id, el, step.photo)}
                     onToast={onToast}
                     t={t}
