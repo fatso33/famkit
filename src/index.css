@@ -496,23 +496,23 @@
          group (a lifted snapshot only sees itself, so the glass would turn clear mid-move). A
          photo opening or closing leaves the pill and its menu capsule in the page, fading with
          it, so no blur lingers over the photo where the pill was. */
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='to-makes'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='to-makes'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'])
         .nav-pill {
         view-transition-name: fk-pill;
       }
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='to-makes'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='to-makes'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'])
         .nav-actions {
         view-transition-name: fk-cap;
       }
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='to-makes'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='to-makes'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'])
         .nav-panel-shade {
         view-transition-name: fk-panel;
       }
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='to-makes'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'], [data-nav='zoom'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='to-makes'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='zoom'])
         .nav-island:is([data-back='out'], [data-back='photo']) .nav-back {
         view-transition-name: fk-back;
       }
-      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='to-makes'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'], [data-nav='window-close'])
+      :root:is([data-nav='forward'], [data-nav='back'], [data-nav='fade'], [data-nav='side-next'], [data-nav='side-prev'], [data-nav='hop'], [data-nav='to-box'], [data-nav='to-makes'], [data-nav='menu'], [data-nav='vault'], [data-nav='flip-open'], [data-nav='flip-close'], [data-nav='window-open'])
         .app-toast {
         view-transition-name: fk-toast;
       }
@@ -11833,14 +11833,14 @@
 
       /* "See all" on a window (App, the window motions): the window opens out into its page as
          the counter recedes, the window's recipes or makes gliding to their places there
-         (nameGlide). Back, the page folds back into its window over the counter coming forward,
-         and they glide back. The page on top covers the one below, blended normally. */
+         (nameGlide). (Back, My Counter slides in as its tab on the island brings it.) The page on
+         top covers the one below, blended normally. */
       @media (prefers-reduced-motion: no-preference) {
-        :root:is([data-nav='window-open'], [data-nav='window-close'])::view-transition-image-pair(root) {
+        :root[data-nav='window-open']::view-transition-image-pair(root) {
           isolation: auto;
         }
-        :root:is([data-nav='window-open'], [data-nav='window-close'])::view-transition-old(root),
-        :root:is([data-nav='window-open'], [data-nav='window-close'])::view-transition-new(root) {
+        :root[data-nav='window-open']::view-transition-old(root),
+        :root[data-nav='window-open']::view-transition-new(root) {
           mix-blend-mode: normal;
         }
         :root[data-nav='window-open']::view-transition-old(root) {
@@ -11856,57 +11856,6 @@
         :root[data-nav='window-open']::view-transition-old(opening-window) {
           animation: vt-fade-out 0.1s linear both;
         }
-        /* Back, the page shrinks into its window as a card (App, returnToCounter): what the page
-           showed dissolves into the card's plain face early on, so it's never squeezed into the
-           window, and the face clears off the counter's own window as the card lands there. The
-           page and the card (the screen-sized frame, page-window) shrink on one curve, so they
-           stay one shape. Only the page being left is a snapshot: WebKit draws a window's snapshot
-           taken on the arriving page blank. Layered explicitly, as WebKit lets the page's
-           z-index reach past its own group: the page, its card's face over it, the photos gliding
-           home over that, the island over all (fk-pill). */
-        :root[data-nav='window-close']::view-transition-old(root) {
-          z-index: 1;
-          animation:
-            vt-window-close var(--window-fold) both,
-            vt-fade-out 0.06s linear 0.14s both;
-        }
-        :root[data-nav='window-close']::view-transition-new(root) {
-          animation: vt-counter-settle var(--window-fold) both;
-        }
-        :root[data-nav='window-close']::view-transition-group(page-window) {
-          z-index: 2;
-          animation: vt-window-close var(--window-fold) both;
-        }
-        :root[data-nav='window-close']::view-transition-old(page-window) {
-          height: 100%;
-          background: var(--bg-surface);
-          animation: vt-card-face 0.56s linear both;
-        }
-        :root[data-nav='window-close']::view-transition-group(*.glide-photo) {
-          z-index: 3;
-        }
-      }
-      /* The card's plain face: over the page as it dissolves, then clearing off the window. */
-      @keyframes vt-card-face {
-        from { opacity: 0; }
-        25% { opacity: 1; }
-        50% { opacity: 1; }
-        85% { opacity: 0; }
-        to { opacity: 0; }
-      }
-      :root {
-        --window-fold-curve: var(--ease-glide);
-        --window-fold: 0.56s var(--window-fold-curve);
-      }
-      /* The frame the page shrinks from: the screen, with nothing on it (App). */
-      .vt-page-frame {
-        position: fixed;
-        inset: 0;
-        z-index: -1;
-        pointer-events: none;
-      }
-      @keyframes vt-counter-settle {
-        from { transform: scale(0.985); }
       }
       /* The page comes up inside the window as it grows, rather than cutting in at once. */
       @keyframes vt-window-open {
@@ -11919,14 +11868,6 @@
         34% { opacity: 1; }
         to {
           clip-path: inset(0 round 0);
-        }
-      }
-      @keyframes vt-window-close {
-        from {
-          clip-path: inset(0 round 0);
-        }
-        to {
-          clip-path: inset(var(--win-top) var(--win-right) var(--win-bottom) var(--win-left) round var(--radius-lg));
         }
       }
 

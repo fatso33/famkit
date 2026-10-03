@@ -682,21 +682,18 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
     navigateTo(target, { motion: sideFrom(page, target) });
   };
 
-  // What glides between the makes window of My Counter and the Makes page: each latest make's
-  // photo, between its tile and its card. (The Recipe Box's recipes stand in this person's own
+  // What glides from the makes window of My Counter out to the Makes page: each latest make's
+  // photo, from its tile to its card. (The Recipe Box's recipes stand in this person's own
   // order, where the latest are seldom on screen, and a name flying over the box's other names
-  // reads as a muddle, so the recipes window simply opens out and folds back.)
-  const makeGlides = (toCounter: boolean): GlidePart[] =>
+  // reads as a muddle, so the recipes window simply opens out.)
+  const makeGlides = (): GlidePart[] =>
     latestMakes(makes).map((make) => {
       const key = vaultItemKey(make.id);
-      const tile = () => counterMake(key)?.querySelector('[data-counter-photo]') ?? null;
-      const card = () =>
-        document.getElementById(`make-${make.id}`)?.querySelector('.make-photo') ?? null;
       return {
         name: `glide-make-${key}`,
         kind: 'photo',
-        from: toCounter ? card : tile,
-        to: toCounter ? tile : card,
+        from: () => counterMake(key)?.querySelector('[data-counter-photo]') ?? null,
+        to: () => document.getElementById(`make-${make.id}`)?.querySelector('.make-photo') ?? null,
       };
     });
 
@@ -709,7 +706,7 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
     const opens = !prefersReducedMotion() && setWindowRect(from);
     const glides =
       opens && win === 'makes' && page === 'counter' && !shownDeck
-        ? nameGlides(makeGlides(false).slice(0, 1))
+        ? nameGlides(makeGlides().slice(0, 1))
         : null;
     const unnameWindow = opens ? nameOpeningWindow(from) : null;
     transitionView(
@@ -739,56 +736,13 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
     );
   };
 
-  // Back to My Counter from the Recipe Box or Makes: the page folds back into its window on the
-  // counter, the makes on screen gliding back into their tiles (the 'window-close' motion).
-  const returnToCounter = (animated = true) => {
-    const win = page === 'makes' ? 'makes' : 'recipes';
-    if (page === 'recipes' || page === 'makes') mainScroll.current[page] = window.scrollY;
-    // Only a transition the app animates itself folds the page away (not the iOS back swipe).
-    const folds = animated && !prefersReducedMotion() && !!document.startViewTransition;
-    const glides = folds && win === 'makes' ? nameGlides(makeGlides(true)) : null;
-    // The page shrinks from the whole screen into the window, as a card (index.css): the frame
-    // is the card, taken from the page being left only.
-    const unnameFrame = folds
-      ? nameTransitionPart(document.querySelector('.vt-page-frame'), 'page-window')
-      : null;
-    transitionView(
-      () => {
-        flushSync(() => {
-          setBackShown(false);
-          dropDeck();
-          setBoxShowcase(null);
-          setArrivingMake(null);
-          setMakePhotoOpen(false);
-          setPage('counter');
-          setMainPage('counter');
-          setSelectedRecipeId(null);
-        });
-        jumpTo(mainScroll.current.counter);
-        unnameFrame?.();
-        // Only now is the window there to measure. Out of sight, the counter simply comes back.
-        if (!folds) return;
-        if (setWindowRect(document.querySelector(`[data-counter-window="${win}"]`))) {
-          glides?.arrive();
-        } else {
-          document.documentElement.dataset.nav = 'back';
-        }
-      },
-      {
-        motion: 'window-close',
-        animated,
-        always: () => {
-          glides?.clear();
-          unnameFrame?.();
-        },
-      },
-    );
-  };
-
   // From the Recipe Box or Makes, and anything open over them, the phone's back gesture comes
-  // home to My Counter; only from there does it leave the app. Registered before the sub-pages'
-  // step below, so a recipe or Settings open over them is undone first.
-  useBackStep(mainPage !== 'counter', (animated) => returnToCounter(animated));
+  // home to My Counter, sliding in as its tab on the island brings it; only from there does it
+  // leave the app. Registered before the sub-pages' step below, so a recipe or Settings open over
+  // them is undone first.
+  useBackStep(mainPage !== 'counter', (animated) =>
+    navigateTo('counter', { animated, motion: sideFrom(mainPage, 'counter') }),
+  );
   // From a recipe or Settings, the phone's back gesture returns to the last main page.
   useBackStep(onSubPage, (animated) =>
     selectedRecipe && page === 'recipes'
@@ -1334,9 +1288,6 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
           />
         )}
       </main>
-
-      {/* The screen-sized frame a page shrinks from into its window on My Counter. */}
-      <div className="vt-page-frame" aria-hidden="true" />
 
       {shownDeck && <NavDeckScrim closing={!deck} onClose={closeDeck} />}
       {shownDeck && (

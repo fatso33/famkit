@@ -17,8 +17,7 @@ import { holdLean, releaseLean } from './vaultLean';
  * - flip-open: a recipe card lifted out of the box flips over, and the recipe unfolds from its
  *   back; flip-close folds the recipe away and the card flips back into its place (setFlipAxis)
  * - window-open: one of My Counter's windows opens out into its page (the Recipe Box, Makes),
- *   what it shows gliding to its place there; window-close folds the page back into the window
- *   (setWindowRect, nameGlide)
+ *   what it shows gliding to its place there (setWindowRect, nameGlide)
  */
 export type NavMotion =
   | 'forward'
@@ -34,8 +33,7 @@ export type NavMotion =
   | 'vault'
   | 'flip-open'
   | 'flip-close'
-  | 'window-open'
-  | 'window-close';
+  | 'window-open';
 
 /**
  * What morphs between its old and new place: a step photo and the full-screen viewer, or a
@@ -145,8 +143,8 @@ export function setFlipAxis(card: Element | null): boolean {
 const WINDOW_SIDES = ['top', 'right', 'bottom', 'left'] as const;
 
 /**
- * Where a window of My Counter is on screen (index.css, the window motions): its page opens out
- * of it, or folds back into it. Returns false, setting nothing, when it isn't on screen.
+ * Where a window of My Counter is on screen (index.css, window-open): its page opens out of it.
+ * Returns false, setting nothing, when it isn't on screen.
  */
 export function setWindowRect(win: Element | null): boolean {
   if (!win || !isOnScreen(win)) return false;
