@@ -66,6 +66,18 @@ export interface UiTranslations {
   for1Loaf: string;
   kitchenTip: string;
   crucialNote: string;
+  /** Over where a recipe was adapted from, at the foot of the page. */
+  adaptedFrom: string;
+  /** The confirm before a recipe's source page opens. */
+  sourceOpenTitle: string;
+  sourceOpenBody: string;
+  sourceOpen: string;
+  sourceNotNow: string;
+  /** The editor's one field for where a recipe is from: a link or words. */
+  sourceLabel: string;
+  /** Under it, how it will show: a link to the site, or the words as typed. */
+  sourceAsLink: (site: string) => string;
+  sourceAsWords: string;
   prepSteps: string;
   laminationDirective: string;
   bakingOptions: string;
@@ -567,6 +579,14 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     for1Loaf: 'For 1 loaf:',
     kitchenTip: 'Kitchen Tip',
     crucialNote: 'Crucial Note',
+    adaptedFrom: 'Adapted from',
+    sourceOpenTitle: 'Open this page?',
+    sourceOpenBody: 'It opens in your browser, outside Family Kitchen.',
+    sourceOpen: 'Open page',
+    sourceNotNow: 'Not now',
+    sourceLabel: "Where's it from?",
+    sourceAsLink: (site: string) => `Link · ${site}`,
+    sourceAsWords: 'Shown as written',
     prepSteps: 'Preparation Steps',
     laminationDirective: 'Lamination Directive',
     bakingOptions: 'Baking Options',
@@ -1061,6 +1081,14 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     for1Loaf: 'Na 1 bochenek:',
     kitchenTip: 'Wskazówka kuchenna',
     crucialNote: 'Ważna uwaga',
+    adaptedFrom: 'Na podstawie',
+    sourceOpenTitle: 'Otworzyć tę stronę?',
+    sourceOpenBody: 'Otworzy się w przeglądarce, poza Rodzinną Kuchnią.',
+    sourceOpen: 'Otwórz stronę',
+    sourceNotNow: 'Nie teraz',
+    sourceLabel: 'Skąd ten przepis?',
+    sourceAsLink: (site: string) => `Link · ${site}`,
+    sourceAsWords: 'Pokazane tak, jak wpisano',
     prepSteps: 'Sposób przygotowania',
     laminationDirective: 'Instrukcja składania ciasta (laminowanie)',
     bakingOptions: 'Warianty pieczenia',

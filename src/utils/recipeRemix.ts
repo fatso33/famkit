@@ -63,6 +63,7 @@ export function remixStart(original: Recipe, viewerLanguage: Language): Recipe {
     updatedAt: _updatedAt,
     deletedAt: _deletedAt,
     sourceUrl: _sourceUrl,
+    sourceText: _sourceText,
     photosOmitted: _photosOmitted,
     ...content
   } = recipeForEditing(original, viewerLanguage);

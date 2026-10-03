@@ -181,6 +181,8 @@ export function recipePieces(content: LocalizedRecipeContent): Piece[] {
       text(`${at}:fork:${k}:imageCaption`, 'caption', path.imageCaption);
     });
   });
+  // Where it was adapted from, at the foot of the page.
+  text('source', 'source', content.source);
   return pieces;
 }
 
@@ -302,6 +304,8 @@ export function buildTranslation(
       return out;
     });
   }
+
+  set('source', optional('source', 'source', source.source));
 
   return { content, pieceSources };
 }

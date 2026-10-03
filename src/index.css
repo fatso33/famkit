@@ -3214,6 +3214,40 @@
         animation: fk-exit-popover 0.2s var(--ease-accelerate) both;
       }
 
+      /* Over its mark, where the page's foot leaves no room under it (useAnchoredPlacement):
+         it springs up out of the mark, with its point on the bottom edge. */
+      .remix-pop[data-side='above'] {
+        transform-origin: var(--pop-origin-x, 50%) calc(100% + 0.6rem);
+        animation-name: pop-in-above;
+      }
+
+      .remix-pop[data-side='above']::before {
+        top: auto;
+        bottom: -0.4rem;
+        border: 0;
+        border-right: 1px solid var(--border-subtle);
+        border-bottom: 1px solid var(--border-subtle);
+        border-radius: 0 0 3px 0;
+      }
+
+      .remix-pop-layer.is-closing .remix-pop[data-side='above'] {
+        animation-name: fk-exit-popover-above;
+      }
+
+      @keyframes pop-in-above {
+        from {
+          opacity: 0;
+          transform: translateY(0.5rem) scale(0.88);
+        }
+      }
+
+      @keyframes fk-exit-popover-above {
+        to {
+          opacity: 0;
+          transform: translateY(0.35rem) scale(0.95);
+        }
+      }
+
       .remix-pop-title {
         display: flex;
         align-items: center;
@@ -4004,6 +4038,178 @@
 
       .detail-tip {
         margin-bottom: 0;
+      }
+
+      /* Adapted from, at the recipe's foot: a credit line under a dashed rule. A site's name sits
+         in a chip (it asks before opening the page); words sit beside a book. A site name too
+         long for the line ends in an ellipsis (Peter's call), keeping its size. */
+      .detail-source {
+        margin-top: 2.5rem;
+        padding-top: 1.25rem;
+        border-top: 1px dashed var(--border-subtle);
+      }
+
+      .detail-source-label {
+        margin: 0 0 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+
+      .detail-source-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45em;
+        min-height: 44px;
+        max-width: 100%;
+        padding: 0.45em 0.85em 0.45em 0.75em;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-full);
+        background: var(--bg-surface);
+        color: var(--accent);
+        font: inherit;
+        font-size: 1rem;
+        font-weight: 700;
+        white-space: nowrap;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          background-color 0.2s ease,
+          scale 0.15s ease;
+      }
+
+      .detail-source-chip > svg {
+        flex: none;
+      }
+
+      .detail-source-chip > span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .detail-source-chip:active {
+        scale: 0.96;
+      }
+
+      .detail-source-chip[aria-expanded='true'] {
+        background: color-mix(in srgb, var(--accent) 10%, var(--bg-surface));
+      }
+
+      @media (hover: hover) {
+        .detail-source-chip:hover {
+          background: color-mix(in srgb, var(--accent) 8%, var(--bg-surface));
+        }
+      }
+
+      .detail-source-chip:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .detail-source-words {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        line-height: 1.45;
+        color: var(--text-primary);
+      }
+
+      .detail-source-words > svg {
+        flex: none;
+        margin-top: 0.15em;
+        color: var(--accent);
+      }
+
+      /* The confirm before a source page opens: the remix popover's card, with the site's name,
+         the page's path, a line saying where it opens, and two keys. */
+      .source-pop {
+        padding: 0.95rem 1rem 1rem;
+      }
+
+      .source-pop .remix-pop-title {
+        margin: 0 0 0.6rem;
+        font-size: 0.875rem;
+        letter-spacing: 0;
+        text-transform: none;
+      }
+
+      /* One line; a name too long for it ends in an ellipsis. */
+      .source-pop-host {
+        margin: 0;
+        overflow: hidden;
+        font: var(--weight-heading) 1.3rem/1.2 var(--font-serif);
+        letter-spacing: -0.01em;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+
+      .source-pop-path {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        overflow: hidden;
+        margin: 0.2rem 0 0;
+        font-size: 0.8125rem;
+        color: var(--text-muted);
+        overflow-wrap: anywhere;
+      }
+
+      .source-pop-body {
+        margin: 0.7rem 0 0.95rem;
+        font-size: 0.9375rem;
+        line-height: 1.45;
+        color: var(--text-secondary);
+      }
+
+      .source-pop-keys {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .source-pop-key {
+        flex: 1 1 auto;
+        min-height: 44px;
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-field);
+        border-radius: var(--radius-full);
+        background: transparent;
+        color: var(--text-primary);
+        font: inherit;
+        font-size: 0.9375rem;
+        font-weight: 700;
+        white-space: nowrap;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          background-color 0.2s ease,
+          scale 0.15s ease;
+      }
+
+      .source-pop-key.is-go {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: var(--on-accent);
+      }
+
+      .source-pop-key:active {
+        scale: 0.96;
+      }
+
+      @media (hover: hover) {
+        .source-pop-key:not(.is-go):hover {
+          background: var(--menu-well);
+        }
+      }
+
+      .source-pop-key:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
       }
 
       /* Method / Steps section */
@@ -7754,6 +7960,24 @@
 
       .time-entry-input {
         grid-area: input;
+      }
+
+      /* How the editor's source field will show on the recipe: a link, or words. */
+      .source-reading {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        min-height: 1.5rem;
+        margin: 0.4rem 0 0;
+        font-size: 0.9375rem;
+        line-height: 1.5rem;
+        color: var(--text-muted);
+        overflow-wrap: anywhere;
+      }
+
+      .source-reading > svg {
+        flex: none;
+        color: var(--accent);
       }
 
       .time-entry-status {

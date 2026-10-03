@@ -129,7 +129,15 @@ export function recipeAtVersion(current: Recipe, version: RecipeVersion): Recipe
 }
 
 export type RestorableField =
-  'name' | 'author' | 'cardDescription' | 'yieldHeader' | 'heroImage' | 'tips' | 'notes' | 'time';
+  | 'name'
+  | 'author'
+  | 'cardDescription'
+  | 'yieldHeader'
+  | 'heroImage'
+  | 'tips'
+  | 'notes'
+  | 'time'
+  | 'source';
 
 /** What restoring a version would change, for highlighting in the edit form. */
 export interface RecipeChanges {
@@ -223,6 +231,15 @@ export function diffRecipes(current: Recipe, restored: Recipe, comparePhotos: bo
   ) {
     fields.add('time');
   }
+  const source = (r: Recipe) => {
+    const url: unknown = r.sourceUrl;
+    const words: unknown = r.sourceText;
+    return JSON.stringify([
+      typeof url === 'string' ? url.trim() : '',
+      typeof words === 'string' ? words.trim() : '',
+    ]);
+  };
+  if (source(restored) !== source(current)) fields.add('source');
 
   const ingredients = new Set<number>();
   (restored.ingredients || []).forEach((ing, i) => {

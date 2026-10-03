@@ -131,8 +131,11 @@ export interface FormState {
   sections: SectionState[];
   /** The first numbered step's number: 1, or 0 for a recipe that starts at 0. */
   numberFrom: number;
-  /** The web page the recipe was brought in from; empty when it was typed. */
-  sourceUrl: string;
+  /**
+   * Where it's adapted from, as typed in one field: a web address (kept as `sourceUrl`) or
+   * words (kept as `sourceText`). Filled with the page's address on a website import.
+   */
+  source: string;
 }
 
 /** A web address as kept with a recipe: http(s) only, else empty. */
@@ -143,6 +146,34 @@ export function webAddress(text: string): string {
   } catch {
     return '';
   }
+}
+
+// A bare address someone typed without its https://: a domain, then perhaps a path. No spaces.
+const BARE_ADDRESS = /^(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}(:\d+)?([/?#]\S*)?$/i;
+
+/**
+ * The web address in what someone typed as a recipe's source, or '' when it's words ("Aunt Ola's
+ * notebook"). "allrecipes.com/…" counts as an address and is given https://.
+ */
+export function sourceAddress(text: string): string {
+  const typed = text.trim();
+  if (/^https?:\/\//i.test(typed)) return webAddress(typed);
+  return BARE_ADDRESS.test(typed) ? webAddress(`https://${typed}`) : '';
+}
+
+/** The site a source address is on, without "www." ("smittenkitchen.com"). */
+export function sourceHost(address: string): string {
+  try {
+    return new URL(address).hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
+
+/** A recipe's source as the editor's one field shows it: its address, or its words. */
+function sourceOf(sourceUrl: unknown, sourceText: unknown): string {
+  const url = webAddress(typeof sourceUrl === 'string' ? sourceUrl : '');
+  return url || (typeof sourceText === 'string' ? sourceText.trim() : '');
 }
 
 /** Words the editor needs to turn an older recipe's extra blocks into steps. */
@@ -240,7 +271,7 @@ export const emptyForm = (): FormState => ({
   ingredientRows: [emptyRow()],
   sections: [emptySection()],
   numberFrom: 1,
-  sourceUrl: '',
+  source: '',
 });
 
 // --- From a recipe --------------------------------------------------------------------------
@@ -436,7 +467,7 @@ export function formFromRecipe(recipe: Recipe, labels: LegacyLabels): FormState 
         : [emptyRow()],
     sections,
     numberFrom: firstStepNumber(steps),
-    sourceUrl: webAddress(recipe.sourceUrl ?? ''),
+    source: sourceOf(recipe.sourceUrl, recipe.sourceText),
   };
 }
 
@@ -529,7 +560,8 @@ export function formFromDraft(raw: unknown): FormState | null {
   form.manualMinutes =
     typeof raw.manualMinutes === 'number' && raw.manualMinutes > 0 ? raw.manualMinutes : null;
   form.numberFrom = raw.numberFrom === 0 ? 0 : 1;
-  form.sourceUrl = webAddress(str(raw.sourceUrl));
+  // Drafts from before the one field kept only an imported page's address.
+  form.source = str(raw.source).trim() || sourceOf(raw.sourceUrl, '');
 
   const rows = list(raw.ingredientRows).map(draftRow);
   if (rows.length > 0) form.ingredientRows = rows;
@@ -720,6 +752,7 @@ export function methodToSteps(sections: SectionState[], numberFrom: number): Ste
 /** The recipe's content from the form, besides who wrote it. */
 export function formToRecipe(form: FormState) {
   const times = timesFromText(form.times);
+  const sourceUrl = sourceAddress(form.source);
   return {
     name: form.title.trim(),
     category: form.category,
@@ -733,7 +766,9 @@ export function formToRecipe(form: FormState) {
     times,
     // A typed time replaces an older recipe's single total.
     manualMinutes: times ? undefined : (form.manualMinutes ?? undefined),
-    sourceUrl: form.sourceUrl || undefined,
+    // One or the other, so a source changed from a link to words leaves no link behind.
+    sourceUrl: sourceUrl || undefined,
+    sourceText: (!sourceUrl && form.source.trim()) || undefined,
     // Now steps in the method, so the old blocks go.
     laminationDirective: undefined,
     bakingOptions: undefined,
@@ -753,6 +788,8 @@ export function formText(form: FormState): string {
     recipe.tips ?? '',
     recipe.notes ?? '',
     TIME_KINDS.map((kind) => form.times[kind].trim()),
+    // Only when there are words, so the stamps of edits kept before sources had words still match.
+    ...(recipe.sourceText ? [recipe.sourceText] : []),
     form.ingredientRows
       .map((row) => (row.heading ? { heading: row.name.trim() } : rowText(row)))
       .filter((r) => ('heading' in r ? r.heading : r.name || r.amount)),
@@ -769,7 +806,9 @@ const hasExtras = (e: ExtrasState) => (e.showTip && written(e.tip)) || Boolean(e
 /** Whether a new recipe's form has anything worth keeping as a draft: any field at all. */
 export function hasContent(form: FormState): boolean {
   return Boolean(
-    [form.title, form.cardDescription, form.yieldHeader, form.tips, form.notes].some(written) ||
+    [form.title, form.cardDescription, form.yieldHeader, form.tips, form.notes, form.source].some(
+      written,
+    ) ||
     TIME_KINDS.some((kind) => written(form.times[kind])) ||
     (form.authorMode === 'custom' && written(form.author)) ||
     form.heroImage ||

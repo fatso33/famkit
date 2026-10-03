@@ -419,7 +419,7 @@ export function recipeFromPage(page: ImportedPage, labels: ImportLabels): Import
     form: {
       ...form,
       title: plainText(first(recipe.name)).slice(0, 200),
-      // Credited to whoever adds it, like a recipe of their own; sourceUrl says where it came from.
+      // Credited to whoever adds it; "Adapted from" at the foot of the recipe names the page.
       authorMode: 'auto',
       author: '',
       category: categoryFrom(recipe.recipeCategory),
@@ -430,7 +430,7 @@ export function recipeFromPage(page: ImportedPage, labels: ImportLabels): Import
       manualMinutes: typed ? null : isoTime(recipe.totalTime),
       ingredientRows: rows.length > 0 ? rows : [emptyRow()],
       sections: addPastedMethod(form.sections, method),
-      sourceUrl: page.url,
+      source: page.url,
     },
     imageUrl: imageOf(recipe.image, byId, page.url) || imageOf(page.meta.image, byId, page.url),
     guessed: best.rank === 2,

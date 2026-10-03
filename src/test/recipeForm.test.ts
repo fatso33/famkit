@@ -559,18 +559,69 @@ describe('pasting', () => {
   });
 });
 
-describe('the page a recipe came from', () => {
-  it('is kept through the form, and only when it is a web address', () => {
+describe('where a recipe is from', () => {
+  const saved = (source: string) => {
+    const { sourceUrl, sourceText } = formToRecipe({
+      ...formFromRecipe(plainRecipe, labels),
+      source,
+    });
+    return { sourceUrl, sourceText };
+  };
+
+  it('is kept through the form, and a link only when it is a web address', () => {
     const form = formFromRecipe({ ...plainRecipe, sourceUrl: 'https://example.com/bread' }, labels);
-    expect(form.sourceUrl).toBe('https://example.com/bread');
+    expect(form.source).toBe('https://example.com/bread');
     expect(formToRecipe(form).sourceUrl).toBe('https://example.com/bread');
     expect(
-      formFromRecipe({ ...plainRecipe, sourceUrl: 'javascript:alert(1)' }, labels).sourceUrl,
+      formFromRecipe({ ...plainRecipe, sourceUrl: 'javascript:alert(1)' }, labels).source,
     ).toBe('');
-    expect(formToRecipe(formFromRecipe(plainRecipe, labels)).sourceUrl).toBeUndefined();
-    expect(formFromDraft({ title: 'Soup', sourceUrl: 'https://example.com/soup' })?.sourceUrl).toBe(
+    expect(saved('')).toEqual({ sourceUrl: undefined, sourceText: undefined });
+    // A draft from before the one field kept an imported page's address as sourceUrl.
+    expect(formFromDraft({ title: 'Soup', sourceUrl: 'https://example.com/soup' })?.source).toBe(
       'https://example.com/soup',
     );
+    expect(formFromDraft({ title: 'Soup', source: "Aunt Ola's notebook" })?.source).toBe(
+      "Aunt Ola's notebook",
+    );
+  });
+
+  it('saves a link as the address, and anything else as words', () => {
+    expect(saved('https://smittenkitchen.com/2024/03/babka/')).toEqual({
+      sourceUrl: 'https://smittenkitchen.com/2024/03/babka/',
+      sourceText: undefined,
+    });
+    // Typed without its https://.
+    expect(saved('allrecipes.com/recipe/123')).toEqual({
+      sourceUrl: 'https://allrecipes.com/recipe/123',
+      sourceText: undefined,
+    });
+    expect(saved('www.kwestiasmaku.com').sourceUrl).toBe('https://www.kwestiasmaku.com/');
+    expect(saved("  Aunt Ola's notebook ")).toEqual({
+      sourceUrl: undefined,
+      sourceText: "Aunt Ola's notebook",
+    });
+    for (const words of [
+      'Mom',
+      'Zeszyt cioci Oli, s. 12',
+      'p.12 of the red book',
+      'javascript:alert(1)',
+    ]) {
+      expect(saved(words)).toEqual({ sourceUrl: undefined, sourceText: words });
+    }
+  });
+
+  it('opens an older recipe with words in the one field, and counts as something worth keeping', () => {
+    const words = formFromRecipe({ ...plainRecipe, sourceText: "Aunt Ola's notebook" }, labels);
+    expect(words.source).toBe("Aunt Ola's notebook");
+    const empty = formFromDraft({})!;
+    expect(hasContent(empty)).toBe(false);
+    expect(hasContent({ ...empty, source: 'Babcia' })).toBe(true);
+  });
+
+  it('counts as a text edit only when it is words, which get translated', () => {
+    const form = formFromRecipe(plainRecipe, labels);
+    expect(formText({ ...form, source: 'https://example.com/a' })).toBe(formText(form));
+    expect(formText({ ...form, source: "Aunt Ola's notebook" })).not.toBe(formText(form));
   });
 });
 

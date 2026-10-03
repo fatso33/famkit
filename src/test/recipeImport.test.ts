@@ -50,7 +50,7 @@ describe('reading a recipe from a page', () => {
     expect(form.yieldHeader).toBe('1 loaf:');
     expect(form.manualMinutes).toBe(90);
     expect(form.category).toBe('breads');
-    expect(form.sourceUrl).toBe('https://www.example.com/recipes/bread');
+    expect(form.source).toBe('https://www.example.com/recipes/bread');
     expect(form.ingredientRows.map((r) => [r.name, r.amount, r.note])).toEqual([
       ['bread flour', '500 g', 'sifted'],
       ['water', '1 1/2 cups', ''],

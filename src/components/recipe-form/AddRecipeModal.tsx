@@ -42,6 +42,7 @@ import { estimateRecipeMinutes } from '../../utils/timeEstimator';
 import { fitsInCloud } from '../../utils/cloudSize';
 import { prefersReducedMotion } from '../../utils/viewTransition';
 import { AutoGrowTextarea } from '../common/AutoGrowTextarea';
+import { RecipeSourceField } from './RecipeSourceField';
 import { ConfirmSheet } from '../common/ConfirmSheet';
 import { CategorySelect } from './CategorySelect';
 import { EditorBar } from './EditorBar';
@@ -526,7 +527,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
         }
         // Only into the recipe it belongs to, and never over a photo picked meanwhile.
         setForm((f) =>
-          f.sourceUrl === imported.form.sourceUrl ? { ...f, heroImage: f.heroImage || photo } : f,
+          f.source === imported.form.source ? { ...f, heroImage: f.heroImage || photo } : f,
         );
       });
     }
@@ -953,6 +954,12 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
               value={form.tips}
               onChange={(e) => set('tips', e.target.value)}
             />
+          </div>
+
+          {/* Where it's from: shown as "Adapted from" at the recipe's foot */}
+          <div className={`form-group editor-rise${restoredClass('source')}`} style={riseStyle()}>
+            {restoredChip('source')}
+            <RecipeSourceField value={form.source} onChange={(v) => set('source', v)} t={t} />
           </div>
 
           {/* What changed: kept with this version in its history */}

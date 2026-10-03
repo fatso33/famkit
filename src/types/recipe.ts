@@ -164,6 +164,8 @@ export interface LocalizedRecipeContent {
   bakingOptions?: BakingOptions;
   /** The typed times' words (their minutes stay with the original). */
   times?: { prep?: string; cook?: string; rest?: string };
+  /** Where it was adapted from, in words (`sourceText`); a web address isn't translated. */
+  source?: string;
   /** Fingerprint of the source text this was translated from (see utils/recipeTranslation). */
   sourceHash?: string;
   /**
@@ -243,8 +245,13 @@ export interface Recipe {
   manualMinutes?: number;
   /** Prep, cook and rest, as the author typed them. */
   times?: RecipeTimes;
-  /** The web page it was brought in from, when it was. Kept for later; not shown. */
+  /**
+   * Where it was adapted from, shown at the bottom of the recipe: a web page (http(s) only, opened
+   * after a confirm), or else `sourceText`, plain words such as "Aunt Ola's notebook". At most one
+   * of the two is set.
+   */
   sourceUrl?: string;
+  sourceText?: string;
   /**
    * The id of the recipe this one is a remix of: a family member's own take on it, which they
    * own. The original is never changed by it; its remixes are counted from this (utils/recipeRemix).

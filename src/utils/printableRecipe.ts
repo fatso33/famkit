@@ -12,6 +12,7 @@ import {
   pathSteps,
 } from './recipeMethod';
 import { addedByName, creditName } from './ownership';
+import { webAddress } from './recipeForm';
 import { capitalizeFirstLetter } from './timeEstimator';
 import { recipeTimeLabel } from './timeText';
 import { recipePhoto } from './vault';
@@ -88,12 +89,28 @@ export interface PrintableRecipe {
   lists: PrintList[];
   /** The kitchen tip, after the method (as on the recipe page). */
   tip?: PrintCallout;
+  /** Where it was adapted from, last: a page's full address (paper can't be tapped), or words. */
+  source?: PrintCallout;
   labels: {
     ingredients: string;
     chooseOne: string;
     footer: string;
   };
   language: Language;
+}
+
+/**
+ * "Adapted from" and where: a page as its address without the https:// ("smittenkitchen.com/
+ * 2024/03/babka"), or the words. The record is untrusted: only an http(s) address is printed.
+ */
+function sourceLine(recipe: Recipe, t: UiTranslations): PrintCallout | undefined {
+  const url = webAddress(typeof recipe.sourceUrl === 'string' ? recipe.sourceUrl : '');
+  const text = url
+    ? url.replace(/^https?:\/\//, '').replace(/\/$/, '')
+    : typeof recipe.sourceText === 'string'
+      ? recipe.sourceText.trim()
+      : '';
+  return text ? { label: t.adaptedFrom, text } : undefined;
 }
 
 /** The substeps as the recipe page letters them, "a)" to "z)". */
@@ -237,6 +254,7 @@ export function printableRecipe(
     method,
     lists,
     tip: callout(t.kitchenTip, recipe.tips),
+    source: sourceLine(recipe, t),
     labels: { ingredients: t.ingredients, chooseOne: t.chooseOne, footer: t.pdfFooter },
     language,
   };

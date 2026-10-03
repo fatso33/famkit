@@ -66,6 +66,7 @@ describe('remix helpers', () => {
       'createdAt',
       'updatedAt',
       'sourceUrl',
+      'sourceText',
     ] as const) {
       expect(start[key]).toBeUndefined();
     }

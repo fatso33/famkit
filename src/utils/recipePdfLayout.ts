@@ -356,7 +356,10 @@ function listItems(list: PrintList, ctx: Ctx): FlowItem[] {
   return items;
 }
 
-/** The method, then the kitchen tip; led by the crucial note when it's too long to go on top. */
+/**
+ * The method, the kitchen tip, then where it was adapted from; led by the crucial note when it's
+ * too long to go on top.
+ */
 function methodItems(r: PrintableRecipe, ctx: Ctx, note?: PrintCallout): FlowItem[] {
   const items: FlowItem[] = note
     ? [{ space: 0, layout: (w) => calloutBox(note.label, note.text, w, ctx) }]
@@ -370,6 +373,15 @@ function methodItems(r: PrintableRecipe, ctx: Ctx, note?: PrintCallout): FlowIte
   for (const list of r.lists) items.push(...listItems(list, ctx));
   const tip = r.tip;
   if (tip) items.push({ space: 22, layout: (w) => calloutBox(tip.label, tip.text, w, ctx) });
+  const source = r.source;
+  if (source) {
+    // "Adapted from smittenkitchen.com/…", quietly, as the credits under the title are set.
+    const runs: Run[] = [
+      { text: `${source.label} `, style: S.creditLead },
+      { text: source.text, style: S.credit },
+    ];
+    items.push({ space: 22, layout: (w) => paragraph(runs, w, LH.credit, ctx.measure) });
+  }
   if (items.length > 0) items[0].space = 0;
   return items;
 }

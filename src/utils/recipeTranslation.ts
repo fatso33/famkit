@@ -95,7 +95,14 @@ export function translatableContent(recipe: Recipe): LocalizedRecipeContent {
     bakingOptions: recipe.bakingOptions,
     // Newest last, and only when there are any, so older recipes' fingerprints don't change.
     ...timeWordsOf(recipe.times),
+    ...sourceWordsOf(recipe),
   };
+}
+
+/** Where it was adapted from, when that's words (a web address isn't translated). */
+function sourceWordsOf(recipe: Recipe): Pick<LocalizedRecipeContent, 'source'> {
+  const words: unknown = recipe.sourceText;
+  return typeof words === 'string' && words.trim() ? { source: words } : {};
 }
 
 /** The words of the times the author typed, for translation (their minutes stay the original's). */
@@ -368,6 +375,7 @@ export function overlayTranslation(recipe: Recipe, tr: LocalizedRecipeContent): 
     steps: tr.steps && tr.steps.length > 0 ? steps : recipe.steps,
     bakingOptions: recipe.bakingOptions && (tr.bakingOptions || recipe.bakingOptions),
     ...(recipe.times && { times: overlayTimes(recipe.times, tr.times) }),
+    ...(recipe.sourceText && { sourceText: tr.source || recipe.sourceText }),
   };
 }
 
@@ -635,6 +643,8 @@ export function resolveEdit(
       category: edited.category,
       manualMinutes: edited.manualMinutes,
       heroImage: edited.heroImage,
+      // A link isn't translated (words where it's from are, so changing them changes the text).
+      sourceUrl: edited.sourceUrl,
       steps: (original.steps || []).map((st, i) => {
         const photo = edited.steps[i];
         const step: Step = {

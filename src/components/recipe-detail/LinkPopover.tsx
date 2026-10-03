@@ -1,6 +1,7 @@
-import React, { useEffect, useId, useLayoutEffect, useRef } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronRight } from 'lucide-react';
+import { useAnchoredPlacement } from '../../hooks/useAnchoredPlacement';
 import { useBackStep } from '../../hooks/useBackStep';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { useExitAnimation } from '../../hooks/useExitAnimation';
@@ -29,15 +30,11 @@ interface LinkPopoverProps {
   onClose: () => void;
 }
 
-/** Space kept between the popover and the screen's edges, in px. */
-const EDGE = 16;
-/** Its gap under the mark it springs from, in px. */
-const GAP = 10;
-
 /**
  * A small card of links springing out of a recipe's remix mark or badge (to the original, or to
- * its remixes), or its make badge (to its makes). Mounted only while open. It lives on the page (it scrolls with it), placed under
- * the mark once as it opens, and grows out of the mark, animating only transform and opacity.
+ * its remixes), or its make badge (to its makes). Mounted only while open. It lives on the page (it scrolls with it), placed by
+ * the mark once as it opens (useAnchoredPlacement), and grows out of the mark, animating only
+ * transform and opacity.
  * A tap outside, Escape or the back gesture closes it, and focus returns to the mark.
  */
 export const LinkPopover: React.FC<LinkPopoverProps> = ({
@@ -55,26 +52,7 @@ export const LinkPopover: React.FC<LinkPopoverProps> = ({
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // Under the mark, as near its middle as the screen allows, before the first frame is drawn.
-  useLayoutEffect(() => {
-    const panel = panelRef.current;
-    if (!panel) return;
-    const place = () => {
-      const mark = anchor.getBoundingClientRect();
-      const width = panel.offsetWidth;
-      const middle = mark.left + mark.width / 2;
-      const left = Math.min(
-        Math.max(EDGE, middle - width / 2),
-        document.documentElement.clientWidth - EDGE - width,
-      );
-      panel.style.left = `${Math.round(left + window.scrollX)}px`;
-      panel.style.top = `${Math.round(mark.bottom + GAP + window.scrollY)}px`;
-      panel.style.setProperty('--pop-origin-x', `${Math.round(middle - left)}px`);
-    };
-    place();
-    window.addEventListener('resize', place);
-    return () => window.removeEventListener('resize', place);
-  }, [anchor]);
+  useAnchoredPlacement(anchor, panelRef);
 
   // Focus moves to the first link (or the card); the mark gets it back when it closes.
   useEffect(() => {

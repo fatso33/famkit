@@ -7,6 +7,7 @@ import { UiTranslations } from '../../i18n/translations';
 import { recipeTime, capitalizeFirstLetter } from '../../utils/timeEstimator';
 import { hasTypedTimes } from '../../utils/timeText';
 import { RecipeTimeTiles } from './RecipeTimeTiles';
+import { RecipeSource } from './RecipeSource';
 import { PathChoices } from '../../utils/recipeMethod';
 import { getStoredPathChoices, setStoredPathChoices } from '../../services/storage';
 import { NumberRoll } from '../common/NumberRoll';
@@ -337,6 +338,9 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
               )}
             </div>
           </div>
+
+          {/* Adapted from: where the recipe came from, at its foot */}
+          <RecipeSource recipe={recipe} t={t} />
         </div>
       </div>
 
