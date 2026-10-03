@@ -266,7 +266,7 @@ export const StepEditor: React.FC<StepEditorProps> = ({
             aria-pressed={Boolean(fork)}
             onClick={toggleForking}
           >
-            <ForkIcon paths={2} />
+            <ForkIcon />
             <span>{t.fork}</span>
           </button>
         )}

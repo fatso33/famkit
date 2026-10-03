@@ -1,31 +1,11 @@
 import React from 'react';
 
-// Each path: its branch from the fork, and its arrowhead. The stem rises from the bottom.
-const BRANCHES: Record<2 | 3, readonly (readonly [string, string])[]> = {
-  2: [
-    ['M12 14C12 10 6 10 6 4.5', 'M3.7 6.8 6 4.5 8.3 6.8'],
-    ['M12 14C12 10 18 10 18 4.5', 'M15.7 6.8 18 4.5 20.3 6.8'],
-  ],
-  3: [
-    ['M12 14C12 10 4.5 10 4.5 4.5', 'M2.2 6.8 4.5 4.5 6.8 6.8'],
-    ['M12 14V4.5', 'M9.7 6.8 12 4.5 14.3 6.8'],
-    ['M12 14C12 10 19.5 10 19.5 4.5', 'M17.2 6.8 19.5 4.5 21.8 6.8'],
-  ],
-};
-
-interface ForkIconProps {
-  /** How many ways it splits. */
-  paths: number;
-  /** The branch to light up; all of them when left out. */
-  lit?: number;
-  className?: string;
-}
-
 /**
- * An arrow that splits two or three ways. A path's own icon lights its branch, left to right:
- * A the left, B the right (or the middle of three). index.css draws the lit branch out.
+ * An arrow that splits two ways. The stem drops from the top and each branch leaves on a
+ * diagonal with a corner arrowhead, so it points down the page, the way a recipe reads, and an
+ * arrowhead's inner arm never runs alongside its branch at small sizes.
  */
-export const ForkIcon: React.FC<ForkIconProps> = ({ paths, lit, className = '' }) => (
+export const ForkIcon: React.FC<{ className?: string }> = ({ className = '' }) => (
   <svg
     className={`fork-icon ${className}`.trim()}
     viewBox="0 0 24 24"
@@ -37,12 +17,10 @@ export const ForkIcon: React.FC<ForkIconProps> = ({ paths, lit, className = '' }
     aria-hidden="true"
     focusable="false"
   >
-    <path className="fork-icon-stem" pathLength={1} d="M12 21.5V14" />
-    {BRANCHES[paths >= 3 ? 3 : 2].map(([line, head], i) => (
-      <g key={i} className={`fork-icon-branch${lit === undefined || lit === i ? ' is-lit' : ''}`}>
-        <path className="fork-icon-line" pathLength={1} d={line} />
-        <path className="fork-icon-head" d={head} />
-      </g>
-    ))}
+    <path d="M12 3V10" />
+    <path d="M12 10Q12 12.5 10 14.5L5 19.5" />
+    <path d="M5 15.5v4h4" />
+    <path d="M12 10Q12 12.5 14 14.5L19 19.5" />
+    <path d="M19 15.5v4h-4" />
   </svg>
 );
