@@ -2,6 +2,7 @@ import React from 'react';
 import { UiTranslations } from '../../i18n/translations';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { useExitAnimation } from '../../hooks/useExitAnimation';
+import { useInertBehind } from '../../hooks/useInertBehind';
 
 interface IOSInstallModalProps {
   onClose: () => void;
@@ -18,6 +19,7 @@ const withIcon = (html: string, icon: string) => html.replace('{icon}', icon);
 export const IOSInstallModal: React.FC<IOSInstallModalProps> = ({ onClose, t }) => {
   const { ref, isClosing, requestClose } = useExitAnimation<HTMLDivElement>(onClose);
   const backdropProps = useDialogDismiss(requestClose);
+  useInertBehind(ref);
 
   return (
     // Backdrop click is a mouse shortcut; keyboard users close with Escape (useDialogDismiss).

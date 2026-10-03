@@ -94,10 +94,53 @@ export function estimateActionDuration(text: string): number {
   return action ? action.minutes : 2;
 }
 
-// A step's time: what it says, else a guess from what it asks for.
-const stepMinutes = (text: string, extra: string[] = []) => {
-  const explicit = [text, ...extra].reduce((sum, t) => sum + extractTimeFromText(t), 0);
-  return explicit > 0 ? explicit : estimateActionDuration(text);
+// Work done during a time already stated ("Meanwhile…", "While it bakes…", "W międzyczasie…")
+// runs alongside it, so it only adds whatever outlasts that time.
+const OVERLAP_WORDS =
+  'meanwhile|in the meantime|at the same time|while|whilst|during|w międzyczasie|w tym czasie|w trakcie|równocześnie|jednocześnie|podczas';
+const OPENS_OVERLAP = new RegExp(String.raw`^\s*(?:${OVERLAP_WORDS})${NOT_LETTER}`);
+// Sentence ends, and a comma before a clause done in the meantime ("…, while you…",
+// "…, a w tym czasie…").
+const CLAUSE_BREAK = new RegExp(
+  String.raw`(?<=[.!?;])\s+|\n+|,\s*(?:and\s+|a\s+)?(?=(?:${OVERLAP_WORDS})${NOT_LETTER})`,
+);
+
+/**
+ * The minutes a step's texts (its text, then its substeps) state, one after another, except that
+ * a part done in the meantime overlaps the time before it: the part before, or `before` (the step
+ * before) for a step that opens with it. `last` is the time a later part could overlap.
+ */
+function statedMinutes(texts: string[], before: number) {
+  let adds = 0;
+  let last = before;
+  let stated = false;
+  for (const text of texts) {
+    const parts = text.toLowerCase().split(CLAUSE_BREAK);
+    // Without a part done in the meantime, the text is read whole, as it always was.
+    for (const part of parts.some((p) => OPENS_OVERLAP.test(p)) ? parts : [text]) {
+      const minutes = extractTimeFromText(part);
+      if (minutes > 0) stated = true;
+      if (OPENS_OVERLAP.test(part.toLowerCase())) {
+        adds += Math.max(0, minutes - last);
+        last = Math.max(last, minutes);
+      } else if (minutes > 0) {
+        adds += minutes;
+        last = minutes;
+      }
+    }
+  }
+  return { adds, last, stated };
+}
+
+// A step's time: what it says, else a guess from what it asks for. `adds` is what it adds to the
+// recipe (less any overlap with `before`, the step before's `last`).
+const stepMinutes = (text: string, extra: string[] = [], before = 0) => {
+  const stated = statedMinutes([text, ...extra], before);
+  if (stated.stated) return stated;
+  const guess = estimateActionDuration(text);
+  return OPENS_OVERLAP.test(text.toLowerCase())
+    ? { adds: Math.max(0, guess - before), last: Math.max(before, guess) }
+    : { adds: guess, last: guess };
 };
 
 // "Repeat steps 3 to 8 two more times", "Powtórz kroki od 3 do 8 jeszcze dwa razy"
@@ -145,6 +188,13 @@ export function estimateRecipeMinutes(
   const numbers = numberSteps(steps, firstStepNumber(steps), choices);
   const stepAnalysis: { num: number; duration: number }[] = [];
   const plainTexts: string[] = [];
+  // The time the next step could overlap, when it's done in the meantime.
+  let before = 0;
+  const add = (num: number, text: string, substeps?: string[]) => {
+    const { adds, last } = stepMinutes(text, substeps, before);
+    stepAnalysis.push({ num, duration: adds });
+    before = last;
+  };
   steps.forEach((step, index) => {
     const stepText = typeof step === 'string' ? step : step.text || '';
     const num = numbers[index];
@@ -154,13 +204,11 @@ export function estimateRecipeMinutes(
     }
     if (step.fork) {
       const path = chosenPath(step.fork, choices[index]);
-      stepAnalysis.push({ num, duration: stepMinutes(step.fork.paths[path]?.text ?? stepText) });
-      pathSteps(step.fork, path).forEach((text, k) => {
-        stepAnalysis.push({ num: num + 1 + k, duration: stepMinutes(text) });
-      });
+      add(num, step.fork.paths[path]?.text ?? stepText);
+      pathSteps(step.fork, path).forEach((text, k) => add(num + 1 + k, text));
       return;
     }
-    stepAnalysis.push({ num, duration: stepMinutes(stepText, step.substeps) });
+    add(num, stepText, step.substeps);
   });
   totalMinutes += stepAnalysis.reduce((sum, s) => sum + s.duration, 0);
 

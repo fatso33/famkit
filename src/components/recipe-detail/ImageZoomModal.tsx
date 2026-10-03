@@ -1,6 +1,7 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { useBackStep } from '../../hooks/useBackStep';
+import { useInertBehind } from '../../hooks/useInertBehind';
 import { UiTranslations } from '../../i18n/translations';
 import { lockPageScroll } from '../../utils/scrollLock';
 
@@ -19,6 +20,9 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClos
   const dragStart = useRef({ x: 0, y: 0 });
   const didPan = useRef(false);
   const backdropProps = useDialogDismiss(() => onClose());
+  // The page under the photo is out of reach; the island after it keeps its back button.
+  const layerRef = useRef<HTMLDivElement>(null);
+  useInertBehind(layerRef);
   // The back gesture closes the photo, back to the page it was opened from.
   useBackStep(true, onClose);
 
@@ -109,6 +113,7 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClos
   return (
     // Backdrop click is a mouse shortcut; keyboard users close with Escape (useDialogDismiss).
     <div
+      ref={layerRef}
       className="image-modal-overlay active"
       id="imageZoomModal"
       role="dialog"

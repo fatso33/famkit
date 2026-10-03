@@ -4,6 +4,7 @@ import { UiTranslations } from '../../i18n/translations';
 import { useBackStep } from '../../hooks/useBackStep';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { useExitAnimation } from '../../hooks/useExitAnimation';
+import { useInertBehind } from '../../hooks/useInertBehind';
 
 interface DownloadSheetProps {
   /** The file it saves ("Wanda's Cheese Bread.pdf"). */
@@ -60,6 +61,8 @@ export const DownloadSheet: React.FC<DownloadSheetProps> = ({
   const { ref, isClosing, requestClose } = useExitAnimation<HTMLDivElement>(onClose);
   const backdropProps = useDialogDismiss(requestClose);
   useBackStep(true, () => requestClose());
+  // The recipe page and the island are out of reach until it closes (before the focus hand-back).
+  useInertBehind(ref);
   const titleId = useId();
   const fileId = useId();
   const first = useRef<HTMLButtonElement>(null);

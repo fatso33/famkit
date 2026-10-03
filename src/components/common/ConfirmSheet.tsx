@@ -2,6 +2,7 @@ import React, { useEffect, useId, useRef } from 'react';
 import { useBackStep } from '../../hooks/useBackStep';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { useExitAnimation } from '../../hooks/useExitAnimation';
+import { useInertBehind } from '../../hooks/useInertBehind';
 
 interface ConfirmSheetProps {
   title: string;
@@ -36,6 +37,9 @@ export const ConfirmSheet: React.FC<ConfirmSheetProps> = ({
   const backdropProps = useDialogDismiss(requestClose);
   // The back gesture closes the sheet, like its safe choice.
   useBackStep(true, () => requestClose());
+  // What it's asked over (the editor's bar and page) is out of reach until it closes. Before the
+  // focus hand-back below, so the opener is reachable again by the time focus returns to it.
+  useInertBehind(ref);
   const titleId = useId();
   const messageId = useId();
   const cancel = useRef<HTMLButtonElement>(null);

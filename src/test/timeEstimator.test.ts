@@ -148,6 +148,61 @@ describe('estimateRecipeMinutes', () => {
   });
 });
 
+describe('work done in the meantime', () => {
+  const minutesOf = (...texts: string[]) =>
+    estimateRecipeMinutes({ steps: texts.map((text, i) => ({ num: i + 1, text })) });
+
+  it('overlaps the time before it in the same step, in English and Polish', () => {
+    expect(minutesOf('Bake for 30 minutes. Meanwhile simmer the sauce for 10 minutes.')).toBe(30);
+    expect(minutesOf('Piecz 30 minut. W międzyczasie gotuj sos przez 10 minut.')).toBe(30);
+    expect(minutesOf('Bake for 30 minutes. In the meantime, make the glaze.')).toBe(30);
+    expect(minutesOf('Piecz 30 minut. Jednocześnie przygotuj lukier.')).toBe(30);
+  });
+
+  it('counts only what runs past the time it overlaps', () => {
+    expect(
+      minutesOf('Simmer the beans for 10 minutes. Meanwhile, roast the peppers for 25 minutes.'),
+    ).toBe(25);
+    expect(minutesOf('Gotuj fasolę 10 minut. W tym czasie piecz paprykę przez 25 minut.')).toBe(25);
+  });
+
+  it('overlaps a clause that says so after a comma', () => {
+    expect(
+      minutesOf('Let the dough rise for 1 hour, while you simmer the filling for 20 minutes.'),
+    ).toBe(60);
+    expect(
+      minutesOf('Odstaw ciasto na 1 godzinę, a w tym czasie gotuj farsz przez 20 minut.'),
+    ).toBe(60);
+  });
+
+  it('overlaps the step before when a step opens with it', () => {
+    expect(minutesOf('Bake for 30 minutes.', 'Meanwhile, make the glaze.')).toBe(30);
+    expect(minutesOf('Piecz przez 30 minut.', 'W tym czasie przygotuj lukier.')).toBe(30);
+    expect(
+      minutesOf('Roast for 20 minutes.', 'While it roasts, simmer the sauce for 30 minutes.'),
+    ).toBe(30);
+    expect(minutesOf('Piecz 20 minut.', 'Podczas pieczenia gotuj sos przez 30 minut.')).toBe(30);
+  });
+
+  it('overlaps the step it belongs to when a substep opens with it', () => {
+    const steps = [
+      {
+        num: 1,
+        text: 'Bake for 30 minutes.',
+        substeps: ['Meanwhile, simmer the sauce for 10 minutes.'],
+      },
+    ];
+    expect(estimateRecipeMinutes({ steps })).toBe(30);
+  });
+
+  it('still adds up work done one thing after another', () => {
+    expect(minutesOf('Simmer for 10 minutes. Then bake for 30 minutes.')).toBe(40);
+    // A "while" that isn't its own clause is part of the same work.
+    expect(minutesOf('Whisk for 5 minutes while adding the oil.', 'Bake for 30 minutes.')).toBe(35);
+    expect(minutesOf('Bake for 30 minutes.', 'Cool for 10 minutes.')).toBe(40);
+  });
+});
+
 describe('capitalizeFirstLetter', () => {
   it('capitalizes sentences properly', () => {
     expect(capitalizeFirstLetter('will not work in an air fryer.')).toBe(

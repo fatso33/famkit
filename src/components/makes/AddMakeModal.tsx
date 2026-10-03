@@ -6,6 +6,7 @@ import { UiTranslations } from '../../i18n/translations';
 import { useBackStep } from '../../hooks/useBackStep';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { useExitAnimation } from '../../hooks/useExitAnimation';
+import { useInertBehind } from '../../hooks/useInertBehind';
 import { getLocalizedRecipe } from '../../hooks/useRecipes';
 import { isoDay } from '../../utils/makes';
 import { prefersReducedMotion } from '../../utils/viewTransition';
@@ -68,6 +69,8 @@ export const AddMakeModal: React.FC<AddMakeModalProps> = ({
   // Closing folds the page back into the button it came from; saving lets it sink away.
   const [exit, setExit] = useState<'cancel' | 'save'>('cancel');
   const { ref: layerRef, isClosing, requestClose } = useExitAnimation<HTMLDivElement>(onClose);
+  // A page over the app: what's under it can't be reached (aria-modal alone doesn't stop Tab).
+  useInertBehind(layerRef);
   const [initial] = useState(() => formOf(make, recipeId));
   const [form, setForm] = useState(initial);
   const [showErrors, setShowErrors] = useState(false);
