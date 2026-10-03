@@ -3069,16 +3069,35 @@
         color: var(--accent);
       }
 
-      /* The badge sits at the row's end, even when the row wraps onto a second line. */
-      .detail-meta > .remix-badge {
-        margin-left: auto;
-        font-size: 0.9375rem;
-        padding: 0.3rem 0.7rem 0.3rem 0.6rem;
+      /* Under the byline: the time at the start, the badges at the end. With no time (typed
+         times show as tiles below), the badges start the row. */
+      .detail-stats {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem 0.75rem;
+        margin-top: 0.6rem;
+        font-size: 1rem;
       }
 
-      /* The make badge follows the remix badge. */
-      .detail-meta > .remix-badge + .remix-badge {
+      .detail-stats.is-badges-only {
+        justify-content: flex-start;
+      }
+
+      .detail-badges {
+        display: flex;
+        gap: 0.4rem;
+        margin-left: auto;
+      }
+
+      .detail-stats.is-badges-only .detail-badges {
         margin-left: 0;
+      }
+
+      .detail-badges > .remix-badge {
+        font-size: 0.9375rem;
+        padding: 0.3rem 0.7rem 0.3rem 0.6rem;
       }
 
       /* ── Remixes. A remix's mark by its name, and a recipe's badge counting its remixes, on

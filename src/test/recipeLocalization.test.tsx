@@ -21,8 +21,11 @@ describe('recipe page in Polish', () => {
     expect(meta).not.toBeNull();
     expect(within(meta!).getByText('Autor: Wanda G.')).toBeInTheDocument();
     expect(within(meta!).getByText('Dodane przez: Peter G.')).toBeInTheDocument();
-    expect(meta!.textContent).toMatch(/~(\d+g \d\dm|\d+m)/);
     expect(meta!.textContent).not.toMatch(/\b(By|hrs?|mins)\b/);
+    // The time is on its own row under the byline.
+    const time = container.querySelector<HTMLElement>('.detail-stats #detailEstimatedTime');
+    expect(time!.textContent).toMatch(/~(\d+g \d\dm|\d+m)/);
+    expect(time!.textContent).not.toMatch(/\b(hrs?|mins)\b/);
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Chleb Serowy Wandy');
     expect(screen.getByRole('button', { name: UI_TEXT.pl.backToRecipes })).toBeInTheDocument();

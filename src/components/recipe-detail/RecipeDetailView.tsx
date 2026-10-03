@@ -137,6 +137,9 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   // get tiles of their own instead.
   const time = recipeTime(recipe, choices);
   const typedTimes = hasTypedTimes(recipe.times) ? recipe.times : undefined;
+  // A preview with no steps yet has no time to show.
+  const showTime = !typedTimes && time.minutes > 0;
+  const showMakes = makes.length > 0 && Boolean(onOpenMake);
   const timeText = time.manual ? t.totalTime(time.minutes) : t.estimatedTime(time.minutes);
   const addedBy = addedByName(rawRecipe);
   const shownIn = (r: Recipe) => getLocalizedRecipe(r, language) || r;
@@ -228,40 +231,53 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                 {t.byAuthor(creditName(recipe))}
               </span>
               {addedBy && <span className="detail-meta-item added-by">{t.addedBy(addedBy)}</span>}
-              {/* Previewing a recipe with no steps yet: no time to show. */}
-              {!typedTimes && time.minutes > 0 && (
-                <span id="detailEstimatedTime" className="detail-meta-item detail-time">
-                  <Timer className="time-icon" size="1.05em" strokeWidth={2.1} aria-hidden="true" />
-                  <NumberRoll value={timeText} />
-                </span>
-              )}
-              {remixes.length > 0 && (
-                <button
-                  type="button"
-                  className="remix-badge is-button"
-                  aria-label={t.remixCount(remixes.length)}
-                  aria-haspopup="dialog"
-                  aria-expanded={remixPop?.kind === 'remixes'}
-                  onClick={openRemixPop('remixes')}
-                >
-                  <Shuffle size="1em" strokeWidth={2.2} aria-hidden="true" />
-                  <span className="remix-badge-count">{remixes.length}</span>
-                </button>
-              )}
-              {makes.length > 0 && onOpenMake && (
-                <button
-                  type="button"
-                  className="remix-badge make-badge is-button"
-                  aria-label={t.makeCount(makes.length)}
-                  aria-haspopup="dialog"
-                  aria-expanded={remixPop?.kind === 'makes'}
-                  onClick={openRemixPop('makes')}
-                >
-                  <CookingPot size="1em" strokeWidth={2.2} aria-hidden="true" />
-                  <span className="remix-badge-count">{makes.length}</span>
-                </button>
-              )}
             </div>
+            {/* Under the byline: the time on the left, the remix and make badges on the right. */}
+            {(showTime || remixes.length > 0 || showMakes) && (
+              <div className={`detail-stats${showTime ? '' : ' is-badges-only'}`}>
+                {showTime && (
+                  <span id="detailEstimatedTime" className="detail-time">
+                    <Timer
+                      className="time-icon"
+                      size="1.05em"
+                      strokeWidth={2.1}
+                      aria-hidden="true"
+                    />
+                    <NumberRoll value={timeText} />
+                  </span>
+                )}
+                {(remixes.length > 0 || showMakes) && (
+                  <span className="detail-badges">
+                    {remixes.length > 0 && (
+                      <button
+                        type="button"
+                        className="remix-badge is-button"
+                        aria-label={t.remixCount(remixes.length)}
+                        aria-haspopup="dialog"
+                        aria-expanded={remixPop?.kind === 'remixes'}
+                        onClick={openRemixPop('remixes')}
+                      >
+                        <Shuffle size="1em" strokeWidth={2.2} aria-hidden="true" />
+                        <span className="remix-badge-count">{remixes.length}</span>
+                      </button>
+                    )}
+                    {showMakes && (
+                      <button
+                        type="button"
+                        className="remix-badge make-badge is-button"
+                        aria-label={t.makeCount(makes.length)}
+                        aria-haspopup="dialog"
+                        aria-expanded={remixPop?.kind === 'makes'}
+                        onClick={openRemixPop('makes')}
+                      >
+                        <CookingPot size="1em" strokeWidth={2.2} aria-hidden="true" />
+                        <span className="remix-badge-count">{makes.length}</span>
+                      </button>
+                    )}
+                  </span>
+                )}
+              </div>
+            )}
             {typedTimes && <RecipeTimeTiles times={typedTimes} t={t} />}
             {/* Some of it is still in the original language: its translation is coming. */}
             {awaitsTranslation(rawRecipe, language) && (
