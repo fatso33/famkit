@@ -7764,6 +7764,59 @@
         color: var(--text-secondary);
       }
 
+      /* Everything that can be written in has a dashed edge, like the byline's keys; the field
+         being written in turns solid. A part Save still needs is dashed in the accent while
+         empty. */
+      .editor-layer .form-control {
+        border-style: dashed;
+      }
+
+      .editor-layer .form-control:focus {
+        border-style: solid;
+      }
+
+      /* The name and the description keep the page's type, inside the same dashed edge. The
+         prompt sits in the same cell, behind an edge of its own that isn't drawn. */
+      .editor-page-title-input,
+      .editor-page-desc-input,
+      .editor-page-title > .field-prompt,
+      .editor-page-desc-text > .field-prompt {
+        margin: 0;
+        border: 1.5px dashed var(--border-field);
+        border-radius: var(--radius-sm);
+      }
+
+      .editor-page-title > .field-prompt,
+      .editor-page-desc-text > .field-prompt {
+        border-color: transparent;
+      }
+
+      .editor-page-title-input,
+      .editor-page-title > .field-prompt {
+        padding: 0.3rem 0.65rem;
+      }
+
+      .editor-page-desc-input,
+      .editor-page-desc-text > .field-prompt {
+        padding: 0.55rem 0.75rem;
+      }
+
+      .editor-layer .editor-page-title-input:focus,
+      .editor-layer .editor-page-desc-input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+      }
+
+      .editor-page-name.is-needed .editor-page-title-input:not(:focus),
+      .is-needed[data-field='ingredients'] .ingredient-name:not(:focus),
+      .is-needed[data-field='steps'] .step-editor-text:not(:focus) {
+        border-color: var(--accent);
+      }
+
+      .editor-page-name.has-error .editor-page-title-input:not(:focus) {
+        border-color: #d9383a;
+      }
+
       /* ── The byline: "by Peter G. · Cakes · 1h 20m", each part a key with its own popover ── */
       .editor-page-byline {
         position: relative;
@@ -7797,9 +7850,9 @@
         max-width: 100%;
         min-height: 2.25rem;
         padding: 0.2rem 0.75rem;
-        border: 1px solid var(--border-subtle);
+        border: 1.5px dashed var(--border-field);
         border-radius: 1.125rem;
-        background: var(--bg-card);
+        background: transparent;
         color: var(--text-primary);
         font: inherit;
         font-weight: 600;
@@ -7836,6 +7889,7 @@
       }
 
       .byline-part[aria-expanded='true'] {
+        border-style: solid;
         border-color: var(--accent);
         background: var(--accent-subtle);
       }
@@ -7859,10 +7913,9 @@
         outline-offset: 2px;
       }
 
-      /* Still needed (no category yet): dashed, in the accent. */
+      /* Still needed (no category yet): the dash and the words in the accent. */
       .byline-part.is-needed {
-        border: 1.5px dashed var(--accent);
-        background: transparent;
+        border-color: var(--accent);
         color: var(--accent);
       }
 

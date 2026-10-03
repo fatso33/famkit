@@ -428,8 +428,10 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
     else if (scope) forgetKeptEdit(scope);
   };
 
-  // What Save still needs, in the page's order: it counts them down on the key.
-  const missing = Object.keys(errorsOf()).length;
+  // What Save still needs, in the page's order: it counts them down on the key, and those fields
+  // are dashed in the accent while empty.
+  const needed = errorsOf();
+  const missing = Object.keys(needed).length;
 
   // Save with something missing lifts the first of it: into view, with the cursor in it or its
   // popover open. Its message shows under it.
@@ -791,7 +793,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
           {/* The name, as the page's title */}
           <div
-            className={`editor-page-name editor-rise${restoredClass('name')}${errors.title ? ' has-error' : ''}`}
+            className={`editor-page-name editor-rise${restoredClass('name')}${needed.title ? ' is-needed' : ''}${errors.title ? ' has-error' : ''}`}
             data-field="title"
             style={riseStyle()}
           >
@@ -913,7 +915,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
           </div>
 
           <div
-            className={`editor-rise${errors.ingredients ? ' has-error' : ''}`}
+            className={`editor-rise${needed.ingredients === t.ingredientsRequired ? ' is-needed' : ''}${errors.ingredients ? ' has-error' : ''}`}
             data-field="ingredients"
             style={riseStyle()}
           >
@@ -939,7 +941,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
           </div>
 
           <div
-            className={`editor-rise${errors.steps ? ' has-error' : ''}`}
+            className={`editor-rise${needed.steps ? ' is-needed' : ''}${errors.steps ? ' has-error' : ''}`}
             data-field="steps"
             style={riseStyle()}
           >
