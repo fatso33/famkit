@@ -3,6 +3,7 @@ import { ChevronDown, Clock, Shapes } from 'lucide-react';
 import { AuthorMode, RecipeCategory } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
 import type { CurrentUser } from '../../hooks/useCurrentUser';
+import { useAboveKeyboard } from '../../hooks/useAboveKeyboard';
 import { useBackStep } from '../../hooks/useBackStep';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { useExitAnimation } from '../../hooks/useExitAnimation';
@@ -155,7 +156,12 @@ export const EditorByline: React.FC<EditorBylineProps> = ({
       </div>
 
       {open === 'author' && (
-        <BylinePopover label={t.authorLabel} onClosed={() => close('author')} t={t}>
+        <BylinePopover
+          label={t.authorLabel}
+          focusField={Boolean(errors.author)}
+          onClosed={() => close('author')}
+          t={t}
+        >
           <fieldset className="byline-author">
             <legend className="sr-only">{t.authorLabel}</legend>
             {currentUser && (
@@ -240,6 +246,8 @@ export const EditorByline: React.FC<EditorBylineProps> = ({
 
 interface BylinePopoverProps {
   label: string;
+  /** Starts with the cursor in its first field: when that field is what Save still needs. */
+  focusField?: boolean;
   /** Runs once it has closed, whichever way. */
   onClosed: () => void;
   children: React.ReactNode;
@@ -248,26 +256,37 @@ interface BylinePopoverProps {
 
 /**
  * A byline part's popover: a card under the line, with Done. A tap outside, Escape or the back
- * gesture close it too. Focus starts on its first field (a typed name, the prep time).
+ * gesture close it too. Focus starts on the card itself, so a phone's keyboard waits for a tap on
+ * a field; only a typed name that Save still needs gets the cursor at once. The card stays in
+ * view, above the keyboard too.
  */
-const BylinePopover: React.FC<BylinePopoverProps> = ({ label, onClosed, children, t }) => {
+const BylinePopover: React.FC<BylinePopoverProps> = ({
+  label,
+  focusField = false,
+  onClosed,
+  children,
+  t,
+}) => {
   const { ref, isClosing, requestClose } = useExitAnimation<HTMLDivElement>(onClosed);
   const backdropProps = useDialogDismiss(requestClose);
   useBackStep(true, () => requestClose());
   const panel = useRef<HTMLDivElement>(null);
+  useAboveKeyboard(panel);
+  // Only as it opens.
+  const focusAtOpen = useRef(focusField);
 
   useEffect(() => {
     const box = panel.current;
-    const first =
-      box?.querySelector<HTMLElement>('input[type="text"]') ??
-      box?.querySelector<HTMLElement>('input, button');
-    first?.focus({ preventScroll: true });
+    const field = focusAtOpen.current
+      ? box?.querySelector<HTMLElement>('input[type="text"]')
+      : null;
+    (field ?? box)?.focus({ preventScroll: true });
   }, []);
 
   return (
     <div ref={ref} className={`byline-pop-layer${isClosing ? ' is-closing' : ''}`}>
       <div className="category-list-catcher" aria-hidden="true" {...backdropProps} />
-      <div ref={panel} className="byline-pop" role="dialog" aria-label={label}>
+      <div ref={panel} className="byline-pop" role="dialog" aria-label={label} tabIndex={-1}>
         {children}
         <div className="byline-pop-actions">
           <button type="button" className="btn btn-meta-pill" onClick={requestClose}>

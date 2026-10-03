@@ -118,6 +118,19 @@ describe('the editor laid out as the recipe page', () => {
     expect(bylinePart(t, 'author')).toHaveFocus();
   });
 
+  it('opens the times card without the cursor in a field, so no keyboard covers it', async () => {
+    renderEditor({ initialRecipe: recipe });
+    fireEvent.click(bylinePart(t, 'times'));
+    const card = screen.getByRole('dialog', { name: t.recipeTime });
+    await waitFor(() => expect(card).toHaveFocus());
+    expect(within(card).getByLabelText(t.timeLabels.prep)).not.toHaveFocus();
+
+    // A tapped author part opens the same way.
+    fireEvent.click(within(card).getByRole('button', { name: t.done }));
+    fireEvent.click(bylinePart(t, 'author'));
+    await waitFor(() => expect(screen.getByRole('dialog', { name: t.authorLabel })).toHaveFocus());
+  });
+
   it('keeps the name on one line', () => {
     renderEditor();
     const name = screen.getByLabelText(t.recipeTitle);

@@ -7898,6 +7898,11 @@
         animation: vault-popover-in 0.45s var(--spring-soft) both;
       }
 
+      /* Focus rests on the card as it opens (no keyboard yet); its fields show their own ring. */
+      .byline-pop:focus {
+        outline: none;
+      }
+
       .byline-pop-layer.is-closing .byline-pop {
         animation: fk-exit-popover 0.2s var(--ease-accelerate) both;
       }
