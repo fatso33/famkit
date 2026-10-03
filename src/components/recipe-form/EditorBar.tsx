@@ -42,8 +42,11 @@ interface EditorBarProps {
   onStartOver?: () => void;
   /** Offered while a saved draft is open. */
   onDiscardDraft?: () => void;
-  /** Reports the bar's height, which the form below leaves room for. */
-  onHeight: (px: number) => void;
+  /**
+   * Reports the bar's height, which the form below leaves room for, and how far it slides up to
+   * put its banner away (which the form's sticky restore banner follows).
+   */
+  onHeight: (px: number, tuck: number) => void;
   /** Out of reach while a preview or a sheet covers the page. */
   inert?: boolean;
   /** The version list, dropping down from under the title. */
@@ -94,11 +97,9 @@ export const EditorBar: React.FC<EditorBarProps> = ({
     const el = bar.current;
     if (!el) return;
     const measure = () => {
-      latestOnHeight.current(el.offsetHeight);
       const title = banner.current;
-      if (!title) return;
-      const inset = parseFloat(getComputedStyle(title).paddingTop) || 0;
-      el.style.setProperty('--editor-banner-height', `${title.offsetHeight - inset}px`);
+      const inset = title ? parseFloat(getComputedStyle(title).paddingTop) || 0 : 0;
+      latestOnHeight.current(el.offsetHeight, title ? title.offsetHeight - inset : 0);
     };
     measure();
     if (typeof ResizeObserver === 'undefined') return;

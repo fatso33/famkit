@@ -6930,9 +6930,17 @@
         padding: 1.25rem 1.25rem calc(5rem + env(safe-area-inset-bottom));
       }
 
+      /* The scroller's own top padding already clears the bar, so it sticks at 0 under it. When
+         the bar tucks its banner away, it rides up with the bar's rows, on the same curve. */
       .editor-body .restore-banner {
-        top: var(--editor-bar-height, 7rem);
+        top: 0;
         margin: -1.25rem -1.25rem 1.5rem;
+        translate: 0 calc(-1 * var(--editor-tuck, 0px));
+        transition: translate 0.42s var(--ease-glide);
+      }
+
+      .editor-layer.is-tucked .restore-banner {
+        --editor-tuck: var(--editor-banner-height, 0px);
       }
 
       /* The restored ring's gap takes the editor's own background. */

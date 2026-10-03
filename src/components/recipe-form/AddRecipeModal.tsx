@@ -257,6 +257,8 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [saveMenuOpen, setSaveMenuOpen] = useState(false);
   const [barHeight, setBarHeight] = useState(0);
+  // How far the bar slides up when tucked: its banner, less the status-bar inset.
+  const [barTuck, setBarTuck] = useState(0);
   const [scroll, setScroll] = useState({ tucked: false, scrolled: false });
   const lastScrollTop = useRef(0);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -604,7 +606,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   return (
     <div
       ref={layerRef}
-      className={`editor-layer${animateIn ? '' : ' is-instant'}${isClosing ? ' is-closing' : ''}`}
+      className={`editor-layer${animateIn ? '' : ' is-instant'}${isClosing ? ' is-closing' : ''}${scroll.tucked ? ' is-tucked' : ''}`}
       data-exit={exit}
       id="addRecipeModal"
       role="dialog"
@@ -616,6 +618,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
           '--editor-origin-y': origin ? `${origin.y}px` : '100%',
           '--editor-reach': reach ? `${reach}px` : '150vmax',
           '--editor-bar-height': `${barHeight}px`,
+          '--editor-banner-height': `${barTuck}px`,
         } as React.CSSProperties
       }
     >
@@ -664,7 +667,10 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
         onPreview={() => setPreviewing(true)}
         onStartOver={hasRestoredDraft ? () => setSheet('startOver') : undefined}
         onDiscardDraft={draft && onDiscardDraft ? () => setSheet('discardDraft') : undefined}
-        onHeight={setBarHeight}
+        onHeight={(height, tuck) => {
+          setBarHeight(height);
+          setBarTuck(tuck);
+        }}
         inert={covered}
         t={t}
       >
