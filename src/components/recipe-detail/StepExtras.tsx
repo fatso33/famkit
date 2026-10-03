@@ -12,6 +12,8 @@ interface StepExtrasProps {
   /** Whether this step's photo is the one the viewer grows from and shrinks back into. */
   isZoomSource: boolean;
   onZoomImage: (src: string, step: number) => void;
+  /** The photo's alt text, when not its caption (a photo between the steps shows its caption). */
+  photoAlt?: string;
   t: UiTranslations;
 }
 
@@ -21,6 +23,7 @@ export const StepExtras: React.FC<StepExtrasProps> = ({
   index,
   isZoomSource,
   onZoomImage,
+  photoAlt,
   t,
 }) => (
   <>
@@ -40,7 +43,7 @@ export const StepExtras: React.FC<StepExtrasProps> = ({
         <Photo
           value={step.imageSrc}
           className="step-visual-img"
-          alt={step.imageCaption || t.stepPhotoAlt}
+          alt={photoAlt ?? (step.imageCaption || t.stepPhotoAlt)}
           loading="lazy"
           fallback={null}
         />

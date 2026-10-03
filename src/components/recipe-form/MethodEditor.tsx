@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Check, Layers, PencilLine, Plus, Trash2 } from 'lucide-react';
+import { Camera, Check, Layers, PencilLine, Plus, Trash2 } from 'lucide-react';
 import { UiTranslations } from '../../i18n/translations';
 import {
   SectionState,
@@ -8,6 +8,7 @@ import {
   emptySection,
   emptyStep,
   moveStep,
+  photoStep,
   removeSection,
   removeStep,
   updateStep,
@@ -55,16 +56,25 @@ export const MethodEditor: React.FC<MethodEditorProps> = ({
       root.current?.querySelector<HTMLElement>(`[data-motion-id="${id}"] textarea`)?.focus(),
     );
 
-  const addStep = (sectionId: string) => {
-    const step = emptyStep();
+  const addStep = (sectionId: string, photo = false) => {
+    const step = photo ? photoStep() : emptyStep();
     motion.willAdd(step.id);
     onChange((current) =>
       current.map((section) =>
         section.id === sectionId ? { ...section, steps: [...section.steps, step] } : section,
       ),
     );
-    focusStep(step.id);
+    if (photo) focusPhoto(step.id);
+    else focusStep(step.id);
   };
+
+  // A new photo's own keys (take or choose) take the focus.
+  const focusPhoto = (id: string) =>
+    requestAnimationFrame(() =>
+      root.current
+        ?.querySelector<HTMLElement>(`[data-motion-id="${id}"] .image-picker-actions button`)
+        ?.focus(),
+    );
 
   // Renaming swaps the heading for a field, ready to type over.
   const startRenaming = (id: string) => {
@@ -85,7 +95,7 @@ export const MethodEditor: React.FC<MethodEditorProps> = ({
     startRenaming(section.id);
   };
 
-  const remove = (stepId: string, el: HTMLElement | null) => {
+  const remove = (stepId: string, el: HTMLElement | null, photo = false) => {
     void collapseAway(el).then(() => {
       let undo: ((current: SectionState[]) => SectionState[]) | null = null;
       onChange((current) => {
@@ -93,7 +103,7 @@ export const MethodEditor: React.FC<MethodEditorProps> = ({
         undo = result.undo;
         return result.sections;
       });
-      onToast(t.stepRemoved, {
+      onToast(photo ? t.photoRemoved : t.stepRemoved, {
         label: t.undo,
         onAction: () => {
           motion.willAdd(stepId);
@@ -239,17 +249,28 @@ export const MethodEditor: React.FC<MethodEditorProps> = ({
                       motion.beforeMove();
                       onChange((current) => moveStep(current, step.id, dir));
                     }}
-                    onRemove={(el) => remove(step.id, el)}
+                    onRemove={(el) => remove(step.id, el, step.photo)}
                     onToast={onToast}
                     t={t}
                   />
                 );
               })}
             </ol>
-            <button type="button" className="method-add-step" onClick={() => addStep(section.id)}>
-              <Plus size="1.2em" aria-hidden="true" />
-              {t.addStep}
-            </button>
+            <div className="method-add-row">
+              <button type="button" className="method-add-step" onClick={() => addStep(section.id)}>
+                <Plus size="1.2em" aria-hidden="true" />
+                {t.addStep}
+              </button>
+              <button
+                type="button"
+                className="method-add-step is-photo"
+                aria-label={t.addMethodPhoto}
+                onClick={() => addStep(section.id, true)}
+              >
+                <Camera size="1.15em" aria-hidden="true" />
+                {t.photo}
+              </button>
+            </div>
           </section>
         );
       })}

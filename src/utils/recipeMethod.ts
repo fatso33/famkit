@@ -90,6 +90,20 @@ export function pathExtras(step: Step, index: number): PathExtras {
   };
 }
 
+/**
+ * A photo on its own in the method: a step with a photo and no words. It's saved unnumbered, so
+ * it doesn't count as a step. (Records are untrusted, so the fields are checked.)
+ */
+export function isMethodPhoto(step: Pick<Step, 'text' | 'hasImage' | 'imageSrc' | 'fork'>) {
+  return (
+    !step.fork &&
+    Boolean(step.hasImage) &&
+    typeof step.imageSrc === 'string' &&
+    step.imageSrc !== '' &&
+    !(typeof step.text === 'string' && step.text.trim())
+  );
+}
+
 /** The own steps a path follows: its own, or the first path's when it shares them. */
 export function pathSteps(fork: StepFork, index: number): string[] {
   const path = fork.paths[index] ?? fork.paths[0];

@@ -14,6 +14,7 @@ import {
   SUBSTEP_LETTERS,
   chosenPath,
   firstStepNumber,
+  isMethodPhoto,
   methodSections,
   numberSteps,
 } from './recipeMethod';
@@ -94,6 +95,8 @@ export interface StepState extends ExtrasState {
   /** What to do. A fork's paths each have their own, and their own tip and photo too. */
   text: string;
   plain: boolean;
+  /** A photo on its own between the steps: no words and no number (also `plain`). */
+  photo?: boolean;
   substeps: TextItem[];
   fork: ForkState | null;
   origin?: number;
@@ -227,6 +230,9 @@ export const emptyStep = (text = ''): StepState => ({
   ...noExtras(),
   fork: null,
 });
+
+/** A photo between the steps, still to be picked. */
+export const photoStep = (): StepState => ({ ...emptyStep(), plain: true, photo: true });
 
 export const emptySection = (title = ''): SectionState => ({
   id: newId('sec'),
@@ -364,7 +370,8 @@ function stepFromRecipe(step: Step, origin: number): StepState {
   return {
     id: newId('step'),
     text: step.text ?? '',
-    plain: Boolean(step.plain),
+    plain: Boolean(step.plain) || isMethodPhoto(step),
+    photo: isMethodPhoto(step) || undefined,
     substeps: (step.substeps ?? []).slice(0, MAX_SUBSTEPS).map((s) => textItem(s)),
     // A fork's own tip and photo are its first path's.
     ...(forked ? noExtras() : extrasFrom(step)),
@@ -515,7 +522,8 @@ function draftStep(raw: Json): StepState {
   const fork = isObject(raw.fork) ? list(raw.fork.paths).slice(0, MAX_PATHS) : [];
   const step: StepState = {
     ...emptyStep(str(raw.text)),
-    plain: raw.plain === true,
+    plain: raw.plain === true || raw.photo === true,
+    photo: raw.photo === true || undefined,
     substeps: texts(raw.substeps, MAX_SUBSTEPS),
     ...draftExtras(raw),
   };
@@ -711,8 +719,11 @@ function stateToStep(state: StepState): Step | null {
     };
   }
 
-  const text = state.text.trim();
-  if (!text) return null;
+  const text = state.photo ? '' : state.text.trim();
+  if (!text) {
+    // A photo with no words is kept as a photo between the steps, unnumbered.
+    return state.imageSrc ? { num: 0, text: '', ...storedExtras(state), plain: true } : null;
+  }
   const substeps = state.plain ? [] : state.substeps.map((s) => s.text.trim()).filter(Boolean);
   return {
     num: 0,

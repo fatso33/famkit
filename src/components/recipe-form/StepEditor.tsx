@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { Camera, ChevronDown, ChevronUp, Hash, Lightbulb, Trash2, X } from 'lucide-react';
+import {
+  Camera,
+  ChevronDown,
+  ChevronUp,
+  Hash,
+  Image as ImageIcon,
+  Lightbulb,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { UiTranslations } from '../../i18n/translations';
 import {
   ExtrasState,
@@ -112,6 +121,89 @@ export const StepEditor: React.FC<StepEditorProps> = ({
     }
   };
 
+  // While the step is tapped, its move keys spring out of the number along the top edge.
+  const movePill = (upLabel: string, downLabel: string) => (
+    <div className={`step-move-pill${active ? ' is-open' : ''}`} inert={!active}>
+      <button
+        type="button"
+        className="step-move-button"
+        aria-label={upLabel}
+        disabled={!canMoveUp}
+        onClick={() => onMove(-1)}
+      >
+        <ChevronUp size="1.2rem" strokeWidth={2.4} aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        className="step-move-button"
+        aria-label={downLabel}
+        disabled={!canMoveDown}
+        onClick={() => onMove(1)}
+      >
+        <ChevronDown size="1.2rem" strokeWidth={2.4} aria-hidden="true" />
+      </button>
+    </div>
+  );
+
+  // A photo on its own between the steps: no number and no words, only the photo and a caption.
+  if (step.photo) {
+    return (
+      <li
+        data-motion-id={step.id}
+        data-item-id={step.id}
+        className={`step-editor is-plain is-photo${active ? ' is-active' : ''}${restored ? ' is-restored' : ''}`}
+      >
+        {restored && <span className="restored-chip">{t.restoredChip}</span>}
+        <div className="step-editor-rail">
+          <div className="step-editor-number">
+            <span className="step-photo-mark" aria-hidden="true">
+              <ImageIcon size="0.95rem" aria-hidden="true" />
+            </span>
+          </div>
+          {movePill(t.movePhotoUp, t.movePhotoDown)}
+        </div>
+        <div className="step-editor-body" role="group" aria-label={t.photoBetweenSteps}>
+          <span className="step-plain-tag" aria-hidden="true">
+            {t.photoBetweenSteps}
+          </span>
+          <div className="step-photo-field">
+            <ImagePickerWithPreview
+              imageUrl={step.imageSrc}
+              onChange={(url) => patch({ imageSrc: url })}
+              t={t}
+            />
+            {/* Shown under the photo on the page, so it says what it is. */}
+            {hasPhoto && (
+              <label className="method-photo-caption-field">
+                <span className="form-label is-small">{t.photoCaptionLabel}</span>
+                <input
+                  className="form-control step-photo-caption"
+                  type="text"
+                  autoComplete="off"
+                  value={step.imageCaption}
+                  onChange={(e) => patch({ imageCaption: e.target.value })}
+                />
+              </label>
+            )}
+          </div>
+        </div>
+        <Reveal open={active} className="item-tools step-editor-tools">
+          <ToolStrip label={t.photoTools} labels={[t.remove]}>
+            <button
+              type="button"
+              className="tool-strip-button is-danger"
+              aria-label={t.removeMethodPhoto}
+              onClick={(e) => onRemove(e.currentTarget.closest('li'))}
+            >
+              <Trash2 size="1.25rem" aria-hidden="true" />
+              <span aria-hidden="true">{t.remove}</span>
+            </button>
+          </ToolStrip>
+        </Reveal>
+      </li>
+    );
+  }
+
   const rail = (
     <div className="step-editor-rail">
       <div className="step-editor-number">
@@ -142,27 +234,7 @@ export const StepEditor: React.FC<StepEditorProps> = ({
           </>
         )}
       </div>
-      {/* While the step is tapped, its move keys spring out of the number along the top edge. */}
-      <div className={`step-move-pill${active ? ' is-open' : ''}`} inert={!active}>
-        <button
-          type="button"
-          className="step-move-button"
-          aria-label={t.moveStepUp(n)}
-          disabled={!canMoveUp}
-          onClick={() => onMove(-1)}
-        >
-          <ChevronUp size="1.2rem" strokeWidth={2.4} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          className="step-move-button"
-          aria-label={t.moveStepDown(n)}
-          disabled={!canMoveDown}
-          onClick={() => onMove(1)}
-        >
-          <ChevronDown size="1.2rem" strokeWidth={2.4} aria-hidden="true" />
-        </button>
-      </div>
+      {movePill(t.moveStepUp(n), t.moveStepDown(n))}
     </div>
   );
 

@@ -6,6 +6,7 @@ import {
   SUBSTEP_LETTERS,
   firstStepNumber,
   ingredientGroups,
+  isMethodPhoto,
   methodSections,
   numberSteps,
   pathExtras,
@@ -54,6 +55,8 @@ export interface PrintPath extends PrintExtras {
 export type PrintStep =
   | ({ kind: 'step'; number: number; text: string; substeps: string[] } & PrintExtras)
   | ({ kind: 'plain'; text: string } & PrintExtras)
+  /** A photo on its own between the steps (only when the PDF includes photos). */
+  | { kind: 'photo'; photo: string; caption: string; note: string }
   | { kind: 'fork'; number: number; paths: PrintPath[] };
 
 export interface PrintSection {
@@ -186,46 +189,71 @@ export function printableRecipe(
     steps.map((s) => ({ plain: s.plain, restart: s.restart })),
     firstStepNumber(steps),
   );
-  const method = methodSections(steps).map((section, s) => ({
-    heading: section.title || (s === 0 ? t.prepSteps : t.moreSteps),
-    steps: section.steps.map((step, k): PrintStep => {
-      const idx = section.start + k;
-      if (step.plain) {
-        return {
-          kind: 'plain',
-          text: capitalizeFirstLetter(step.text),
-          note: capitalizeFirstLetter(step.notes ?? ''),
-          photo: photoOf(step, photos),
-        };
-      }
-      const number = numbers[idx] ?? 0;
-      if (step.fork && step.fork.paths.length >= 2) {
-        const fork = step.fork;
-        return {
-          kind: 'fork',
-          number,
-          paths: fork.paths.map((path, i) => {
-            const extras = pathExtras(step, i);
-            return {
-              label: path.label.trim() || t.pathLetter(i),
-              text: capitalizeFirstLetter(path.text),
-              steps: pathSteps(fork, i).map(capitalizeFirstLetter),
-              note: capitalizeFirstLetter(extras.notes ?? ''),
-              photo: photoOf(extras, photos),
-            };
-          }),
-        };
-      }
-      return {
-        kind: 'step',
-        number,
-        text: capitalizeFirstLetter(step.text),
-        substeps: (step.substeps ?? []).map(capitalizeFirstLetter),
-        note: capitalizeFirstLetter(step.notes ?? ''),
-        photo: photoOf(step, photos),
-      };
-    }),
-  }));
+  const method = methodSections(steps)
+    .map((section, s) => ({
+      heading: section.title || (s === 0 ? t.prepSteps : t.moreSteps),
+      steps: section.steps.flatMap((step, k): PrintStep[] => {
+        const idx = section.start + k;
+        // Without photos, a photo between the steps leaves nothing to print.
+        if (isMethodPhoto(step)) {
+          const photo = photoOf(step, photos);
+          return photo
+            ? [
+                {
+                  kind: 'photo',
+                  photo,
+                  caption: capitalizeFirstLetter((step.imageCaption ?? '').trim()),
+                  note: capitalizeFirstLetter(step.notes ?? ''),
+                },
+              ]
+            : [];
+        }
+        if (step.plain) {
+          // A photo between the steps whose photo isn't on this phone leaves nothing to print.
+          if (typeof step.text !== 'string' || !step.text.trim()) return [];
+          return [
+            {
+              kind: 'plain',
+              text: capitalizeFirstLetter(step.text),
+              note: capitalizeFirstLetter(step.notes ?? ''),
+              photo: photoOf(step, photos),
+            },
+          ];
+        }
+        const number = numbers[idx] ?? 0;
+        if (step.fork && step.fork.paths.length >= 2) {
+          const fork = step.fork;
+          return [
+            {
+              kind: 'fork',
+              number,
+              paths: fork.paths.map((path, i) => {
+                const extras = pathExtras(step, i);
+                return {
+                  label: path.label.trim() || t.pathLetter(i),
+                  text: capitalizeFirstLetter(path.text),
+                  steps: pathSteps(fork, i).map(capitalizeFirstLetter),
+                  note: capitalizeFirstLetter(extras.notes ?? ''),
+                  photo: photoOf(extras, photos),
+                };
+              }),
+            },
+          ];
+        }
+        return [
+          {
+            kind: 'step',
+            number,
+            text: capitalizeFirstLetter(step.text),
+            substeps: (step.substeps ?? []).map(capitalizeFirstLetter),
+            note: capitalizeFirstLetter(step.notes ?? ''),
+            photo: photoOf(step, photos),
+          },
+        ];
+      }),
+    }))
+    // A section that only held a photo is left out of a PDF without photos.
+    .filter((section) => section.steps.length > 0);
 
   const lists: PrintList[] = [];
   const lamination = sentences(recipe.laminationDirective, true);

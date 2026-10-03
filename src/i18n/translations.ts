@@ -267,6 +267,14 @@ export interface UiTranslations {
   ingredientTools: (n: number) => string;
   stepTools: (n: number) => string;
   textTools: string;
+  /** A photo on its own between the steps: its key, label, tools and alt text. */
+  addMethodPhoto: string;
+  photoBetweenSteps: string;
+  photoTools: string;
+  movePhotoUp: string;
+  movePhotoDown: string;
+  removeMethodPhoto: string;
+  methodPhotoAlt: string;
   ingredientRemoved: string;
   /** A substitute on the recipe page: "or Margarine". */
   orSubstitute: (name: string) => string;
@@ -742,6 +750,13 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     ingredientTools: (n: number) => `Tools for ingredient ${n}`,
     stepTools: (n: number) => `Tools for step ${n}`,
     textTools: 'Tools for the text between steps',
+    addMethodPhoto: 'Add a photo between the steps',
+    photoBetweenSteps: 'Photo between steps',
+    photoTools: 'Tools for this photo',
+    movePhotoUp: 'Move this photo up',
+    movePhotoDown: 'Move this photo down',
+    removeMethodPhoto: 'Remove this photo',
+    methodPhotoAlt: 'Photo from the recipe',
     ingredientRemoved: 'Ingredient removed',
     orSubstitute: (name: string) => `or ${name}`,
     moreSteps: 'More steps',
@@ -1246,6 +1261,13 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     ingredientTools: (n: number) => `Narzędzia składnika ${n}`,
     stepTools: (n: number) => `Narzędzia kroku ${n}`,
     textTools: 'Narzędzia tekstu między krokami',
+    addMethodPhoto: 'Dodaj zdjęcie między krokami',
+    photoBetweenSteps: 'Zdjęcie między krokami',
+    photoTools: 'Narzędzia tego zdjęcia',
+    movePhotoUp: 'Przesuń to zdjęcie w górę',
+    movePhotoDown: 'Przesuń to zdjęcie w dół',
+    removeMethodPhoto: 'Usuń to zdjęcie',
+    methodPhotoAlt: 'Zdjęcie z przepisu',
     ingredientRemoved: 'Usunięto składnik',
     orSubstitute: (name: string) => `lub ${name}`,
     moreSteps: 'Dalsze kroki',

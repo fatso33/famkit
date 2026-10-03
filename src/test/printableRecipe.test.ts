@@ -49,7 +49,13 @@ const forked: Recipe = {
 };
 
 const stepsOf = (steps: PrintStep[]) =>
-  steps.map((s) => (s.kind === 'plain' ? ['plain', s.text] : [s.kind, s.number]));
+  steps.map((s) =>
+    s.kind === 'plain'
+      ? ['plain', s.text]
+      : s.kind === 'photo'
+        ? ['photo', s.photo]
+        : [s.kind, s.number],
+  );
 
 describe('the recipe as its PDF shows it', () => {
   it('leaves the time out when there is nothing to tell it from, rather than "~0m"', () => {

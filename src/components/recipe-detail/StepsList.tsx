@@ -6,6 +6,7 @@ import {
   SUBSTEP_LETTERS,
   chosenPath,
   firstStepNumber,
+  isMethodPhoto,
   methodSections,
   numberSteps,
   pathExtras,
@@ -74,8 +75,30 @@ export const StepsList: React.FC<StepsListProps> = ({
                     t={t}
                   />
                 );
+                // A photo on its own between the steps: no tile, its caption under it.
+                if (isMethodPhoto(step)) {
+                  return (
+                    <figure key={idx} className="method-photo">
+                      <StepExtras
+                        step={step}
+                        index={idx}
+                        isZoomSource={idx === zoomSource}
+                        onZoomImage={onZoomImage}
+                        photoAlt={t.methodPhotoAlt}
+                        t={t}
+                      />
+                      {step.imageCaption?.trim() && (
+                        <figcaption className="method-photo-caption">
+                          {capitalizeFirstLetter(step.imageCaption.trim())}
+                        </figcaption>
+                      )}
+                    </figure>
+                  );
+                }
                 // Unnumbered text: a tile like the steps', its text where the number would be.
                 if (step.plain) {
+                  // A photo between the steps whose photo isn't on this phone: nothing to show.
+                  if (typeof step.text !== 'string' || !step.text.trim()) return null;
                   return (
                     <div key={idx} className="step-card is-plain">
                       <div className="step-content">

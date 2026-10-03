@@ -354,7 +354,10 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
     } else if (form.ingredientRows.some(missingName)) {
       errors.ingredients = t.ingredientNameRequired;
     }
-    if (methodToSteps(form.sections, form.numberFrom).length === 0) errors.steps = t.stepsRequired;
+    // Photos between the steps don't count as steps.
+    if (!methodToSteps(form.sections, form.numberFrom).some((step) => step.text)) {
+      errors.steps = t.stepsRequired;
+    }
     return errors;
   };
   const errors = showErrors ? errorsOf() : {};

@@ -166,7 +166,34 @@ function numberMarks(n: number, baseline: number, ctx: Ctx): Mark[] {
   return [{ type: 'text', x, y: baseline, text: label, style: S.number }];
 }
 
+/** A photo between the steps: set where the steps' text starts, its caption and tip under it. */
+function methodPhotoBox(step: Extract<PrintStep, { kind: 'photo' }>, width: number, ctx: Ctx): Box {
+  const inner = width - GUTTER;
+  const size = ctx.imageSize(step.photo);
+  let image: Box = { height: 0, marks: [] };
+  if (size) {
+    const aspect = size.width / size.height;
+    let w = Math.min(inner, 260);
+    let h = w / aspect;
+    if (h > 200) {
+      h = 200;
+      w = h * aspect;
+    }
+    image = {
+      height: h + 2,
+      marks: [{ type: 'image', x: 0, y: 2, width: w, height: h, src: step.photo } as Mark],
+    };
+  }
+  const parts = [image];
+  if (step.caption)
+    parts.push(paragraph(text(step.caption, S.small), inner, LH.small, ctx.measure));
+  const body = withNote(stack(parts, 4), { note: step.note }, inner, ctx);
+  // A photo is never split.
+  return { height: body.height, marks: offsetMarks(body.marks, GUTTER, 0), breaks: [] };
+}
+
 function stepBox(step: PrintStep, width: number, ctx: Ctx): Box {
+  if (step.kind === 'photo') return methodPhotoBox(step, width, ctx);
   if (step.kind === 'plain') {
     return withPhoto(step.photo, width, ctx, (w) =>
       withNote(paragraph(text(step.text, S.body), w, LH.body, ctx.measure), step, w, ctx),

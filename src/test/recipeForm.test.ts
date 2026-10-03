@@ -15,6 +15,7 @@ import {
   addPastedMethod,
   pastedIngredients,
   pastedMethod,
+  photoStep,
   removePath,
   removeSection,
   removeStep,
@@ -305,6 +306,62 @@ describe('editing the method', () => {
     const steps = formToRecipe(form).steps;
     expect(steps).toEqual([expect.objectContaining({ num: 1, text: 'Mix.' })]);
     expect(steps[0].section).toBeUndefined();
+  });
+});
+
+describe('a photo between the steps', () => {
+  const formWith = (steps: ReturnType<typeof emptyStep>[]) => ({
+    ...formFromDraft({})!,
+    sections: [{ ...emptySection(), steps }],
+  });
+
+  // Regression: a step given a photo but no words used to be dropped, photo and all.
+  it('keeps a step with a photo and no words, as an unnumbered photo', () => {
+    const photoOnly = { ...emptyStep(), imageSrc: 'data:loaf', imageCaption: ' The loaf ' };
+    const steps = formToRecipe(formWith([emptyStep('Mix.'), photoOnly, emptyStep('Bake.')])).steps;
+    expect(steps.map((st) => [st.num, st.text, st.plain, st.imageSrc])).toEqual([
+      [1, 'Mix.', undefined, undefined],
+      [0, '', true, 'data:loaf'],
+      [2, 'Bake.', undefined, undefined],
+    ]);
+    expect(steps[1]).toMatchObject({ hasImage: true, imageCaption: 'The loaf' });
+  });
+
+  it("saves the Photo key's item only once a photo is picked", () => {
+    expect(formToRecipe(formWith([emptyStep('Mix.'), photoStep()])).steps).toHaveLength(1);
+    const picked = { ...photoStep(), imageSrc: 'data:loaf' };
+    expect(formToRecipe(formWith([emptyStep('Mix.'), picked])).steps[1]).toMatchObject({
+      text: '',
+      plain: true,
+      imageSrc: 'data:loaf',
+    });
+  });
+
+  it('opens again as a photo, numbered around like the page', () => {
+    const recipe = {
+      ...plainRecipe,
+      steps: [
+        { num: 1, text: 'Mix.' },
+        { num: 0, text: '', plain: true, hasImage: true, imageSrc: 'data:loaf' },
+        { num: 2, text: 'Bake.' },
+      ],
+    };
+    const form = formFromRecipe(recipe, labels);
+    const [mix, photo, bake] = form.sections[0].steps;
+    expect([photo.photo, photo.plain, photo.imageSrc]).toEqual([true, true, 'data:loaf']);
+    const numbers = editorNumbers(form.sections, form.numberFrom);
+    expect([mix, photo, bake].map((st) => numbers.get(st.id))).toEqual([1, null, 2]);
+    // Saved again unchanged.
+    expect(formToRecipe(form).steps.map((st) => [st.num, st.text, st.plain, st.imageSrc])).toEqual([
+      [1, 'Mix.', undefined, undefined],
+      [0, '', true, 'data:loaf'],
+      [2, 'Bake.', undefined, undefined],
+    ]);
+  });
+
+  it("keeps a kept edit's photo item a photo", () => {
+    const form = formFromDraft({ sections: [{ steps: [{ photo: true, imageSrc: 'data:x' }] }] })!;
+    expect(form.sections[0].steps[0]).toMatchObject({ photo: true, plain: true });
   });
 });
 
