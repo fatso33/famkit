@@ -66,6 +66,12 @@ export interface PrintList {
   groups: { label: string; items: string[] }[];
 }
 
+/** A labelled box of text: the crucial note or the kitchen tip. */
+export interface PrintCallout {
+  label: string;
+  text: string;
+}
+
 export interface PrintableRecipe {
   title: string;
   /** The recipe's author as credited (the file's author). */
@@ -76,10 +82,12 @@ export interface PrintableRecipe {
   /** The recipe's own yield ("For 1 loaf:"), or ''. */
   yieldText: string;
   ingredients: PrintIngredientGroup[];
-  /** The kitchen tip and the crucial note, each under its label. */
-  callouts: { label: string; text: string }[];
+  /** The crucial note, before the ingredients (as on the recipe page). */
+  note?: PrintCallout;
   method: PrintSection[];
   lists: PrintList[];
+  /** The kitchen tip, after the method (as on the recipe page). */
+  tip?: PrintCallout;
   labels: {
     ingredients: string;
     chooseOne: string;
@@ -213,10 +221,10 @@ export function printableRecipe(
   ].filter((g) => g.items.length > 0);
   if (baking.length > 0) lists.push({ heading: t.bakingOptions, groups: baking });
 
-  const callouts = [
-    { label: t.kitchenTip, text: capitalizeFirstLetter(recipe.tips ?? '') },
-    { label: t.crucialNote, text: capitalizeFirstLetter(recipe.notes ?? '') },
-  ].filter((c) => c.text.trim());
+  const callout = (label: string, value: string | undefined): PrintCallout | undefined => {
+    const text = capitalizeFirstLetter(value ?? '');
+    return text.trim() ? { label, text } : undefined;
+  };
 
   return {
     title: recipe.name,
@@ -225,9 +233,10 @@ export function printableRecipe(
     photo: photos ? recipePhoto(recipe) || undefined : undefined,
     yieldText: recipe.yieldHeader ?? t.for1Loaf,
     ingredients,
-    callouts,
+    note: callout(t.crucialNote, recipe.notes),
     method,
     lists,
+    tip: callout(t.kitchenTip, recipe.tips),
     labels: { ingredients: t.ingredients, chooseOne: t.chooseOne, footer: t.pdfFooter },
     language,
   };

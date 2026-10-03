@@ -3996,6 +3996,16 @@
       .callout-box.gold .callout-label { color: var(--accent-gold); }
       .callout-box.warn .callout-label { color: #d9383a; }
 
+      /* The crucial note sits between the header and the columns, as far from both as the
+         header is from the columns; the tip ends the method, spaced by the panel's gap. */
+      .detail-note {
+        margin-bottom: 2rem;
+      }
+
+      .detail-tip {
+        margin-bottom: 0;
+      }
+
       /* Method / Steps section */
       .method-panel {
         display: flex;

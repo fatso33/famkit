@@ -873,6 +873,28 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             />
           </div>
 
+          {/* Crucial note, above the ingredients as the recipe page shows it */}
+          <div
+            className={`form-group editor-callout is-warn editor-rise${restoredClass('notes')}`}
+            style={riseStyle()}
+          >
+            {restoredChip('notes')}
+            <div className="form-label-row">
+              <label className="callout-label" htmlFor="recipeNotesInput">
+                <TriangleAlert size="1.15em" aria-hidden="true" />
+                {t.crucialNote}
+              </label>
+              <span className="form-optional" aria-hidden="true">
+                {t.optional}
+              </span>
+            </div>
+            <AutoGrowTextarea
+              id="recipeNotesInput"
+              value={form.notes}
+              onChange={(e) => set('notes', e.target.value)}
+            />
+          </div>
+
           <div
             className={`editor-rise${errors.ingredients ? ' has-error' : ''}`}
             style={riseStyle()}
@@ -898,7 +920,20 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             />
           </div>
 
-          {/* Kitchen tip and crucial note, styled as the recipe page shows them */}
+          <div className={`editor-rise${errors.steps ? ' has-error' : ''}`} style={riseStyle()}>
+            <MethodEditor
+              sections={form.sections}
+              onChange={(change) => setForm((f) => ({ ...f, sections: change(f.sections) }))}
+              numberFrom={form.numberFrom}
+              activeId={activeId}
+              restoredSteps={changes?.steps}
+              error={errors.steps}
+              onToast={onToast}
+              t={t}
+            />
+          </div>
+
+          {/* Kitchen tip, after the method as the recipe page shows it */}
           <div
             className={`form-group editor-callout is-tip editor-rise${restoredClass('tips')}`}
             style={riseStyle()}
@@ -917,40 +952,6 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
               id="recipeTipsInput"
               value={form.tips}
               onChange={(e) => set('tips', e.target.value)}
-            />
-          </div>
-
-          <div
-            className={`form-group editor-callout is-warn editor-rise${restoredClass('notes')}`}
-            style={riseStyle()}
-          >
-            {restoredChip('notes')}
-            <div className="form-label-row">
-              <label className="callout-label" htmlFor="recipeNotesInput">
-                <TriangleAlert size="1.15em" aria-hidden="true" />
-                {t.crucialNote}
-              </label>
-              <span className="form-optional" aria-hidden="true">
-                {t.optional}
-              </span>
-            </div>
-            <AutoGrowTextarea
-              id="recipeNotesInput"
-              value={form.notes}
-              onChange={(e) => set('notes', e.target.value)}
-            />
-          </div>
-
-          <div className={`editor-rise${errors.steps ? ' has-error' : ''}`} style={riseStyle()}>
-            <MethodEditor
-              sections={form.sections}
-              onChange={(change) => setForm((f) => ({ ...f, sections: change(f.sections) }))}
-              numberFrom={form.numberFrom}
-              activeId={activeId}
-              restoredSteps={changes?.steps}
-              error={errors.steps}
-              onToast={onToast}
-              t={t}
             />
           </div>
 

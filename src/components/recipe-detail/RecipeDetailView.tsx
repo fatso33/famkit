@@ -289,6 +289,14 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
             )}
           </header>
 
+          {/* Crucial Note: read before shopping or starting, so above both columns */}
+          {recipe.notes && (
+            <div id="notesCard" className="callout-box warn detail-note">
+              <div className="callout-label">{t.crucialNote}</div>
+              <div id="notesText">{capitalizeFirstLetter(recipe.notes)}</div>
+            </div>
+          )}
+
           {/* Two Column Layout */}
           <div className="recipe-layout">
             {/* Left Column: Ingredients */}
@@ -302,24 +310,8 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
               t={t}
             />
 
-            {/* Right Column: Method & Notes */}
+            {/* Right Column: Method, then the Kitchen Tip */}
             <div className="method-panel">
-              {/* Tips Section (verbatim) */}
-              {recipe.tips && (
-                <div id="tipsCard" className="callout-box gold">
-                  <div className="callout-label">{t.kitchenTip}</div>
-                  <div id="tipsText">{capitalizeFirstLetter(recipe.tips)}</div>
-                </div>
-              )}
-
-              {/* Crucial Note: Moved directly under Kitchen Tip */}
-              {recipe.notes && (
-                <div id="notesCard" className="callout-box warn">
-                  <div className="callout-label">{t.crucialNote}</div>
-                  <div id="notesText">{capitalizeFirstLetter(recipe.notes)}</div>
-                </div>
-              )}
-
               {/* Steps Section */}
               <StepsList
                 steps={recipe.steps || []}
@@ -335,6 +327,14 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
 
               {/* Baking Options */}
               <BakingOptionsView bakingOptions={recipe.bakingOptions} t={t} />
+
+              {/* Kitchen Tip (verbatim): once the method has been read */}
+              {recipe.tips && (
+                <div id="tipsCard" className="callout-box gold detail-tip">
+                  <div className="callout-label">{t.kitchenTip}</div>
+                  <div id="tipsText">{capitalizeFirstLetter(recipe.tips)}</div>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -19,6 +19,7 @@ import {
   PrintList,
   PrintSection,
   PrintStep,
+  PrintCallout,
   PrintableRecipe,
   substepLabel,
 } from './printableRecipe';
@@ -40,6 +41,8 @@ const METHOD_WIDTH = CONTENT - INGREDIENTS_WIDTH - COLUMN_GAP;
 /** The step numbers' gutter. */
 const GUTTER = 24;
 const HERO_MAX_HEIGHT = 250;
+/** From the crucial note under the title to the columns. */
+const NOTE_GAP = 20;
 
 const S = {
   title: { font: 'serif', size: 27, ink: 'ink' },
@@ -353,11 +356,11 @@ function listItems(list: PrintList, ctx: Ctx): FlowItem[] {
   return items;
 }
 
-function methodItems(r: PrintableRecipe, ctx: Ctx): FlowItem[] {
-  const items: FlowItem[] = r.callouts.map((c, i) => ({
-    space: i === 0 ? 0 : 12,
-    layout: (w) => calloutBox(c.label, c.text, w, ctx),
-  }));
+/** The method, then the kitchen tip; led by the crucial note when it's too long to go on top. */
+function methodItems(r: PrintableRecipe, ctx: Ctx, note?: PrintCallout): FlowItem[] {
+  const items: FlowItem[] = note
+    ? [{ space: 0, layout: (w) => calloutBox(note.label, note.text, w, ctx) }]
+    : [];
   const sections = r.method.filter((s) => s.steps.length > 0);
   sections.forEach((section, i) => {
     const [head, ...rest] = sectionItems(section, i === 0 && items.length === 0, ctx);
@@ -365,6 +368,8 @@ function methodItems(r: PrintableRecipe, ctx: Ctx): FlowItem[] {
     items.push(head, ...rest);
   });
   for (const list of r.lists) items.push(...listItems(list, ctx));
+  const tip = r.tip;
+  if (tip) items.push({ space: 22, layout: (w) => calloutBox(tip.label, tip.text, w, ctx) });
   if (items.length > 0) items[0].space = 0;
   return items;
 }
@@ -433,7 +438,13 @@ export function layoutRecipePdf(
   };
 
   const header = headerBox(r, ctx);
-  const columnsTop = PAGE.margin + header.height;
+  // The crucial note goes across the page under the title, read before the ingredients, unless
+  // it would take over half of what's left of the first page: then it leads the method instead.
+  const noteBox = r.note ? calloutBox(r.note.label, r.note.text, CONTENT, ctx) : null;
+  const noteOnTop =
+    noteBox !== null && noteBox.height <= (BOTTOM - PAGE.margin - header.height) / 2;
+  const noteHeight = noteOnTop ? noteBox.height + NOTE_GAP : 0;
+  const columnsTop = PAGE.margin + header.height + noteHeight;
   const top = (page: number) => (page === 0 ? columnsTop : PAGE.margin);
 
   const ingredients = flow(ingredientItems(r, ctx), (i) => ({
@@ -448,11 +459,14 @@ export function layoutRecipePdf(
     i < ingredientPages
       ? { x: METHOD_X, top: top(i), bottom: BOTTOM, width: METHOD_WIDTH }
       : { x: PAGE.margin, top: top(i), bottom: BOTTOM, width: CONTENT };
-  const method = flow(methodItems(r, ctx), methodColumn);
+  const method = flow(methodItems(r, ctx, noteOnTop ? undefined : r.note), methodColumn);
 
   const count = Math.max(1, ingredientPages, ...method.map((p) => p.column + 1));
   const pages: PdfPage[] = Array.from({ length: count }, () => ({ marks: [] }));
   pages[0].marks.push(...offsetMarks(header.marks, PAGE.margin, PAGE.margin));
+  if (noteOnTop) {
+    pages[0].marks.push(...offsetMarks(noteBox.marks, PAGE.margin, PAGE.margin + header.height));
+  }
   for (const p of [...ingredients, ...method]) pages[p.column].marks.push(...p.marks);
   pages.forEach((page, i) => page.marks.push(...footerMarks(r, i, count, ctx)));
   return pages;

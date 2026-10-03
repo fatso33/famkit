@@ -77,7 +77,11 @@ describe('the recipe as its PDF shows it', () => {
       note: 'weigh it',
       substitute: '',
     });
-    expect(pdf.callouts.map((c) => c.label)).toEqual([t.kitchenTip, t.crucialNote]);
+    expect(pdf.note).toEqual({ label: t.crucialNote, text: 'Will not work in an air fryer.' });
+    expect(pdf.tip).toEqual({
+      label: t.kitchenTip,
+      text: 'Use a non-stick spatula or similar tool for handling the dough.',
+    });
     // Wanda numbers her steps from 0, as on the page.
     expect(pdf.method[0].steps[0]).toMatchObject({ kind: 'step', number: 0 });
     expect(pdf.lists.map((l) => l.heading)).toEqual([t.laminationDirective, t.bakingOptions]);
