@@ -1,7 +1,9 @@
-import { collection, deleteDoc, doc, onSnapshot, setDoc, Unsubscribe } from 'firebase/firestore';
+import { collection, deleteDoc, doc, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase';
 import { RecipeDraft } from '../types/recipe';
 import { parseDraft } from '../utils/recipeDrafts';
+import { PhotoUpload } from '../utils/photoRefs';
+import { commitWithPhotos } from './firestore';
 
 /**
  * Drafts live in `drafts/{email}/recipes/{draftId}` (the email in lowercase), which only that
@@ -73,13 +75,21 @@ export function subscribeToDrafts(
   );
 }
 
-/** Saves a draft, replacing any earlier one with the same id. */
-export async function saveDraftToCloud(email: string, draft: RecipeDraft): Promise<void> {
+/**
+ * Saves a draft, replacing any earlier one with the same id, together with the new photos it
+ * points at (services/photos).
+ */
+export async function saveDraftToCloud(
+  email: string,
+  draft: RecipeDraft,
+  uploads: readonly PhotoUpload[] = [],
+): Promise<void> {
   if (!isFirebaseConfigured || !db) {
     writeLocal(email, (drafts) => [...drafts.filter((d) => d.id !== draft.id), draft]);
     return;
   }
-  await setDoc(doc(db, DRAFTS_COLLECTION, owner(email), DRAFT_RECIPES, draft.id), draft);
+  const draftRef = doc(db, DRAFTS_COLLECTION, owner(email), DRAFT_RECIPES, draft.id);
+  await commitWithPhotos(db, uploads, (batch) => batch.set(draftRef, draft));
 }
 
 /** Removes a draft: discarded, or saved to the vault. */

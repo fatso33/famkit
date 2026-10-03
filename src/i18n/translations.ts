@@ -390,7 +390,7 @@ export interface UiTranslations {
   ingredientsRequired: string;
   /** The cloud refused a recipe's save (or its removal), so the family won't see it. */
   cloudSaveFailed: (name: string) => string;
-  /** A recipe (or draft) with more photos than the cloud can take in one recipe. */
+  /** A recipe (or draft) too big for the cloud: very long words, or a photo past its limit. */
   recipeTooBig: string;
   /** An ingredient was given an amount but no name. */
   ingredientNameRequired: string;
@@ -857,7 +857,8 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     ingredientsRequired: 'Add at least one ingredient',
     ingredientNameRequired: 'Give each ingredient a name',
     cloudSaveFailed: (name: string) => `“${name}” didn't reach the family. Try again.`,
-    recipeTooBig: 'Too many photos to share this recipe. Take one or two out, then save again.',
+    recipeTooBig:
+      'This recipe is too big to share. Shorten it or take a photo out, then save again.',
     stepsRequired: 'Add at least one step',
     welcomeTo: 'Welcome to',
     welcomeKitchen: 'Family Kitchen',
@@ -1362,7 +1363,8 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     ingredientsRequired: 'Dodaj co najmniej jeden składnik',
     ingredientNameRequired: 'Podaj nazwę każdego składnika',
     cloudSaveFailed: (name: string) => `Przepis „${name}” nie dotarł do rodziny. Spróbuj ponownie.`,
-    recipeTooBig: 'Za dużo zdjęć, by udostępnić ten przepis. Usuń jedno lub dwa i zapisz ponownie.',
+    recipeTooBig:
+      'Ten przepis jest za duży, by go udostępnić. Skróć go lub usuń zdjęcie i zapisz ponownie.',
     stepsRequired: 'Dodaj co najmniej jeden krok',
     welcomeTo: 'Witamy w',
     welcomeKitchen: 'Rodzinnej Kuchni',

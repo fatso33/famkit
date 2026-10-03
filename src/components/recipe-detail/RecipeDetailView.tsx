@@ -23,6 +23,7 @@ import { useUnroll } from '../../hooks/useUnroll';
 import { recipePhoto } from '../../utils/vault';
 import { photoPending } from '../../utils/deviceCopy';
 import { CategoryTile } from '../recipe-grid/CategoryTile';
+import { Photo } from '../common/Photo';
 import { LinkPopover, PopoverLink } from './LinkPopover';
 import { madeOnLabel, makerName } from '../../utils/makes';
 
@@ -144,12 +145,18 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
       setRemixPop({ kind, anchor: e.currentTarget });
   const recipeLink = (r: Recipe): PopoverLink => {
     const shown = shownIn(r);
-    const photo = recipePhoto(shown);
     return {
       id: r.id,
       name: shown.name,
       byline: t.byAuthor(creditName(shown)),
-      thumb: photo ? <img src={photo} alt="" decoding="async" /> : <CategoryTile recipe={r} />,
+      thumb: (
+        <Photo
+          value={recipePhoto(shown)}
+          alt=""
+          decoding="async"
+          fallback={<CategoryTile recipe={r} />}
+        />
+      ),
     };
   };
   const makeLink = (m: Make): PopoverLink => ({
@@ -177,18 +184,14 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
 
       {/* Hero Photo */}
       <div ref={heroRef} className="detail-hero-frame">
-        {recipePhoto(recipe) ? (
-          <img
-            id="detailHeroImg"
-            className="detail-hero-img"
-            src={recipePhoto(recipe)}
-            alt={recipe.name}
-          />
-        ) : photoPending(recipe) ? (
-          <div className="photo-pending" />
-        ) : (
-          <CategoryTile recipe={recipe} className="detail-hero-tile" />
-        )}
+        <Photo
+          value={recipePhoto(recipe)}
+          id="detailHeroImg"
+          className="detail-hero-img"
+          alt={recipe.name}
+          waiting={photoPending(recipe)}
+          fallback={<CategoryTile recipe={recipe} className="detail-hero-tile" />}
+        />
       </div>
 
       {/* The recipe unrolls down out of the photo (hooks/useUnroll). */}

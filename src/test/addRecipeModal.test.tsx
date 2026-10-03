@@ -351,19 +351,33 @@ describe('AddRecipeModal initial form', () => {
     expect(screen.getByDisplayValue('Aunt Ola Pierogi')).toBeInTheDocument();
   });
 
-  it('says when there are too many photos for the cloud, and stays open to take some out', () => {
+  it('saves a recipe with many photos, since each is kept on its own', () => {
     const onSave = vi.fn();
-    const onToast = vi.fn();
     const photo = `data:image/jpeg;base64,${'A'.repeat(250 * 1024)}`;
-    const heavy: Recipe = {
+    const photoFilled: Recipe = {
       ...recipe,
       heroImage: photo,
-      steps: Array.from({ length: 5 }, (_, i) => ({
+      steps: Array.from({ length: 8 }, (_, i) => ({
         num: i + 1,
         text: `Step ${i + 1}.`,
         hasImage: true,
         imageSrc: photo,
       })),
+    };
+    render(<AddRecipeModal initialRecipe={photoFilled} onClose={noop} onSave={onSave} t={t} />);
+    fireEvent.click(screen.getByRole('button', { name: t.save }));
+    expect(onSave).toHaveBeenCalled();
+  });
+
+  it('says when a photo is too big for the cloud, and stays open to take it out', () => {
+    const onSave = vi.fn();
+    const onToast = vi.fn();
+    // Past the cloud's limit for one photo (the editor's own photos are far smaller).
+    const photo = `data:image/jpeg;base64,${'A'.repeat(1300 * 1024)}`;
+    const heavy: Recipe = {
+      ...recipe,
+      heroImage: photo,
+      steps: [{ num: 1, text: 'Step 1.', hasImage: true, imageSrc: photo }],
     };
     render(
       <AddRecipeModal

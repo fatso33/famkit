@@ -1,4 +1,5 @@
 import {
+  Bytes,
   collection,
   doc,
   getDoc,
@@ -10,6 +11,8 @@ import {
   updateDoc,
   writeBatch,
   Unsubscribe,
+  WriteBatch,
+  Firestore,
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase';
 import { Language, LocalizedRecipeContent, Recipe, RecipeVersion } from '../types/recipe';
@@ -20,6 +23,7 @@ import {
   saveRecipes as saveToLocalStorage,
 } from './storage';
 import { hasLeftOutPhotos } from '../utils/deviceCopy';
+import { PhotoUpload, uploadGroups } from '../utils/photoRefs';
 import { familyMemberName } from '../utils/ownership';
 import { parseRecipeVersion } from '../utils/recipeVersions';
 import { sourceHash } from '../utils/recipeTranslation';
@@ -41,6 +45,43 @@ const FAMILY_MEMBERS_COLLECTION = 'family_members';
 const VERSIONS_COLLECTION = 'versions';
 // What family members made from the recipes: makes/{makeId}.
 const MAKES_COLLECTION = 'makes';
+// The recipes' photos, one to a document: photos/{id}. Written once, never changed.
+const PHOTOS_COLLECTION = 'photos';
+// New photos written in one go at most: the cloud takes 10 MiB a request, words included.
+const PHOTO_BYTES_PER_WRITE = 6 * 1024 * 1024;
+
+// A photo's document: its JPEG's bytes, and nothing else (firestore.rules).
+const photoDoc = (firestore: Firestore, upload: PhotoUpload) =>
+  [
+    doc(firestore, PHOTOS_COLLECTION, upload.id),
+    { jpeg: Bytes.fromUint8Array(upload.bytes) },
+  ] as const;
+
+/**
+ * Writes the new photos with `write`'s batch, in the same atomic write, so a recipe never points
+ * at a photo the cloud doesn't have. Very many new photos go ahead in writes of their own, and
+ * the batch carries the last of them. All are handed to the cloud at once, in order: offline, a
+ * commit only settles once back online, and the whole save must be in the cloud's offline queue
+ * by then (it outlives the app being closed).
+ */
+export async function commitWithPhotos(
+  firestore: Firestore,
+  uploads: readonly PhotoUpload[],
+  write: (batch: WriteBatch) => void,
+): Promise<void> {
+  const groups = uploadGroups(uploads, PHOTO_BYTES_PER_WRITE);
+  const last = groups.pop() ?? [];
+  const commits = groups.map((group) => {
+    const ahead = writeBatch(firestore);
+    group.forEach((upload) => ahead.set(...photoDoc(firestore, upload)));
+    return ahead.commit();
+  });
+  const batch = writeBatch(firestore);
+  last.forEach((upload) => batch.set(...photoDoc(firestore, upload)));
+  write(batch);
+  commits.push(batch.commit());
+  await Promise.all(commits);
+}
 
 /**
  * Real-time listener for the recipes collection.
@@ -90,12 +131,14 @@ export function subscribeToRecipes(
 }
 
 /**
- * Saves a recipe, together with the earlier versions this save backs up, in one atomic write.
- * The recipe document is replaced whole, so a field cleared in the editor is cleared in the cloud.
+ * Saves a recipe, together with the earlier versions this save backs up and the new photos they
+ * point at (services/photos), in one atomic write. The recipe document is replaced whole, so a
+ * field cleared in the editor is cleared in the cloud.
  */
 export async function saveRecipeToCloud(
   recipe: Recipe,
   newVersions: RecipeVersion[] = [],
+  uploads: readonly PhotoUpload[] = [],
 ): Promise<void> {
   // This device's copy may have left photos out to fit: saving it would erase them everywhere.
   if (hasLeftOutPhotos(recipe) || newVersions.some((v) => hasLeftOutPhotos(v.recipe))) {
@@ -115,12 +158,47 @@ export async function saveRecipeToCloud(
   }
 
   const recipeRef = doc(db, RECIPES_COLLECTION, recipe.id);
-  const batch = writeBatch(db);
-  batch.set(recipeRef, recipe);
-  for (const version of newVersions) {
-    batch.set(doc(recipeRef, VERSIONS_COLLECTION, version.id), version);
-  }
-  await batch.commit();
+  await commitWithPhotos(db, uploads, (batch) => {
+    batch.set(recipeRef, recipe);
+    for (const version of newVersions) {
+      batch.set(doc(recipeRef, VERSIONS_COLLECTION, version.id), version);
+    }
+  });
+}
+
+/**
+ * Moves an older recipe's photos out of its document (`moved` is the same recipe pointing at
+ * them, see services/photos), without making it a new version. Only while the cloud's recipe is
+ * still the one moved (same version and time): an edit from another phone meanwhile wins, and is
+ * moved another time. Resolves to whether it wrote. Rejects offline.
+ */
+export async function movePhotosOutInCloud(
+  moved: Recipe,
+  uploads: readonly PhotoUpload[],
+): Promise<boolean> {
+  const firestore = db;
+  if (!isFirebaseConfigured || !firestore) return false;
+  const recipeRef = doc(firestore, RECIPES_COLLECTION, moved.id);
+  return runTransaction(firestore, async (tx) => {
+    const current = await tx.get(recipeRef);
+    const data = current.exists() ? (current.data() as Partial<Recipe>) : null;
+    if (!data || data.version !== moved.version || data.updatedAt !== moved.updatedAt) {
+      return false;
+    }
+    uploads.forEach((upload) => tx.set(...photoDoc(firestore, upload)));
+    tx.update(recipeRef, { heroImage: moved.heroImage, steps: moved.steps });
+    return true;
+  });
+}
+
+/** A photo's bytes (one read); null when there's no such photo. Rejects when offline. */
+export async function fetchPhotoFromCloud(id: string): Promise<Uint8Array | null> {
+  if (!isFirebaseConfigured || !db) return null;
+  const snapshot = await getDoc(doc(db, PHOTOS_COLLECTION, id));
+  if (!snapshot.exists()) return null;
+  const jpeg: unknown = snapshot.get('jpeg');
+  // Untrusted: anything but bytes counts as no photo.
+  return jpeg instanceof Bytes ? jpeg.toUint8Array() : null;
 }
 
 /** Loads one earlier version (one read). Rejects if it's missing or malformed. */

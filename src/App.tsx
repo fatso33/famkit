@@ -12,6 +12,7 @@ import { useCurrentUser } from './hooks/useCurrentUser';
 import { useBackStep } from './hooks/useBackStep';
 import { useSeenRecipes } from './hooks/useSeenRecipes';
 import { useDrafts } from './hooks/useDrafts';
+import { usePhotoTidy } from './hooks/usePhotoTidy';
 import { useMakes } from './hooks/useMakes';
 import { useCounterMemory } from './hooks/useCounter';
 import { useSplashUp } from './hooks/useSplashUp';
@@ -227,6 +228,7 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
     discardDraft,
     canDraft,
   } = useDrafts(currentUser);
+  usePhotoTidy(allRecipes, drafts, draftsLoaded);
 
   const [page, setPage] = useState<AppPage>(initialPage);
   // The last main page (not Settings), where the back gesture returns to.

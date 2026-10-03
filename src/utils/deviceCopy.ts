@@ -1,22 +1,28 @@
 import { Recipe, Step } from '../types/recipe';
 import { Make } from '../types/make';
+import { isEmbeddedPhoto } from './photoRefs';
 
 /**
- * The recipe without its photos, marked so it is never edited or saved (see `photosOmitted`).
- * A recipe without photos comes back as it is.
+ * The recipe without the photos it holds itself, marked so it is never edited or saved (see
+ * `photosOmitted`). Photos kept on their own (`photo:<id>`, utils/photoRefs) are only pointed at,
+ * so they stay. A recipe without photos of its own comes back as it is.
  */
 export function leavePhotosOut(recipe: Recipe): Recipe {
   const steps = recipe.steps ?? [];
-  const hero = Boolean(recipe.heroImage);
-  const hasPhoto = (st: Step) => st.imageSrc || st.fork?.paths.some((path) => path.imageSrc);
+  const hero = isEmbeddedPhoto(recipe.heroImage);
+  const hasPhoto = (st: Step) =>
+    isEmbeddedPhoto(st.imageSrc) || st.fork?.paths.some((path) => isEmbeddedPhoto(path.imageSrc));
   if (!hero && !steps.some(hasPhoto)) return recipe;
+  const without = <T extends { imageSrc?: string }>(on: T): T => {
+    if (!isEmbeddedPhoto(on.imageSrc)) return on;
+    const { imageSrc: _photo, ...rest } = on;
+    return rest as T;
+  };
   return {
     ...recipe,
-    heroImage: '',
-    steps: steps.map(({ imageSrc: _photo, ...st }) =>
-      st.fork
-        ? { ...st, fork: { paths: st.fork.paths.map(({ imageSrc: _p, ...path }) => path) } }
-        : st,
+    heroImage: hero ? '' : recipe.heroImage,
+    steps: steps.map((st) =>
+      st.fork ? { ...without(st), fork: { paths: st.fork.paths.map(without) } } : without(st),
     ),
     photosOmitted: { hero },
   };
@@ -84,15 +90,18 @@ function photoEntry(key: string, at: string, photos: Record<string, string>): Ph
   return { key, at, sig, photos };
 }
 
-/** The recipe's photos, to keep on this device. Null for a copy without them, or no photos. */
+/**
+ * The photos the recipe holds itself, to keep on this device. Null for a copy without them, or
+ * none (photos kept on their own are kept by services/photos).
+ */
 export function recipePhotoEntry(recipe: Recipe): PhotoEntry | null {
   if (hasLeftOutPhotos(recipe)) return null;
   const photos: Record<string, string> = {};
-  if (recipe.heroImage) photos.hero = recipe.heroImage;
+  if (isEmbeddedPhoto(recipe.heroImage)) photos.hero = recipe.heroImage;
   (recipe.steps ?? []).forEach((st, i) => {
-    if (st.imageSrc) photos[`s${i}`] = st.imageSrc;
+    if (isEmbeddedPhoto(st.imageSrc)) photos[`s${i}`] = st.imageSrc;
     st.fork?.paths.forEach((path, j) => {
-      if (path.imageSrc) photos[`s${i}p${j}`] = path.imageSrc;
+      if (isEmbeddedPhoto(path.imageSrc)) photos[`s${i}p${j}`] = path.imageSrc;
     });
   });
   return photoEntry(recipePhotoKey(recipe.id), recipeAt(recipe), photos);
@@ -126,7 +135,7 @@ export function withRecipePhotos(recipe: Recipe, kept: PhotoEntry | undefined): 
     }
   }
   const { photosOmitted: _mark, ...rest } = recipe;
-  return { ...rest, heroImage: kept.photos.hero ?? '', steps };
+  return { ...rest, heroImage: kept.photos.hero ?? recipe.heroImage, steps };
 }
 
 /** The make's photo, to keep on this device. Null for a copy without it. */

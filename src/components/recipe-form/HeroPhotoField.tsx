@@ -2,6 +2,7 @@ import React from 'react';
 import { Camera, ImagePlus, LoaderCircle, RefreshCw, Trash2 } from 'lucide-react';
 import { UiTranslations } from '../../i18n/translations';
 import { usePhotoPicker } from '../../hooks/usePhotoPicker';
+import { usePhoto } from '../../hooks/usePhoto';
 
 interface HeroPhotoFieldProps {
   photo: string;
@@ -27,6 +28,7 @@ export const HeroPhotoField: React.FC<HeroPhotoFieldProps> = ({
   t,
 }) => {
   const { inputs, chooseFile, takePhoto } = usePhotoPicker(onChange);
+  const shown = usePhoto(photo);
 
   return (
     <div
@@ -39,7 +41,11 @@ export const HeroPhotoField: React.FC<HeroPhotoFieldProps> = ({
       {photo ? (
         <>
           {/* Keyed by the photo, so a new one fades in. */}
-          <img key={photo} className="hero-photo-img" src={photo} alt={t.photoPreviewAlt} />
+          {shown.src ? (
+            <img key={photo} className="hero-photo-img" src={shown.src} alt={t.photoPreviewAlt} />
+          ) : (
+            <span className="hero-photo-img photo-pending" />
+          )}
           <div className="hero-photo-actions">
             <button type="button" className="glass-chip" onClick={chooseFile}>
               <RefreshCw size="1.05em" aria-hidden="true" />

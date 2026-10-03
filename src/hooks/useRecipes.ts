@@ -8,7 +8,10 @@ import {
   saveTranslationToCloud,
   fetchRecipeVersion,
   hasCloud,
+  movePhotosOutInCloud,
 } from '../services/firestore';
+import { fillPhotos, photosCommitted, withPhotosApart } from '../services/photos';
+import { PhotoUpload, hasEmbeddedPhotos, recipePhotoIds } from '../utils/photoRefs';
 import { hasLeftOutPhotos, keepLoadedPhotos } from '../utils/deviceCopy';
 import { legacyVersions, prepareEdit } from '../utils/recipeVersions';
 import { isDeleted, withDeletedAt } from '../utils/recipeTrash';
@@ -32,7 +35,7 @@ import {
 } from '../utils/recipeTranslation';
 import { mayRideAlong, translationDueAt } from '../utils/translationQueue';
 import { Piece } from '../utils/translationPieces';
-import { ownerCredit } from '../utils/ownership';
+import { isOwnRecipe, ownerCredit } from '../utils/ownership';
 
 export function getLocalizedRecipe(
   recipe: Recipe | null | undefined,
@@ -57,6 +60,34 @@ function canSaveOver(existing: Recipe | undefined): boolean {
   if (!existing || !hasLeftOutPhotos(existing)) return true;
   console.warn(`Not saving recipe ${existing.id}: its photos haven't loaded on this device yet`);
   return false;
+}
+
+/**
+ * The recipe and the versions it backs up as the cloud keeps them, each photo they hold moved
+ * out to one of its own (services/photos), and the new photos to write with them.
+ */
+function apart(recipe: Recipe, versions: RecipeVersion[] = []) {
+  const uploads = new Map<string, PhotoUpload>();
+  const take = <T extends Recipe | RecipeVersion['recipe']>(r: T): T => {
+    const moved = withPhotosApart(r);
+    moved.uploads.forEach((u) => uploads.set(u.id, u));
+    return moved.recipe;
+  };
+  return {
+    recipe: take(recipe),
+    versions: versions.map((v) => ({ ...v, recipe: take(v.recipe) })),
+    uploads: [...uploads.values()],
+  };
+}
+
+// Waits for a quiet moment (Safari has no idle callback). Returns the cancel.
+function whenIdle(run: () => void): () => void {
+  if (typeof requestIdleCallback === 'function') {
+    const id = requestIdleCallback(run, { timeout: 4000 });
+    return () => cancelIdleCallback(id);
+  }
+  const id = setTimeout(run, 1000);
+  return () => clearTimeout(id);
 }
 
 /** The vault, kept in sync with Firestore. `currentUser` owns the recipes added here. */
@@ -123,6 +154,41 @@ export function useRecipes(
     return () => unsubscribe();
   }, []);
 
+  // Every photo the box points at, fetched once when the phone is idle, so it works offline.
+  useEffect(() => {
+    if (!hasCloud) return;
+    return whenIdle(
+      () => void fillPhotos(recipes.filter((r) => !isDeleted(r)).flatMap(recipePhotoIds)),
+    );
+  }, [recipes]);
+
+  // Older recipes hold their photos in their own document: their owner's phone moves them out,
+  // one recipe at a time when idle, without making a new version (services/photos). An edit from
+  // another phone meanwhile wins, and is moved another time.
+  const moveTried = useRef(new Set<string>());
+  useEffect(() => {
+    if (!hasCloud || !currentUser) return;
+    const next = recipes.find(
+      (r) =>
+        isOwnRecipe(r, currentUser) &&
+        !hasLeftOutPhotos(r) &&
+        !moveTried.current.has(r.id) &&
+        hasEmbeddedPhotos(r),
+    );
+    if (!next) return;
+    return whenIdle(() => {
+      if (!navigator.onLine) return;
+      moveTried.current.add(next.id);
+      const { recipe: moved, uploads } = apart(next);
+      movePhotosOutInCloud(moved, uploads).then(
+        (wrote) => {
+          if (wrote) photosCommitted(uploads);
+        },
+        (err: unknown) => console.warn(`Could not move recipe ${next.id}'s photos out yet:`, err),
+      );
+    });
+  }, [recipes, currentUser]);
+
   // Photos kept on this device that were still being read at the first render (a slow phone).
   useEffect(
     () => whenDevicePhotosLoad(() => setRecipes((prev) => withDeviceRecipePhotos(prev))),
@@ -176,7 +242,7 @@ export function useRecipes(
 
   const addRecipe = useCallback(
     (newRecipe: Omit<Recipe, 'id' | 'createdAt'>): Recipe => {
-      const recipeWithId: Recipe = {
+      const { recipe: recipeWithId, uploads } = apart({
         ...newRecipe,
         ownerEmail: currentUser?.email,
         ...ownerCredit(undefined, currentUser),
@@ -184,7 +250,7 @@ export function useRecipes(
         version: 1,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      };
+      });
 
       savedOnThisDevice.current.set(recipeWithId.id, sourceHash(recipeWithId));
 
@@ -198,10 +264,13 @@ export function useRecipes(
       setSelectedRecipeId(recipeWithId.id);
 
       // Async sync to Cloud Firestore in background
-      saveRecipeToCloud(recipeWithId).catch((err) => {
-        console.warn('Failed to sync new recipe to cloud (retained locally):', err);
-        latestOnCloudSaveFailed.current?.(recipeWithId);
-      });
+      saveRecipeToCloud(recipeWithId, [], uploads).then(
+        () => photosCommitted(uploads),
+        (err: unknown) => {
+          console.warn('Failed to sync new recipe to cloud (retained locally):', err);
+          latestOnCloudSaveFailed.current?.(recipeWithId);
+        },
+      );
 
       return recipeWithId;
     },
@@ -221,9 +290,14 @@ export function useRecipes(
       savedOnThisDevice.current.set(recipeUpdates.id, sourceHash(recipeUpdates));
 
       const now = Date.now();
-      const { recipe: finalRecipe, newVersions } = existing
+      const prepared = existing
         ? prepareEdit(existing, recipeUpdates, note, now)
         : { recipe: { ...recipeUpdates, updatedAt: now }, newVersions: [] };
+      const {
+        recipe: finalRecipe,
+        versions: newVersions,
+        uploads,
+      } = apart(prepared.recipe, prepared.newVersions);
 
       setRecipes((prev) => {
         const updated = prev.map((r) => (r.id === finalRecipe.id ? finalRecipe : r));
@@ -232,10 +306,13 @@ export function useRecipes(
       });
 
       // Async sync to Cloud Firestore in background
-      saveRecipeToCloud(finalRecipe, newVersions).catch((err) => {
-        console.warn('Failed to sync updated recipe to cloud (retained locally):', err);
-        latestOnCloudSaveFailed.current?.(finalRecipe);
-      });
+      saveRecipeToCloud(finalRecipe, newVersions, uploads).then(
+        () => photosCommitted(uploads),
+        (err: unknown) => {
+          console.warn('Failed to sync updated recipe to cloud (retained locally):', err);
+          latestOnCloudSaveFailed.current?.(finalRecipe);
+        },
+      );
 
       return finalRecipe;
     },
@@ -257,7 +334,9 @@ export function useRecipes(
   const setRecipeDeleted = useCallback((id: string, deleted: boolean): boolean => {
     const existing = latestRecipes.current.find((r) => r.id === id);
     if (!existing || !canSaveOver(existing)) return false;
-    const updated = withDeletedAt(existing, deleted ? Date.now() : undefined);
+    const { recipe: updated, uploads } = apart(
+      withDeletedAt(existing, deleted ? Date.now() : undefined),
+    );
 
     setRecipes((prev) => {
       const next = prev.map((r) => (r.id === id ? updated : r));
@@ -265,10 +344,13 @@ export function useRecipes(
       return next;
     });
 
-    saveRecipeToCloud(updated).catch((err) => {
-      console.warn(`Failed to sync recipe ${deleted ? 'deletion' : 'restore'} to cloud:`, err);
-      latestOnCloudSaveFailed.current?.(updated);
-    });
+    saveRecipeToCloud(updated, [], uploads).then(
+      () => photosCommitted(uploads),
+      (err: unknown) => {
+        console.warn(`Failed to sync recipe ${deleted ? 'deletion' : 'restore'} to cloud:`, err);
+        latestOnCloudSaveFailed.current?.(updated);
+      },
+    );
     return true;
   }, []);
 

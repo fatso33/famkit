@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   fetchFamilyMembership,
+  fetchPhotoFromCloud,
   fetchRecipeVersion,
+  movePhotosOutInCloud,
   saveRecipeToCloud,
   saveTranslationToCloud,
   subscribeToRecipes,
@@ -22,6 +24,12 @@ const cloud = vi.hoisted(() => ({
   stored: {} as Record<string, unknown>,
   /** Every batch write: [path, data, options]. */
   writes: [] as [string, unknown, unknown][],
+  /** How many batches were committed. */
+  commits: 0,
+  /** Offline: commits wait (in `queued`) until released. */
+  holdCommits: false,
+  queued: [] as [string, unknown, unknown][][],
+  release: () => {},
   /** When set, getDoc fails with this Firestore error code (e.g. offline: 'unavailable'). */
   getDocErrorCode: null as string | null,
 }));
@@ -38,7 +46,18 @@ vi.mock('firebase/firestore', () => {
       forEach: (fn: (d: { data: () => Recipe }) => void) => snaps.forEach(fn),
     };
   };
+  // Firestore's bytes: a photo's JPEG.
+  class Bytes {
+    constructor(readonly bytes: Uint8Array) {}
+    static fromUint8Array(bytes: Uint8Array) {
+      return new Bytes(bytes);
+    }
+    toUint8Array() {
+      return this.bytes;
+    }
+  }
   return {
+    Bytes,
     collection: () => ({}),
     // Paths only: enough to see where each document goes.
     doc: (parent: { path?: string }, ...segments: string[]) => ({
@@ -50,7 +69,20 @@ vi.mock('firebase/firestore', () => {
         set: (ref: { path: string }, data: unknown, options?: unknown) =>
           pending.push([ref.path, data, options]),
         commit: () => {
+          if (cloud.holdCommits) {
+            cloud.queued.push(pending);
+            return new Promise<void>((resolve) => {
+              const before = cloud.release;
+              cloud.release = () => {
+                before();
+                cloud.writes.push(...pending);
+                cloud.commits++;
+                resolve();
+              };
+            });
+          }
           cloud.writes.push(...pending);
+          cloud.commits++;
           return Promise.resolve();
         },
       };
@@ -63,6 +95,7 @@ vi.mock('firebase/firestore', () => {
         : Promise.resolve({
             exists: () => ref.path in cloud.stored,
             data: () => cloud.stored[ref.path],
+            get: (field: string) => (cloud.stored[ref.path] as Record<string, unknown>)[field],
           }),
     orderBy: (field: string) => ({ orderField: field }),
     query: (_col: unknown, ...constraints: { orderField?: string }[]) => ({
@@ -83,6 +116,7 @@ vi.mock('firebase/firestore', () => {
           }),
         update: (ref: { path: string }, data: unknown) =>
           cloud.writes.push([ref.path, data, 'update']),
+        set: (ref: { path: string }, data: unknown) => cloud.writes.push([ref.path, data, 'tx']),
       }),
     setDoc: () => Promise.resolve(),
     updateDoc: () => Promise.resolve(),
@@ -170,6 +204,9 @@ describe('saving versions', () => {
   beforeEach(() => {
     localStorage.clear();
     cloud.writes = [];
+    cloud.commits = 0;
+    cloud.queued = [];
+    cloud.release = () => {};
     cloud.stored = {};
   });
 
@@ -183,6 +220,53 @@ describe('saving versions', () => {
     ]);
   });
 
+  it('queues every write of a big save at once, so an offline save is kept whole', async () => {
+    const big = (n: number) => ({ id: String(n).repeat(32), bytes: new Uint8Array(4_000_000) });
+    cloud.holdCommits = true;
+    const saving = saveRecipeToCloud(babka, [], [big(5), big(6), big(7)]);
+    await Promise.resolve();
+    // Offline: no commit has settled, yet the recipe's write is already handed over.
+    expect(cloud.queued.flat().map(([path]) => path)).toContain('recipes/babka');
+    cloud.holdCommits = false;
+    cloud.release();
+    await saving;
+  });
+
+  it('writes its new photos, each a document of its own, in the same batch', async () => {
+    const photo = { id: 'a'.repeat(32), bytes: new Uint8Array([0xff, 0xd8, 1]) };
+    const withPhoto = { ...babka, heroImage: `photo:${photo.id}` };
+    await saveRecipeToCloud(withPhoto, [v1], [photo]);
+
+    expect(cloud.commits).toBe(1);
+    expect(cloud.writes.map(([path]) => path)).toEqual([
+      `photos/${photo.id}`,
+      'recipes/babka',
+      'recipes/babka/versions/v1-1000',
+    ]);
+    const [, data] = cloud.writes[0] as unknown as [
+      string,
+      { jpeg: { toUint8Array(): Uint8Array } },
+    ];
+    expect(Object.keys(data)).toEqual(['jpeg']);
+    expect([...data.jpeg.toUint8Array()]).toEqual([0xff, 0xd8, 1]);
+  });
+
+  it('sends very many new photos ahead in writes of their own, the recipe with the last', async () => {
+    const big = (n: number) => ({ id: String(n).repeat(32), bytes: new Uint8Array(2_500_000) });
+    await saveRecipeToCloud(babka, [], [big(1), big(2), big(3), big(4)]);
+
+    // 6 MB a write at most: two photos, then two more with the recipe.
+    expect(cloud.commits).toBe(2);
+    // Handed over at once, in order (offline, all wait in the cloud's queue together).
+    expect(cloud.writes.map(([path]) => path)).toEqual([
+      `photos/${'1'.repeat(32)}`,
+      `photos/${'2'.repeat(32)}`,
+      `photos/${'3'.repeat(32)}`,
+      `photos/${'4'.repeat(32)}`,
+      'recipes/babka',
+    ]);
+  });
+
   it("refuses to save this device's copy of a recipe whose photos were left out", async () => {
     const slim: Recipe = { ...babka, photosOmitted: { hero: true } };
     localStorage.setItem('wandas_recipes', JSON.stringify([babka]));
@@ -191,6 +275,35 @@ describe('saving versions', () => {
     await expect(saveRecipeToCloud(babka, [{ ...v1, recipe: slim }])).rejects.toThrow(/photos/);
     expect(cloud.writes).toEqual([]);
     expect(JSON.parse(localStorage.getItem('wandas_recipes')!)).toEqual([babka]);
+  });
+
+  it("moves an older recipe's photos out without a new version, if it's still the same", async () => {
+    const moved = { ...babka, updatedAt: 5, heroImage: `photo:${'b'.repeat(32)}` };
+    const photo = { id: 'b'.repeat(32), bytes: new Uint8Array([1]) };
+
+    // Edited on another phone meanwhile: left for next time.
+    cloud.stored['recipes/babka'] = { ...babka, updatedAt: 6 };
+    await expect(movePhotosOutInCloud(moved, [photo])).resolves.toBe(false);
+    expect(cloud.writes).toEqual([]);
+
+    cloud.stored['recipes/babka'] = { ...babka, updatedAt: 5 };
+    await expect(movePhotosOutInCloud(moved, [photo])).resolves.toBe(true);
+    expect(cloud.writes.map(([path, , how]) => [path, how])).toEqual([
+      [`photos/${'b'.repeat(32)}`, 'tx'],
+      ['recipes/babka', 'update'],
+    ]);
+    // Only the photo fields: the version, the time and the words stay as they were.
+    expect(Object.keys(cloud.writes[1][1] as object)).toEqual(['heroImage', 'steps']);
+  });
+
+  it('fetches a photo, and finds none where there is none or it holds no bytes', async () => {
+    const { Bytes } = await import('firebase/firestore');
+    cloud.stored[`photos/${'c'.repeat(32)}`] = { jpeg: Bytes.fromUint8Array(new Uint8Array([7])) };
+    cloud.stored[`photos/${'d'.repeat(32)}`] = { jpeg: 'not bytes' };
+
+    await expect(fetchPhotoFromCloud('c'.repeat(32))).resolves.toEqual(new Uint8Array([7]));
+    await expect(fetchPhotoFromCloud('d'.repeat(32))).resolves.toBeNull();
+    await expect(fetchPhotoFromCloud('e'.repeat(32))).resolves.toBeNull();
   });
 
   it('loads one version, and refuses a missing or malformed one', async () => {

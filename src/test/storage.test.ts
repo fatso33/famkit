@@ -11,6 +11,7 @@ import {
   getStoredFontScale,
   setStoredFontScale,
   clearLegacyApiKey,
+  recipeHeroIds,
   getStoredVaultSort,
   setStoredVaultSort,
   getStoredVaultView,
@@ -193,5 +194,37 @@ describe('storage service', () => {
     localStorage.setItem('wandas_gemini_api_key', 'AIzaSyTestKey123');
     clearLegacyApiKey();
     expect(localStorage.getItem('wandas_gemini_api_key')).toBeNull();
+  });
+});
+
+describe('the photos read before the app first draws', () => {
+  beforeEach(() => localStorage.clear());
+
+  it("are My Counter's recipes' own photos kept apart, then the rest, each once", () => {
+    const id = (n: number) => String(n).repeat(32);
+    const at = (n: number, heroImage: string): Recipe => ({
+      ...WANDAS_CHEESE_BREAD,
+      id: `r${n}`,
+      heroImage,
+      createdAt: n,
+      updatedAt: n,
+    });
+    const recipes = [
+      at(1, `photo:${id(1)}`),
+      at(2, 'data:image/jpeg;base64,AAAA'),
+      at(3, ''),
+      ...[4, 5, 6, 7, 8, 9].map((n) => at(n, `photo:${id(n)}`)),
+    ];
+    localStorage.setItem('wandas_recipes', JSON.stringify(recipes));
+    const { first, rest } = recipeHeroIds();
+    expect(first[0]).toBe(id(9));
+    expect([...first, ...rest].sort()).toEqual([1, 4, 5, 6, 7, 8, 9].map(id).sort());
+    expect(rest).toContain(id(1));
+  });
+
+  it('are none without photos kept apart, or with an unreadable copy', () => {
+    expect(recipeHeroIds()).toEqual({ first: [], rest: [] });
+    localStorage.setItem('wandas_recipes', '{"photo:');
+    expect(recipeHeroIds()).toEqual({ first: [], rest: [] });
   });
 });

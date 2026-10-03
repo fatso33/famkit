@@ -4,6 +4,7 @@ import { useBackStep } from '../../hooks/useBackStep';
 import { useInertBehind } from '../../hooks/useInertBehind';
 import { UiTranslations } from '../../i18n/translations';
 import { lockPageScroll } from '../../utils/scrollLock';
+import { usePhoto } from '../../hooks/usePhoto';
 
 interface ImageZoomModalProps {
   imageSrc: string;
@@ -14,6 +15,8 @@ interface ImageZoomModalProps {
 
 // Mount only while open, keyed by imageSrc so zoom/pan state resets per image.
 export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClose, t }) => {
+  // The tapped photo, wherever it's kept (it's already here: it was on screen).
+  const photo = usePhoto(imageSrc);
   const [zoomScale, setZoomScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -150,7 +153,7 @@ export const ImageZoomModal: React.FC<ImageZoomModalProps> = ({ imageSrc, onClos
         <img
           id="modalZoomImg"
           className={`zoomable-image ${zoomScale > 1 ? 'is-zoomed' : ''}`}
-          src={imageSrc}
+          src={photo.src || undefined}
           alt={t.enlargedPhotoAlt}
           onClick={toggleImageClick}
           style={{

@@ -9,6 +9,7 @@ import { recipePhoto } from '../../utils/vault';
 import { creditName } from '../../utils/ownership';
 import { photoPending } from '../../utils/deviceCopy';
 import { CategoryTile } from './CategoryTile';
+import { Photo } from '../common/Photo';
 import { MakeBadge, RemixBadge, RemixMark } from './RemixMarks';
 
 interface RecipeRowProps {
@@ -54,7 +55,6 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
   onSelect,
   t,
 }) => {
-  const photo = recipePhoto(shown);
   // The typed times' total ("1h 20m + overnight"), else the plain total.
   const minutes = recipeTime(shown).minutes;
   const timeLabel =
@@ -124,14 +124,14 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
         </span>
       </span>
       <span className="vault-row-photo" data-vault-photo="">
-        {photo ? (
+        <Photo
+          value={recipePhoto(shown)}
+          alt=""
           // The card flipping open must be whole in the snapshot the flip is made of.
-          <img src={photo} alt="" loading={isFlipTarget ? 'eager' : 'lazy'} />
-        ) : photoPending(recipe) ? (
-          <span className="photo-pending" />
-        ) : (
-          <CategoryTile recipe={recipe} />
-        )}
+          loading={isFlipTarget ? 'eager' : 'lazy'}
+          waiting={photoPending(recipe)}
+          fallback={<CategoryTile recipe={recipe} />}
+        />
       </span>
     </button>
   );

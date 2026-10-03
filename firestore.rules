@@ -61,6 +61,24 @@ service cloud.firestore {
       }
     }
 
+    // The recipes' photos, one to a document, under a random id: recipes, their versions and
+    // drafts point at them ("photo:<id>"). Any family member may add one: its JPEG's bytes and
+    // nothing else, at most 900 KB (the app's own are 100-250 KB). Once written, a photo is never
+    // changed or deleted, so every version that points at it keeps it; writing the very same
+    // photo again (a save retried offline) is allowed and changes nothing. Read one by one only.
+    match /photos/{photoId} {
+      function isPhoto(data) {
+        return data.keys().hasOnly(['jpeg']) && data.jpeg is bytes &&
+          data.jpeg.size() <= 900 * 1024;
+      }
+      allow get: if isFamily();
+      allow list: if false;
+      allow create: if isFamily() && photoId.matches('^[0-9a-f]{32}$') &&
+        isPhoto(request.resource.data);
+      allow update: if isFamily() && request.resource.data == resource.data;
+      allow delete: if false;
+    }
+
     // Makes: what family members made from the recipes, each with a photo. The maker owns theirs.
     // Anyone may heart one (giving or taking back only their own heart), and any family phone may
     // finish its background translation.

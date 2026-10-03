@@ -2,6 +2,7 @@ import React from 'react';
 import { PathExtras } from '../../utils/recipeMethod';
 import { capitalizeFirstLetter } from '../../utils/timeEstimator';
 import { UiTranslations } from '../../i18n/translations';
+import { Photo } from '../common/Photo';
 
 interface StepExtrasProps {
   /** The step's tip and photo, or on a fork the chosen path's. */
@@ -36,11 +37,12 @@ export const StepExtras: React.FC<StepExtrasProps> = ({
           if (e.key === 'Enter' || e.key === ' ') onZoomImage(step.imageSrc!, index);
         }}
       >
-        <img
+        <Photo
+          value={step.imageSrc}
           className="step-visual-img"
-          src={step.imageSrc}
           alt={step.imageCaption || t.stepPhotoAlt}
           loading="lazy"
+          fallback={null}
         />
       </div>
     )}

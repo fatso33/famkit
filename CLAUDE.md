@@ -21,7 +21,7 @@ Private family recipe vault PWA. React 19 + TypeScript (strict) + Vite 6 + Tailw
 - `src/i18n/translations.ts`: all UI strings, typed by the `UiTranslations` interface
 - `src/test/fixtures/wandasCheeseBread.ts`: test copy of Wanda's Cheese Bread, which lives in Firestore like any recipe (Peter owns it). Its content is **verbatim heirloom text**. Never paraphrase it.
 - `src/test/`: Vitest + Testing Library (jsdom)
-- `public/sw.js`: hand-written service worker. Recipe photos are embedded in the recipes, not stored as files
+- `public/sw.js`: hand-written service worker. Recipe photos are Firestore documents (`services/photos`), not files it serves
 
 ## Conventions
 
@@ -79,7 +79,7 @@ Tools enforce most of these: TS strict, ESLint (react-hooks, jsx-a11y, promise s
 - **Translation:** a recipe's top-level text is the original in `sourceLanguage`, and `translations[other]` carries a `sourceHash`. A mismatched hash means the translation is stale, and `useRecipes` re-translates it in the background. The logic lives in `utils/recipeTranslation`. Firebase is off locally, so translation only runs in tests (mocked) or with a real `.env` plus an App Check debug token.
 - **Translation budget:** Gemini's free tier gives the whole family ~20 requests a day (Peter chose to stay free), so requests are rationed: `utils/translationQueue` decides when (new recipes at once, edits after 30 quiet minutes, a daily-quota 429 pauses until midnight Pacific, an overloaded 5xx pauses that phone 30 min doubling to 4 h, since Firebase retries it server-side and every retry counts) and bundles everything waiting into one request. `utils/translationRequest` fixes the reply's shape (every piece a required field in its own list) and checks each piece (amounts must match). Anything that adds requests, such as a retry, a per-save translation or a second model call, needs a reason. Make cards (future) should join the same queue as documents.
 - **Website import:** off unless the build has `VITE_RECIPE_IMPORT_URL` (there's none locally, so the Paste sheet shows text only in dev and in tests, which mock `services/recipeImport` to turn it on). The worker answers only signed-in family from the app's own address: never add a localhost origin or a sign-in bypass to it. Imported text stays the site's own words (`utils/recipeImport`), and `sourceUrl` on the recipe records where it came from.
-- **Images:** photos are compressed client-side and embedded. Version backups include them, so a restore brings photos back, and each backup is its own document. Keep photos out of the recipe document's `versionIndex`.
+- **Images:** photos are compressed client-side (1000px JPEG, ~100–250 KB), then kept apart: each is `photos/{random id}` (JPEG bytes, ≤900 KB, create-only, family-readable), and recipes, versions and drafts hold `photo:<id>` in the same fields (`utils/photoRefs`). New photos go up in the same batch as the recipe or draft (`withPhotosApart`, `commitWithPhotos`). Each phone fetches a photo once into IndexedDB (`famkit_photo_files`), on-screen first, the rest at idle. Draw photos through `<Photo>`/`usePhoto`, never `<img src={recipe.heroImage}>`. Older recipes still embed `data:` URLs: their owner's phone moves them out quietly (no new version), and the legacy device-copy path (`deviceCopy`, `photoStore`) handles only `data:` photos. Makes still embed their one photo. Versions share photos by pointer, so a restore brings them back. Keep photos out of the recipe document's `versionIndex`.
 
 ## Definition of done
 

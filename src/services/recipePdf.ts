@@ -3,6 +3,8 @@ import { PdfImage, PdfWriter, num } from '../utils/pdfWriter';
 import { PrintableRecipe } from '../utils/printableRecipe';
 import { ImageSize, PAGE, layoutRecipePdf } from '../utils/recipePdfLayout';
 import { TrueTypeFont, parseTrueType } from '../utils/trueType';
+import { photoIdOf } from '../utils/photoRefs';
+import { loadPhotoBlob } from './photos';
 import serif600Latin from '../assets/fonts/pdf/serif-600-latin.ttf?url';
 import serif600LatinExt from '../assets/fonts/pdf/serif-600-latin-ext.ttf?url';
 import sans400Latin from '../assets/fonts/pdf/sans-400-latin.ttf?url';
@@ -181,7 +183,11 @@ class FontBook {
 
 /** A photo as JPEG, which a PDF holds as it is; other kinds are redrawn as JPEG first. */
 async function photoJpeg(src: string): Promise<Uint8Array<ArrayBuffer>> {
-  const bytes = new Uint8Array(await (await fetch(src)).arrayBuffer());
+  // A photo kept on its own is loaded first: from this phone, else the cloud.
+  const id = photoIdOf(src);
+  const blob = id ? await loadPhotoBlob(id) : await (await fetch(src)).blob();
+  if (!blob) throw new Error(`Photo ${id} can't be had now`);
+  const bytes = new Uint8Array(await blob.arrayBuffer());
   if (bytes[0] === 0xff && bytes[1] === 0xd8) return bytes;
   const bitmap = await createImageBitmap(new Blob([bytes]));
   const canvas = document.createElement('canvas');

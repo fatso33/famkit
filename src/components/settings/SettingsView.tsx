@@ -8,6 +8,7 @@ import { timeAgo } from '../../utils/recipeTrash';
 import { recipePhoto } from '../../utils/vault';
 import { Season, SeasonPreference } from '../../utils/season';
 import { SeasonIcon, SeasonPicker } from './SeasonPicker';
+import { Photo } from '../common/Photo';
 
 interface SettingsViewProps {
   /** The viewer's own deleted recipes, most recent first. */
@@ -114,11 +115,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   const recipe = getLocalizedRecipe(raw, language) ?? raw;
                   return (
                     <li key={raw.id} className="trash-item">
-                      {recipePhoto(recipe) ? (
-                        <img className="trash-thumb" src={recipePhoto(recipe)} alt="" />
-                      ) : (
-                        <span className="trash-thumb" aria-hidden="true" />
-                      )}
+                      <Photo
+                        value={recipePhoto(recipe)}
+                        className="trash-thumb"
+                        alt=""
+                        standIn={<span className="trash-thumb" aria-hidden="true" />}
+                        fallback={<span className="trash-thumb" aria-hidden="true" />}
+                      />
                       <span className="trash-text">
                         <span className="trash-name">{recipe.name}</span>
                         <span className="trash-when">

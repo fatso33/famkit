@@ -9,6 +9,7 @@ import { recipePhoto } from '../../utils/vault';
 import { creditName } from '../../utils/ownership';
 import { photoPending } from '../../utils/deviceCopy';
 import { CategoryTile } from './CategoryTile';
+import { Photo } from '../common/Photo';
 import { MakeBadge, RemixBadge, RemixMark } from './RemixMarks';
 
 interface RecipeCardProps {
@@ -49,7 +50,6 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
 }) => {
   const recipe = getLocalizedRecipe(rawRecipe, language) || rawRecipe;
   const timeLabel = recipeTimeLabel(recipe, t);
-  const photo = recipePhoto(recipe);
   const description =
     recipe.cardDescription || recipe.tips || recipe.notes || t.cardDescriptionFallback;
 
@@ -77,18 +77,14 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
             {t.draftRibbon}
           </span>
         )}
-        {photo ? (
-          <img
-            src={photo}
-            alt={recipe.name}
-            // The card flipping open must be whole in the snapshot the flip is made of.
-            loading={isFlipTarget ? 'eager' : 'lazy'}
-          />
-        ) : photoPending(rawRecipe) ? (
-          <div className="photo-pending" />
-        ) : (
-          <CategoryTile recipe={rawRecipe} />
-        )}
+        <Photo
+          value={recipePhoto(recipe)}
+          alt={recipe.name}
+          // The card flipping open must be whole in the snapshot the flip is made of.
+          loading={isFlipTarget ? 'eager' : 'lazy'}
+          waiting={photoPending(rawRecipe)}
+          fallback={<CategoryTile recipe={rawRecipe} />}
+        />
       </div>
       <div className="card-body">
         <div className="card-title-row">

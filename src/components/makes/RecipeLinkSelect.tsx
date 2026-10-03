@@ -10,6 +10,7 @@ import { creditName } from '../../utils/ownership';
 import { CategoryTile } from '../recipe-grid/CategoryTile';
 import { prefersReducedMotion } from '../../utils/viewTransition';
 import { RecipeCardIcon } from '../common/RecipeBoxIcon';
+import { Photo } from '../common/Photo';
 
 interface RecipeLinkSelectProps {
   /** The recipe picked, by id ('' for none yet). */
@@ -198,7 +199,6 @@ const RecipeList: React.FC<RecipeListProps> = ({
         <div className="recipe-link-options" role="listbox" id={id} aria-labelledby={labelId}>
           {matches.length === 0 && <p className="recipe-link-none">{t.noRecipesMatch}</p>}
           {matches.map(({ recipe, text }, i) => {
-            const photo = recipePhoto(text);
             const selected = recipe.id === value;
             return (
               <button
@@ -225,11 +225,13 @@ const RecipeList: React.FC<RecipeListProps> = ({
                 }}
               >
                 <span className="recipe-link-thumb" aria-hidden="true">
-                  {photo ? (
-                    <img src={photo} alt="" decoding="async" loading="lazy" />
-                  ) : (
-                    <CategoryTile recipe={recipe} />
-                  )}
+                  <Photo
+                    value={recipePhoto(text)}
+                    alt=""
+                    decoding="async"
+                    loading="lazy"
+                    fallback={<CategoryTile recipe={recipe} />}
+                  />
                 </span>
                 <span className="recipe-link-text">
                   <span className="category-option-label">{text.name}</span>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { RecipeDraft } from '../types/recipe';
 import { deleteDraftFromCloud, saveDraftToCloud, subscribeToDrafts } from '../services/drafts';
+import { photosCommitted, withPhotosApart } from '../services/photos';
 import type { CurrentUser } from './useCurrentUser';
 
 /**
@@ -26,8 +27,11 @@ export function useDrafts(currentUser: CurrentUser | null) {
   const drafts = mine ? state.drafts : [];
 
   const saveDraft = useCallback(
-    (draft: RecipeDraft): Promise<void> => {
+    (written: RecipeDraft): Promise<void> => {
       if (!email) return Promise.reject(new Error('Drafts need a signed-in family member'));
+      // Its new photos go to the cloud on their own, beside it (services/photos).
+      const { recipe, uploads } = withPhotosApart(written.recipe);
+      const draft = { ...written, recipe };
       setState((prev) => ({
         email,
         loaded: prev.email === email && prev.loaded,
@@ -36,7 +40,7 @@ export function useDrafts(currentUser: CurrentUser | null) {
           draft,
         ],
       }));
-      return saveDraftToCloud(email, draft);
+      return saveDraftToCloud(email, draft, uploads).then(() => photosCommitted(uploads));
     },
     [email],
   );

@@ -17,6 +17,8 @@ import {
   withRecipePhotos,
 } from '../utils/deviceCopy';
 import { devicePhotos, keepDevicePhotos, loadDevicePhotos, loadPhotosFirst } from './photoStore';
+import { photoIdOf } from '../utils/photoRefs';
+import { recipePhoto } from '../utils/vault';
 import { latestMakes, latestRecipes } from '../utils/counter';
 import { familyMemberName } from '../utils/ownership';
 import { isSeasonPreference, SeasonPreference } from '../utils/season';
@@ -173,7 +175,8 @@ export function withDeviceMakePhotos(makes: Make[]): Make[] {
  * Reads the photos kept on this device before the app first draws, so it starts with them
  * rather than filling them in a moment later. Only those My Counter shows (the latest recipes
  * and makes) are waited for, read ahead of the rest, which follow straight after for the pages
- * behind it. Waits at most `maxWait` ms, and only when a copy here is waiting for photos.
+ * behind it. Waits at most `maxWait` ms, and only when a copy here is waiting for photos. (The
+ * photos kept on their own are read beside this, from recipeHeroIds.)
  */
 export function loadDevicePhotosForLaunch(maxWait: number): Promise<void> {
   const raw = (key: string) => {
@@ -192,6 +195,30 @@ export function loadDevicePhotosForLaunch(maxWait: number): Promise<void> {
   }
   const read = loadPhotosFirst(counterPhotoKeys(recipesRaw, makesRaw));
   return Promise.race([read, new Promise<void>((resolve) => setTimeout(resolve, maxWait))]);
+}
+
+/**
+ * The ids of the recipes' own photos kept on their own, from this device's copy: those My
+ * Counter shows (`first`), then the rest, newest first.
+ */
+export function recipeHeroIds(): { first: string[]; rest: string[] } {
+  let parsed: unknown;
+  try {
+    const recipesRaw = localStorage.getItem(RECIPES_KEY) ?? '';
+    if (!recipesRaw.includes('"photo:')) return { first: [], rest: [] };
+    parsed = JSON.parse(recipesRaw);
+  } catch {
+    return { first: [], rest: [] };
+  }
+  const recipes = (Array.isArray(parsed) ? parsed : []).filter(
+    (r): r is Recipe => typeof (r as Recipe | null)?.id === 'string',
+  );
+  const heroOf = (r: Recipe) => photoIdOf(recipePhoto(r));
+  const first = latestRecipes(recipes).map(heroOf);
+  const shown = new Set(first);
+  const rest = recipes.map(heroOf).filter((id) => !shown.has(id));
+  const ids = (list: (string | null)[]) => [...new Set(list.filter((id) => id !== null))];
+  return { first: ids(first), rest: ids(rest) };
 }
 
 /** The photo store's keys for what My Counter shows first, from this device's copy. */

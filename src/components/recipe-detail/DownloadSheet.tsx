@@ -5,6 +5,7 @@ import { useBackStep } from '../../hooks/useBackStep';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { useExitAnimation } from '../../hooks/useExitAnimation';
 import { useInertBehind } from '../../hooks/useInertBehind';
+import { Photo } from '../common/Photo';
 
 interface DownloadSheetProps {
   /** The file it saves ("Wanda's Cheese Bread.pdf"). */
@@ -22,12 +23,15 @@ const MiniPage: React.FC<{ photo?: string }> = ({ photo }) => (
   <span className="pdf-mini" aria-hidden="true">
     <span className="pdf-mini-title" />
     <span className="pdf-mini-credit" />
-    {photo !== undefined &&
-      (photo ? (
-        <img className="pdf-mini-photo" src={photo} alt="" />
-      ) : (
-        <span className="pdf-mini-photo" />
-      ))}
+    {photo !== undefined && (
+      <Photo
+        value={photo}
+        className="pdf-mini-photo"
+        alt=""
+        standIn={<span className="pdf-mini-photo" />}
+        fallback={<span className="pdf-mini-photo" />}
+      />
+    )}
     <span className="pdf-mini-columns">
       <span className="pdf-mini-column is-narrow">
         <span />

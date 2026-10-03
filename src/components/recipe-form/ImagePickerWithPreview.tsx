@@ -2,6 +2,7 @@ import React from 'react';
 import { Camera, ImagePlus, X } from 'lucide-react';
 import { UiTranslations } from '../../i18n/translations';
 import { usePhotoPicker } from '../../hooks/usePhotoPicker';
+import { usePhoto } from '../../hooks/usePhoto';
 
 interface ImagePickerWithPreviewProps {
   imageUrl: string;
@@ -16,13 +17,18 @@ export const ImagePickerWithPreview: React.FC<ImagePickerWithPreviewProps> = ({
   t,
 }) => {
   const { inputs, chooseFile, takePhoto } = usePhotoPicker(onChange);
+  const shown = usePhoto(imageUrl);
 
   return (
     <div className="image-picker-zone">
       {inputs}
       {imageUrl ? (
         <div className="image-preview-wrapper">
-          <img src={imageUrl} alt={t.photoPreviewAlt} className="image-preview-thumb" />
+          {shown.src ? (
+            <img src={shown.src} alt={t.photoPreviewAlt} className="image-preview-thumb" />
+          ) : (
+            <span className="image-preview-thumb photo-pending" />
+          )}
           <button
             type="button"
             className="image-delete-badge"

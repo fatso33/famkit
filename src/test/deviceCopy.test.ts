@@ -223,3 +223,32 @@ describe('keeping photos already loaded', () => {
     expect(keepLoadedPhotos([full], [edited])[0]).toBe(edited);
   });
 });
+
+describe('photos kept on their own (services/photos)', () => {
+  const ref = (n: string) => `photo:${n.repeat(32)}`;
+  const pointed = recipe('pointed', 1, {
+    heroImage: ref('a'),
+    steps: [
+      { num: 1, text: 'Mix.', hasImage: true, imageSrc: ref('b') },
+      { num: 2, text: 'Bake.', hasImage: true, imageSrc: photo('old') },
+    ],
+  });
+
+  it("are only pointed at, so this device's copy keeps them and stays editable", () => {
+    const allApart = { ...pointed, steps: pointed.steps.slice(0, 1) };
+    expect(leavePhotosOut(allApart)).toBe(allApart);
+    expect(recipePhotoEntry(allApart)).toBeNull();
+  });
+
+  it('are kept beside the photos an older recipe still holds, which are left out and put back', () => {
+    const slim = leavePhotosOut(pointed);
+    expect(slim.heroImage).toBe(ref('a'));
+    expect(slim.steps[0].imageSrc).toBe(ref('b'));
+    expect(slim.steps[1].imageSrc).toBeUndefined();
+    expect(slim.photosOmitted).toEqual({ hero: false });
+
+    const entry = recipePhotoEntry(pointed)!;
+    expect(Object.keys(entry.photos)).toEqual(['s1']);
+    expect(withRecipePhotos(slim, entry)).toEqual(pointed);
+  });
+});
