@@ -101,10 +101,13 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
         <span className="vault-card-rule" aria-hidden="true" />
         <div className="card-meta">
           <span className="card-cook">{creditName(recipe)}</span>
-          <span className="card-time">
-            <Timer className="time-icon" size="1.05em" strokeWidth={2.1} aria-hidden="true" />
-            {estimatedTime}
-          </span>
+          {/* A draft with no steps yet has no time to show. */}
+          {time.minutes > 0 && (
+            <span className="card-time">
+              <Timer className="time-icon" size="1.05em" strokeWidth={2.1} aria-hidden="true" />
+              {estimatedTime}
+            </span>
+          )}
           {(remixCount > 0 || makeCount > 0) && (
             <span className="vault-badges">
               {remixCount > 0 && <RemixBadge count={remixCount} />}

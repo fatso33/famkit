@@ -227,6 +227,174 @@ describe('AddRecipeModal initial form', () => {
     expect(screen.getByLabelText(t.stepInstructionLabel(2))).toHaveValue('Bake.');
   });
 
+  it('keeps a new recipe on this phone whatever is written first, not only a name', () => {
+    const { unmount } = render(<AddRecipeModal onClose={noop} onSave={noop} t={t} />);
+    fireEvent.change(screen.getByLabelText(t.descriptionLabel), {
+      target: { value: 'Soft, with a crackly top' },
+    });
+    unmount();
+
+    render(<AddRecipeModal onClose={noop} onSave={noop} t={t} />);
+    expect(screen.getByDisplayValue('Soft, with a crackly top')).toBeInTheDocument();
+    expect(screen.getByText(t.draftRestored)).toBeInTheDocument();
+  });
+
+  it('asks for a name for an ingredient given only an amount, and saves nothing', () => {
+    const onSave = vi.fn();
+    render(<AddRecipeModal initialRecipe={recipe} onClose={noop} onSave={onSave} t={t} />);
+    fireEvent.click(screen.getByRole('button', { name: t.addIngredient }));
+    fireEvent.change(screen.getByLabelText(t.ingredientAmountLabel(2)), {
+      target: { value: '200 g' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: t.save }));
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent(t.ingredientNameRequired);
+    expect(screen.getByLabelText(t.ingredientNameLabel(2))).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText(t.ingredientNameLabel(1))).not.toHaveAttribute('aria-invalid');
+  });
+
+  it('starts a new recipe with no yield, rather than "For 1 loaf:"', () => {
+    render(<AddRecipeModal onClose={noop} onSave={noop} t={t} />);
+    expect(screen.getByLabelText(t.yieldHeader)).toHaveValue('');
+  });
+
+  it('estimates no time until there are steps, then works it out from them', () => {
+    render(<AddRecipeModal onClose={noop} onSave={noop} t={t} />);
+    expect(screen.getByText(t.timeFromSteps)).toBeInTheDocument();
+    expect(screen.queryByText(t.estimatedTime(25))).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(t.stepInstructionLabel(1)), {
+      target: { value: 'Bake for 40 minutes.' },
+    });
+    expect(screen.getByText(t.timeWorkedOut)).toBeInTheDocument();
+  });
+
+  it('keeps an unsaved edit on this phone, and brings it back when the recipe is opened again', () => {
+    const edited: Recipe = { ...recipe, updatedAt: 5 };
+    const { unmount } = render(
+      <AddRecipeModal initialRecipe={edited} onClose={noop} onSave={noop} t={t} />,
+    );
+    fireEvent.change(screen.getByLabelText(t.recipeTitle), {
+      target: { value: 'Aunt Ola Pierogi, crispier' },
+    });
+    unmount(); // the app was closed mid-edit
+
+    const onSave = vi.fn();
+    render(<AddRecipeModal initialRecipe={edited} onClose={noop} onSave={onSave} t={t} />);
+    expect(screen.getByDisplayValue('Aunt Ola Pierogi, crispier')).toBeInTheDocument();
+    expect(screen.getByText(t.draftRestored)).toBeInTheDocument();
+
+    // Saved, it counts as a text change (so it's translated), and the kept copy goes.
+    fireEvent.click(screen.getByRole('button', { name: t.save }));
+    expect(onSave.mock.calls[0][0]).toMatchObject({ name: 'Aunt Ola Pierogi, crispier' });
+    expect(onSave.mock.calls[0][2]).toBe(true);
+  });
+
+  it('lets a kept edit go once the recipe has been saved since, or the edit is discarded', () => {
+    const edited: Recipe = { ...recipe, updatedAt: 5 };
+    const first = render(
+      <AddRecipeModal initialRecipe={edited} onClose={noop} onSave={noop} t={t} />,
+    );
+    fireEvent.change(screen.getByLabelText(t.recipeTitle), { target: { value: 'Old edit' } });
+    first.unmount();
+
+    // Saved from another phone meanwhile: the copy is out of date.
+    const second = render(
+      <AddRecipeModal
+        initialRecipe={{ ...edited, updatedAt: 9 }}
+        onClose={noop}
+        onSave={noop}
+        t={t}
+      />,
+    );
+    expect(screen.getByDisplayValue('Aunt Ola Pierogi')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(t.recipeTitle), { target: { value: 'Newer edit' } });
+    fireEvent.click(screen.getByRole('button', { name: t.closeDialog }));
+    fireEvent.click(screen.getByRole('button', { name: t.discard }));
+    second.unmount();
+
+    render(
+      <AddRecipeModal
+        initialRecipe={{ ...edited, updatedAt: 9 }}
+        onClose={noop}
+        onSave={noop}
+        t={t}
+      />,
+    );
+    expect(screen.getByDisplayValue('Aunt Ola Pierogi')).toBeInTheDocument();
+  });
+
+  it('says when there are too many photos for the cloud, and stays open to take some out', () => {
+    const onSave = vi.fn();
+    const onToast = vi.fn();
+    const photo = `data:image/jpeg;base64,${'A'.repeat(250 * 1024)}`;
+    const heavy: Recipe = {
+      ...recipe,
+      heroImage: photo,
+      steps: Array.from({ length: 5 }, (_, i) => ({
+        num: i + 1,
+        text: `Step ${i + 1}.`,
+        hasImage: true,
+        imageSrc: photo,
+      })),
+    };
+    render(
+      <AddRecipeModal
+        initialRecipe={heavy}
+        onClose={noop}
+        onSave={onSave}
+        onToast={onToast}
+        t={t}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: t.save }));
+    expect(onSave).not.toHaveBeenCalled();
+    expect(onToast).toHaveBeenCalledWith(t.recipeTooBig, undefined, 'error');
+    expect(document.querySelector('.editor-layer.is-closing')).toBeNull();
+  });
+
+  it('puts the app behind it out of reach while open, but not the toast after it', () => {
+    const { rerender } = render(
+      <div>
+        <main>
+          <button type="button">Behind</button>
+        </main>
+        <AddRecipeModal initialRecipe={recipe} onClose={noop} onSave={noop} t={t} />
+        <button type="button">Undo</button>
+      </div>,
+    );
+    expect(screen.getByText('Behind').closest('[inert]')).not.toBeNull();
+    expect(screen.getByText('Undo').closest('[inert]')).toBeNull();
+
+    rerender(
+      <div>
+        <main>
+          <button type="button">Behind</button>
+        </main>
+        <button type="button">Undo</button>
+      </div>,
+    );
+    expect(screen.getByText('Behind').closest('[inert]')).toBeNull();
+  });
+
+  it('keeps focus in the preview, and gives it back to Preview when it closes', () => {
+    render(<AddRecipeModal initialRecipe={recipe} onClose={noop} onSave={noop} t={t} />);
+    const previewKey = screen.getByRole('button', { name: t.preview });
+    previewKey.focus();
+    fireEvent.click(previewKey);
+
+    // Everything under it is out of reach, so Tab can't land on the editor behind.
+    expect(document.getElementById('recipeTitleInput')!.closest('[inert]')).not.toBeNull();
+    expect(document.querySelector('.editor-save')!.closest('[inert]')).not.toBeNull();
+    expect(document.activeElement).toHaveAccessibleName(t.backToEditing);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(document.querySelector('.editor-preview')).toBeNull();
+    expect(document.getElementById('recipeTitleInput')!.closest('[inert]')).toBeNull();
+    expect(document.activeElement).toBe(previewKey);
+  });
+
   it('ignores drafts when editing and starts empty when creating without one', () => {
     localStorage.setItem('family_kitchen_recipe_draft', JSON.stringify({ title: 'Draft Babka' }));
     const { unmount } = render(

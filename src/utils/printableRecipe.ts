@@ -134,7 +134,10 @@ export function printableRecipe(
   const credits = [
     t.byAuthor(creditName(recipe)),
     ...(addedBy ? [t.addedBy(addedBy)] : []),
-    t.pdfTime(time.manual ? t.totalTime(time.minutes) : t.estimatedTime(time.minutes)),
+    // Nothing to tell the time from (no timed steps): no time, rather than "~0m".
+    ...(time.minutes > 0
+      ? [t.pdfTime(time.manual ? t.totalTime(time.minutes) : t.estimatedTime(time.minutes))]
+      : []),
   ];
 
   const ingredients = ingredientGroups(recipe.ingredients ?? []).map((group) => ({

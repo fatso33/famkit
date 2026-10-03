@@ -52,6 +52,16 @@ const stepsOf = (steps: PrintStep[]) =>
   steps.map((s) => (s.kind === 'plain' ? ['plain', s.text] : [s.kind, s.number]));
 
 describe('the recipe as its PDF shows it', () => {
+  it('leaves the time out when there is nothing to tell it from, rather than "~0m"', () => {
+    const untimed: Recipe = {
+      ...forked,
+      manualMinutes: undefined,
+      steps: [{ num: 1, text: 'Serve as you like it.', plain: true }],
+    };
+    const pdf = printableRecipe(untimed, 'en', t, { photos: false });
+    expect(pdf.credits.some((c) => c.startsWith('Time:'))).toBe(false);
+  });
+
   it("carries Wanda's bread as the recipe page shows it, amounts as written", () => {
     const pdf = printableRecipe(WANDAS_CHEESE_BREAD, 'en', t, { photos: false });
     expect(pdf.title).toBe("Wanda's Cheese Bread");

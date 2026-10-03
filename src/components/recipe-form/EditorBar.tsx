@@ -24,7 +24,7 @@ interface EditorBarProps {
   hasVersions: boolean;
   versionsOpen: boolean;
   onToggleVersions: () => void;
-  /** New recipes: "Draft saved" or "Draft restored". */
+  /** "Kept on this phone", "Unsaved work restored", the draft or the remix it is. */
   status: string | null;
   /** Scrolled down the form: the banner slides away, leaving the row of actions. */
   tucked: boolean;
@@ -44,6 +44,8 @@ interface EditorBarProps {
   onDiscardDraft?: () => void;
   /** Reports the bar's height, which the form below leaves room for. */
   onHeight: (px: number) => void;
+  /** Out of reach while a preview or a sheet covers the page. */
+  inert?: boolean;
   /** The version list, dropping down from under the title. */
   children?: React.ReactNode;
   t: UiTranslations;
@@ -75,6 +77,7 @@ export const EditorBar: React.FC<EditorBarProps> = ({
   onStartOver,
   onDiscardDraft,
   onHeight,
+  inert,
   children,
   t,
 }) => {
@@ -108,37 +111,50 @@ export const EditorBar: React.FC<EditorBarProps> = ({
     <header
       ref={bar}
       className={`editor-bar${tucked ? ' is-tucked' : ''}${scrolled ? ' is-scrolled' : ''}`}
+      inert={inert}
     >
       <div ref={banner} className="editor-bar-banner" inert={tucked}>
         <h2 className="editor-bar-title" id="editorTitle">
           {isEditMode ? t.editorTitleEdit : isRemix ? t.editorTitleRemix : t.editorTitleNew}
         </h2>
         {isEditMode ? (
-          hasVersions ? (
-            <button
-              type="button"
-              className="editor-version"
-              aria-haspopup="dialog"
-              aria-expanded={versionsOpen}
-              onClick={onToggleVersions}
-            >
-              {draftLabel ?? t.versionLabel(version)}
-              <ChevronDown className="editor-version-chevron" size="1.05em" aria-hidden="true" />
-            </button>
-          ) : (
-            <span className="editor-bar-status">{draftLabel ?? t.versionLabel(version)}</span>
-          )
-        ) : (
-          status && (
-            <span className="editor-bar-status" role="status">
-              {isRemix ? (
-                <Shuffle size="1.05em" strokeWidth={2.1} aria-hidden="true" />
-              ) : (
+          <>
+            {hasVersions ? (
+              <button
+                type="button"
+                className="editor-version"
+                aria-haspopup="dialog"
+                aria-expanded={versionsOpen}
+                onClick={onToggleVersions}
+              >
+                {draftLabel ?? t.versionLabel(version)}
+                <ChevronDown className="editor-version-chevron" size="1.05em" aria-hidden="true" />
+              </button>
+            ) : (
+              <span className="editor-bar-status">{draftLabel ?? t.versionLabel(version)}</span>
+            )}
+            {/* Only from the start (a restored edit): a line appearing mid-typing would move the form. */}
+            {status && (
+              <span className="editor-bar-status" role="status">
                 <CircleCheck size="1.05em" aria-hidden="true" />
-              )}
-              {status}
-            </span>
-          )
+                {status}
+              </span>
+            )}
+          </>
+        ) : (
+          // Always there, empty or not, so the form doesn't move down when it first says something.
+          <span className="editor-bar-status" role="status">
+            {status && (
+              <span key={status} className="editor-bar-status-text">
+                {isRemix ? (
+                  <Shuffle size="1.05em" strokeWidth={2.1} aria-hidden="true" />
+                ) : (
+                  <CircleCheck size="1.05em" aria-hidden="true" />
+                )}
+                {status}
+              </span>
+            )}
+          </span>
         )}
       </div>
       <div className="editor-bar-actions">

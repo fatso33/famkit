@@ -54,6 +54,7 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
   t,
 }) => {
   const photo = recipePhoto(shown);
+  const minutes = recipeTime(shown).minutes;
   // Named by the recipe alone, as in the box; the tag and the dot describe it.
   const noteId = useId();
   const note = !!tag || !!unseenLabel;
@@ -99,10 +100,13 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
             </span>
           )}
           <span className="vault-row-cook">{creditName(shown)}</span>
-          <span className="vault-row-time">
-            <Timer className="time-icon" size="1.05em" strokeWidth={2.1} aria-hidden="true" />
-            {t.totalTime(recipeTime(shown).minutes)}
-          </span>
+          {/* A draft with no steps yet has no time to show. */}
+          {minutes > 0 && (
+            <span className="vault-row-time">
+              <Timer className="time-icon" size="1.05em" strokeWidth={2.1} aria-hidden="true" />
+              {t.totalTime(minutes)}
+            </span>
+          )}
           {(remixCount > 0 || makeCount > 0) && (
             <span className="vault-badges">
               {remixCount > 0 && <RemixBadge count={remixCount} />}

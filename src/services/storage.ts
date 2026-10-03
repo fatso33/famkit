@@ -507,6 +507,79 @@ export function setCounterMemory(email: string, memory: CounterMemory): void {
   }
 }
 
+// Unsaved edits kept on this phone as they're typed, so closing the app by accident loses
+// nothing: by what's open (an edit, a draft, a remix), the newest first, a few at most.
+const KEPT_EDITS_KEY = 'family_kitchen_kept_edits';
+const MAX_KEPT_EDITS = 3;
+
+/** An unsaved edit kept on this phone, and what it was made from (see keepEdit). */
+export interface KeptEdit {
+  /**
+   * What it edits, as it was when the copy was made (see the editor's keptStamp): a copy of an
+   * edit to a recipe that has changed since is out of date.
+   */
+  base: string;
+  /** The content as written so far, shaped as a stored draft (read back with parseDraft). */
+  draft: unknown;
+}
+
+function readKeptEdits(): [string, KeptEdit][] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(KEPT_EDITS_KEY) || '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (entry): entry is [string, KeptEdit] =>
+        Array.isArray(entry) &&
+        typeof entry[0] === 'string' &&
+        typeof entry[1] === 'object' &&
+        entry[1] !== null &&
+        typeof (entry[1] as KeptEdit).base === 'string',
+    );
+  } catch {
+    return [];
+  }
+}
+
+/** The unsaved edit kept for what's open (e.g. "edit:<recipe id>"), if there is one. */
+export function getKeptEdit(scope: string): KeptEdit | null {
+  if (typeof window === 'undefined') return null;
+  return readKeptEdits().find(([key]) => key === scope)?.[1] ?? null;
+}
+
+/** Keeps an unsaved edit, dropping the oldest kept ones when the phone's storage is full. */
+export function keepEdit(scope: string, edit: KeptEdit): void {
+  if (typeof window === 'undefined') return;
+  let entries: [string, KeptEdit][] = [
+    [scope, edit] as [string, KeptEdit],
+    ...readKeptEdits().filter(([key]) => key !== scope),
+  ].slice(0, MAX_KEPT_EDITS);
+  while (entries.length > 0) {
+    try {
+      localStorage.setItem(KEPT_EDITS_KEY, JSON.stringify(entries));
+      return;
+    } catch (e) {
+      if (entries.length === 1) console.warn('Could not keep the unsaved edit (storage full?):', e);
+      entries = entries.slice(0, -1);
+    }
+  }
+  // Not even this one fits: an older copy of it mustn't come back in its place.
+  forgetKeptEdit(scope);
+}
+
+/** Lets go of the edit kept for what's open: it was saved, or discarded. */
+export function forgetKeptEdit(scope: string): void {
+  if (typeof window === 'undefined') return;
+  const entries = readKeptEdits();
+  const rest = entries.filter(([key]) => key !== scope);
+  if (rest.length === entries.length) return;
+  try {
+    if (rest.length > 0) localStorage.setItem(KEPT_EDITS_KEY, JSON.stringify(rest));
+    else localStorage.removeItem(KEPT_EDITS_KEY);
+  } catch (e) {
+    console.warn('Could not let go of the kept edit:', e);
+  }
+}
+
 // The fork path each recipe was last cooked on, per device: recipe id → fork step → path.
 const FORK_PATHS_KEY = 'family_kitchen_fork_paths';
 

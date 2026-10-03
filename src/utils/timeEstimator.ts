@@ -9,12 +9,13 @@ import { PathChoices, chosenPath, firstStepNumber, numberSteps, pathSteps } from
 const NOT_LETTER = '(?![a-ząćęłńóśźż])';
 const NUMBER = String.raw`(\d+(?:[.,]\d+)?)`;
 // Polish counts and cases ("minutę, minuty, minut, po 30 minutach") next to the English units.
-const UNIT = `(hours?|hrs?|h|godzin(?:ach|ami|a|ę|y)?|godz|minutes?|mins?|minut(?:ach|ami|a|ę|y)?|m)${NOT_LETTER}`;
+const UNIT = `(days?|dnia|dni|dob[aęy]|dób|hours?|hrs?|h|godzin(?:ach|ami|a|ę|y)?|godz|minutes?|mins?|minut(?:ach|ami|a|ę|y)?|m)${NOT_LETTER}`;
 const RANGE_JOIN = '(?:-|–|to|do)';
 
 // "1,5 godziny" is Polish for 1.5 hours.
 const parseNumber = (text: string) => parseFloat(text.replace(',', '.'));
-const unitMinutes = (value: number, unit: string) => (/^[hg]/.test(unit) ? value * 60 : value);
+const unitMinutes = (value: number, unit: string) =>
+  /^d/.test(unit) ? value * 24 * 60 : /^[hg]/.test(unit) ? value * 60 : value;
 
 // Durations said in words. Each counts once per text.
 const PHRASE_MINUTES: [RegExp, number][] = [
@@ -128,7 +129,8 @@ function repeatMinutes(text: string, steps: { num: number; duration: number }[])
 }
 
 /**
- * Estimated total time in minutes, rounded to the nearest 5. Format it with `t.estimatedTime`.
+ * Estimated total time in minutes, rounded to the nearest 5; 0 when there is nothing to go on
+ * (no steps), which is shown as no time at all. Format it with `t.estimatedTime`.
  * A fork counts the path in `choices` (its first path by default).
  */
 export function estimateRecipeMinutes(
@@ -203,9 +205,10 @@ export function estimateRecipeMinutes(
     totalMinutes += bakeTime;
   }
 
-  // 4. Round to the nearest 5 minutes
-  if (totalMinutes <= 0) totalMinutes = 25;
-  return Math.round(totalMinutes / 5) * 5;
+  // 4. Round to the nearest 5 minutes. Nothing to go on is no estimate (0), never a made-up
+  //    one; a recipe with steps never rounds down to nothing.
+  if (totalMinutes <= 0) return 0;
+  return Math.max(5, Math.round(totalMinutes / 5) * 5);
 }
 
 /** The time the author set, when it's a usable number of minutes. */

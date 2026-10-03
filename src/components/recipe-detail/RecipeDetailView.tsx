@@ -220,10 +220,13 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                 {t.byAuthor(creditName(recipe))}
               </span>
               {addedBy && <span className="detail-meta-item added-by">{t.addedBy(addedBy)}</span>}
-              <span id="detailEstimatedTime" className="detail-meta-item detail-time">
-                <Timer className="time-icon" size="1.05em" strokeWidth={2.1} aria-hidden="true" />
-                <NumberRoll value={timeText} />
-              </span>
+              {/* Previewing a recipe with no steps yet: no time to show. */}
+              {time.minutes > 0 && (
+                <span id="detailEstimatedTime" className="detail-meta-item detail-time">
+                  <Timer className="time-icon" size="1.05em" strokeWidth={2.1} aria-hidden="true" />
+                  <NumberRoll value={timeText} />
+                </span>
+              )}
               {remixes.length > 0 && (
                 <button
                   type="button"

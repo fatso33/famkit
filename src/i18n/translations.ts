@@ -90,6 +90,8 @@ export interface UiTranslations {
   editRecipe: string;
   draftRestored: string;
   confirmClearDraft: string;
+  /** Start over on an edit brought back from this phone: back to the recipe as saved. */
+  confirmRevertEdit: string;
   addStep: string;
   removeStep: string;
   takePhoto: string;
@@ -224,6 +226,8 @@ export interface UiTranslations {
   timeAuto: string;
   timeSet: string;
   timeWorkedOut: string;
+  /** Under the time while there are no steps to work it out from. */
+  timeFromSteps: string;
   timeSetByYou: string;
   hoursShort: string;
   minutesShort: string;
@@ -365,6 +369,12 @@ export interface UiTranslations {
   authorRequired: string;
   categoryRequired: string;
   ingredientsRequired: string;
+  /** The cloud refused a recipe's save (or its removal), so the family won't see it. */
+  cloudSaveFailed: (name: string) => string;
+  /** A recipe (or draft) with more photos than the cloud can take in one recipe. */
+  recipeTooBig: string;
+  /** An ingredient was given an amount but no name. */
+  ingredientNameRequired: string;
   stepsRequired: string;
   // Sign-in splash
   welcomeTo: string;
@@ -579,6 +589,8 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     editRecipe: 'Edit Recipe',
     draftRestored: 'Unsaved work restored',
     confirmClearDraft: 'Start over? What you wrote here will be cleared.',
+    confirmRevertEdit:
+      'Start over from the saved recipe? The changes you made here will be cleared.',
     addStep: 'Add step',
     removeStep: 'Remove step',
     takePhoto: 'Take photo',
@@ -689,6 +701,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     timeAuto: 'Auto',
     timeSet: 'Set',
     timeWorkedOut: 'Worked out from the steps',
+    timeFromSteps: 'Worked out once there are steps',
     timeSetByYou: 'Set by you',
     hoursShort: 'h',
     minutesShort: 'min',
@@ -820,6 +833,9 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     authorRequired: 'Add whose recipe it is',
     categoryRequired: 'Choose a category',
     ingredientsRequired: 'Add at least one ingredient',
+    ingredientNameRequired: 'Give each ingredient a name',
+    cloudSaveFailed: (name: string) => `“${name}” didn't reach the family. Try again.`,
+    recipeTooBig: 'Too many photos to share this recipe. Take one or two out, then save again.',
     stepsRequired: 'Add at least one step',
     welcomeTo: 'Welcome to',
     welcomeKitchen: 'Family Kitchen',
@@ -1072,6 +1088,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     editRecipe: 'Edytuj Przepis',
     draftRestored: 'Przywrócono niezapisaną pracę',
     confirmClearDraft: 'Zacząć od nowa? To, co tu napisano, zostanie usunięte.',
+    confirmRevertEdit: 'Wrócić do zapisanego przepisu? Zmiany wprowadzone tutaj zostaną usunięte.',
     addStep: 'Dodaj krok',
     removeStep: 'Usuń krok',
     takePhoto: 'Zrób zdjęcie',
@@ -1184,6 +1201,7 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     timeAuto: 'Auto',
     timeSet: 'Ustaw',
     timeWorkedOut: 'Obliczony na podstawie kroków',
+    timeFromSteps: 'Obliczy się po dodaniu kroków',
     timeSetByYou: 'Ustawiony przez Ciebie',
     hoursShort: 'godz.',
     minutesShort: 'min',
@@ -1317,6 +1335,9 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     authorRequired: 'Wpisz, czyj to przepis',
     categoryRequired: 'Wybierz kategorię',
     ingredientsRequired: 'Dodaj co najmniej jeden składnik',
+    ingredientNameRequired: 'Podaj nazwę każdego składnika',
+    cloudSaveFailed: (name: string) => `Przepis „${name}” nie dotarł do rodziny. Spróbuj ponownie.`,
+    recipeTooBig: 'Za dużo zdjęć, by udostępnić ten przepis. Usuń jedno lub dwa i zapisz ponownie.',
     stepsRequired: 'Dodaj co najmniej jeden krok',
     welcomeTo: 'Witamy w',
     welcomeKitchen: 'Rodzinnej Kuchni',

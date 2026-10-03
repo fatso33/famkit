@@ -225,7 +225,7 @@ export const emptyForm = (): FormState => ({
   author: '',
   category: '',
   cardDescription: '',
-  yieldHeader: DEFAULT_YIELD,
+  yieldHeader: '',
   heroImage: '',
   tips: '',
   notes: '',
@@ -495,7 +495,7 @@ export function formFromDraft(raw: unknown): FormState | null {
         : 'auto';
   form.category = isRecipeCategory(raw.category) ? raw.category : '';
   form.cardDescription = str(raw.cardDescription);
-  form.yieldHeader = typeof raw.yieldHeader === 'string' ? raw.yieldHeader : DEFAULT_YIELD;
+  form.yieldHeader = str(raw.yieldHeader);
   form.heroImage = recipePhoto({ heroImage: str(raw.heroImage) });
   form.tips = str(raw.tips);
   form.notes = str(raw.notes);
@@ -540,6 +540,17 @@ const sameText = (a: RowText, b: RowText) =>
   a.note === b.note &&
   a.substitute === b.substitute &&
   a.substituteAmount === b.substituteAmount;
+
+/**
+ * An ingredient given an amount but no name ("200 g" of what?). An older recipe's row is left as
+ * it was saved until it's changed.
+ */
+export function missingName(row: IngredientRowState): boolean {
+  if (row.heading) return false;
+  const shown = rowText(row);
+  if (shown.name || !shown.amount) return false;
+  return !(row.source && sameText(shown, row.source.shown));
+}
 
 /** The row as stored, or null when it's empty. */
 export function rowToIngredient(row: IngredientRowState): Ingredient | null {
@@ -721,13 +732,34 @@ export function formText(form: FormState): string {
   ]);
 }
 
-/** Whether a new recipe's form has anything worth keeping as a draft. */
+const written = (text: string) => text.trim() !== '';
+const hasExtras = (e: ExtrasState) => (e.showTip && written(e.tip)) || Boolean(e.imageSrc);
+
+/** Whether a new recipe's form has anything worth keeping as a draft: any field at all. */
 export function hasContent(form: FormState): boolean {
   return Boolean(
-    form.title.trim() ||
-    (form.authorMode === 'custom' && form.author.trim()) ||
-    form.ingredientRows.some((r) => r.name.trim()) ||
-    form.sections.some((s) => s.steps.some((st) => st.text.trim() || st.fork)),
+    [form.title, form.cardDescription, form.yieldHeader, form.tips, form.notes].some(written) ||
+    (form.authorMode === 'custom' && written(form.author)) ||
+    form.heroImage ||
+    form.manualMinutes !== null ||
+    form.ingredientRows.some(
+      (r) =>
+        written(r.name) ||
+        written(r.amount) ||
+        (r.showNote && written(r.note)) ||
+        (r.showSubstitute && written(r.substitute)),
+    ) ||
+    form.sections.some(
+      (s) =>
+        written(s.title) ||
+        s.steps.some(
+          (st) =>
+            written(st.text) ||
+            st.fork ||
+            st.substeps.some((sub) => written(sub.text)) ||
+            hasExtras(st),
+        ),
+    ),
   );
 }
 

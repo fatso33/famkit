@@ -7,7 +7,7 @@ import { Reveal } from '../common/Reveal';
 interface RecipeTimeFieldProps {
   /** The time the author set, or null while it's worked out from the steps. */
   manualMinutes: number | null;
-  /** The estimate from the steps as they are now. */
+  /** The estimate from the steps as they are now: 0 while there are none. */
   estimate: number;
   onChange: (minutes: number | null) => void;
   t: UiTranslations;
@@ -28,6 +28,8 @@ export const RecipeTimeField: React.FC<RecipeTimeFieldProps> = ({
 }) => {
   const labelId = useId();
   const isSet = manualMinutes !== null;
+  // No steps yet, so nothing to estimate: no number rather than a made-up one.
+  const pending = !isSet && estimate === 0;
   const minutes = manualMinutes ?? estimate;
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
@@ -45,7 +47,7 @@ export const RecipeTimeField: React.FC<RecipeTimeFieldProps> = ({
           <div className="time-field-reading" aria-live="polite">
             <NumberRoll
               className="time-field-value"
-              value={isSet ? t.totalTime(minutes) : t.estimatedTime(estimate)}
+              value={isSet ? t.totalTime(minutes) : pending ? '–' : t.estimatedTime(estimate)}
             />
             <span className="time-field-caption">
               {isSet ? (
@@ -53,7 +55,7 @@ export const RecipeTimeField: React.FC<RecipeTimeFieldProps> = ({
               ) : (
                 <Sparkles size="1em" aria-hidden="true" />
               )}
-              {isSet ? t.timeSetByYou : t.timeWorkedOut}
+              {isSet ? t.timeSetByYou : pending ? t.timeFromSteps : t.timeWorkedOut}
             </span>
           </div>
           <div className="choice-pill time-field-mode" data-value={isSet ? 'set' : 'auto'}>

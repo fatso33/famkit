@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fitScale, MIN_FIT, mostCrowded, widestRun } from '../utils/fitText';
+import { fitScale, MIN_FIT, mostCrowded, toolStripRows, widestRun } from '../utils/fitText';
 
 describe('fitScale', () => {
   it('leaves text that fits at full size', () => {
@@ -60,5 +60,20 @@ describe('widestRun', () => {
   it('is 0 with nothing to measure', () => {
     expect(widestRun([])).toBe(0);
     expect(widestRun([null])).toBe(0);
+  });
+});
+
+describe('toolStripRows', () => {
+  it('keeps the tools on one row while their labels stay readable', () => {
+    expect(toolStripRows(1, 5)).toBe(1);
+    expect(toolStripRows(0.85, 5)).toBe(1);
+  });
+
+  it('puts them on two rows rather than shrinking the labels too far (Polish at 140%)', () => {
+    expect(toolStripRows(0.5, 5)).toBe(2);
+  });
+
+  it('never splits a short strip', () => {
+    expect(toolStripRows(0.5, 3)).toBe(1);
   });
 });

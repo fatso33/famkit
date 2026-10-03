@@ -126,9 +126,25 @@ describe('estimateRecipeMinutes', () => {
     );
   });
 
-  it('returns default estimate when recipe has no steps', () => {
+  it('has no estimate for a recipe with no steps, rather than a made-up one', () => {
     expect(estimateRecipeMinutes(null)).toBe(30);
-    expect(estimateRecipeMinutes({ steps: [] })).toBe(25);
+    expect(estimateRecipeMinutes({ steps: [] })).toBe(0);
+  });
+
+  it('never rounds a recipe with steps down to nothing', () => {
+    expect(estimateRecipeMinutes({ steps: [{ num: 1, text: 'Mix ingredients and serve.' }] })).toBe(
+      5,
+    );
+  });
+
+  it('reads days, in English and Polish', () => {
+    expect(extractTimeFromText('Ferment for 2 days.')).toBe(2 * 24 * 60);
+    expect(extractTimeFromText('Leave it 1 day in the fridge.')).toBe(24 * 60);
+    expect(extractTimeFromText('Odstaw na 2 dni.')).toBe(2 * 24 * 60);
+    expect(extractTimeFromText('Marynuj przez 1 dobę.')).toBe(24 * 60);
+    expect(extractTimeFromText('Kisi się 3-4 dni.')).toBe(3.5 * 24 * 60);
+    // "do" joins a range; it is not a unit.
+    expect(extractTimeFromText('Piecz od 20 do 30 minut.')).toBe(25);
   });
 });
 

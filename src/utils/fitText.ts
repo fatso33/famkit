@@ -36,3 +36,15 @@ export function widestRun(parts: readonly (number | null)[]): number {
   }
   return widest;
 }
+
+/** Below this, a tool strip's labels are too small to read, so its keys take two rows instead. */
+export const MIN_ONE_ROW_FIT = 0.8;
+
+/**
+ * How many rows a strip of `keys` takes, given how far its labels must shrink to fit on one:
+ * two (three keys over two) when one row would shrink them past MIN_ONE_ROW_FIT. A strip of
+ * three keys or fewer has room on one row.
+ */
+export function toolStripRows(oneRowScale: number, keys: number): 1 | 2 {
+  return oneRowScale < MIN_ONE_ROW_FIT && keys > 3 ? 2 : 1;
+}

@@ -64,7 +64,16 @@ export function useRecipes(
   currentUser: CurrentUser | null,
   /** Other documents waiting for translation (the makes), which share the recipes' requests. */
   extraJobs?: (now: number) => TranslationJob[],
+  /**
+   * A save the cloud refused (offline saves wait instead, and arrive later): told to the person
+   * who saved it, since the family won't see it.
+   */
+  onCloudSaveFailed?: (recipe: Recipe) => void,
 ) {
+  const latestOnCloudSaveFailed = useRef(onCloudSaveFailed);
+  useEffect(() => {
+    latestOnCloudSaveFailed.current = onCloudSaveFailed;
+  });
   const [recipes, setRecipes] = useState<Recipe[]>(getStoredRecipes);
   // The latest list, for callbacks that must build on it (an edit needs the version it replaces).
   const latestRecipes = useRef(recipes);
@@ -191,6 +200,7 @@ export function useRecipes(
       // Async sync to Cloud Firestore in background
       saveRecipeToCloud(recipeWithId).catch((err) => {
         console.warn('Failed to sync new recipe to cloud (retained locally):', err);
+        latestOnCloudSaveFailed.current?.(recipeWithId);
       });
 
       return recipeWithId;
@@ -224,6 +234,7 @@ export function useRecipes(
       // Async sync to Cloud Firestore in background
       saveRecipeToCloud(finalRecipe, newVersions).catch((err) => {
         console.warn('Failed to sync updated recipe to cloud (retained locally):', err);
+        latestOnCloudSaveFailed.current?.(finalRecipe);
       });
 
       return finalRecipe;
@@ -256,6 +267,7 @@ export function useRecipes(
 
     saveRecipeToCloud(updated).catch((err) => {
       console.warn(`Failed to sync recipe ${deleted ? 'deletion' : 'restore'} to cloud:`, err);
+      latestOnCloudSaveFailed.current?.(updated);
     });
     return true;
   }, []);

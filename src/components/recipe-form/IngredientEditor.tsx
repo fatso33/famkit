@@ -12,6 +12,7 @@ import { UiTranslations } from '../../i18n/translations';
 import { IngredientRowState, emptyRow, headingRow } from '../../utils/recipeForm';
 import { collapseAway, useListMotion } from '../../hooks/useListMotion';
 import { Reveal } from '../common/Reveal';
+import { ToolStrip } from '../common/ToolStrip';
 import { AutoGrowTextarea } from '../common/AutoGrowTextarea';
 import type { ToastAction } from '../../hooks/useToast';
 
@@ -27,6 +28,8 @@ interface IngredientEditorProps {
   restoredRows?: ReadonlySet<number>;
   restoredYield?: boolean;
   error?: string;
+  /** Rows given an amount but no name, marked once a save has asked for one. */
+  nameless?: ReadonlySet<string>;
   onToast: (message: string, action?: ToastAction) => void;
   t: UiTranslations;
 }
@@ -47,6 +50,7 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
   restoredRows,
   restoredYield,
   error,
+  nameless,
   onToast,
   t,
 }) => {
@@ -215,7 +219,10 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
                     </span>
                   )}
                   <Reveal open={active} className="item-tools">
-                    <div className="tool-strip" role="group" aria-label={t.ingredientHeadingTools}>
+                    <ToolStrip
+                      label={t.ingredientHeadingTools}
+                      labels={[t.moveUp, t.moveDown, t.remove]}
+                    >
                       {moveTools(row, index)}
                       <button
                         type="button"
@@ -226,7 +233,7 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
                         <Trash2 size="1.25rem" aria-hidden="true" />
                         <span aria-hidden="true">{t.remove}</span>
                       </button>
-                    </div>
+                    </ToolStrip>
                   </Reveal>
                 </li>
               );
@@ -252,6 +259,7 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
                     className="ingredient-name"
                     data-field="name"
                     aria-label={t.ingredientNameLabel(n)}
+                    aria-invalid={nameless?.has(row.id) || undefined}
                     autoComplete="off"
                     enterKeyHint="next"
                     value={row.name}
@@ -324,7 +332,10 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
                 )}
 
                 <Reveal open={active} className="item-tools">
-                  <div className="tool-strip" role="group" aria-label={t.ingredientTools(n)}>
+                  <ToolStrip
+                    label={t.ingredientTools(n)}
+                    labels={[t.moveUp, t.moveDown, t.note, t.swap, t.remove]}
+                  >
                     {moveTools(row, index)}
                     <button
                       type="button"
@@ -359,7 +370,7 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
                       <Trash2 size="1.25rem" aria-hidden="true" />
                       <span aria-hidden="true">{t.remove}</span>
                     </button>
-                  </div>
+                  </ToolStrip>
                 </Reveal>
               </li>
             );

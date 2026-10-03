@@ -6877,17 +6877,26 @@
         text-overflow: ellipsis;
       }
 
-      .editor-bar-status {
+      /* A new recipe's status line holds its height while empty, so the form below doesn't move
+         when it first says "Kept on this phone". */
+      .editor-bar-status,
+      .editor-bar-status-text {
         display: inline-flex;
         align-items: center;
         gap: 0.3rem;
         font-size: 0.8125rem;
         font-weight: 600;
+        line-height: 1.5;
+        min-height: 1.5em;
         color: var(--text-muted);
+      }
+
+      .editor-bar-status:not(:has(> .editor-bar-status-text)),
+      .editor-bar-status-text {
         animation: fk-fade-in 0.3s ease both;
       }
 
-      .editor-bar-status > svg {
+      .editor-bar-status svg {
         color: var(--success);
       }
 
@@ -7228,6 +7237,13 @@
 
       .choice-pill > label.is-active {
         color: var(--on-accent);
+      }
+
+      /* Each side reaches the pill's full height (48px), so its rim is part of the tap area. */
+      .choice-pill > label::before {
+        content: '';
+        position: absolute;
+        inset: -4px 0;
       }
 
       .choice-pill input {
@@ -7804,6 +7820,12 @@
         background: var(--menu-well);
       }
 
+      /* Too narrow for one readable row (ToolStrip): three keys over two. */
+      .tool-strip[data-rows='2'] {
+        grid-auto-flow: row;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
       .tool-strip-button {
         display: flex;
         flex-direction: column;
@@ -7830,9 +7852,11 @@
           transform 0.15s ease;
       }
 
-      .tool-strip-button > span {
+      /* A word too long for its key isn't broken: ToolStrip shrinks the strip's labels alike
+         (--fit-tool) until it fits. */
+      .tool-strip-button > span:not(.tool-strip-letter) {
         max-width: 100%;
-        overflow-wrap: anywhere;
+        font-size: calc(0.75rem * var(--fit-tool, 1));
       }
 
       .tool-strip-button .fork-icon {
@@ -9547,6 +9571,7 @@
         .editor-rise,
         .save-option,
         .editor-bar-status,
+        .editor-bar-status-text,
         .editor-preview-back,
         .editor-layer.is-closing .editor-save,
         .editor-layer.is-closing .editor-save-icon,

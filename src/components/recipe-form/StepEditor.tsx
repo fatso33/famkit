@@ -15,6 +15,7 @@ import { AutoGrowTextarea } from '../common/AutoGrowTextarea';
 import { ForkIcon } from '../common/ForkIcon';
 import { NumberRoll } from '../common/NumberRoll';
 import { Reveal } from '../common/Reveal';
+import { ToolStrip } from '../common/ToolStrip';
 import { ForkEditor } from './ForkEditor';
 import { ImagePickerWithPreview } from './ImagePickerWithPreview';
 
@@ -202,7 +203,10 @@ export const StepEditor: React.FC<StepEditorProps> = ({
 
   const tools = (
     <Reveal open={active} className="item-tools step-editor-tools">
-      <div className="tool-strip" role="group" aria-label={toolsName}>
+      <ToolStrip
+        label={toolsName}
+        labels={[substepsFull ? t.substepsFull : t.substep, t.tip, t.photo, t.fork, t.remove]}
+      >
         {!plain && !fork && (
           <button
             type="button"
@@ -275,7 +279,7 @@ export const StepEditor: React.FC<StepEditorProps> = ({
           <Trash2 size="1.25rem" aria-hidden="true" />
           <span aria-hidden="true">{t.remove}</span>
         </button>
-      </div>
+      </ToolStrip>
     </Reveal>
   );
 

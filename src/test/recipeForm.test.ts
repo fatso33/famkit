@@ -9,6 +9,8 @@ import {
   formFromRecipe,
   formText,
   formToRecipe,
+  hasContent,
+  missingName,
   moveStep,
   addPastedMethod,
   pastedIngredients,
@@ -303,6 +305,47 @@ describe('editing the method', () => {
     const steps = formToRecipe(form).steps;
     expect(steps).toEqual([expect.objectContaining({ num: 1, text: 'Mix.' })]);
     expect(steps[0].section).toBeUndefined();
+  });
+});
+
+describe('an ingredient with no name', () => {
+  const row = () => formFromDraft({})!.ingredientRows[0];
+  it('is an amount on its own, which needs a name to mean anything', () => {
+    expect(missingName({ ...row(), amount: '200 g' })).toBe(true);
+    expect(missingName({ ...row(), name: 'Salt' })).toBe(false);
+    expect(missingName(row())).toBe(false);
+  });
+
+  it('is left alone in an older recipe until the row is changed', () => {
+    const older = formFromRecipe({ ...plainRecipe, ingredients: [{ text: ' - 200 g' }] }, labels);
+    const kept = older.ingredientRows[0];
+    expect(kept.name).toBe('');
+    expect(missingName(kept)).toBe(false);
+    expect(missingName({ ...kept, amount: '250 g' })).toBe(true);
+  });
+});
+
+describe('what counts as written', () => {
+  const empty = () => formFromDraft({})!;
+  it('is nothing in an empty form', () => {
+    expect(hasContent(empty())).toBe(false);
+  });
+
+  it('is any one field, not only a name, an ingredient or a step', () => {
+    const one = (change: Partial<FormState>) => hasContent({ ...empty(), ...change });
+    expect(one({ heroImage: 'data:image/jpeg;base64,AAAA' })).toBe(true);
+    expect(one({ cardDescription: 'Soft' })).toBe(true);
+    expect(one({ tips: 'Use cold butter' })).toBe(true);
+    expect(one({ notes: 'Not in a glass dish' })).toBe(true);
+    expect(one({ yieldHeader: '2 loaves' })).toBe(true);
+    expect(one({ manualMinutes: 45 })).toBe(true);
+    const rows = empty().ingredientRows;
+    expect(one({ ingredientRows: [{ ...rows[0], amount: '200 g' }] })).toBe(true);
+    const sections = empty().sections;
+    const step = sections[0].steps[0];
+    expect(one({ sections: [{ ...sections[0], steps: [{ ...step, imageSrc: 'data:x' }] }] })).toBe(
+      true,
+    );
   });
 });
 

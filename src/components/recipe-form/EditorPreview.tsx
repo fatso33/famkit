@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Language, Recipe } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
@@ -28,7 +28,15 @@ export const EditorPreview: React.FC<EditorPreviewProps> = ({ recipe, language, 
   useDialogDismiss(requestClose);
   useBackStep(true, () => requestClose());
   const page = useRef<RecipePageHandle>(null);
+  const back = useRef<HTMLButtonElement>(null);
   const [photoOpen, setPhotoOpen] = useState(false);
+
+  // Focus starts on the way back; the key that opened the preview gets it back after.
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    back.current?.focus({ preventScroll: true });
+    return () => opener?.focus({ preventScroll: true });
+  }, []);
 
   return (
     <div
@@ -49,6 +57,7 @@ export const EditorPreview: React.FC<EditorPreviewProps> = ({ recipe, language, 
         />
       </div>
       <button
+        ref={back}
         type="button"
         className={`editor-preview-back${photoOpen ? ' is-over-photo' : ''}`}
         aria-label={photoOpen ? t.closePhotoPreview : t.backToEditing}

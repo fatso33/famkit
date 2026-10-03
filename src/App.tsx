@@ -216,7 +216,9 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
     loadVersion,
     deleteRecipe,
     restoreRecipe,
-  } = useRecipes(currentUser, collectMakeJobs);
+  } = useRecipes(currentUser, collectMakeJobs, (recipe) =>
+    showToast(t.cloudSaveFailed(recipe.name), 'error'),
+  );
   // The signed-in family member's unfinished recipes and edits, seen only by them.
   const {
     drafts,
@@ -1408,7 +1410,9 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
           }}
           animateIn={!editorReopened}
           origin={editorOrigin}
-          onToast={(message, action) => showToast(message, action ? 'info' : 'success', action)}
+          onToast={(message, action, tone) =>
+            showToast(message, tone ?? (action ? 'info' : 'success'), action)
+          }
           onDelete={editingRecipe ? () => handleDelete(editingRecipe.id) : undefined}
           language={language}
           onClose={closeEditor}
