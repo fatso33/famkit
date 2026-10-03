@@ -1,16 +1,16 @@
 import React, { useLayoutEffect, useRef } from 'react';
-import {
-  Check,
-  ChevronDown,
-  CircleCheck,
-  ClipboardPaste,
-  Eye,
-  RotateCcw,
-  Shuffle,
-  Trash2,
-  X,
-} from 'lucide-react';
+import { ChevronDown, CircleCheck, ClipboardPaste, Eye, Shuffle, X } from 'lucide-react';
 import { UiTranslations } from '../../i18n/translations';
+import { NumberRoll } from '../common/NumberRoll';
+
+const FITS = [
+  'row text long',
+  'row icons long',
+  'row icons short',
+  'wrap text long',
+  'wrap icons long',
+  'wrap icons short',
+];
 
 interface EditorBarProps {
   isEditMode: boolean;
@@ -31,16 +31,20 @@ interface EditorBarProps {
   /** Scrolled at all: a hairline separates the bar from the form. */
   scrolled: boolean;
   onClose: () => void;
+  /** Saves, or (with things missing) lifts the first of them. */
   onSave: () => void;
-  /** Save opens its choices (vault or draft), shown here while open. */
-  saveMenu?: React.ReactNode;
-  saveMenuOpen?: boolean;
+  /** How many things a save still needs: Save counts them down ("Save · 2 left"). */
+  missing: number;
+  /** Keeps it as a draft, finished or not. Missing with nobody signed in. */
+  onSaveDraft?: () => void;
+  /** The Draft key's full name, e.g. "Save draft v4". */
+  draftName: string;
   /** New recipes only. */
   onPaste?: () => void;
   onPreview: () => void;
-  /** Offered while a restored draft is open. */
+  /** Offered while a restored draft is open: a link after the status that says so. */
   onStartOver?: () => void;
-  /** Offered while a saved draft is open. */
+  /** Offered while a saved draft is open: a link after the draft's label. */
   onDiscardDraft?: () => void;
   /**
    * Reports the bar's height, which the form below leaves room for, and how far it slides up to
@@ -56,9 +60,13 @@ interface EditorBarProps {
 
 /**
  * The editor's bar: a banner with the title (and the version, which drops down its history),
- * and under it one row of everything there is to do: Close, Paste (new recipes), Preview and
- * Save. Scrolling down the form slides the banner away and leaves the row; scrolling up brings
- * it back.
+ * and under it one row of everything there is to do: Close, Paste (new recipes), Preview, then
+ * Draft and Save. Save counts down what's still needed. Scrolling down the form slides the
+ * banner away and leaves the row; scrolling up brings it back.
+ *
+ * The row never squeezes a word: when it doesn't fit, Paste and Preview become icon keys, then
+ * Save drops its "left" ("Save · 2"), and when that's still too wide (a small phone, large text),
+ * Draft and Save take a row of their own.
  */
 export const EditorBar: React.FC<EditorBarProps> = ({
   isEditMode,
@@ -73,8 +81,9 @@ export const EditorBar: React.FC<EditorBarProps> = ({
   scrolled,
   onClose,
   onSave,
-  saveMenu,
-  saveMenuOpen,
+  missing,
+  onSaveDraft,
+  draftName,
   onPaste,
   onPreview,
   onStartOver,
@@ -86,6 +95,9 @@ export const EditorBar: React.FC<EditorBarProps> = ({
 }) => {
   const bar = useRef<HTMLElement>(null);
   const banner = useRef<HTMLDivElement>(null);
+  const row = useRef<HTMLDivElement>(null);
+  const tools = useRef<HTMLDivElement>(null);
+  const saveKey = useRef<HTMLButtonElement>(null);
   const latestOnHeight = useRef(onHeight);
   useLayoutEffect(() => {
     latestOnHeight.current = onHeight;
@@ -108,6 +120,73 @@ export const EditorBar: React.FC<EditorBarProps> = ({
     return () => observer.disconnect();
   }, []);
 
+  // How the row fits (data-fit, three words): on one row or with Draft and Save on a row of their
+  // own; Paste and Preview with their words or as icon keys; Save's count with its "left" or
+  // without. Tried from roomiest to tightest whenever the width or what the keys say changes.
+  const fitKey = `${missing > 0}:${String(missing).length}:${Boolean(onPaste)}:${Boolean(onSaveDraft)}:${Boolean(onStartOver)}`;
+  useLayoutEffect(() => {
+    const el = row.current;
+    if (!el) return;
+    const overflows = () => {
+      const box = tools.current;
+      return (
+        el.scrollWidth > el.clientWidth + 1 ||
+        (box !== null && box.scrollWidth > box.clientWidth + 1)
+      );
+    };
+    const fit = () => {
+      for (const mode of FITS) {
+        el.dataset.fit = mode;
+        if (!overflows()) return;
+      }
+    };
+    fit();
+    // A font arriving widens the words without resizing the row (see useFitText).
+    document.fonts?.addEventListener?.('loadingdone', fit);
+    let width = el.clientWidth;
+    const observer =
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver(() => {
+            if (el.clientWidth === width) return;
+            width = el.clientWidth;
+            fit();
+          });
+    observer?.observe(el);
+    return () => {
+      observer?.disconnect();
+      document.fonts?.removeEventListener?.('loadingdone', fit);
+    };
+  }, [fitKey]);
+
+  const save = () => {
+    // Not ready yet: the key gives a small shake as the first missing part lifts.
+    if (missing > 0) {
+      saveKey.current?.animate?.(
+        [
+          { transform: 'none' },
+          { transform: 'translateX(-4px)' },
+          { transform: 'translateX(4px)' },
+          { transform: 'translateX(-2px)' },
+          { transform: 'none' },
+        ],
+        { duration: 320, easing: 'ease-out' },
+      );
+    }
+    onSave();
+  };
+
+  const link = (label: string, onClick: () => void) => (
+    <>
+      <span className="editor-bar-link-dot" aria-hidden="true">
+        ·
+      </span>
+      <button type="button" className="editor-bar-link" onClick={onClick}>
+        {label}
+      </button>
+    </>
+  );
+
   return (
     <header
       ref={bar}
@@ -120,45 +199,59 @@ export const EditorBar: React.FC<EditorBarProps> = ({
         </h2>
         {isEditMode ? (
           <>
-            {hasVersions ? (
-              <button
-                type="button"
-                className="editor-version"
-                aria-haspopup="dialog"
-                aria-expanded={versionsOpen}
-                onClick={onToggleVersions}
-              >
-                {draftLabel ?? t.versionLabel(version)}
-                <ChevronDown className="editor-version-chevron" size="1.05em" aria-hidden="true" />
-              </button>
-            ) : (
-              <span className="editor-bar-status">{draftLabel ?? t.versionLabel(version)}</span>
-            )}
+            <span className="editor-bar-line">
+              {hasVersions ? (
+                <button
+                  type="button"
+                  className="editor-version"
+                  aria-haspopup="dialog"
+                  aria-expanded={versionsOpen}
+                  onClick={onToggleVersions}
+                >
+                  {draftLabel ?? t.versionLabel(version)}
+                  <ChevronDown
+                    className="editor-version-chevron"
+                    size="1.05em"
+                    aria-hidden="true"
+                  />
+                </button>
+              ) : (
+                <span className="editor-bar-status">{draftLabel ?? t.versionLabel(version)}</span>
+              )}
+              {onDiscardDraft && link(t.discardDraft, onDiscardDraft)}
+            </span>
             {/* Only from the start (a restored edit): a line appearing mid-typing would move the form. */}
             {status && (
-              <span className="editor-bar-status" role="status">
-                <CircleCheck size="1.05em" aria-hidden="true" />
-                {status}
+              <span className="editor-bar-line">
+                <span className="editor-bar-status" role="status">
+                  <CircleCheck size="1.05em" aria-hidden="true" />
+                  {status}
+                </span>
+                {onStartOver && link(t.startOver, onStartOver)}
               </span>
             )}
           </>
         ) : (
           // Always there, empty or not, so the form doesn't move down when it first says something.
-          <span className="editor-bar-status" role="status">
-            {status && (
-              <span key={status} className="editor-bar-status-text">
-                {isRemix ? (
-                  <Shuffle size="1.05em" strokeWidth={2.1} aria-hidden="true" />
-                ) : (
-                  <CircleCheck size="1.05em" aria-hidden="true" />
-                )}
-                {status}
-              </span>
-            )}
+          <span className="editor-bar-line">
+            <span className="editor-bar-status" role="status">
+              {status && (
+                <span key={status} className="editor-bar-status-text">
+                  {isRemix ? (
+                    <Shuffle size="1.05em" strokeWidth={2.1} aria-hidden="true" />
+                  ) : (
+                    <CircleCheck size="1.05em" aria-hidden="true" />
+                  )}
+                  {status}
+                </span>
+              )}
+            </span>
+            {onStartOver && link(t.startOver, onStartOver)}
+            {onDiscardDraft && link(t.discardDraft, onDiscardDraft)}
           </span>
         )}
       </div>
-      <div className="editor-bar-actions">
+      <div ref={row} className="editor-bar-actions" data-fit={FITS[0]}>
         <button
           type="button"
           className="editor-bar-close"
@@ -167,44 +260,54 @@ export const EditorBar: React.FC<EditorBarProps> = ({
         >
           <X size="1.35rem" strokeWidth={2.2} aria-hidden="true" />
         </button>
-        <div className="editor-bar-tools">
+        <div ref={tools} className="editor-bar-tools">
           {onPaste && (
-            <button type="button" className="editor-chip" onClick={onPaste}>
+            <button type="button" className="editor-chip" aria-label={t.paste} onClick={onPaste}>
               <ClipboardPaste size="1.15em" aria-hidden="true" />
-              {t.paste}
+              <span className="editor-chip-label">{t.paste}</span>
             </button>
           )}
-          <button type="button" className="editor-chip" onClick={onPreview}>
+          <button type="button" className="editor-chip" aria-label={t.preview} onClick={onPreview}>
             <Eye size="1.15em" aria-hidden="true" />
-            {t.preview}
+            <span className="editor-chip-label">{t.preview}</span>
           </button>
-          {onStartOver && (
-            <button type="button" className="editor-chip" onClick={onStartOver}>
-              <RotateCcw size="1.1em" aria-hidden="true" />
-              {t.startOver}
-            </button>
-          )}
-          {onDiscardDraft && (
-            <button type="button" className="editor-chip" onClick={onDiscardDraft}>
-              <Trash2 size="1.05em" aria-hidden="true" />
-              {t.discardDraft}
-            </button>
-          )}
         </div>
-        <button
-          type="button"
-          className="editor-save"
-          aria-label={t.save}
-          aria-haspopup={saveMenu !== undefined ? 'dialog' : undefined}
-          aria-expanded={saveMenu !== undefined ? Boolean(saveMenuOpen) : undefined}
-          onClick={onSave}
-        >
-          <Check className="editor-save-icon" size="1.35rem" strokeWidth={2.6} aria-hidden="true" />
-        </button>
+        <div className="editor-save-group">
+          {onSaveDraft && (
+            <button
+              type="button"
+              className="editor-draft-key"
+              aria-label={draftName}
+              onClick={onSaveDraft}
+            >
+              {t.draftKey}
+            </button>
+          )}
+          <button
+            ref={saveKey}
+            type="button"
+            className={`editor-save${missing > 0 ? ' is-incomplete' : ''}`}
+            aria-label={missing > 0 ? t.saveMissing(missing) : t.save}
+            onClick={save}
+          >
+            <span className="editor-save-label">{t.save}</span>
+            {missing > 0 && (
+              <span className="editor-save-left" aria-hidden="true">
+                <span className="editor-save-dot">·</span>
+                {t.saveLeftBefore && (
+                  <span className="editor-save-left-word">{t.saveLeftBefore}</span>
+                )}
+                <NumberRoll value={missing} />
+                {t.saveLeftAfter && (
+                  <span className="editor-save-left-word">{t.saveLeftAfter}</span>
+                )}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
       {/* Outside the rows, which slide: a moving row would trap the menus' tap catchers. */}
       {children}
-      {saveMenuOpen && saveMenu}
     </header>
   );
 };

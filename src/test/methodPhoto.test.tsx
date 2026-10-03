@@ -5,6 +5,7 @@ import { StepsList } from '../components/recipe-detail/StepsList';
 import { UI_TEXT } from '../i18n/translations';
 import { Recipe, Step } from '../types/recipe';
 import { printableRecipe } from '../utils/printableRecipe';
+import { saveRecipe } from './editorHelpers';
 
 const t = UI_TEXT.en;
 
@@ -124,7 +125,7 @@ describe('a photo between the steps in the editor', () => {
         t={t}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: t.save }));
+    saveRecipe(t);
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByRole('alert')).toHaveTextContent(t.stepsRequired);
   });
@@ -132,7 +133,7 @@ describe('a photo between the steps in the editor', () => {
   it('saves the photo where it was put, unnumbered', () => {
     const onSave = vi.fn();
     render(<AddRecipeModal initialRecipe={recipe} onClose={vi.fn()} onSave={onSave} t={t} />);
-    fireEvent.click(screen.getByRole('button', { name: t.save }));
+    saveRecipe(t);
     const saved = onSave.mock.calls[0][0] as Recipe;
     expect(saved.steps.map((s) => [s.num, s.text, s.plain, s.imageSrc])).toEqual([
       [1, 'Mix.', undefined, undefined],

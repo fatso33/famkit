@@ -4,6 +4,7 @@ import { AddRecipeModal } from '../components/recipe-form/AddRecipeModal';
 import { CurrentUser, CurrentUserContext } from '../hooks/useCurrentUser';
 import { UI_TEXT } from '../i18n/translations';
 import { Recipe } from '../types/recipe';
+import { bylinePart, openBylinePart, pickCategory, saveRecipe } from './editorHelpers';
 
 const t = UI_TEXT.en;
 const ola: CurrentUser = { email: 'ola@example.com', name: 'Ola Nowak' };
@@ -37,9 +38,8 @@ function fillAndSave() {
   fireEvent.change(screen.getByLabelText(t.stepInstructionLabel(1)), {
     target: { value: 'Bake.' },
   });
-  fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${t.categoryLabel}`) }));
-  fireEvent.click(screen.getByRole('option', { name: t.recipeCategories.cakes }));
-  fireEvent.click(screen.getByRole('button', { name: t.save }));
+  pickCategory(t, 'cakes');
+  saveRecipe(t);
 }
 
 describe('recipe author choice', () => {
@@ -48,7 +48,9 @@ describe('recipe author choice', () => {
   it('credits the signed-in family member by default', () => {
     const onSave = renderForm(ola);
 
-    // Shown by first name and initial, so the switch stays short.
+    // The byline credits them; its popover has the choice. Shown by first name and initial.
+    expect(bylinePart(t, 'author')).toHaveAccessibleName(`${t.authorLabel}: Ola N.`);
+    openBylinePart(t, 'author');
     expect(screen.getByRole('radio', { name: 'Ola N.' })).toBeChecked();
     expect(screen.getByText(t.authorShownAs('Ola N.'))).toBeInTheDocument();
     expect(screen.queryByLabelText(t.authorNameLabel)).not.toBeInTheDocument();
@@ -60,6 +62,7 @@ describe('recipe author choice', () => {
   it('shows a name from the family list as written, not shortened', () => {
     renderForm({ email: 'zosia@example.com', name: 'Ciocia Zosia', nameAsTyped: true });
 
+    openBylinePart(t, 'author');
     expect(screen.getByRole('radio', { name: 'Ciocia Zosia' })).toBeChecked();
     expect(screen.getByText(t.authorShownAs('Ciocia Zosia'))).toBeInTheDocument();
   });
@@ -67,6 +70,7 @@ describe('recipe author choice', () => {
   it("takes a typed name for someone else's recipe", () => {
     const onSave = renderForm(ola);
 
+    openBylinePart(t, 'author');
     fireEvent.click(screen.getByRole('radio', { name: t.authorSomeoneElse }));
     fireEvent.change(screen.getByLabelText(t.authorNameLabel), {
       target: { value: '  Babcia Zosia ' },
@@ -82,6 +86,8 @@ describe('recipe author choice', () => {
   it('opens an older recipe with its typed author on "Someone else"', () => {
     renderForm(ola, legacyRecipe);
 
+    expect(bylinePart(t, 'author')).toHaveAccessibleName(`${t.authorLabel}: Babcia Zosia`);
+    openBylinePart(t, 'author');
     expect(screen.getByRole('radio', { name: t.authorSomeoneElse })).toBeChecked();
     expect(screen.getByLabelText(t.authorNameLabel)).toHaveValue('Babcia Zosia');
   });
@@ -89,6 +95,9 @@ describe('recipe author choice', () => {
   it('asks for a name when nobody is signed in to credit', () => {
     renderForm(null);
 
+    // Nobody to credit yet: the byline asks whose it is.
+    expect(bylinePart(t, 'author')).toHaveAccessibleName(`${t.authorLabel}: ${t.whoseRecipe}`);
+    openBylinePart(t, 'author');
     expect(screen.queryByRole('radio', { name: t.authorSomeoneElse })).not.toBeInTheDocument();
     expect(screen.getByLabelText(t.authorNameLabel)).toBeRequired();
   });

@@ -229,6 +229,25 @@ export interface UiTranslations {
   /** The remix badge on a recipe's page, e.g. "3 remixes". */
   remixCount: (count: number) => string;
   save: string;
+  /**
+   * The editor laid out as the recipe page (B1): the byline's lead word and its parts' prompts,
+   * the empty title and description, the keys that add a note, a tip or a source, the Draft key,
+   * what Save still needs, and the sheet that asks what changed.
+   */
+  bylineBy: string;
+  whoseRecipe: string;
+  addTimes: string;
+  titlePrompt: string;
+  descriptionPrompt: string;
+  addCrucialNote: string;
+  addKitchenTip: string;
+  draftKey: string;
+  /** Around the count on the Save key: "Save · 2 left" / "Zapisz · brakuje 2". */
+  saveLeftBefore: string;
+  saveLeftAfter: string;
+  /** The Save key's name while things are missing. */
+  saveMissing: (n: number) => string;
+  savingVersion: (version: number) => string;
   draftSaved: string;
   paste: string;
   preview: string;
@@ -722,6 +741,18 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     remixesTitle: 'Remixes',
     remixCount: (count: number) => `${count} ${count === 1 ? 'remix' : 'remixes'}`,
     save: 'Save',
+    bylineBy: 'by',
+    whoseRecipe: 'Whose recipe?',
+    addTimes: 'Add times',
+    titlePrompt: 'Name your recipe',
+    descriptionPrompt: 'A line for the card (optional)',
+    addCrucialNote: 'Add a crucial note',
+    addKitchenTip: 'Add a kitchen tip',
+    draftKey: 'Draft',
+    saveLeftBefore: '',
+    saveLeftAfter: 'left',
+    saveMissing: (n: number) => `Save, ${n} ${n === 1 ? 'thing' : 'things'} still needed`,
+    savingVersion: (version: number) => `Saving version ${version}`,
     draftSaved: 'Kept on this phone',
     paste: 'Paste',
     preview: 'Preview',
@@ -1233,6 +1264,18 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     remixesTitle: 'Remiksy',
     remixCount: (count: number) => `${count} ${plPlural(count, 'remiks', 'remiksy', 'remiksów')}`,
     save: 'Zapisz',
+    bylineBy: 'Autor:',
+    whoseRecipe: 'Czyj przepis?',
+    addTimes: 'Dodaj czasy',
+    titlePrompt: 'Nazwij swój przepis',
+    descriptionPrompt: 'Zdanie na kartę przepisu (opcjonalnie)',
+    addCrucialNote: 'Dodaj ważną uwagę',
+    addKitchenTip: 'Dodaj wskazówkę kuchenną',
+    draftKey: 'Szkic',
+    saveLeftBefore: 'brakuje',
+    saveLeftAfter: '',
+    saveMissing: (n: number) => `Zapisz, brakuje jeszcze: ${n}`,
+    savingVersion: (version: number) => `Zapisujesz wersję ${version}`,
     draftSaved: 'Zachowano na tym telefonie',
     paste: 'Wklej',
     preview: 'Podgląd',

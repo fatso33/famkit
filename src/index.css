@@ -7185,12 +7185,18 @@
       /* A round tick, the Close key's size, across the row from it. */
       .editor-save {
         flex: none;
-        width: 44px;
-        height: 44px;
-        display: grid;
-        place-items: center;
-        padding: 0;
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.3rem;
+        padding: 0.4rem 1.05rem;
         border: 0;
+        font: inherit;
+        font-size: 0.9375rem;
+        font-weight: 700;
+        white-space: nowrap;
         border-radius: var(--radius-full);
         background: var(--accent);
         color: var(--on-accent);
@@ -7211,17 +7217,136 @@
         animation: editor-save-pop 0.4s var(--spring-soft) both;
       }
 
-      .editor-layer.is-closing[data-exit='save'] .editor-save-icon {
-        animation: editor-save-tick 0.3s var(--ease-glide) both;
-      }
-
       @keyframes editor-save-pop {
         40% { transform: scale(1.08); }
         to { transform: none; }
       }
 
-      @keyframes editor-save-tick {
-        from { opacity: 0; transform: scale(0.4) rotate(-20deg); }
+      /* What Save still needs: "· 2 left", the count rolling as it goes down. */
+      .editor-save-left {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 0.25rem;
+        font-weight: 600;
+        color: color-mix(in srgb, var(--on-accent) 82%, transparent);
+      }
+
+      .editor-save-left .number-roll,
+      .editor-save-left > :not(.editor-save-dot) {
+        font-variant-numeric: tabular-nums;
+      }
+
+      .editor-save-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      /* Draft: the quieter of the two, an outline in the accent. */
+      .editor-draft-key {
+        flex: none;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.4rem 0.95rem;
+        border: 1.5px solid color-mix(in srgb, var(--accent) 70%, transparent);
+        border-radius: var(--radius-full);
+        background: var(--key-face);
+        color: var(--accent);
+        font: inherit;
+        font-size: 0.9375rem;
+        font-weight: 700;
+        white-space: nowrap;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          transform 0.15s ease,
+          border-color 0.2s ease;
+      }
+
+      .editor-draft-key:active {
+        transform: scale(0.96);
+      }
+
+      @media (hover: hover) {
+        .editor-draft-key:hover {
+          border-color: var(--accent);
+        }
+      }
+
+      .editor-draft-key:focus-visible,
+      .editor-save:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      /* When the row doesn't fit (EditorBar's data-fit): Save drops its "left", then Draft and
+         Save take a row of their own, sharing it. */
+      .editor-bar-actions[data-fit~='icons'] .editor-chip-label,
+      .editor-bar-actions[data-fit~='short'] .editor-save-left-word {
+        display: none;
+      }
+
+      .editor-bar-actions[data-fit~='icons'] .editor-bar-tools > .editor-chip {
+        width: 44px;
+        justify-content: center;
+        padding: 0;
+      }
+
+      .editor-bar-actions[data-fit~='wrap'] {
+        grid-template-columns: auto minmax(0, 1fr);
+        row-gap: 0.5rem;
+      }
+
+      .editor-bar-actions[data-fit~='wrap'] .editor-save-group {
+        grid-column: 1 / -1;
+      }
+
+      /* Sharing the row by what they say, so Save's count is never cut. */
+      .editor-bar-actions[data-fit~='wrap'] .editor-save-group > * {
+        flex: 1 1 auto;
+      }
+
+      /* The rare actions, as a link after what they act on: "Draft v4 · Discard draft". */
+      .editor-bar-line {
+        display: inline-flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 0 0.35rem;
+      }
+
+      .editor-bar-link-dot {
+        color: var(--text-muted);
+        font-size: 0.8125rem;
+      }
+
+      .editor-bar-link {
+        position: relative;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: var(--accent);
+        font: inherit;
+        font-size: 0.8125rem;
+        font-weight: 700;
+        line-height: 1.5;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      /* A finger-sized target around the small words. */
+      .editor-bar-link::before {
+        content: '';
+        position: absolute;
+        inset: -0.7rem -0.4rem;
+      }
+
+      .editor-bar-link:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: 4px;
       }
 
       /* Paste, Preview, Start over: raised chips (also the photo buttons). */
@@ -7542,6 +7667,424 @@
         margin-bottom: 0.3rem;
         font-size: 0.875rem;
         color: var(--text-secondary);
+      }
+
+      /* Read by screen readers, not shown. */
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      /* ── The editor as the recipe page: photo, name, byline, the card's line ── */
+      .editor-page-hero {
+        position: relative;
+        margin-bottom: 1.25rem;
+      }
+
+      .editor-page-name {
+        position: relative;
+        margin-bottom: 0.4rem;
+      }
+
+      /* A field with a gentle prompt in the page's voice while it's empty. The prompt sits in the
+         same grid cell as the field, so a prompt longer than a line makes room for itself. */
+      .prompt-field {
+        display: grid;
+      }
+
+      .prompt-field > * {
+        grid-area: 1 / 1;
+      }
+
+      .field-prompt {
+        pointer-events: none;
+        color: var(--text-muted);
+      }
+
+      /* The name as the page's title: no box, the title's own type. */
+      .editor-page-title-input,
+      .editor-page-title > .field-prompt {
+        margin: 0 -0.4rem;
+        padding: 0.1rem 0.4rem;
+        font-family: var(--font-serif);
+        font-size: clamp(2rem, 5vw, 3rem);
+        font-weight: var(--weight-heading);
+        line-height: 1.15;
+        letter-spacing: -0.01em;
+      }
+
+      .editor-page-title-input,
+      .editor-page-desc-input {
+        min-height: 0;
+        border: 0;
+        border-radius: var(--radius-sm);
+        background: transparent;
+        box-shadow: none;
+        color: var(--text-primary);
+        resize: none;
+        transition:
+          background-color 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+
+      .editor-page-title-input:focus,
+      .editor-page-desc-input:focus {
+        outline: none;
+        background: var(--bg-surface);
+        box-shadow: 0 0 0 2px var(--accent);
+      }
+
+      .editor-page-name.has-error .editor-page-title-input {
+        box-shadow: 0 0 0 2px #d9383a;
+      }
+
+      /* The card's line: quiet, under the byline. */
+      .editor-page-desc {
+        position: relative;
+        margin: 0.35rem 0 1.25rem;
+      }
+
+      .editor-page-desc-input,
+      .editor-page-desc-text > .field-prompt {
+        margin: 0 -0.4rem;
+        padding: 0.3rem 0.4rem;
+        font-family: var(--font-sans);
+        font-size: 1rem;
+        line-height: 1.45;
+      }
+
+      .editor-page-desc-input {
+        color: var(--text-secondary);
+      }
+
+      /* ── The byline: "by Peter G. · Cakes · 1h 20m", each part a key with its own popover ── */
+      .editor-page-byline {
+        position: relative;
+        z-index: 4;
+      }
+
+      .editor-byline-wrap {
+        position: relative;
+      }
+
+      .editor-byline {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1rem;
+        color: var(--text-muted);
+      }
+
+      .editor-byline-by {
+        font-weight: 600;
+        color: var(--text-secondary);
+      }
+
+      .byline-part {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        min-width: 0;
+        max-width: 100%;
+        min-height: 2.25rem;
+        padding: 0.2rem 0.75rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: 1.125rem;
+        background: var(--bg-card);
+        color: var(--text-primary);
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          transform 0.15s ease,
+          border-color 0.2s ease,
+          background-color 0.2s ease;
+      }
+
+      /* A finger-sized target around the pill. */
+      .byline-part::before {
+        content: '';
+        position: absolute;
+        inset: -0.3rem -0.1rem;
+      }
+
+      /* Wider than the line (large text), it wraps between words, never inside one. */
+      .byline-part-text {
+        min-width: 0;
+        text-align: left;
+      }
+
+      .byline-part-icon {
+        flex: none;
+        color: var(--accent);
+      }
+
+      .byline-part-chevron {
+        flex: none;
+        color: var(--text-muted);
+        transition: rotate 0.25s var(--ease-glide);
+      }
+
+      .byline-part[aria-expanded='true'] {
+        border-color: var(--accent);
+        background: var(--accent-subtle);
+      }
+
+      .byline-part[aria-expanded='true'] .byline-part-chevron {
+        rotate: 180deg;
+      }
+
+      .byline-part:active {
+        transform: scale(0.97);
+      }
+
+      @media (hover: hover) {
+        .byline-part:hover {
+          border-color: var(--accent);
+        }
+      }
+
+      .byline-part:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      /* Still needed (no category yet): dashed, in the accent. */
+      .byline-part.is-needed {
+        border: 1.5px dashed var(--accent);
+        background: transparent;
+        color: var(--accent);
+      }
+
+      .byline-part.is-quiet {
+        color: var(--text-secondary);
+      }
+
+      .byline-part.has-error {
+        border-color: #d9383a;
+      }
+
+      .byline-part.is-restored {
+        border-radius: 1.125rem;
+      }
+
+      .byline-pop-layer {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 6;
+      }
+
+      .byline-pop {
+        position: relative;
+        margin-top: 0.5rem;
+        padding: 0.9rem 1rem 0.75rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        background: var(--elev-menu);
+        box-shadow: var(--shadow-lg);
+        transform-origin: var(--pop-origin-x, 50%) 0;
+        animation: vault-popover-in 0.45s var(--spring-soft) both;
+      }
+
+      .byline-pop-layer.is-closing .byline-pop {
+        animation: fk-exit-popover 0.2s var(--ease-accelerate) both;
+      }
+
+      .editor-byline-wrap .category-list {
+        transform-origin: var(--pop-origin-x, 50%) 0;
+      }
+
+      .byline-pop-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 0.6rem;
+      }
+
+      .byline-author {
+        min-width: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+      }
+
+      /* The times sit in the popover's own card, without the heading (the pill above says it,
+         and the popover is named by it). */
+      .byline-pop .time-field-card {
+        padding: 0;
+        border: 0;
+        background: none;
+      }
+
+      .byline-pop .time-field-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      .byline-pop .time-entry-status {
+        min-height: 1.25rem;
+        line-height: 1.25rem;
+      }
+
+      .byline-pop .time-entry-input {
+        min-height: 44px;
+        padding-block: 0.4rem;
+      }
+
+      .byline-pop .time-field-hint {
+        margin-top: 0.35rem;
+      }
+
+      .byline-pop .time-suggest {
+        margin-top: 0.5rem;
+      }
+
+      /* Where there's room, a time is one row: icon, name, field, with the fields lined up down
+         the card and each reading on a short line under its field. Narrower (a small phone,
+         large text), the rows stay stacked. */
+      .byline-pop {
+        container-type: inline-size;
+      }
+
+      @container (min-width: 17rem) {
+        .byline-pop .time-field-card {
+          display: grid;
+          grid-template-columns: 1.25rem max-content minmax(0, 1fr);
+          column-gap: 0.65rem;
+          align-items: center;
+        }
+
+        .byline-pop .time-entry {
+          display: contents;
+        }
+
+        /* Placed by column alone: the stacked layout's named areas don't exist here. */
+        .byline-pop .time-entry > * {
+          grid-row: auto;
+        }
+
+        .byline-pop .time-entry-icon {
+          grid-column: 1;
+          align-self: center;
+          margin: 0;
+        }
+
+        .byline-pop .time-entry-label {
+          grid-column: 2;
+        }
+
+        .byline-pop .time-entry-input {
+          grid-column: 3;
+        }
+
+        .byline-pop .time-entry-status {
+          grid-column: 3;
+          margin-bottom: 0.15rem;
+        }
+
+        .byline-pop .time-field-card > :not(.time-entry) {
+          grid-column: 1 / -1;
+        }
+      }
+
+      .editor-page-byline > .editor-byline-wrap > .field-error {
+        margin-top: 0.5rem;
+      }
+
+      /* ── The note, tip and source: keys until they're added ── */
+      .editor-extra {
+        margin-bottom: 1.2rem;
+      }
+
+      .editor-add-key {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        width: 100%;
+        min-height: 48px;
+        padding: 0.5rem 1rem;
+        border: 1.5px dashed var(--border-strong);
+        border-radius: var(--radius-md);
+        background: transparent;
+        color: var(--accent);
+        font: inherit;
+        font-size: 0.9375rem;
+        font-weight: 700;
+        text-align: left;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          transform 0.15s ease,
+          border-color 0.2s ease,
+          background-color 0.2s ease;
+      }
+
+      .editor-add-key:active {
+        transform: scale(0.98);
+      }
+
+      .editor-add-key:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .editor-add-key.is-warn {
+        border-color: color-mix(in srgb, #d9383a 45%, transparent);
+        color: #b3261e;
+      }
+
+      [data-theme='dark'] .editor-add-key.is-warn {
+        color: #f2b8b5;
+      }
+
+      .editor-add-key.is-tip {
+        border-color: color-mix(in srgb, var(--accent-gold) 50%, transparent);
+        color: var(--accent-gold);
+      }
+
+      @media (hover: hover) {
+        .editor-add-key:hover {
+          background: var(--accent-subtle);
+          border-color: var(--accent);
+        }
+      }
+
+      /* Opened from its key, the field rises in. */
+      .editor-extra > .form-group {
+        margin-bottom: 0;
+        animation: fk-rise-in 0.3s var(--ease-glide) both;
+      }
+
+      .editor-sheet.is-change-note .form-control {
+        margin-bottom: 1rem;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .byline-pop,
+        .editor-extra > .form-group {
+          animation: fk-fade-in 0.15s ease both;
+        }
+        .byline-pop-layer.is-closing .byline-pop {
+          animation: fk-exit-fade 0.15s ease both;
+        }
+        .byline-part-chevron {
+          transition: none;
+        }
       }
 
       .editor-title-input {

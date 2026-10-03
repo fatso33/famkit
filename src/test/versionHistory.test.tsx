@@ -4,6 +4,7 @@ import App from '../App';
 import { UI_TEXT } from '../i18n/translations';
 import { chooseFromMenu } from './menu';
 import { Recipe } from '../types/recipe';
+import { saveRecipe } from './editorHelpers';
 
 // Firebase is off in tests, so versions go through the on-device store: only Gemini is mocked.
 vi.mock('../services/gemini', () => ({
@@ -44,10 +45,8 @@ function openVersions(editor: HTMLElement) {
 function renameTo(name: string, note: string) {
   const editor = openEditor();
   fireEvent.change(within(editor).getByLabelText(t.recipeTitle), { target: { value: name } });
-  fireEvent.change(within(editor).getByLabelText(/^What changed since v/), {
-    target: { value: note },
-  });
-  fireEvent.click(within(editor).getByRole('button', { name: t.save }));
+  // Save asks what changed, in a sheet.
+  saveRecipe(t, note);
 }
 
 describe('version history', () => {
@@ -87,11 +86,13 @@ describe('version history', () => {
     const restoredEditor = screen.getByRole('dialog', { name: /edit recipe/i });
     expect(within(restoredEditor).getByLabelText(t.recipeTitle)).toHaveValue('Babka');
     expect(within(restoredEditor).getAllByText(t.restoredChip)).toHaveLength(1);
-    expect(within(restoredEditor).getByLabelText(/^What changed since v/)).toHaveValue(
+    // Saving asks what changed, with the restore already said.
+    fireEvent.click(within(restoredEditor).getByRole('button', { name: t.save }));
+    const noteSheet = screen.getByRole('dialog', { name: t.savingVersion(3) });
+    expect(within(noteSheet).getByLabelText(/^What changed since v/)).toHaveValue(
       t.restoredNote(1),
     );
-
-    fireEvent.click(within(restoredEditor).getByRole('button', { name: t.save }));
+    fireEvent.click(within(noteSheet).getByRole('button', { name: t.save }));
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Babka');
     expect(stored()).toMatchObject({ name: 'Babka', version: 3, changeNote: t.restoredNote(1) });

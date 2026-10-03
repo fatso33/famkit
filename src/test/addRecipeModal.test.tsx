@@ -1,14 +1,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { AddRecipeModal } from '../components/recipe-form/AddRecipeModal';
 import { UI_TEXT } from '../i18n/translations';
 import { Recipe } from '../types/recipe';
+import {
+  bylinePart,
+  openBylinePart,
+  saveKey,
+  saveRecipe,
+  typeAuthor,
+  typeTime,
+} from './editorHelpers';
 
 const t = UI_TEXT.en;
 const noop = vi.fn();
 
-// The category field: its label, then what's picked.
-const categoryField = () => screen.getByRole('button', { name: new RegExp(`^${t.categoryLabel}`) });
+// The byline's category: its label, then what's picked.
+const categoryField = () => bylinePart(t, 'category');
 
 const recipe: Recipe = {
   id: 'custom-1',
@@ -25,7 +33,8 @@ const recipe: Recipe = {
 function fillNewRecipe() {
   fireEvent.change(screen.getByLabelText(t.recipeTitle), { target: { value: 'Żurek' } });
   // Nobody is signed in here, so the author is typed.
-  fireEvent.change(screen.getByLabelText(t.authorNameLabel), { target: { value: 'Kasia' } });
+  typeAuthor(t, 'Kasia');
+  fireEvent.click(screen.getByRole('button', { name: t.done }));
   fireEvent.change(screen.getByLabelText(t.ingredientNameLabel(1)), {
     target: { value: 'Sourdough starter' },
   });
@@ -73,7 +82,7 @@ describe('AddRecipeModal initial form', () => {
     render(<AddRecipeModal onClose={noop} onSave={noop} t={t} />);
 
     expect(screen.getByDisplayValue('Draft Babka')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Wanda')).toBeInTheDocument();
+    expect(bylinePart(t, 'author')).toHaveAccessibleName(`${t.authorLabel}: Wanda`);
   });
 
   it('keeps text typed just before closing in the draft (debounce is flushed on close)', () => {
@@ -94,25 +103,28 @@ describe('AddRecipeModal initial form', () => {
     render(<AddRecipeModal onClose={noop} onSave={onSave} t={t} />);
     fillNewRecipe();
 
-    // Saved without one, it says what's missing and saves nothing.
-    fireEvent.click(screen.getByRole('button', { name: t.save }));
+    // Saved without one, it says what's missing, saves nothing, and opens the categories.
+    expect(saveKey(t)).toHaveAccessibleName(t.saveMissing(1));
+    fireEvent.click(saveKey(t));
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByRole('alert')).toHaveTextContent(t.categoryRequired);
 
-    fireEvent.click(categoryField());
     const list = screen.getByRole('listbox', { name: t.categoryLabel });
     fireEvent.click(within(list).getByRole('option', { name: t.recipeCategories.soups }));
     expect(categoryField()).toHaveAccessibleName(`${t.categoryLabel} ${t.recipeCategories.soups}`);
 
-    fireEvent.click(screen.getByRole('button', { name: t.save }));
+    expect(saveKey(t)).toHaveAccessibleName(t.save);
+    saveRecipe(t);
     expect(onSave.mock.calls[0][0]).toMatchObject({ category: 'soups' });
   });
 
-  it('says which fields a new recipe still needs, and saves nothing', () => {
+  it('says which fields a new recipe still needs, and saves nothing', async () => {
     const onSave = vi.fn();
     render(<AddRecipeModal onClose={noop} onSave={onSave} t={t} />);
 
-    fireEvent.click(screen.getByRole('button', { name: t.save }));
+    // Name, author (nobody's signed in), category, an ingredient and a step.
+    expect(saveKey(t)).toHaveAccessibleName(t.saveMissing(5));
+    fireEvent.click(saveKey(t));
 
     expect(onSave).not.toHaveBeenCalled();
     const problems = screen.getAllByRole('alert').map((el) => el.textContent);
@@ -120,6 +132,8 @@ describe('AddRecipeModal initial form', () => {
       expect.arrayContaining([t.titleRequired, t.ingredientsRequired, t.stepsRequired]),
     );
     expect(screen.getByLabelText(t.recipeTitle)).toHaveAttribute('aria-invalid', 'true');
+    // The first thing missing, the name, takes the cursor.
+    await waitFor(() => expect(screen.getByLabelText(t.recipeTitle)).toHaveFocus());
   });
 
   it('opens an older recipe without a category unpicked, and saves it unchanged', () => {
@@ -127,7 +141,7 @@ describe('AddRecipeModal initial form', () => {
     render(<AddRecipeModal initialRecipe={recipe} onClose={noop} onSave={onSave} t={t} />);
     expect(categoryField()).toHaveAccessibleName(`${t.categoryLabel} ${t.chooseCategory}`);
 
-    fireEvent.click(screen.getByRole('button', { name: t.save }));
+    saveRecipe(t);
     expect(onSave.mock.calls[0][0]).toMatchObject({ category: 'family' });
   });
 
@@ -246,7 +260,7 @@ describe('AddRecipeModal initial form', () => {
     fireEvent.change(screen.getByLabelText(t.ingredientAmountLabel(2)), {
       target: { value: '200 g' },
     });
-    fireEvent.click(screen.getByRole('button', { name: t.save }));
+    fireEvent.click(saveKey(t));
 
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByRole('alert')).toHaveTextContent(t.ingredientNameRequired);
@@ -261,6 +275,8 @@ describe('AddRecipeModal initial form', () => {
 
   it('suggests no time until there are steps, then offers their estimate as the cook time', () => {
     render(<AddRecipeModal onClose={noop} onSave={noop} t={t} />);
+    expect(bylinePart(t, 'times')).toHaveAccessibleName(`${t.recipeTime}: ${t.addTimes}`);
+    openBylinePart(t, 'times');
     expect(screen.getByText(t.timeFromSteps)).toBeInTheDocument();
     expect(screen.queryByText(t.estimatedTime(25))).not.toBeInTheDocument();
 
@@ -282,11 +298,14 @@ describe('AddRecipeModal initial form', () => {
         t={t}
       />,
     );
+    // The byline shows the older total until a time is typed.
+    expect(bylinePart(t, 'times')).toHaveAccessibleName(`${t.recipeTime}: ${t.totalTime(90)}`);
+    openBylinePart(t, 'times');
     expect(screen.getByText(t.timeSetBefore(t.totalTime(90)))).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText(t.timeLabels.prep), { target: { value: '1 h 10' } });
-    expect(screen.getByText(t.totalTime(70))).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText(t.timeLabels.rest), { target: { value: 'overnight' } });
-    fireEvent.click(screen.getByRole('button', { name: t.save }));
+    typeTime(t, 'prep', '1 h 10');
+    expect(screen.getAllByText(t.totalTime(70)).length).toBeGreaterThan(0);
+    typeTime(t, 'rest', 'overnight');
+    saveRecipe(t);
 
     const saved = onSave.mock.calls[0][0] as Recipe;
     expect(saved.times).toEqual({
@@ -312,7 +331,7 @@ describe('AddRecipeModal initial form', () => {
     expect(screen.getByText(t.draftRestored)).toBeInTheDocument();
 
     // Saved, it counts as a text change (so it's translated), and the kept copy goes.
-    fireEvent.click(screen.getByRole('button', { name: t.save }));
+    saveRecipe(t);
     expect(onSave.mock.calls[0][0]).toMatchObject({ name: 'Aunt Ola Pierogi, crispier' });
     expect(onSave.mock.calls[0][2]).toBe(true);
   });
@@ -365,7 +384,7 @@ describe('AddRecipeModal initial form', () => {
       })),
     };
     render(<AddRecipeModal initialRecipe={photoFilled} onClose={noop} onSave={onSave} t={t} />);
-    fireEvent.click(screen.getByRole('button', { name: t.save }));
+    saveRecipe(t);
     expect(onSave).toHaveBeenCalled();
   });
 
@@ -388,7 +407,7 @@ describe('AddRecipeModal initial form', () => {
         t={t}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: t.save }));
+    saveRecipe(t);
     expect(onSave).not.toHaveBeenCalled();
     expect(onToast).toHaveBeenCalledWith(t.recipeTooBig, undefined, 'error');
     expect(document.querySelector('.editor-layer.is-closing')).toBeNull();

@@ -8,6 +8,7 @@ import { Recipe } from '../types/recipe';
 import { remixCounts, remixOriginal, remixStart, remixesOf } from '../utils/recipeRemix';
 import { parseDraft } from '../utils/recipeDrafts';
 import { resolveEdit } from '../utils/recipeTranslation';
+import { saveRecipe } from './editorHelpers';
 
 vi.mock('../services/gemini', () => ({
   isTranslationAvailable: false,
@@ -127,10 +128,10 @@ function openMenuItem(name: string) {
   if (panel) fireEvent.animationEnd(panel);
 }
 
+// Draft and Save are keys of their own in the editor's bar.
 function chooseSave(name: RegExp) {
-  fireEvent.click(within(editor()!).getByRole('button', { name: t.save }));
-  const choices = screen.getByRole('dialog', { name: t.saveChoices });
-  fireEvent.click(within(choices).getByRole('button', { name }));
+  if (/draft/i.test(name.source)) fireEvent.click(within(editor()!).getByRole('button', { name }));
+  else saveRecipe(t);
 }
 
 const renderApp = () =>

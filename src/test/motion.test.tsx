@@ -4,6 +4,7 @@ import App from '../App';
 import { UI_TEXT } from '../i18n/translations';
 import { chooseFromMenu } from './menu';
 import { Recipe } from '../types/recipe';
+import { saveRecipe } from './editorHelpers';
 
 vi.mock('../services/gemini', () => ({
   isTranslationAvailable: false,
@@ -174,7 +175,7 @@ describe('motion', () => {
       target: { value: 'Babka Wielkanocna' },
     });
 
-    fireEvent.click(within(editor()!).getByRole('button', { name: t.save }));
+    saveRecipe(t);
     // Still the same editor, with what was saved in it, while it slides away.
     expect(within(editor()!).getByLabelText(t.recipeTitle)).toHaveValue('Babka Wielkanocna');
 

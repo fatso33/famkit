@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ChevronDown, RotateCcw, Trash2, TriangleAlert, Lightbulb } from 'lucide-react';
+import { BookOpen, ChevronDown, Lightbulb, RotateCcw, Trash2, TriangleAlert } from 'lucide-react';
 import { AuthorMode, Recipe, RecipeDraft, Language, VersionSummary } from '../../types/recipe';
 import { UI_TEXT, UiTranslations } from '../../i18n/translations';
 import { useBackStep } from '../../hooks/useBackStep';
@@ -9,7 +9,7 @@ import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { keepStillBelow } from '../../hooks/useListMotion';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import type { ToastAction, ToastTone } from '../../hooks/useToast';
-import { memberName, ownerCredit, resolveAuthor } from '../../utils/ownership';
+import { ownerCredit, resolveAuthor } from '../../utils/ownership';
 import { formatVersionDate, RecipeChanges, RestorableField } from '../../utils/recipeVersions';
 import { draftVersion, parseDraft } from '../../utils/recipeDrafts';
 import { forgetKeptEdit, getKeptEdit, keepEdit } from '../../services/storage';
@@ -44,15 +44,14 @@ import { prefersReducedMotion } from '../../utils/viewTransition';
 import { AutoGrowTextarea } from '../common/AutoGrowTextarea';
 import { RecipeSourceField } from './RecipeSourceField';
 import { ConfirmSheet } from '../common/ConfirmSheet';
-import { CategorySelect } from './CategorySelect';
 import { EditorBar } from './EditorBar';
+import { BylinePart, EditorByline } from './EditorByline';
 import { EditorPreview } from './EditorPreview';
 import { HeroPhotoField } from './HeroPhotoField';
 import { IngredientEditor } from './IngredientEditor';
 import { MethodEditor } from './MethodEditor';
 import { ImportProblem, PasteSheet, PasteTarget } from './PasteSheet';
-import { RecipeTimeField } from './RecipeTimeField';
-import { SaveMenu } from './SaveMenu';
+import { ChangeNoteSheet } from './ChangeNoteSheet';
 import { VersionMenu } from './VersionMenu';
 
 const DRAFT_STORAGE_KEY = 'family_kitchen_recipe_draft';
@@ -146,7 +145,12 @@ const snapshot = (form: FormState, authorMode: AuthorMode, note: string) =>
   JSON.stringify([formToRecipe(form), authorMode, form.author.trim(), note]);
 
 type FieldError = 'title' | 'author' | 'category' | 'ingredients' | 'steps';
-type Sheet = 'paste' | 'discard' | 'leave' | 'delete' | 'startOver' | 'discardDraft' | null;
+type Sheet =
+  'paste' | 'discard' | 'leave' | 'delete' | 'startOver' | 'discardDraft' | 'changeNote' | null;
+
+/** The parts shown only once added: a key until then. */
+type Extra = 'notes' | 'tips' | 'source';
+const EXTRAS: Extra[] = ['notes', 'tips', 'source'];
 
 /** A recipe as written so far, which a draft keeps: unchecked, so it may lack a title. */
 export type DraftContent = Omit<Recipe, 'id' | 'createdAt'>;
@@ -255,13 +259,18 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   const [sheet, setSheet] = useState<Sheet>(null);
   const [previewing, setPreviewing] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
-  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
+  const [bylineOpen, setBylineOpen] = useState<BylinePart | null>(null);
+  // The note, tip and source opened from their keys (kept open while written in).
+  const [openedExtras, setOpenedExtras] = useState<ReadonlySet<Extra>>(
+    () => new Set(EXTRAS.filter((key) => initial.form[key].trim() !== '')),
+  );
   const [barHeight, setBarHeight] = useState(0);
   // How far the bar slides up when tucked: its banner, less the status-bar inset.
   const [barTuck, setBarTuck] = useState(0);
   const [scroll, setScroll] = useState({ tucked: false, scrolled: false });
   const lastScrollTop = useRef(0);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
   const nextChangeIndex = useRef(0);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
@@ -382,16 +391,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
   const save = () => {
     if (Object.keys(errorsOf()).length > 0) {
-      setShowErrors(true);
-      // Brings the first problem into view, under the bar.
-      requestAnimationFrame(() => {
-        const first = bodyRef.current?.querySelector<HTMLElement>('.has-error');
-        first?.scrollIntoView?.({
-          block: 'center',
-          behavior: prefersReducedMotion() ? 'auto' : 'smooth',
-        });
-        first?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus({ preventScroll: true });
-      });
+      liftFirstMissing();
       return;
     }
     const recipe = recipeFromForm();
@@ -428,10 +428,59 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
     else if (scope) forgetKeptEdit(scope);
   };
 
-  // With drafts, Save offers its two choices; without, it saves to the vault.
+  // What Save still needs, in the page's order: it counts them down on the key.
+  const missing = Object.keys(errorsOf()).length;
+
+  // Save with something missing lifts the first of it: into view, with the cursor in it or its
+  // popover open. Its message shows under it.
+  const liftFirstMissing = () => {
+    setShowErrors(true);
+    const first = (['title', 'author', 'category', 'ingredients', 'steps'] as const).find(
+      (field) => errorsOf()[field],
+    );
+    if (first === 'author' || first === 'category') setBylineOpen(first);
+    requestAnimationFrame(() => {
+      const where = first === 'author' || first === 'category' ? 'byline' : first;
+      const block = bodyRef.current?.querySelector<HTMLElement>(`[data-field="${where}"]`);
+      block?.scrollIntoView?.({
+        block: 'center',
+        behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+      });
+      if (first === 'title') titleRef.current?.focus({ preventScroll: true });
+      else if (first === 'ingredients' || first === 'steps') {
+        block
+          ?.querySelector<HTMLElement>('[aria-invalid="true"], input, textarea')
+          ?.focus({ preventScroll: true });
+      }
+    });
+  };
+
+  // An edit asks what changed (optional) as it saves; a new recipe saves at once.
   const requestSave = () => {
-    if (onSaveDraft) setSaveMenuOpen(!saveMenuOpen);
+    if (missing > 0) liftFirstMissing();
+    else if (isEditMode) setSheet('changeNote');
     else save();
+  };
+
+  // --- The note, tip and source: keys until added ------------------------------------------
+
+  const isShown = (key: Extra) =>
+    openedExtras.has(key) || form[key].trim() !== '' || Boolean(changes?.fields.has(key));
+  const openExtra = (key: Extra, fieldId: string) => {
+    setOpenedExtras((open) => new Set(open).add(key));
+    // Through the page itself, so an editor closed meanwhile focuses nothing.
+    requestAnimationFrame(() =>
+      bodyRef.current?.querySelector<HTMLElement>(`[id="${fieldId}"]`)?.focus(),
+    );
+  };
+  // Left empty, it goes back to being a key.
+  const putAwayIfEmpty = (key: Extra) => {
+    if (form[key].trim()) return;
+    setOpenedExtras((open) => {
+      const next = new Set(open);
+      next.delete(key);
+      return next;
+    });
   };
 
   // Changed since it opened: an edit, a remix or a draft from how it was, a new recipe from empty.
@@ -652,19 +701,9 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
         scrolled={scroll.scrolled}
         onClose={requestCancel}
         onSave={requestSave}
-        saveMenuOpen={saveMenuOpen}
-        saveMenu={
-          onSaveDraft && (
-            <SaveMenu
-              version={isEditMode ? nextVersion : null}
-              draftVersion={nextVersion}
-              onSaveToVault={save}
-              onSaveDraft={saveDraft}
-              onClose={() => setSaveMenuOpen(false)}
-              t={t}
-            />
-          )
-        }
+        missing={missing}
+        onSaveDraft={onSaveDraft ? saveDraft : undefined}
+        draftName={t.saveDraft(nextVersion)}
         // Pasting is for starting a recipe; an edit changes what's there.
         onPaste={isEditMode ? undefined : () => setSheet('paste')}
         onPreview={() => setPreviewing(true)}
@@ -732,47 +771,15 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             </div>
           )}
 
-          {/* Title */}
+          {/* The photo, as the recipe page opens with it */}
           <div
-            className={`form-group editor-rise${restoredClass('name')}${errors.title ? ' has-error' : ''}`}
-            style={riseStyle()}
-          >
-            {restoredChip('name')}
-            <label className="form-label" htmlFor="recipeTitleInput">
-              {t.recipeTitle}
-            </label>
-            <input
-              className="form-control editor-title-input"
-              type="text"
-              id="recipeTitleInput"
-              required
-              autoComplete="off"
-              aria-invalid={Boolean(errors.title) || undefined}
-              aria-describedby={errors.title ? 'recipeTitleError' : undefined}
-              value={form.title}
-              onChange={(e) => set('title', e.target.value)}
-            />
-            {errors.title && (
-              <p className="field-error" id="recipeTitleError" role="alert">
-                {errors.title}
-              </p>
-            )}
-          </div>
-
-          {/* Photo, as the recipe page opens with it */}
-          <div
-            className={`form-group editor-rise${restoredClass('heroImage')}`}
+            className={`editor-page-hero editor-rise${restoredClass('heroImage')}`}
             style={riseStyle()}
           >
             {restoredChip('heroImage')}
-            <div className="form-label-row">
-              <span className="form-label" id="heroPhotoLabel">
-                {t.heroPhoto}
-              </span>
-              <span className="form-optional" aria-hidden="true">
-                {t.optional}
-              </span>
-            </div>
+            <span className="sr-only" id="heroPhotoLabel">
+              {t.heroPhoto}
+            </span>
             <HeroPhotoField
               photo={form.heroImage}
               onChange={(photo) => set('heroImage', photo)}
@@ -782,131 +789,132 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             />
           </div>
 
-          {/* Author: the signed-in family member, or someone else by name */}
-          <fieldset
-            className={`form-group author-field editor-rise${restoredClass('author')}${errors.author ? ' has-error' : ''}`}
-            style={riseStyle()}
-          >
-            {restoredChip('author')}
-            <legend className="form-label">{t.authorLabel}</legend>
-            {currentUser && (
-              <div className="choice-pill" data-value={authorMode === 'auto' ? 'first' : 'other'}>
-                <span className="choice-pill-thumb" aria-hidden="true" />
-                {(['auto', 'custom'] as const).map((mode) => (
-                  <label key={mode} className={authorMode === mode ? 'is-active' : ''}>
-                    <input
-                      type="radio"
-                      name="authorMode"
-                      value={mode}
-                      checked={authorMode === mode}
-                      onChange={() => set('authorMode', mode)}
-                    />
-                    {mode === 'auto'
-                      ? memberName(currentUser.name, currentUser.nameAsTyped)
-                      : t.authorSomeoneElse}
-                  </label>
-                ))}
-              </div>
-            )}
-            {authorMode === 'auto' && currentUser ? (
-              <p className="author-hint">
-                {t.authorShownAs(memberName(currentUser.name, currentUser.nameAsTyped))}
-              </p>
-            ) : (
-              <div className="author-custom">
-                <label className="form-label is-small" htmlFor="recipeAuthorInput">
-                  {t.authorNameLabel}
-                </label>
-                <input
-                  className="form-control"
-                  type="text"
-                  id="recipeAuthorInput"
-                  required
-                  autoComplete="off"
-                  aria-invalid={Boolean(errors.author) || undefined}
-                  aria-describedby={errors.author ? 'recipeAuthorError' : undefined}
-                  value={form.author}
-                  onChange={(e) => set('author', e.target.value)}
-                />
-                {errors.author && (
-                  <p className="field-error" id="recipeAuthorError" role="alert">
-                    {errors.author}
-                  </p>
-                )}
-              </div>
-            )}
-          </fieldset>
-
-          {/* Category: what the vault's filter sorts it under */}
+          {/* The name, as the page's title */}
           <div
-            className={`form-group editor-rise${errors.category ? ' has-error' : ''}`}
+            className={`editor-page-name editor-rise${restoredClass('name')}${errors.title ? ' has-error' : ''}`}
+            data-field="title"
             style={riseStyle()}
           >
-            <CategorySelect
-              value={form.category}
-              onChange={(category) => set('category', category)}
-              error={errors.category}
-              t={t}
-            />
-          </div>
-
-          {/* Description */}
-          <div
-            className={`form-group editor-rise${restoredClass('cardDescription')}`}
-            style={riseStyle()}
-          >
-            {restoredChip('cardDescription')}
-            <div className="form-label-row">
-              <label className="form-label" htmlFor="recipeDescInput">
-                {t.descriptionLabel}
-              </label>
-              <span className="form-optional" aria-hidden="true">
-                {t.optional}
-              </span>
+            {restoredChip('name')}
+            <label className="sr-only" htmlFor="recipeTitleInput">
+              {t.recipeTitle}
+            </label>
+            <div className="prompt-field editor-page-title">
+              <AutoGrowTextarea
+                ref={titleRef}
+                id="recipeTitleInput"
+                className="editor-page-title-input"
+                required
+                autoComplete="off"
+                enterKeyHint="next"
+                aria-invalid={Boolean(errors.title) || undefined}
+                aria-describedby={errors.title ? 'recipeTitleError' : undefined}
+                value={form.title}
+                // A name is one line: Enter doesn't break it, and a pasted break becomes a space.
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.nativeEvent.isComposing) e.preventDefault();
+                }}
+                onChange={(e) => set('title', e.target.value.replace(/\s*\n\s*/g, ' '))}
+              />
+              {!form.title && (
+                <span className="field-prompt" aria-hidden="true">
+                  {t.titlePrompt}
+                </span>
+              )}
             </div>
-            <AutoGrowTextarea
-              id="recipeDescInput"
-              value={form.cardDescription}
-              onChange={(e) => set('cardDescription', e.target.value)}
-            />
+            {errors.title && (
+              <p className="field-error" id="recipeTitleError" role="alert">
+                {errors.title}
+              </p>
+            )}
           </div>
 
-          {/* Prep, cook and rest, typed; the steps' estimate offered for the cook time */}
-          <div className={`form-group editor-rise${restoredClass('time')}`} style={riseStyle()}>
-            {restoredChip('time')}
-            <RecipeTimeField
+          {/* The byline: whose it is, its category and its times, each opening its own popover */}
+          <div
+            className={`editor-page-byline editor-rise${errors.author || errors.category ? ' has-error' : ''}`}
+            data-field="byline"
+            style={riseStyle()}
+          >
+            <EditorByline
+              open={bylineOpen}
+              onOpen={setBylineOpen}
+              currentUser={currentUser}
+              authorMode={authorMode}
+              onAuthorMode={(mode) => set('authorMode', mode)}
+              author={form.author}
+              onAuthor={(name) => set('author', name)}
+              category={form.category}
+              onCategory={(category) => set('category', category)}
               times={form.times}
               manualMinutes={form.manualMinutes}
               estimate={estimate}
-              onChange={(kind, text) => set('times', { ...form.times, [kind]: text })}
+              onTime={(kind, text) =>
+                setForm((f) => ({ ...f, times: { ...f.times, [kind]: text } }))
+              }
+              errors={{ author: errors.author, category: errors.category }}
+              restored={{
+                author: changes?.fields.has('author'),
+                time: changes?.fields.has('time'),
+              }}
               t={t}
             />
           </div>
 
-          {/* Crucial note, above the ingredients as the recipe page shows it */}
+          {/* The card's line, quiet under the byline */}
           <div
-            className={`form-group editor-callout is-warn editor-rise${restoredClass('notes')}`}
+            className={`editor-page-desc editor-rise${restoredClass('cardDescription')}`}
             style={riseStyle()}
           >
-            {restoredChip('notes')}
-            <div className="form-label-row">
-              <label className="callout-label" htmlFor="recipeNotesInput">
-                <TriangleAlert size="1.15em" aria-hidden="true" />
-                {t.crucialNote}
-              </label>
-              <span className="form-optional" aria-hidden="true">
-                {t.optional}
-              </span>
+            {restoredChip('cardDescription')}
+            <label className="sr-only" htmlFor="recipeDescInput">
+              {t.descriptionLabel}
+            </label>
+            <div className="prompt-field editor-page-desc-text">
+              <AutoGrowTextarea
+                id="recipeDescInput"
+                className="editor-page-desc-input"
+                value={form.cardDescription}
+                onChange={(e) => set('cardDescription', e.target.value)}
+              />
+              {!form.cardDescription && (
+                <span className="field-prompt" aria-hidden="true">
+                  {t.descriptionPrompt}
+                </span>
+              )}
             </div>
-            <AutoGrowTextarea
-              id="recipeNotesInput"
-              value={form.notes}
-              onChange={(e) => set('notes', e.target.value)}
-            />
+          </div>
+
+          {/* Crucial note, above the ingredients as the recipe page shows it */}
+          <div className={`editor-extra editor-rise${restoredClass('notes')}`} style={riseStyle()}>
+            {isShown('notes') ? (
+              <div className="form-group editor-callout is-warn">
+                {restoredChip('notes')}
+                <label className="callout-label" htmlFor="recipeNotesInput">
+                  <TriangleAlert size="1.15em" aria-hidden="true" />
+                  {t.crucialNote}
+                </label>
+                <AutoGrowTextarea
+                  id="recipeNotesInput"
+                  value={form.notes}
+                  onChange={(e) => set('notes', e.target.value)}
+                  onBlur={() => putAwayIfEmpty('notes')}
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="editor-add-key is-warn"
+                onClick={() => openExtra('notes', 'recipeNotesInput')}
+              >
+                <TriangleAlert size="1.15em" aria-hidden="true" />
+                {t.addCrucialNote}
+              </button>
+            )}
           </div>
 
           <div
             className={`editor-rise${errors.ingredients ? ' has-error' : ''}`}
+            data-field="ingredients"
             style={riseStyle()}
           >
             <IngredientEditor
@@ -930,7 +938,11 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             />
           </div>
 
-          <div className={`editor-rise${errors.steps ? ' has-error' : ''}`} style={riseStyle()}>
+          <div
+            className={`editor-rise${errors.steps ? ' has-error' : ''}`}
+            data-field="steps"
+            style={riseStyle()}
+          >
             <MethodEditor
               sections={form.sections}
               onChange={(change) => setForm((f) => ({ ...f, sections: change(f.sections) }))}
@@ -944,55 +956,56 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
           </div>
 
           {/* Kitchen tip, after the method as the recipe page shows it */}
-          <div
-            className={`form-group editor-callout is-tip editor-rise${restoredClass('tips')}`}
-            style={riseStyle()}
-          >
-            {restoredChip('tips')}
-            <div className="form-label-row">
-              <label className="callout-label" htmlFor="recipeTipsInput">
+          <div className={`editor-extra editor-rise${restoredClass('tips')}`} style={riseStyle()}>
+            {isShown('tips') ? (
+              <div className="form-group editor-callout is-tip">
+                {restoredChip('tips')}
+                <label className="callout-label" htmlFor="recipeTipsInput">
+                  <Lightbulb size="1.15em" aria-hidden="true" />
+                  {t.kitchenTip}
+                </label>
+                <AutoGrowTextarea
+                  id="recipeTipsInput"
+                  value={form.tips}
+                  onChange={(e) => set('tips', e.target.value)}
+                  onBlur={() => putAwayIfEmpty('tips')}
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="editor-add-key is-tip"
+                onClick={() => openExtra('tips', 'recipeTipsInput')}
+              >
                 <Lightbulb size="1.15em" aria-hidden="true" />
-                {t.kitchenTip}
-              </label>
-              <span className="form-optional" aria-hidden="true">
-                {t.optional}
-              </span>
-            </div>
-            <AutoGrowTextarea
-              id="recipeTipsInput"
-              value={form.tips}
-              onChange={(e) => set('tips', e.target.value)}
-            />
+                {t.addKitchenTip}
+              </button>
+            )}
           </div>
 
           {/* Where it's from: shown as "Adapted from" at the recipe's foot */}
-          <div className={`form-group editor-rise${restoredClass('source')}`} style={riseStyle()}>
-            {restoredChip('source')}
-            <RecipeSourceField value={form.source} onChange={(v) => set('source', v)} t={t} />
-          </div>
-
-          {/* What changed: kept with this version in its history */}
-          {isEditMode && (
-            <div className="form-group change-note">
-              <div className="form-label-row">
-                <label className="form-label" htmlFor="recipeChangeNoteInput">
-                  {t.changeNoteLabel(initialRecipe?.version ?? 1)}
-                </label>
-                <span className="form-optional" aria-hidden="true">
-                  {t.optional}
-                </span>
+          <div className={`editor-extra editor-rise${restoredClass('source')}`} style={riseStyle()}>
+            {isShown('source') ? (
+              <div
+                className="form-group"
+                onBlur={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) putAwayIfEmpty('source');
+                }}
+              >
+                {restoredChip('source')}
+                <RecipeSourceField value={form.source} onChange={(v) => set('source', v)} t={t} />
               </div>
-              <input
-                className="form-control"
-                type="text"
-                id="recipeChangeNoteInput"
-                maxLength={200}
-                autoComplete="off"
-                value={changeNote}
-                onChange={(e) => setChangeNote(e.target.value)}
-              />
-            </div>
-          )}
+            ) : (
+              <button
+                type="button"
+                className="editor-add-key"
+                onClick={() => openExtra('source', 'recipeSourceInput')}
+              >
+                <BookOpen size="1.1em" aria-hidden="true" />
+                {t.sourceLabel}
+              </button>
+            )}
+          </div>
 
           {isEditMode && onDelete && (
             <div className="delete-recipe-zone">
@@ -1037,6 +1050,17 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             }
             setSheet(null);
           }}
+          t={t}
+        />
+      )}
+      {sheet === 'changeNote' && (
+        <ChangeNoteSheet
+          title={t.savingVersion(nextVersion)}
+          label={t.changeNoteLabel(initialRecipe?.version ?? 1)}
+          note={changeNote}
+          onNote={setChangeNote}
+          onSave={save}
+          onClose={() => setSheet(null)}
           t={t}
         />
       )}

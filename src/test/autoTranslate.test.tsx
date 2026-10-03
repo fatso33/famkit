@@ -15,6 +15,7 @@ import {
 import { EDIT_SETTLE_MS } from '../utils/translationQueue';
 import { dictionaryTranslator, replyFrom } from './translator';
 import { goFromMenu } from './menu';
+import { openBylinePart, saveRecipe } from './editorHelpers';
 
 // Firebase is off in tests, so recipes stay local; only the translation call is mocked.
 vi.mock('../services/gemini', () => ({
@@ -72,10 +73,12 @@ const editOpenRecipe = (lang: 'en' | 'pl', changes: Record<string, string>) => {
   fireEvent.click(screen.getByRole('button', { name: UI_TEXT[lang].openMenu }));
   const menu = screen.getByRole('dialog', { name: UI_TEXT[lang].menu });
   fireEvent.click(within(menu).getByRole('button', { name: UI_TEXT[lang].editRecipe }));
+  // The author is typed in the byline's popover.
+  openBylinePart(UI_TEXT[lang], 'author');
   for (const [from, to] of Object.entries(changes)) {
     fireEvent.change(screen.getByDisplayValue(from), { target: { value: to } });
   }
-  fireEvent.click(screen.getByRole('button', { name: UI_TEXT[lang].save }));
+  saveRecipe(UI_TEXT[lang]);
 };
 
 describe('background recipe translation', () => {

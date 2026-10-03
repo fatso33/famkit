@@ -4,6 +4,7 @@ import { AddRecipeModal } from '../components/recipe-form/AddRecipeModal';
 import { UI_TEXT } from '../i18n/translations';
 import { CurrentUser, CurrentUserContext } from '../hooks/useCurrentUser';
 import { ImportError, fetchRecipePage, fetchRecipePhoto } from '../services/recipeImport';
+import { bylinePart, openBylinePart, pickCategory, saveRecipe } from './editorHelpers';
 
 // Only the fetching is mocked: the page that comes back is read by the real code.
 vi.mock('../services/recipeImport', async (original) => ({
@@ -89,7 +90,9 @@ describe('adding a recipe from a website', () => {
       </CurrentUserContext>,
     );
     // Typed for someone else before the import: the import credits whoever adds it.
+    openBylinePart(t, 'author');
     fireEvent.click(screen.getByRole('radio', { name: t.authorSomeoneElse }));
+    fireEvent.click(screen.getByRole('button', { name: t.done }));
 
     const sheet = openSheet();
     fireEvent.change(within(sheet).getByLabelText(t.pasteUrlLabel), {
@@ -102,8 +105,7 @@ describe('adding a recipe from a website', () => {
     expect(onToast).toHaveBeenCalledWith(t.importDone);
     expect(screen.queryByRole('dialog', { name: t.pasteTitle })).not.toBeInTheDocument();
     // Credited to whoever adds it, not to the site's author.
-    expect(screen.getByRole('radio', { name: 'Ola N.' })).toBeChecked();
-    expect(screen.queryByLabelText(t.authorNameLabel)).not.toBeInTheDocument();
+    expect(bylinePart(t, 'author')).toHaveAccessibleName(`${t.authorLabel}: Ola N.`);
     expect(screen.getByLabelText(t.ingredientNameLabel(2))).toHaveValue('potatoes');
     expect(screen.getByDisplayValue('floury')).toBeInTheDocument();
     expect(screen.getByLabelText(t.stepInstructionLabel(2))).toHaveValue('Fill and boil.');
@@ -112,9 +114,8 @@ describe('adding a recipe from a website', () => {
     );
     expect(fetchRecipePhoto).toHaveBeenCalledWith('https://www.example.com/pierogi.jpg');
 
-    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${t.categoryLabel}`) }));
-    fireEvent.click(screen.getByRole('option', { name: t.recipeCategories.mains }));
-    fireEvent.click(screen.getByRole('button', { name: t.save }));
+    pickCategory(t, 'mains');
+    saveRecipe(t);
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(onSave.mock.calls[0][0]).toMatchObject({
       name: 'Pierogi Ruskie',

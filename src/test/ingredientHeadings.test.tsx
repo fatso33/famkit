@@ -9,6 +9,7 @@ import { ingredientGroups } from '../utils/recipeMethod';
 import { buildTranslation, pieceHash, recipePieces } from '../utils/translationPieces';
 import { overlayTranslation, sourceHash, translatableContent } from '../utils/recipeTranslation';
 import { diffRecipes } from '../utils/recipeVersions';
+import { saveRecipe } from './editorHelpers';
 
 const t = UI_TEXT.en;
 const labels = { bakingSection: t.bakingOptions, bakingPaths: t.legacyBakingPaths };
@@ -171,7 +172,7 @@ describe('ingredient headings in the editor', () => {
     // Headings don't count as ingredients.
     expect(screen.getByText(t.ingredientsCount(2))).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: t.save }));
+    saveRecipe(t);
     expect(onSave.mock.calls[0][0].ingredients).toEqual([
       curry.ingredients[0],
       { text: 'Lime juice', name: 'Lime juice', note: '', section: 'For the Dressing' },
@@ -188,7 +189,7 @@ describe('ingredient headings in the editor', () => {
         t={t}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: t.save }));
+    saveRecipe(t);
     expect(onSave.mock.calls[0][0].yieldHeader).toBe('');
   });
 
@@ -206,7 +207,7 @@ describe('ingredient headings in the editor', () => {
     fireEvent.change(screen.getByLabelText(t.ingredientHeadingLabel), {
       target: { value: 'For the Sauce' },
     });
-    fireEvent.click(screen.getByRole('button', { name: t.save }));
+    saveRecipe(t);
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText(t.ingredientsRequired)).toBeInTheDocument();
   });
