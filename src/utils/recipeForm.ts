@@ -8,6 +8,7 @@ import {
   Step,
 } from '../types/recipe';
 import { isRecipeCategory, recipePhoto } from './vault';
+import { TIME_KINDS, TimeTexts, timesFromText } from './timeText';
 import { authorModeOf } from './ownership';
 import {
   SUBSTEP_LETTERS,
@@ -119,7 +120,12 @@ export interface FormState {
   heroImage: string;
   tips: string;
   notes: string;
-  /** The time the author set, in minutes; null to estimate it from the steps. */
+  /** Prep, cook and rest as the author types them ("20 min", "overnight"). */
+  times: TimeTexts;
+  /**
+   * Legacy: the total time an older recipe was given, in minutes; null when none. Kept while no
+   * time is typed, cleared once one is.
+   */
   manualMinutes: number | null;
   ingredientRows: IngredientRowState[];
   sections: SectionState[];
@@ -229,6 +235,7 @@ export const emptyForm = (): FormState => ({
   heroImage: '',
   tips: '',
   notes: '',
+  times: { prep: '', cook: '', rest: '' },
   manualMinutes: null,
   ingredientRows: [emptyRow()],
   sections: [emptySection()],
@@ -237,6 +244,24 @@ export const emptyForm = (): FormState => ({
 });
 
 // --- From a recipe --------------------------------------------------------------------------
+
+/** The typed times' words, from a recipe or a draft (checked: records are untrusted). */
+function timeTextsOf(raw: unknown): TimeTexts {
+  const texts: TimeTexts = { prep: '', cook: '', rest: '' };
+  if (typeof raw !== 'object' || raw === null) return texts;
+  for (const kind of TIME_KINDS) {
+    const value = (raw as Record<string, unknown>)[kind];
+    // A recipe keeps { text, minutes }; a draft's form keeps the words alone.
+    const text =
+      typeof value === 'string'
+        ? value
+        : typeof value === 'object' && value !== null
+          ? (value as { text?: unknown }).text
+          : '';
+    if (typeof text === 'string') texts[kind] = text.slice(0, 80);
+  }
+  return texts;
+}
 
 // Takes (bracketed notes) out of text: "Water (very warm)" → "Water" and "very warm".
 function takeBrackets(text: string, notes: string[]): string {
@@ -397,6 +422,7 @@ export function formFromRecipe(recipe: Recipe, labels: LegacyLabels): FormState 
     heroImage: recipePhoto(recipe),
     tips: recipe.tips || '',
     notes: recipe.notes || '',
+    times: timeTextsOf(recipe.times),
     manualMinutes:
       typeof recipe.manualMinutes === 'number' && recipe.manualMinutes > 0
         ? recipe.manualMinutes
@@ -499,6 +525,7 @@ export function formFromDraft(raw: unknown): FormState | null {
   form.heroImage = recipePhoto({ heroImage: str(raw.heroImage) });
   form.tips = str(raw.tips);
   form.notes = str(raw.notes);
+  form.times = timeTextsOf(raw.times);
   form.manualMinutes =
     typeof raw.manualMinutes === 'number' && raw.manualMinutes > 0 ? raw.manualMinutes : null;
   form.numberFrom = raw.numberFrom === 0 ? 0 : 1;
@@ -692,6 +719,7 @@ export function methodToSteps(sections: SectionState[], numberFrom: number): Ste
 
 /** The recipe's content from the form, besides who wrote it. */
 export function formToRecipe(form: FormState) {
+  const times = timesFromText(form.times);
   return {
     name: form.title.trim(),
     category: form.category,
@@ -702,7 +730,9 @@ export function formToRecipe(form: FormState) {
     tips: form.tips.trim() || undefined,
     notes: form.notes.trim() || undefined,
     steps: methodToSteps(form.sections, form.numberFrom),
-    manualMinutes: form.manualMinutes ?? undefined,
+    times,
+    // A typed time replaces an older recipe's single total.
+    manualMinutes: times ? undefined : (form.manualMinutes ?? undefined),
     sourceUrl: form.sourceUrl || undefined,
     // Now steps in the method, so the old blocks go.
     laminationDirective: undefined,
@@ -722,6 +752,7 @@ export function formText(form: FormState): string {
     recipe.yieldHeader,
     recipe.tips ?? '',
     recipe.notes ?? '',
+    TIME_KINDS.map((kind) => form.times[kind].trim()),
     form.ingredientRows
       .map((row) => (row.heading ? { heading: row.name.trim() } : rowText(row)))
       .filter((r) => ('heading' in r ? r.heading : r.name || r.amount)),
@@ -739,6 +770,7 @@ const hasExtras = (e: ExtrasState) => (e.showTip && written(e.tip)) || Boolean(e
 export function hasContent(form: FormState): boolean {
   return Boolean(
     [form.title, form.cardDescription, form.yieldHeader, form.tips, form.notes].some(written) ||
+    TIME_KINDS.some((kind) => written(form.times[kind])) ||
     (form.authorMode === 'custom' && written(form.author)) ||
     form.heroImage ||
     form.manualMinutes !== null ||

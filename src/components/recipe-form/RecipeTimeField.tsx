@@ -1,126 +1,97 @@
 import React, { useId } from 'react';
-import { Clock, Minus, PencilLine, Plus, Sparkles } from 'lucide-react';
+import { Clock, Flame, LucideIcon, Moon, Slice, Sparkles } from 'lucide-react';
 import { UiTranslations } from '../../i18n/translations';
-import { NumberRoll } from '../common/NumberRoll';
-import { Reveal } from '../common/Reveal';
+import { TIME_KINDS, TimeKind, TimeTexts, parseDuration } from '../../utils/timeText';
+
+const ICONS: Record<TimeKind, LucideIcon> = { prep: Slice, cook: Flame, rest: Moon };
 
 interface RecipeTimeFieldProps {
-  /** The time the author set, or null while it's worked out from the steps. */
+  times: TimeTexts;
+  /** An older recipe's single total, in minutes, while no time is typed; null when none. */
   manualMinutes: number | null;
   /** The estimate from the steps as they are now: 0 while there are none. */
   estimate: number;
-  onChange: (minutes: number | null) => void;
+  onChange: (kind: TimeKind, text: string) => void;
   t: UiTranslations;
 }
 
-const STEP = 5;
-const MAX_HOURS = 99;
-
 /**
- * The recipe's total time: worked out from the steps (Auto), or set by hand in hours and
- * five-minute steps (Set).
+ * The recipe's times, typed as the author would say them: prep, cook and rest. Under each, how
+ * it reads ("1h 10m"), or that it'll be shown as typed. While the cook time is empty, the steps'
+ * estimate is offered for it.
  */
 export const RecipeTimeField: React.FC<RecipeTimeFieldProps> = ({
+  times,
   manualMinutes,
   estimate,
   onChange,
   t,
 }) => {
-  const labelId = useId();
-  const isSet = manualMinutes !== null;
-  // No steps yet, so nothing to estimate: no number rather than a made-up one.
-  const pending = !isSet && estimate === 0;
-  const minutes = manualMinutes ?? estimate;
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  // Never down to nothing: a recipe takes at least five minutes.
-  const setTo = (next: number) => onChange(Math.max(STEP, Math.min(MAX_HOURS * 60 + 55, next)));
+  const id = useId();
+  const typed = TIME_KINDS.some((kind) => times[kind].trim());
+
+  const reading = (kind: TimeKind) => {
+    const text = times[kind].trim();
+    if (!text) return null;
+    const minutes = parseDuration(text);
+    return minutes === null ? (
+      <span className="time-entry-reading is-as-typed">{t.timeAsTyped}</span>
+    ) : (
+      <span className="time-entry-reading">{t.totalTime(minutes)}</span>
+    );
+  };
 
   return (
-    <div className="time-field" role="group" aria-labelledby={labelId}>
-      <div className="form-label time-field-label" id={labelId}>
+    <div className="time-field" role="group" aria-labelledby={`${id}-label`}>
+      <div className="form-label time-field-label" id={`${id}-label`}>
         <Clock size="1.1em" aria-hidden="true" />
         {t.recipeTime}
       </div>
-      <div className={`time-field-card${isSet ? ' is-set' : ''}`}>
-        <div className="time-field-top">
-          <div className="time-field-reading" aria-live="polite">
-            <NumberRoll
-              className="time-field-value"
-              value={isSet ? t.totalTime(minutes) : pending ? '–' : t.estimatedTime(estimate)}
-            />
-            <span className="time-field-caption">
-              {isSet ? (
-                <PencilLine size="1em" aria-hidden="true" />
-              ) : (
-                <Sparkles size="1em" aria-hidden="true" />
-              )}
-              {isSet ? t.timeSetByYou : pending ? t.timeFromSteps : t.timeWorkedOut}
-            </span>
-          </div>
-          <div className="choice-pill time-field-mode" data-value={isSet ? 'set' : 'auto'}>
-            <span className="choice-pill-thumb" aria-hidden="true" />
-            {(['auto', 'set'] as const).map((mode) => (
-              <label key={mode} className={(mode === 'set') === isSet ? 'is-active' : ''}>
-                <input
-                  type="radio"
-                  name={`${labelId}-mode`}
-                  checked={(mode === 'set') === isSet}
-                  onChange={() => onChange(mode === 'set' ? Math.max(STEP, estimate) : null)}
-                />
-                {mode === 'set' ? t.timeSet : t.timeAuto}
+      <div className={`time-field-card${typed ? ' is-set' : ''}`}>
+        {TIME_KINDS.map((kind) => {
+          const Icon = ICONS[kind];
+          return (
+            <div key={kind} className="time-entry">
+              <Icon className="time-entry-icon" size="1.25rem" aria-hidden="true" />
+              <label className="time-entry-label" htmlFor={`${id}-${kind}`}>
+                {t.timeLabels[kind]}
               </label>
-            ))}
-          </div>
-        </div>
-        <Reveal open={isSet}>
-          <div className="time-field-keys">
-            <div className="time-stepper">
-              <button
-                type="button"
-                className="scaler-btn"
-                aria-label={t.hourLess}
-                onClick={() => setTo(minutes - 60)}
-              >
-                <Minus size="1.15rem" strokeWidth={2.4} aria-hidden="true" />
-              </button>
-              <span className="time-stepper-value">
-                <NumberRoll value={hours} />
-                <span>{t.hoursShort}</span>
+              <input
+                id={`${id}-${kind}`}
+                className="form-control time-entry-input"
+                type="text"
+                autoComplete="off"
+                enterKeyHint="next"
+                maxLength={80}
+                aria-describedby={`${id}-hint`}
+                value={times[kind]}
+                onChange={(e) => onChange(kind, e.target.value)}
+              />
+              <span className="time-entry-status" aria-live="polite">
+                {reading(kind)}
               </span>
-              <button
-                type="button"
-                className="scaler-btn"
-                aria-label={t.hourMore}
-                onClick={() => setTo(minutes + 60)}
-              >
-                <Plus size="1.15rem" strokeWidth={2.4} aria-hidden="true" />
-              </button>
             </div>
-            <div className="time-stepper">
-              <button
-                type="button"
-                className="scaler-btn"
-                aria-label={t.minutesLess}
-                onClick={() => setTo(minutes - STEP)}
-              >
-                <Minus size="1.15rem" strokeWidth={2.4} aria-hidden="true" />
-              </button>
-              <span className="time-stepper-value">
-                <NumberRoll value={mins} />
-                <span>{t.minutesShort}</span>
-              </span>
-              <button
-                type="button"
-                className="scaler-btn"
-                aria-label={t.minutesMore}
-                onClick={() => setTo(minutes + STEP)}
-              >
-                <Plus size="1.15rem" strokeWidth={2.4} aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-        </Reveal>
+          );
+        })}
+        <p className="time-field-hint" id={`${id}-hint`}>
+          {t.timesHint}
+        </p>
+        {!typed && manualMinutes !== null && (
+          <p className="time-field-hint">{t.timeSetBefore(t.totalTime(manualMinutes))}</p>
+        )}
+        {!times.cook.trim() &&
+          (estimate > 0 ? (
+            <button
+              type="button"
+              className="time-suggest"
+              onClick={() => onChange('cook', t.totalTime(estimate))}
+            >
+              <Sparkles size="1em" aria-hidden="true" />
+              {t.stepsSuggest(t.estimatedTime(estimate))}
+            </button>
+          ) : (
+            !typed && <p className="time-field-hint">{t.timeFromSteps}</p>
+          ))}
       </div>
     </div>
   );

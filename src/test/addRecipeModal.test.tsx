@@ -259,7 +259,7 @@ describe('AddRecipeModal initial form', () => {
     expect(screen.getByLabelText(t.yieldHeader)).toHaveValue('');
   });
 
-  it('estimates no time until there are steps, then works it out from them', () => {
+  it('suggests no time until there are steps, then offers their estimate as the cook time', () => {
     render(<AddRecipeModal onClose={noop} onSave={noop} t={t} />);
     expect(screen.getByText(t.timeFromSteps)).toBeInTheDocument();
     expect(screen.queryByText(t.estimatedTime(25))).not.toBeInTheDocument();
@@ -267,7 +267,33 @@ describe('AddRecipeModal initial form', () => {
     fireEvent.change(screen.getByLabelText(t.stepInstructionLabel(1)), {
       target: { value: 'Bake for 40 minutes.' },
     });
-    expect(screen.getByText(t.timeWorkedOut)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: t.stepsSuggest(t.estimatedTime(40)) }));
+    expect(screen.getByLabelText(t.timeLabels.cook)).toHaveValue(t.totalTime(40));
+    expect(screen.queryByRole('button', { name: t.stepsSuggest(t.estimatedTime(40)) })).toBeNull();
+  });
+
+  it('saves typed times with the minutes they mean, in place of an older single total', () => {
+    const onSave = vi.fn();
+    render(
+      <AddRecipeModal
+        initialRecipe={{ ...recipe, manualMinutes: 90 }}
+        onClose={noop}
+        onSave={onSave}
+        t={t}
+      />,
+    );
+    expect(screen.getByText(t.timeSetBefore(t.totalTime(90)))).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(t.timeLabels.prep), { target: { value: '1 h 10' } });
+    expect(screen.getByText(t.totalTime(70))).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(t.timeLabels.rest), { target: { value: 'overnight' } });
+    fireEvent.click(screen.getByRole('button', { name: t.save }));
+
+    const saved = onSave.mock.calls[0][0] as Recipe;
+    expect(saved.times).toEqual({
+      prep: { text: '1 h 10', minutes: 70 },
+      rest: { text: 'overnight', minutes: 480 },
+    });
+    expect(saved.manualMinutes).toBeUndefined();
   });
 
   it('keeps an unsaved edit on this phone, and brings it back when the recipe is opened again', () => {

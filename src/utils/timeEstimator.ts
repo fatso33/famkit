@@ -9,7 +9,7 @@ import { PathChoices, chosenPath, firstStepNumber, numberSteps, pathSteps } from
 const NOT_LETTER = '(?![a-ząćęłńóśźż])';
 const NUMBER = String.raw`(\d+(?:[.,]\d+)?)`;
 // Polish counts and cases ("minutę, minuty, minut, po 30 minutach") next to the English units.
-const UNIT = `(days?|dnia|dni|dob[aęy]|dób|hours?|hrs?|h|godzin(?:ach|ami|a|ę|y)?|godz|minutes?|mins?|minut(?:ach|ami|a|ę|y)?|m)${NOT_LETTER}`;
+const UNIT = `(days?|dzień|dnia|dni|dob[aęy]|dób|hours?|hrs?|h|godzin(?:ach|ami|a|ę|y)?|godz|minutes?|mins?|minut(?:ach|ami|a|ę|y)?|m)${NOT_LETTER}`;
 const RANGE_JOIN = '(?:-|–|to|do)';
 
 // "1,5 godziny" is Polish for 1.5 hours.
@@ -259,6 +259,21 @@ export function estimateRecipeMinutes(
   return Math.max(5, Math.round(totalMinutes / 5) * 5);
 }
 
+/** Minutes from a stored record, when they're a usable number (records are untrusted). */
+export const usableMinutes = (value: unknown): number =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.round(value) : 0;
+
+/** Prep, cook and rest added up, from the times the author typed; null when none has a number. */
+export function typedMinutes(recipe: Partial<Recipe> | null | undefined): number | null {
+  const times = recipe?.times;
+  if (!times || typeof times !== 'object') return null;
+  const minutes =
+    usableMinutes(times.prep?.minutes) +
+    usableMinutes(times.cook?.minutes) +
+    usableMinutes(times.rest?.minutes);
+  return minutes > 0 ? minutes : null;
+}
+
 /** The time the author set, when it's a usable number of minutes. */
 export function manualMinutesOf(recipe: Partial<Recipe> | null | undefined): number | null {
   const minutes = recipe?.manualMinutes;
@@ -268,14 +283,15 @@ export function manualMinutesOf(recipe: Partial<Recipe> | null | undefined): num
 }
 
 /**
- * The recipe's total time: the author's, or estimated from the steps (a fork counts the path in
- * `choices`). `manual` tells which, so an estimate can be shown as approximate.
+ * The recipe's total time: the times the author typed (prep, cook and rest), else the one they
+ * set, else estimated from the steps (a fork counts the path in `choices`). `manual` tells
+ * whether the author gave it, so an estimate can be shown as approximate.
  */
 export function recipeTime(
   recipe: Partial<Recipe> | null | undefined,
   choices: PathChoices = {},
 ): { minutes: number; manual: boolean } {
-  const manual = manualMinutesOf(recipe);
+  const manual = typedMinutes(recipe) ?? manualMinutesOf(recipe);
   return manual !== null
     ? { minutes: manual, manual: true }
     : { minutes: estimateRecipeMinutes(recipe, choices), manual: false };

@@ -11,7 +11,7 @@ import {
 import { formToRecipe } from '../utils/recipeForm';
 import { UI_TEXT } from '../i18n/translations';
 
-const labels = { servings: UI_TEXT.en.importServings };
+const labels = { servings: UI_TEXT.en.importServings, time: UI_TEXT.en.totalTime };
 
 const pageOf = (...blocks: unknown[]): ImportedPage => ({
   url: 'https://www.example.com/recipes/bread',
@@ -92,11 +92,14 @@ describe('reading a recipe from a page', () => {
     };
     const imported = recipeFromPage(pageOf('not json {', graph), {
       servings: UI_TEXT.pl.importServings,
+      time: UI_TEXT.pl.totalTime,
     });
     const form = imported!.form;
     expect(imported!.imageUrl).toBe('https://www.example.com/uploads/zupa.jpg');
     expect(form.yieldHeader).toBe('Na 4 porcje:');
-    expect(form.manualMinutes).toBe(60);
+    // Prep and cook come in as typed times, written as the app writes them.
+    expect(form.times).toEqual({ prep: '15m', cook: '45m', rest: '' });
+    expect(form.manualMinutes).toBeNull();
     // Two categories named: no guess.
     expect(form.category).toBe('');
     expect(form.ingredientRows.map((r) => [r.name, r.amount])).toEqual([

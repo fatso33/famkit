@@ -2,7 +2,8 @@ import React, { useId } from 'react';
 import { Timer } from 'lucide-react';
 import { Recipe } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
-import { recipeTime } from '../../utils/timeEstimator';
+import { recipeTime, typedMinutes } from '../../utils/timeEstimator';
+import { recipeTimeLabel } from '../../utils/timeText';
 import { vaultItemKey } from '../../utils/viewTransition';
 import { recipePhoto } from '../../utils/vault';
 import { creditName } from '../../utils/ownership';
@@ -54,7 +55,14 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
   t,
 }) => {
   const photo = recipePhoto(shown);
+  // The typed times' total ("1h 20m + overnight"), else the plain total.
   const minutes = recipeTime(shown).minutes;
+  const timeLabel =
+    typedMinutes(shown) !== null
+      ? recipeTimeLabel(shown, t)
+      : minutes > 0
+        ? t.totalTime(minutes)
+        : '';
   // Named by the recipe alone, as in the box; the tag and the dot describe it.
   const noteId = useId();
   const note = !!tag || !!unseenLabel;
@@ -101,10 +109,10 @@ export const RecipeRow: React.FC<RecipeRowProps> = ({
           )}
           <span className="vault-row-cook">{creditName(shown)}</span>
           {/* A draft with no steps yet has no time to show. */}
-          {minutes > 0 && (
+          {timeLabel && (
             <span className="vault-row-time">
               <Timer className="time-icon" size="1.05em" strokeWidth={2.1} aria-hidden="true" />
-              {t.totalTime(minutes)}
+              {timeLabel}
             </span>
           )}
           {(remixCount > 0 || makeCount > 0) && (

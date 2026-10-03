@@ -12,6 +12,7 @@ import {
   stepFromText,
   webAddress,
 } from './recipeForm';
+import { TimeTexts } from './timeText';
 
 /**
  * Bringing a recipe in from a web page. Recipe sites describe their recipes to search engines
@@ -53,6 +54,8 @@ export interface ImportedRecipe {
 export interface ImportLabels {
   /** The yield line for a bare number of servings: "For 4 servings:". */
   servings: (n: number) => string;
+  /** A time as the app writes it ("1h 10m"), for the page's prep and cook times. */
+  time: (minutes: number) => string;
 }
 
 type Json = Record<string, unknown>;
@@ -143,12 +146,13 @@ export function isoMinutes(value: unknown): number | null {
   return minutes > 0 && minutes <= 14 * 1440 ? minutes : null;
 }
 
-function minutesOf(recipe: Json): number | null {
-  const time = (value: unknown) => isoMinutes(Array.isArray(value) ? value[0] : value);
-  const total = time(recipe.totalTime);
-  if (total) return total;
-  const parts = (time(recipe.prepTime) ?? 0) + (time(recipe.cookTime) ?? 0);
-  return parts > 0 ? parts : null;
+const isoTime = (value: unknown) => isoMinutes(Array.isArray(value) ? value[0] : value);
+
+/** The page's prep and cook times, written as the app writes times. */
+function timesOf(recipe: Json, labels: ImportLabels): TimeTexts {
+  const prep = isoTime(recipe.prepTime);
+  const cook = isoTime(recipe.cookTime);
+  return { prep: prep ? labels.time(prep) : '', cook: cook ? labels.time(cook) : '', rest: '' };
 }
 
 /** The yield line: the site's own words ("12 cookies:"), or a bare number as servings. */
@@ -408,6 +412,9 @@ export function recipeFromPage(page: ImportedPage, labels: ImportLabels): Import
   if (!best) return null;
   const { recipe, rows, method } = best;
   const form = emptyForm();
+  const times = timesOf(recipe, labels);
+  // Without a prep or cook time, the page's total is kept as the recipe's single time.
+  const typed = Boolean(times.prep || times.cook);
   return {
     form: {
       ...form,
@@ -419,7 +426,8 @@ export function recipeFromPage(page: ImportedPage, labels: ImportLabels): Import
       cardDescription: plainText(first(recipe.description)).slice(0, 2000),
       // A page that states no yield gets none, rather than the form's example.
       yieldHeader: yieldOf(recipe, labels) ?? '',
-      manualMinutes: minutesOf(recipe),
+      times,
+      manualMinutes: typed ? null : isoTime(recipe.totalTime),
       ingredientRows: rows.length > 0 ? rows : [emptyRow()],
       sections: addPastedMethod(form.sections, method),
       sourceUrl: page.url,

@@ -83,6 +83,20 @@ export interface ForkPath {
   imageCaption?: string;
 }
 
+/** A time the author typed ("1 h 10", "overnight"), and the minutes it means (null if none). */
+export interface TimeValue {
+  text: string;
+  /** Read once from the original's words when saved; never translated. */
+  minutes: number | null;
+}
+
+/** The times the author typed. Missing on older records, which have `manualMinutes` or none. */
+export interface RecipeTimes {
+  prep?: TimeValue;
+  cook?: TimeValue;
+  rest?: TimeValue;
+}
+
 /** Legacy: earlier versions used to be kept inside the recipe, without photos. */
 export interface RecipeHistoryEntry {
   version: number;
@@ -148,6 +162,8 @@ export interface LocalizedRecipeContent {
   ingredients?: Ingredient[];
   steps?: Step[];
   bakingOptions?: BakingOptions;
+  /** The typed times' words (their minutes stay with the original). */
+  times?: { prep?: string; cook?: string; rest?: string };
   /** Fingerprint of the source text this was translated from (see utils/recipeTranslation). */
   sourceHash?: string;
   /**
@@ -220,8 +236,13 @@ export interface Recipe {
   /** Legacy: the editor turns it into a Baking section with a fork. */
   bakingOptions?: BakingOptions;
   notes?: string;
-  /** The recipe's total time in minutes, when the author set it; otherwise it's estimated. */
+  /**
+   * Legacy: the recipe's total time in minutes, when the author set one before typed times. A save
+   * with `times` clears it. Without either, the time is estimated from the steps.
+   */
   manualMinutes?: number;
+  /** Prep, cook and rest, as the author typed them. */
+  times?: RecipeTimes;
   /** The web page it was brought in from, when it was. Kept for later; not shown. */
   sourceUrl?: string;
   /**

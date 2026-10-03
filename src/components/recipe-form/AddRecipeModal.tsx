@@ -495,7 +495,12 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
     // A number of servings is worded in the page's language when it's one of the family's.
     const pageLanguage = page?.lang.slice(0, 2).toLowerCase();
     const words = pageLanguage === 'en' || pageLanguage === 'pl' ? UI_TEXT[pageLanguage] : t;
-    const imported = page && recipeFromPage(page, { servings: words.importServings });
+    const imported =
+      page &&
+      recipeFromPage(page, {
+        servings: words.importServings,
+        time: words.totalTime,
+      });
     if (!imported) return 'noRecipe';
 
     setForm(imported.form);
@@ -856,13 +861,14 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
             />
           </div>
 
-          {/* Recipe time: worked out from the steps, or set by hand */}
+          {/* Prep, cook and rest, typed; the steps' estimate offered for the cook time */}
           <div className={`form-group editor-rise${restoredClass('time')}`} style={riseStyle()}>
             {restoredChip('time')}
             <RecipeTimeField
+              times={form.times}
               manualMinutes={form.manualMinutes}
               estimate={estimate}
-              onChange={(minutes) => set('manualMinutes', minutes)}
+              onChange={(kind, text) => set('times', { ...form.times, [kind]: text })}
               t={t}
             />
           </div>

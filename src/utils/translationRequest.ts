@@ -128,6 +128,8 @@ const KIND_NAMES: Record<TextKind, string> = {
   pathLabel: 'name on a switch between ways of doing a step (1-3 words)',
   pathText: 'step, done this way',
   pathStep: 'step, done this way',
+  time: 'cooking time, like "overnight" or "1 h 10" (keep it this short, keep the numbers)',
+  source: 'where the recipe came from, like "Aunt Ola\'s notebook"',
   makeTitle: "title of a family member's post about something they cooked",
   makeNote: "a family member's note about how their cooking went",
 };

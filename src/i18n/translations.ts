@@ -4,8 +4,12 @@ import { plPlural } from '../utils/polish';
 import type { Season } from '../utils/season';
 import type { GreetingId } from '../utils/greeting';
 
-/** "2h 05m" ("45m" under an hour), from a number of minutes: short, to fit a card's row. */
-function duration(minutes: number, hourMark: string): string {
+/**
+ * "2h 05m" ("45m" under an hour), from a number of minutes: short, to fit a card's row. Whole
+ * days are said as days ("2 days").
+ */
+function duration(minutes: number, hourMark: string, days: (n: number) => string): string {
+  if (minutes >= 24 * 60 && minutes % (24 * 60) === 0) return days(minutes / (24 * 60));
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   if (hours === 0) return `${mins}m`;
@@ -13,10 +17,12 @@ function duration(minutes: number, hourMark: string): string {
 }
 
 /** "2h 05m". */
-const durationEn = (minutes: number) => duration(minutes, 'h');
+const durationEn = (minutes: number) =>
+  duration(minutes, 'h', (n) => (n === 1 ? '1 day' : `${n} days`));
 
-/** "2g 05m" (godziny, minuty). */
-const durationPl = (minutes: number) => duration(minutes, 'g');
+/** "2g 05m" (godziny, minuty); "1 dzień", "2 dni". */
+const durationPl = (minutes: number) =>
+  duration(minutes, 'g', (n) => (n === 1 ? '1 dzień' : `${n} dni`));
 
 /** "Raye, Wanda and Ola": names joined as a sentence would. */
 const listNames = (names: readonly string[], and: string) =>
@@ -222,19 +228,20 @@ export interface UiTranslations {
   replacePhoto: string;
   remove: string;
   chooseCategory: string;
+  /** The recipe's times, together: the editor's group and the page's tiles. */
   recipeTime: string;
-  timeAuto: string;
-  timeSet: string;
-  timeWorkedOut: string;
+  /** Each typed time's name, on its field and its tile. */
+  timeLabels: Record<'prep' | 'cook' | 'rest', string>;
+  /** Under the editor's time fields: how to type them. */
+  timesHint: string;
+  /** Under a typed time with no number in it, which is shown as typed but isn't added up. */
+  timeAsTyped: string;
   /** Under the time while there are no steps to work it out from. */
   timeFromSteps: string;
-  timeSetByYou: string;
-  hoursShort: string;
-  minutesShort: string;
-  hourMore: string;
-  hourLess: string;
-  minutesMore: string;
-  minutesLess: string;
+  /** The estimate from the steps, offered as the cook time ("~40m"). */
+  stepsSuggest: (time: string) => string;
+  /** An older recipe's single total time, until a time is typed. */
+  timeSetBefore: (time: string) => string;
   /** A total time the author set, e.g. "2 hrs 10 mins" (no "about"). */
   totalTime: (minutes: number) => string;
   moveUp: string;
@@ -697,18 +704,13 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     replacePhoto: 'Replace',
     remove: 'Remove',
     chooseCategory: 'Choose a category',
-    recipeTime: 'Recipe time',
-    timeAuto: 'Auto',
-    timeSet: 'Set',
-    timeWorkedOut: 'Worked out from the steps',
-    timeFromSteps: 'Worked out once there are steps',
-    timeSetByYou: 'Set by you',
-    hoursShort: 'h',
-    minutesShort: 'min',
-    hourMore: 'One hour more',
-    hourLess: 'One hour less',
-    minutesMore: 'Five minutes more',
-    minutesLess: 'Five minutes less',
+    recipeTime: 'Times',
+    timeLabels: { prep: 'Prep', cook: 'Cook', rest: 'Rest' },
+    timesHint: 'Type them as you’d say them: 20 min, 1 h 10, overnight, 2 days',
+    timeAsTyped: 'Won’t count in the total',
+    timeFromSteps: 'Suggested once there are steps',
+    stepsSuggest: (time: string) => `Steps suggest ${time} · Use as the cook time`,
+    timeSetBefore: (time: string) => `Set before as ${time} in all`,
     totalTime: (minutes: number) => durationEn(minutes),
     moveUp: 'Up',
     moveDown: 'Down',
@@ -1197,18 +1199,13 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     replacePhoto: 'Zmień',
     remove: 'Usuń',
     chooseCategory: 'Wybierz kategorię',
-    recipeTime: 'Czas przygotowania',
-    timeAuto: 'Auto',
-    timeSet: 'Ustaw',
-    timeWorkedOut: 'Obliczony na podstawie kroków',
-    timeFromSteps: 'Obliczy się po dodaniu kroków',
-    timeSetByYou: 'Ustawiony przez Ciebie',
-    hoursShort: 'godz.',
-    minutesShort: 'min',
-    hourMore: 'Godzina więcej',
-    hourLess: 'Godzina mniej',
-    minutesMore: 'Pięć minut więcej',
-    minutesLess: 'Pięć minut mniej',
+    recipeTime: 'Czasy',
+    timeLabels: { prep: 'Szykowanie', cook: 'Gotowanie', rest: 'Czekanie' },
+    timesHint: 'Wpisz tak, jak się mówi: 20 min, 1 h 10, przez noc, 2 dni',
+    timeAsTyped: 'Nie wliczy się do sumy',
+    timeFromSteps: 'Podpowiemy, gdy pojawią się kroki',
+    stepsSuggest: (time: string) => `Z kroków wychodzi ${time} · Wpisz jako gotowanie`,
+    timeSetBefore: (time: string) => `Wcześniej ustawiono ${time} łącznie`,
     totalTime: (minutes: number) => durationPl(minutes),
     moveUp: 'W górę',
     moveDown: 'W dół',

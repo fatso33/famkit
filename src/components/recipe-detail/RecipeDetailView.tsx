@@ -5,6 +5,8 @@ import { Recipe, Language } from '../../types/recipe';
 import { Make } from '../../types/make';
 import { UiTranslations } from '../../i18n/translations';
 import { recipeTime, capitalizeFirstLetter } from '../../utils/timeEstimator';
+import { hasTypedTimes } from '../../utils/timeText';
+import { RecipeTimeTiles } from './RecipeTimeTiles';
 import { PathChoices } from '../../utils/recipeMethod';
 import { getStoredPathChoices, setStoredPathChoices } from '../../services/storage';
 import { NumberRoll } from '../common/NumberRoll';
@@ -129,8 +131,10 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
   }));
 
   const recipe = getLocalizedRecipe(rawRecipe, language) || rawRecipe;
-  // The time follows the path the cook is on, unless the author set it.
+  // The time follows the path the cook is on, unless the author set it. Times the author typed
+  // get tiles of their own instead.
   const time = recipeTime(recipe, choices);
+  const typedTimes = hasTypedTimes(recipe.times) ? recipe.times : undefined;
   const timeText = time.manual ? t.totalTime(time.minutes) : t.estimatedTime(time.minutes);
   const addedBy = addedByName(rawRecipe);
   const shownIn = (r: Recipe) => getLocalizedRecipe(r, language) || r;
@@ -221,7 +225,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
               </span>
               {addedBy && <span className="detail-meta-item added-by">{t.addedBy(addedBy)}</span>}
               {/* Previewing a recipe with no steps yet: no time to show. */}
-              {time.minutes > 0 && (
+              {!typedTimes && time.minutes > 0 && (
                 <span id="detailEstimatedTime" className="detail-meta-item detail-time">
                   <Timer className="time-icon" size="1.05em" strokeWidth={2.1} aria-hidden="true" />
                   <NumberRoll value={timeText} />
@@ -254,6 +258,7 @@ export const RecipeDetailView: React.FC<RecipeDetailViewProps> = ({
                 </button>
               )}
             </div>
+            {typedTimes && <RecipeTimeTiles times={typedTimes} t={t} />}
             {/* Some of it is still in the original language: its translation is coming. */}
             {awaitsTranslation(rawRecipe, language) && (
               <p className="detail-translating">

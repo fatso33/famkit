@@ -7687,7 +7687,8 @@
         }
       }
 
-      /* Recipe time: the reading, Auto | Set, and in Set the hour and minute keys. */
+      /* Recipe times: prep, cook and rest typed in rows, each read back on a line kept under its
+         field, so nothing moves when the reading appears. */
       .time-field-label {
         display: flex;
         align-items: center;
@@ -7710,75 +7711,189 @@
         border-color: color-mix(in srgb, var(--accent) 40%, var(--border-subtle));
       }
 
-      .time-field-top {
-        display: flex;
-        flex-wrap: wrap;
+      .time-entry {
+        display: grid;
+        grid-template-columns: 1.5rem minmax(0, 1fr);
+        grid-template-areas:
+          'icon label'
+          'icon input'
+          '. status';
+        column-gap: 0.65rem;
+        row-gap: 0.3rem;
         align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
       }
 
-      .time-field-reading {
-        display: flex;
-        flex-direction: column;
-        gap: 0.15rem;
-        min-width: 0;
+      .time-entry + .time-entry {
+        margin-top: 0.35rem;
       }
 
-      .time-field-value {
-        font-family: var(--font-serif);
-        font-size: 1.5rem;
-        font-weight: var(--weight-heading);
-        line-height: 1.15;
+      .time-entry-icon {
+        grid-area: icon;
+        align-self: end;
+        /* Level with the middle of the 48px field. */
+        margin-bottom: calc(24px - 0.625rem);
         color: var(--accent);
       }
 
-      .time-field-caption {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        font-size: 0.8125rem;
+      .time-entry-label {
+        grid-area: label;
+        font-size: 0.875rem;
         font-weight: 600;
+        color: var(--text-secondary);
+      }
+
+      .time-entry-input {
+        grid-area: input;
+      }
+
+      .time-entry-status {
+        grid-area: status;
+        min-width: 0;
+        min-height: 1.5rem;
+        line-height: 1.5rem;
+      }
+
+      .time-entry-reading {
+        font-family: var(--font-serif);
+        font-weight: var(--weight-heading);
+        font-size: 1rem;
+        color: var(--accent);
+      }
+
+      .time-entry-reading.is-as-typed {
+        font-family: inherit;
+        font-weight: 400;
+        font-size: 0.8125rem;
         color: var(--text-muted);
       }
 
-      .time-field-mode {
-        flex: 0 1 11rem;
-        min-width: 9.5rem;
+      .time-field-hint {
+        margin: 0.75rem 0 0;
+        font-size: 0.8125rem;
+        color: var(--text-muted);
       }
 
-      .time-field-keys {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
-        gap: 0.75rem;
-        padding-top: 0.85rem;
-      }
-
-      /* The portion scaler's pill: round raised keys (.scaler-btn) set into a well. */
-      .time-stepper {
-        display: flex;
+      .time-suggest {
+        display: inline-flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 0.35rem;
-        border: 1px solid var(--border-subtle);
+        gap: 0.4rem;
+        min-height: 44px;
+        margin-top: 0.75rem;
+        padding: 0.45rem 0.95rem;
+        border: none;
         border-radius: var(--radius-full);
-        background: var(--menu-well);
-      }
-
-      .time-stepper-value {
-        display: inline-flex;
-        align-items: baseline;
-        gap: 0.2rem;
-        font-size: 1.125rem;
-        font-weight: 700;
-        font-variant-numeric: tabular-nums;
-        overflow: hidden;
-      }
-
-      .time-stepper-value > span:last-child {
-        font-size: 0.8125rem;
+        background: var(--accent-subtle);
+        color: var(--accent);
+        font: inherit;
+        font-size: 0.875rem;
         font-weight: 600;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .time-suggest:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      /* Under a recipe's byline: a tile per typed time, its value over its name. The values (and
+         the names) shrink alike on a narrow phone at large text (--fit-time, --fit-label). */
+      .time-tiles {
+        display: grid;
+        grid-template-columns: repeat(var(--tiles, 3), minmax(0, 1fr));
+        gap: 0.5rem;
+        max-width: 30rem;
+        margin: 1rem 0 0;
+      }
+
+      .time-tile {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.15rem;
+        min-width: 0;
+        padding: 0.7rem 0.5rem 0.6rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-md);
+        background: var(--bg-surface);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .time-tile-icon {
+        color: var(--accent);
+      }
+
+      /* Words may wrap between them ("przez / noc"), never inside one; a number keeps its unit
+         (RecipeTimeTiles joins them). */
+      .time-tile-value {
+        order: 1;
+        max-width: 100%;
+        margin: 0;
+        text-align: center;
+        font-family: var(--font-serif);
+        font-weight: var(--weight-heading);
+        font-size: calc(1.25rem * var(--fit-time, 1));
+        line-height: 1.15;
+        color: var(--text-primary);
+      }
+
+      .time-tile-label {
+        order: 2;
+        max-width: 100%;
+        text-align: center;
+        font-size: calc(0.8125rem * var(--fit-label, 1));
         color: var(--text-muted);
+      }
+
+      /* Too narrow for three tiles side by side (a small phone, large text): one card, a row per
+         time, its icon at the start and its value over its name. */
+      .time-tiles-group {
+        container-type: inline-size;
+      }
+
+      @container (max-width: 22rem) {
+        .time-tiles {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 0;
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-md);
+          background: var(--bg-surface);
+          box-shadow: var(--shadow-sm);
+        }
+
+        .time-tile {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+          grid-template-areas:
+            'icon value'
+            'icon label';
+          align-items: center;
+          column-gap: 0.75rem;
+          row-gap: 0;
+          padding: 0.6rem 0.9rem;
+          border: none;
+          border-radius: 0;
+          background: none;
+          box-shadow: none;
+        }
+
+        .time-tile + .time-tile {
+          border-top: 1px solid var(--border-subtle);
+        }
+
+        .time-tile-icon {
+          grid-area: icon;
+        }
+
+        .time-tile-value {
+          grid-area: value;
+          text-align: start;
+        }
+
+        .time-tile-label {
+          grid-area: label;
+          text-align: start;
+        }
       }
 
       /* ── Tools that open under a tapped row or step ── */

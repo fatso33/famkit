@@ -1,4 +1,5 @@
 import { BakingOptions, ForkPath, Ingredient, LocalizedRecipeContent, Step } from '../types/recipe';
+import { TIME_KINDS, timeInWords } from './timeText';
 
 /**
  * A recipe's words, split into pieces: the title, each step, each fork label, each ingredient
@@ -24,6 +25,8 @@ export type TextKind =
   | 'pathLabel'
   | 'pathText'
   | 'pathStep'
+  | 'time'
+  | 'source'
   | 'makeTitle'
   | 'makeNote';
 
@@ -140,6 +143,11 @@ export function recipePieces(content: LocalizedRecipeContent): Piece[] {
   text('yieldHeader', 'yield', content.yieldHeader);
   text('tips', 'tips', content.tips);
   text('notes', 'notes', content.notes);
+  // A time that's a plain number of minutes is shown the app's way in either language.
+  for (const kind of TIME_KINDS) {
+    const value = content.times?.[kind];
+    if (value && timeInWords(value)) text(`times:${kind}`, 'time', value);
+  }
   text('laminationDirective', 'step', content.laminationDirective);
   for (const option of ['option1', 'option2'] as const) {
     for (const [j, value] of optionEntries(content.bakingOptions?.[option])) {
@@ -216,6 +224,17 @@ export function buildTranslation(
   set('tips', optional('tips', 'tips', source.tips));
   set('notes', optional('notes', 'notes', source.notes));
   set('laminationDirective', optional('laminationDirective', 'step', source.laminationDirective));
+
+  if (source.times) {
+    const times: NonNullable<LocalizedRecipeContent['times']> = {};
+    for (const kind of TIME_KINDS) {
+      const typed = source.times[kind];
+      const value =
+        typed !== undefined && timeInWords(typed) ? text(`times:${kind}`, 'time', typed) : typed;
+      if (value !== undefined) times[kind] = value;
+    }
+    content.times = times;
+  }
 
   if (source.bakingOptions) {
     const bakingOptions: BakingOptions = {};

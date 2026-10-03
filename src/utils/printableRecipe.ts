@@ -12,7 +12,8 @@ import {
   pathSteps,
 } from './recipeMethod';
 import { addedByName, creditName } from './ownership';
-import { capitalizeFirstLetter, recipeTime } from './timeEstimator';
+import { capitalizeFirstLetter } from './timeEstimator';
+import { recipeTimeLabel } from './timeText';
 import { recipePhoto } from './vault';
 
 /**
@@ -129,15 +130,13 @@ export function printableRecipe(
   const { photos, choices = {} } = options;
   const steps: Step[] = recipe.steps ?? [];
 
-  const time = recipeTime(recipe, choices);
+  const timeLabel = recipeTimeLabel(recipe, t, choices);
   const addedBy = addedByName(recipe);
   const credits = [
     t.byAuthor(creditName(recipe)),
     ...(addedBy ? [t.addedBy(addedBy)] : []),
     // Nothing to tell the time from (no timed steps): no time, rather than "~0m".
-    ...(time.minutes > 0
-      ? [t.pdfTime(time.manual ? t.totalTime(time.minutes) : t.estimatedTime(time.minutes))]
-      : []),
+    ...(timeLabel ? [t.pdfTime(timeLabel)] : []),
   ];
 
   const ingredients = ingredientGroups(recipe.ingredients ?? []).map((group) => ({

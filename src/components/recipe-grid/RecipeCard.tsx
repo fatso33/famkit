@@ -2,7 +2,7 @@ import React from 'react';
 import { Timer } from 'lucide-react';
 import { Recipe, Language } from '../../types/recipe';
 import { UiTranslations } from '../../i18n/translations';
-import { recipeTime } from '../../utils/timeEstimator';
+import { recipeTimeLabel } from '../../utils/timeText';
 import { getLocalizedRecipe } from '../../hooks/useRecipes';
 import { vaultItemKey } from '../../utils/viewTransition';
 import { recipePhoto } from '../../utils/vault';
@@ -48,8 +48,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
   t,
 }) => {
   const recipe = getLocalizedRecipe(rawRecipe, language) || rawRecipe;
-  const time = recipeTime(recipe);
-  const estimatedTime = time.manual ? t.totalTime(time.minutes) : t.estimatedTime(time.minutes);
+  const timeLabel = recipeTimeLabel(recipe, t);
   const photo = recipePhoto(recipe);
   const description =
     recipe.cardDescription || recipe.tips || recipe.notes || t.cardDescriptionFallback;
@@ -102,10 +101,10 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
         <div className="card-meta">
           <span className="card-cook">{creditName(recipe)}</span>
           {/* A draft with no steps yet has no time to show. */}
-          {time.minutes > 0 && (
+          {timeLabel && (
             <span className="card-time">
               <Timer className="time-icon" size="1.05em" strokeWidth={2.1} aria-hidden="true" />
-              {estimatedTime}
+              {timeLabel}
             </span>
           )}
           {(remixCount > 0 || makeCount > 0) && (

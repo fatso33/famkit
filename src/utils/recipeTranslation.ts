@@ -3,9 +3,11 @@ import {
   Language,
   LocalizedRecipeContent,
   Recipe,
+  RecipeTimes,
   Step,
   StepFork,
 } from '../types/recipe';
+import { TIME_KINDS } from './timeText';
 import {
   Piece,
   PieceValue,
@@ -91,7 +93,30 @@ export function translatableContent(recipe: Recipe): LocalizedRecipeContent {
       },
     })),
     bakingOptions: recipe.bakingOptions,
+    // Newest last, and only when there are any, so older recipes' fingerprints don't change.
+    ...timeWordsOf(recipe.times),
   };
+}
+
+/** The words of the times the author typed, for translation (their minutes stay the original's). */
+function timeWordsOf(times: RecipeTimes | undefined): Pick<LocalizedRecipeContent, 'times'> {
+  if (!times || typeof times !== 'object') return {};
+  const words: NonNullable<LocalizedRecipeContent['times']> = {};
+  for (const kind of TIME_KINDS) {
+    const text = times[kind]?.text;
+    if (typeof text === 'string' && text.trim()) words[kind] = text;
+  }
+  return Object.keys(words).length > 0 ? { times: words } : {};
+}
+
+/** The typed times in the translation's words, with the original's minutes. */
+function overlayTimes(source: RecipeTimes, words: LocalizedRecipeContent['times']): RecipeTimes {
+  const times: RecipeTimes = {};
+  for (const kind of TIME_KINDS) {
+    const time = source[kind];
+    if (time) times[kind] = { text: words?.[kind] ?? time.text, minutes: time.minutes };
+  }
+  return times;
 }
 
 // A translated list in the source's shape: one entry per source entry, the original where the
@@ -342,6 +367,7 @@ export function overlayTranslation(recipe: Recipe, tr: LocalizedRecipeContent): 
     ingredients: tr.ingredients && tr.ingredients.length > 0 ? ingredients : recipe.ingredients,
     steps: tr.steps && tr.steps.length > 0 ? steps : recipe.steps,
     bakingOptions: recipe.bakingOptions && (tr.bakingOptions || recipe.bakingOptions),
+    ...(recipe.times && { times: overlayTimes(recipe.times, tr.times) }),
   };
 }
 

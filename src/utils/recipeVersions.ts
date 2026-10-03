@@ -7,6 +7,7 @@ import {
   Step,
   VersionSummary,
 } from '../types/recipe';
+import { TIME_KINDS } from './timeText';
 
 /** Document id for a version: readable in the Firebase console and unique per save. */
 export const versionId = (version: number, savedAt: number) => `v${version}-${savedAt}`;
@@ -208,7 +209,20 @@ export function diffRecipes(current: Recipe, restored: Recipe, comparePhotos: bo
   if (comparePhotos && restored.heroImage && restored.heroImage !== current.heroImage) {
     fields.add('heroImage');
   }
-  if ((restored.manualMinutes ?? null) !== (current.manualMinutes ?? null)) fields.add('time');
+  // A version is an untrusted record: words that aren't a string count as none.
+  const typedTimes = (r: Recipe) =>
+    JSON.stringify(
+      TIME_KINDS.map((kind) => {
+        const words: unknown = r.times?.[kind]?.text;
+        return typeof words === 'string' ? words.trim() : '';
+      }),
+    );
+  if (
+    (restored.manualMinutes ?? null) !== (current.manualMinutes ?? null) ||
+    typedTimes(restored) !== typedTimes(current)
+  ) {
+    fields.add('time');
+  }
 
   const ingredients = new Set<number>();
   (restored.ingredients || []).forEach((ing, i) => {
