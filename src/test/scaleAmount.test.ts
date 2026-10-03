@@ -43,6 +43,16 @@ describe('scaleAmountText', () => {
     expect(x('1.5 cups or 375ml', 2)).toBe('3 cups or 750ml');
   });
 
+  it('scales every part of an amount given as a sum (regression: only the first part scaled)', () => {
+    expect(x('1 cup plus 2 tbsp', 2)).toBe('2 cups plus ¼ cup');
+    expect(x('1 cup plus 2 tbsp', 0.5)).toBe('½ cup plus 1 tbsp');
+    expect(x('1 cup + 2 tbsp', 2)).toBe('2 cups + ¼ cup');
+    expect(x('1 cup and 1 tbsp', 2)).toBe('2 cups and 2 tbsp');
+    expect(pl('1 szklanka i 2 łyżki', 2)).toBe('2 szklanki i 4 łyżki');
+    // A mixed number stays one number.
+    expect(x('1 and 1/2 cups', 2)).toBe('3 cups');
+  });
+
   it('keeps sizes, which are not amounts', () => {
     expect(x('1 28-ounce', 2)).toBe('2 28-ounce');
     expect(x('1 4-inch', 3)).toBe('3 4-inch');

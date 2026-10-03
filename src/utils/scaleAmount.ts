@@ -4,7 +4,8 @@ import { polishUnit } from './polish';
 /**
  * Scales an amount as a person typed it ("2½ Tbsp", "400 g/14oz", "1-2 tbsp", "3"), for rows
  * that carry no quantity field. The first number is scaled, along with any equivalent given
- * with it ("/ 14oz", "(250 ml)", "or 375ml"). Anything else stays as typed: amounts with no
+ * with it ("/ 14oz", "(250 ml)", "or 375ml") and the other parts of a sum ("plus 2 tbsp").
+ * Anything else stays as typed: amounts with no
  * number ("pinch"), and sizes ("1 28-ounce can" scales the 1, not the 28).
  *
  * Results read like a cook would write them: spoons and cups land on kitchen fractions, grams
@@ -25,10 +26,12 @@ export function scaleAmountText(
   const lead = scaled(first, ratio, lang, stored);
   let out = text.slice(0, first.start) + lead.text;
   let pos = first.end;
-  // Equivalents given alongside: "400 g/14oz", "1 cup (250 ml)", "1.5 cups or 375ml".
+  // Equivalents given alongside: "400 g/14oz", "1 cup (250 ml)", "1.5 cups or 375ml"; and the
+  // other parts of a sum: "1 cup plus 2 tbsp".
   for (;;) {
     const next = findAmount(text, pos);
-    if (!next || !EQUIVALENT_JOIN.test(text.slice(pos, next.start))) break;
+    const join = next ? text.slice(pos, next.start) : '';
+    if (!next || !(EQUIVALENT_JOIN.test(join) || SUM_JOIN.test(join))) break;
     // "1 (14 oz) can": the brackets give the can's size, which stays, and the can follows
     // the count ("2 (14 oz) cans").
     const size = text.slice(pos, next.start).includes('(')
@@ -76,6 +79,8 @@ const AMOUNT = new RegExp(
 );
 const EQUIVALENT_JOIN =
   /^\s*(?:\/|\(\s*(?:about|approx\.?|roughly|około|ok\.|ca\.?|~)?|or|lub)\s*$/iu;
+// Parts of a sum, which all scale: "1 cup plus 2 tbsp", "1 szklanka i 2 łyżki".
+const SUM_JOIN = /^\s*(?:plus|\+|and|i|oraz)\s*$/iu;
 
 interface Amount {
   start: number;
