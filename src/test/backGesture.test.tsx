@@ -4,6 +4,7 @@ import App from '../App';
 import { UI_TEXT } from '../i18n/translations';
 import { Recipe } from '../types/recipe';
 import { goFromMenu } from './menu';
+import { startTyping } from './editorHelpers';
 
 vi.mock('../services/gemini', () => ({
   isTranslationAvailable: false,
@@ -296,6 +297,7 @@ describe('back gesture', () => {
   it('closes a new recipe on back, keeping what was typed on this phone', async () => {
     render(<App initialPage="recipes" />);
     await openMenuItem(t.addRecipe);
+    startTyping(t);
     fireEvent.change(within(editor()!).getByLabelText(t.recipeTitle), {
       target: { value: 'Pierniczki' },
     });

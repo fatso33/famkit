@@ -437,23 +437,6 @@ describe('AddRecipeModal initial form', () => {
     expect(screen.getByText('Behind').closest('[inert]')).toBeNull();
   });
 
-  it('keeps focus in the preview, and gives it back to Preview when it closes', () => {
-    render(<AddRecipeModal initialRecipe={recipe} onClose={noop} onSave={noop} t={t} />);
-    const previewKey = screen.getByRole('button', { name: t.preview });
-    previewKey.focus();
-    fireEvent.click(previewKey);
-
-    // Everything under it is out of reach, so Tab can't land on the editor behind.
-    expect(document.getElementById('recipeTitleInput')!.closest('[inert]')).not.toBeNull();
-    expect(document.querySelector('.editor-save')!.closest('[inert]')).not.toBeNull();
-    expect(document.activeElement).toHaveAccessibleName(t.backToEditing);
-
-    fireEvent.keyDown(document, { key: 'Escape' });
-    expect(document.querySelector('.editor-preview')).toBeNull();
-    expect(document.getElementById('recipeTitleInput')!.closest('[inert]')).toBeNull();
-    expect(document.activeElement).toBe(previewKey);
-  });
-
   it('ignores drafts when editing and starts empty when creating without one', () => {
     localStorage.setItem('family_kitchen_recipe_draft', JSON.stringify({ title: 'Draft Babka' }));
     const { unmount } = render(

@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useRef } from 'react';
-import { ChevronDown, CircleCheck, ClipboardPaste, Eye, Shuffle, X } from 'lucide-react';
+import { BookOpenText, ChevronDown, CircleCheck, ClipboardPaste, Shuffle, X } from 'lucide-react';
 import { UiTranslations } from '../../i18n/translations';
 import { NumberRoll } from '../common/NumberRoll';
 
@@ -41,7 +41,9 @@ interface EditorBarProps {
   draftName: string;
   /** New recipes only. */
   onPaste?: () => void;
-  onPreview: () => void;
+  /** Reading: the page shows only what the family will see (prompts, keys and tools put away). */
+  reading: boolean;
+  onToggleRead: () => void;
   /** Offered while a restored draft is open: a link after the status that says so. */
   onStartOver?: () => void;
   /** Offered while a saved draft is open: a link after the draft's label. */
@@ -53,6 +55,8 @@ interface EditorBarProps {
   onHeight: (px: number, tuck: number) => void;
   /** Out of reach while a preview or a sheet covers the page. */
   inert?: boolean;
+  /** The jump pills, hanging under the row of actions once the page is scrolled. */
+  jump?: React.ReactNode;
   /** The version list, dropping down from under the title. */
   children?: React.ReactNode;
   t: UiTranslations;
@@ -60,11 +64,11 @@ interface EditorBarProps {
 
 /**
  * The editor's bar: a banner with the title (and the version, which drops down its history),
- * and under it one row of everything there is to do: Close, Paste (new recipes), Preview, then
+ * and under it one row of everything there is to do: Close, Paste (new recipes), Read, then
  * Draft and Save. Save counts down what's still needed. Scrolling down the form slides the
  * banner away and leaves the row; scrolling up brings it back.
  *
- * The row never squeezes a word: when it doesn't fit, Paste and Preview become icon keys, then
+ * The row never squeezes a word: when it doesn't fit, Paste and Read become icon keys, then
  * Save drops its "left" ("Save · 2"), and when that's still too wide (a small phone, large text),
  * Draft and Save take a row of their own.
  */
@@ -85,11 +89,13 @@ export const EditorBar: React.FC<EditorBarProps> = ({
   onSaveDraft,
   draftName,
   onPaste,
-  onPreview,
+  reading,
+  onToggleRead,
   onStartOver,
   onDiscardDraft,
   onHeight,
   inert,
+  jump,
   children,
   t,
 }) => {
@@ -121,7 +127,7 @@ export const EditorBar: React.FC<EditorBarProps> = ({
   }, []);
 
   // How the row fits (data-fit, three words): on one row or with Draft and Save on a row of their
-  // own; Paste and Preview with their words or as icon keys; Save's count with its "left" or
+  // own; Paste and Read with their words or as icon keys; Save's count with its "left" or
   // without. Tried from roomiest to tightest whenever the width or what the keys say changes.
   const fitKey = `${missing > 0}:${String(missing).length}:${Boolean(onPaste)}:${Boolean(onSaveDraft)}:${Boolean(onStartOver)}`;
   useLayoutEffect(() => {
@@ -267,9 +273,15 @@ export const EditorBar: React.FC<EditorBarProps> = ({
               <span className="editor-chip-label">{t.paste}</span>
             </button>
           )}
-          <button type="button" className="editor-chip" aria-label={t.preview} onClick={onPreview}>
-            <Eye size="1.15em" aria-hidden="true" />
-            <span className="editor-chip-label">{t.preview}</span>
+          <button
+            type="button"
+            className="editor-chip editor-read-key"
+            aria-label={t.read}
+            aria-pressed={reading}
+            onClick={onToggleRead}
+          >
+            <BookOpenText size="1.15em" aria-hidden="true" />
+            <span className="editor-chip-label">{t.read}</span>
           </button>
         </div>
         <div className="editor-save-group">
@@ -306,6 +318,7 @@ export const EditorBar: React.FC<EditorBarProps> = ({
           </button>
         </div>
       </div>
+      {jump}
       {/* Outside the rows, which slide: a moving row would trap the menus' tap catchers. */}
       {children}
     </header>

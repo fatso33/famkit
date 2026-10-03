@@ -155,7 +155,7 @@ export const StepEditor: React.FC<StepEditorProps> = ({
       <li
         data-motion-id={step.id}
         data-item-id={step.id}
-        className={`step-editor is-plain is-photo${active ? ' is-active' : ''}${restored ? ' is-restored' : ''}`}
+        className={`step-editor is-plain is-photo${active ? ' is-active' : ''}${restored ? ' is-restored' : ''}${hasPhoto ? '' : ' is-blank'}`}
       >
         {restored && <span className="restored-chip">{t.restoredChip}</span>}
         <DragGrip onDrop={onDrop} />
@@ -179,7 +179,9 @@ export const StepEditor: React.FC<StepEditorProps> = ({
             />
             {/* Shown under the photo on the page, so it says what it is. */}
             {hasPhoto && (
-              <label className="method-photo-caption-field">
+              <label
+                className={`method-photo-caption-field${step.imageCaption.trim() ? '' : ' is-blank'}`}
+              >
                 <span className="form-label is-small">{t.photoCaptionLabel}</span>
                 <input
                   className="form-control step-photo-caption"
@@ -246,7 +248,7 @@ export const StepEditor: React.FC<StepEditorProps> = ({
   const extrasFields = (
     <>
       {extras.showTip && (
-        <div className="step-tip-field field-with-icon">
+        <div className={`step-tip-field field-with-icon${extras.tip.trim() ? '' : ' is-blank'}`}>
           <Lightbulb className="field-icon is-gold" size="1.1em" aria-hidden="true" />
           <AutoGrowTextarea
             aria-label={plain ? t.tip : t.stepTipLabel(n)}
@@ -265,7 +267,7 @@ export const StepEditor: React.FC<StepEditorProps> = ({
           />
           {hasPhoto && (
             <input
-              className="form-control step-photo-caption"
+              className={`form-control step-photo-caption${extras.imageCaption.trim() ? '' : ' is-blank'}`}
               type="text"
               aria-label={t.photoCaptionLabel}
               autoComplete="off"
@@ -360,11 +362,19 @@ export const StepEditor: React.FC<StepEditorProps> = ({
     </Reveal>
   );
 
+  // Nothing written in it: Read puts it away, as the page would leave it out.
+  const blank =
+    !fork &&
+    !step.text.trim() &&
+    step.substeps.every((sub) => !sub.text.trim()) &&
+    !extras.tip.trim() &&
+    !hasPhoto;
+
   return (
     <li
       data-motion-id={step.id}
       data-item-id={step.id}
-      className={`step-editor${plain ? ' is-plain' : ''}${fork ? ' is-fork' : ''}${active ? ' is-active' : ''}${restored ? ' is-restored' : ''}${fork && join ? ' has-join' : ''}`}
+      className={`step-editor${plain ? ' is-plain' : ''}${fork ? ' is-fork' : ''}${active ? ' is-active' : ''}${restored ? ' is-restored' : ''}${fork && join ? ' has-join' : ''}${blank ? ' is-blank' : ''}`}
     >
       {restored && <span className="restored-chip">{t.restoredChip}</span>}
       <DragGrip onDrop={onDrop} />
@@ -399,7 +409,7 @@ export const StepEditor: React.FC<StepEditorProps> = ({
             {!plain && step.substeps.length > 0 && (
               <ol className="substep-list">
                 {step.substeps.map((sub, k) => (
-                  <li key={sub.id} className="substep-row">
+                  <li key={sub.id} className={`substep-row${sub.text.trim() ? '' : ' is-blank'}`}>
                     <span className="substep-letter" aria-hidden="true">
                       {SUBSTEP_LETTERS[k]})
                     </span>

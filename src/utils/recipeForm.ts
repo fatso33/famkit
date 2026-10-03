@@ -1325,3 +1325,28 @@ export function addPastedMethod(sections: SectionState[], pasted: PastedSection[
   }
   return next;
 }
+
+/**
+ * The form with a pasted ingredient list and method added (either may be empty): rows go after
+ * those written, or in place of a list with nothing written in it yet. Says how many of each
+ * came in, for the message.
+ */
+export function withPasted(
+  form: FormState,
+  text: { ingredients: string; steps: string },
+): { form: FormState; ingredients: number; steps: number } {
+  const rows = pastedIngredients(text.ingredients);
+  const method = pastedMethod(text.steps);
+  const steps = pastedStepCount(method);
+  const blank = form.ingredientRows.every((r) => !r.name.trim() && !r.amount.trim());
+  return {
+    form: {
+      ...form,
+      ingredientRows:
+        rows.length === 0 ? form.ingredientRows : blank ? rows : [...form.ingredientRows, ...rows],
+      sections: steps > 0 ? addPastedMethod(form.sections, method) : form.sections,
+    },
+    ingredients: ingredientRowsOnly(rows).length,
+    steps,
+  };
+}

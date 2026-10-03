@@ -250,8 +250,22 @@ export interface UiTranslations {
   savingVersion: (version: number) => string;
   draftSaved: string;
   paste: string;
-  preview: string;
-  backToEditing: string;
+  /** The editor's Read key: the page as the family will see it. */
+  read: string;
+  /** The jump pills under the editor's bar: their group's name, then each place. */
+  jumpTo: string;
+  jumpMethod: string;
+  jumpExtras: string;
+  /** The sheet a new recipe starts from: type it, paste its text, or read it off a website. */
+  startTitle: string;
+  startType: string;
+  startTypeHint: string;
+  startPaste: string;
+  startPasteHint: string;
+  startWebsite: string;
+  startWebsiteHint: string;
+  /** Back from a paste panel to the start sheet's choices. */
+  startBack: string;
   startOver: string;
   /** Tag beside an optional field's label. */
   optional: string;
@@ -755,8 +769,18 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     savingVersion: (version: number) => `Saving version ${version}`,
     draftSaved: 'Kept on this phone',
     paste: 'Paste',
-    preview: 'Preview',
-    backToEditing: 'Back to editing',
+    read: 'Read',
+    jumpTo: 'Jump to',
+    jumpMethod: 'Method',
+    jumpExtras: 'Tip and source',
+    startTitle: 'A new recipe',
+    startType: 'Type it',
+    startTypeHint: 'Start from a clean page',
+    startPaste: 'Paste text',
+    startPasteHint: 'From a note, a message or an email',
+    startWebsite: 'From a website',
+    startWebsiteHint: "Paste the page's address",
+    startBack: 'Back to the choices',
     startOver: 'Start over',
     optional: 'optional',
     photoHint: 'The picture the family sees first',
@@ -1278,8 +1302,18 @@ export const UI_TEXT: Record<Language, UiTranslations> = {
     savingVersion: (version: number) => `Zapisujesz wersję ${version}`,
     draftSaved: 'Zachowano na tym telefonie',
     paste: 'Wklej',
-    preview: 'Podgląd',
-    backToEditing: 'Wróć do edycji',
+    read: 'Czytaj',
+    jumpTo: 'Przejdź do',
+    jumpMethod: 'Przygotowanie',
+    jumpExtras: 'Wskazówka i źródło',
+    startTitle: 'Nowy przepis',
+    startType: 'Wpisz ręcznie',
+    startTypeHint: 'Zacznij od czystej kartki',
+    startPaste: 'Wklej tekst',
+    startPasteHint: 'Z notatki, wiadomości albo maila',
+    startWebsite: 'Ze strony internetowej',
+    startWebsiteHint: 'Wklej adres strony',
+    startBack: 'Wróć do wyboru',
     startOver: 'Zacznij od nowa',
     optional: 'opcjonalnie',
     photoHint: 'To zdjęcie rodzina zobaczy jako pierwsze',

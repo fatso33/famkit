@@ -13,7 +13,7 @@ import {
   newRecipeDrafts,
   parseDraft,
 } from '../utils/recipeDrafts';
-import { saveRecipe } from './editorHelpers';
+import { saveRecipe, startTyping } from './editorHelpers';
 
 vi.mock('../services/gemini', () => ({
   isTranslationAvailable: false,
@@ -194,6 +194,7 @@ describe('saving drafts', () => {
   it('keeps an unfinished new recipe as a draft in the vault, until discarded', async () => {
     renderApp();
     openMenuItem(t.addRecipe);
+    startTyping(t);
     fireEvent.change(within(editor()!).getByLabelText(t.recipeTitle), {
       target: { value: 'Pierniczki' },
     });
@@ -218,6 +219,7 @@ describe('saving drafts', () => {
   it('still checks what the vault needs when saving to it', () => {
     renderApp();
     openMenuItem(t.addRecipe);
+    startTyping(t);
     fireEvent.change(within(editor()!).getByLabelText(t.recipeTitle), {
       target: { value: 'Pierniczki' },
     });
@@ -243,6 +245,7 @@ describe('the back gesture in the editor', () => {
     // From My Counter, which holds no entry of its own.
     renderApp('counter');
     openMenuItem(t.addRecipe);
+    startTyping(t);
     await settle();
     await waitFor(() => expect(depth()).toBe(1));
     await swipeBack();
@@ -254,6 +257,7 @@ describe('the back gesture in the editor', () => {
     // From My Counter, which holds no entry of its own.
     renderApp('counter');
     openMenuItem(t.addRecipe);
+    startTyping(t);
     await settle();
     await waitFor(() => expect(depth()).toBe(1));
     fireEvent.change(within(editor()!).getByLabelText(t.recipeTitle), {

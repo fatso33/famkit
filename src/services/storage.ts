@@ -676,3 +676,15 @@ export function saveMakes(makes: Make[], { photosInCloud = false } = {}): void {
     console.warn('Could not keep the makes on this device:', e);
   }
 }
+
+/** The new recipe being written, kept on this phone until it's saved (AddRecipeModal). */
+export const NEW_RECIPE_KEY = 'family_kitchen_recipe_draft';
+
+/** Whether a new recipe is being written on this phone. */
+export function hasKeptNewRecipe(): boolean {
+  try {
+    return Boolean(localStorage.getItem(NEW_RECIPE_KEY));
+  } catch {
+    return false;
+  }
+}

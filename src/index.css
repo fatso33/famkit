@@ -5511,10 +5511,9 @@
          keeps 1rem, a Pixel's 412px gets the 1.125rem cap, so it looks the same size on both) and
          gives way on a narrow phone at a large text size, so the island always fits. The pill and
          capsules are frosted glass in a frame of the page's own colour, which parts them from
-         white cards scrolling beneath. The editor preview's back capsule (EditorPreview) is drawn
-         from the same sizes and material, and the card decks (NavDeck) sit just above them. */
+         white cards scrolling beneath. The card decks (NavDeck) are drawn from the same sizes and
+         material, and sit just above them. */
       .nav-island,
-      .editor-preview-back,
       .nav-deck {
         --nav-u: min(clamp(1rem, 4.45vw, 1.125rem), calc((100vw - 1.5rem) / 19.5));
         --nav-tab: calc(var(--nav-u) * 3.875);
@@ -5552,7 +5551,7 @@
         pointer-events: none;
       }
 
-      [data-theme='dark'] :is(.nav-island, .editor-preview-back) {
+      [data-theme='dark'] .nav-island {
         --nav-frame:
           0 0 0 var(--nav-ring) var(--bg-main),
           inset 0 1px 0 var(--card-sheen),
@@ -7306,6 +7305,171 @@
       /* Sharing the row by what they say, so Save's count is never cut. */
       .editor-bar-actions[data-fit~='wrap'] .editor-save-group > * {
         flex: 1 1 auto;
+      }
+
+      /* The Read key is pressed while reading. */
+      .editor-read-key[aria-pressed='true'] {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: var(--on-accent);
+      }
+
+      .editor-read-key[aria-pressed='true'] > svg {
+        color: inherit;
+      }
+
+      /* ── Jump pills: Ingredients · Method · Tip and source, in a glass capsule hanging under
+         the bar's row once the page is scrolled into the recipe (AddRecipeModal decides when).
+         Outside the bar's measured height, so showing them never moves the page. */
+      .editor-bar > .editor-jump {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        padding: 0.4rem max(0.75rem, env(safe-area-inset-right)) 0
+          max(0.75rem, env(safe-area-inset-left));
+        pointer-events: none;
+        translate: 0 calc(-1 * var(--editor-tuck, 0px));
+        transition: translate 0.42s var(--ease-glide);
+      }
+
+      .editor-jump-row {
+        position: relative;
+        display: flex;
+        max-width: 100%;
+        overflow-x: auto;
+        scrollbar-width: none;
+        padding: 0.25rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-full);
+        background: color-mix(in srgb, var(--bg-main) 86%, transparent);
+        backdrop-filter: blur(18px) saturate(1.5);
+        box-shadow: var(--shadow-md);
+        opacity: 0;
+        transform: translateY(-0.6rem) scale(0.96);
+        transition:
+          opacity 0.2s ease,
+          transform 0.34s var(--ease-glide);
+      }
+
+      .editor-jump-row::-webkit-scrollbar {
+        display: none;
+      }
+
+      .editor-jump[data-shown='true'] .editor-jump-row {
+        opacity: 1;
+        transform: none;
+        pointer-events: auto;
+      }
+
+      /* The lit pill's face, sliding to whichever is lit. */
+      .editor-jump-thumb {
+        position: absolute;
+        top: 0.25rem;
+        bottom: 0.25rem;
+        left: 0;
+        border-radius: var(--radius-full);
+        background: var(--accent);
+        transition:
+          transform 0.36s var(--ease-glide),
+          width 0.36s var(--ease-glide),
+          opacity 0.2s ease;
+      }
+
+      .editor-jump-pill {
+        position: relative;
+        z-index: 1;
+        flex: none;
+        /* In em, so a capsule shrunk to fit (--fit, EditorJumpPills) shrinks as a whole. */
+        min-height: 2.57em;
+        padding: 0.35em 0.97em;
+        border: 0;
+        border-radius: var(--radius-full);
+        background: transparent;
+        color: var(--text-secondary);
+        font: inherit;
+        font-size: calc(0.875rem * var(--fit, 1));
+        font-weight: 700;
+        white-space: nowrap;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition: color 0.3s ease;
+      }
+
+      /* A finger-sized target around the slim pill. */
+      .editor-jump-pill::before {
+        content: '';
+        position: absolute;
+        inset: -0.3rem 0;
+      }
+
+      /* Where the capsule doesn't fit: short names, closer together (EditorJumpPills). */
+      .editor-jump-short,
+      .editor-jump[data-fit='short'] .editor-jump-full {
+        display: none;
+      }
+
+      .editor-jump[data-fit='short'] .editor-jump-short {
+        display: inline;
+      }
+
+      .editor-jump[data-fit='short'] .editor-jump-pill {
+        padding-inline: 0.72em;
+      }
+
+      .editor-jump-pill[aria-current='location'] {
+        color: var(--on-accent);
+      }
+
+      .editor-jump-pill:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 1px;
+      }
+
+      /* ── Read: the page as the family will see it. Prompts, add keys, tools and empty parts
+         fade out, then are put away (AddRecipeModal holds the place being read still as the
+         page closes up), and the fields lose their edges. Ending it brings them back and fades
+         them in. */
+      .editor-layer.is-reading-soon :is(.field-prompt, .editor-add-key, .ingredient-add-bar, .method-add-row,
+          .method-add-section, .method-numbering, .method-section-head .icon-button, .item-tools,
+          .delete-recipe-zone, .step-number-add, .step-number-remove, .step-plain-tag,
+          .substep-row .icon-button, .fork-add-path, .fork-add-step, .fork-remove-path,
+          .hero-photo-actions, .image-delete-badge, .byline-part-chevron, .byline-part.is-needed,
+          .byline-part.is-quiet, .step-photo-field:not(:has(img)), .method-photo-caption-field
+          .form-label, .is-blank) {
+        opacity: 0;
+        transition: opacity 0.17s ease;
+      }
+
+      .editor-layer.is-reading :is(.field-prompt, .editor-add-key, .ingredient-add-bar, .method-add-row,
+          .method-add-section, .method-numbering, .method-section-head .icon-button, .item-tools,
+          .delete-recipe-zone, .step-number-add, .step-number-remove, .step-plain-tag,
+          .substep-row .icon-button, .fork-add-path, .fork-add-step, .fork-remove-path,
+          .hero-photo-actions, .image-delete-badge, .byline-part-chevron, .byline-part.is-needed,
+          .byline-part.is-quiet, .step-photo-field:not(:has(img)), .method-photo-caption-field
+          .form-label, .is-blank) {
+        display: none;
+      }
+
+      .editor-layer.is-read-ending :is(.field-prompt, .editor-add-key, .ingredient-add-bar, .method-add-row,
+          .method-add-section, .method-numbering, .method-section-head .icon-button, .item-tools,
+          .delete-recipe-zone, .step-number-add, .step-number-remove, .step-plain-tag,
+          .substep-row .icon-button, .fork-add-path, .fork-add-step, .fork-remove-path,
+          .hero-photo-actions, .image-delete-badge, .byline-part-chevron, .byline-part.is-needed,
+          .byline-part.is-quiet, .step-photo-field:not(:has(img)), .method-photo-caption-field
+          .form-label, .is-blank) {
+        animation: fk-fade-in 0.24s ease both;
+      }
+
+      .editor-layer:is(.is-reading, .is-reading-soon) :is(.form-control, .editor-page-title-input,
+          .editor-page-desc-input, .byline-part),
+      .editor-layer:is(.is-reading, .is-reading-soon) .is-needed :is(.editor-page-title-input,
+          .ingredient-name, .step-editor-text) {
+        border-color: transparent;
+        background-color: transparent;
+        box-shadow: none;
       }
 
       /* The rare actions, as a link after what they act on: "Draft v4 · Discard draft". */
@@ -10447,6 +10611,127 @@
         cursor: default;
       }
 
+      /* ── Start sheet: a new recipe typed, pasted or from a website (StartSheet). Paste and
+         website turn it into their panel; it glides to its new height (a transform from where
+         its top was), so on a phone a band of its own face hangs below it, filling the foot of
+         the screen while it comes down. ── */
+      @media (max-width: 639.98px) {
+        .editor-sheet.start-sheet {
+          box-shadow:
+            var(--shadow-lg),
+            0 12rem 0 0 var(--elev-menu);
+        }
+      }
+
+      .start-sheet-title {
+        min-height: 2.75rem;
+      }
+
+      .start-sheet-name {
+        animation: fk-fade-in 0.28s ease both;
+      }
+
+      .start-sheet-back {
+        flex: none;
+        width: 44px;
+        height: 44px;
+        display: grid;
+        place-items: center;
+        margin: 0 -0.15rem 0 -0.6rem;
+        padding: 0;
+        border: 0;
+        border-radius: var(--radius-full);
+        background: transparent;
+        color: var(--text-primary);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        animation: fk-fade-in 0.28s ease both;
+        transition: background-color 0.2s ease;
+      }
+
+      .start-sheet-back:active {
+        background: var(--menu-well);
+      }
+
+      .start-sheet-back:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 0;
+      }
+
+      .start-choices {
+        display: grid;
+        gap: 0.6rem;
+        padding-bottom: 0.25rem;
+      }
+
+      .start-choice {
+        display: flex;
+        align-items: center;
+        gap: 0.9rem;
+        min-height: 4.25rem;
+        padding: 0.7rem 1rem 0.7rem 0.75rem;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-lg);
+        background: var(--menu-well);
+        color: var(--text-primary);
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          transform 0.15s ease,
+          background-color 0.2s ease,
+          border-color 0.2s ease;
+      }
+
+      .start-choice:active {
+        transform: scale(0.98);
+        background: var(--menu-well-hover);
+      }
+
+      @media (hover: hover) {
+        .start-choice:hover {
+          border-color: color-mix(in srgb, var(--accent) 45%, var(--border-subtle));
+        }
+      }
+
+      .start-choice:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      /* The icon on a raised tile of the sheet's own face. */
+      .start-choice-icon {
+        flex: none;
+        width: 2.75rem;
+        height: 2.75rem;
+        display: grid;
+        place-items: center;
+        border-radius: var(--radius-md);
+        background: var(--elev-menu);
+        box-shadow: var(--key-lift, var(--shadow-sm));
+        color: var(--accent);
+      }
+
+      .start-choice-words {
+        display: flex;
+        flex-direction: column;
+        gap: 0.1rem;
+        min-width: 0;
+      }
+
+      .start-choice-name {
+        font-size: 1.0625rem;
+        font-weight: 700;
+        line-height: 1.3;
+      }
+
+      .start-choice-hint {
+        font-size: 0.875rem;
+        line-height: 1.35;
+        color: var(--text-muted);
+      }
+
       /* ── Download sheet: with photos or text only, each shown as its page in small ── */
       /* Opened from a page, not the editor: over the navigation island (.nav-island), under toasts. */
       .editor-sheet-layer.is-over-page {
@@ -10640,88 +10925,11 @@
         }
       }
 
-      /* ── Preview: the recipe page as the family will see it, over the editor ── */
-      .editor-preview {
-        position: fixed;
-        inset: 0;
-        z-index: 30;
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        background: var(--bg-main);
-        animation: editor-preview-in 0.46s var(--ease-glide) backwards;
-      }
-
-      @keyframes editor-preview-in {
-        from { opacity: 0; transform: translateY(2rem); }
-      }
-
-      .editor-preview.is-closing {
-        pointer-events: none;
-        animation: fk-exit-editor-preview 0.26s var(--ease-accelerate) both;
-      }
-
-      @keyframes fk-exit-editor-preview {
-        to { opacity: 0; transform: translateY(1.5rem); }
-      }
-
-      /* The back button: the navigation island's back capsule on its own, centred where the
-         island sits, in the pill's material. It rises into place with the preview. */
-      .editor-preview-back {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: calc(1rem + env(safe-area-inset-bottom) + (var(--nav-h) - var(--cap-h)) / 2);
-        z-index: 2;
-        width: var(--cap-w);
-        height: var(--cap-h);
-        margin-inline: auto;
-        display: grid;
-        place-items: center;
-        padding: 0;
-        border: 1px solid var(--glass-edge);
-        border-radius: calc(var(--cap-h) / 2);
-        background: var(--nav-glass);
-        backdrop-filter: blur(14px) saturate(1.6);
-        color: var(--text-primary);
-        box-shadow: var(--nav-frame);
-        cursor: pointer;
-        -webkit-tap-highlight-color: transparent;
-        animation: editor-back-in 0.62s var(--spring-soft) 0.12s backwards;
-      }
-
-      .editor-preview-back:focus-visible {
-        outline: 2px solid var(--accent);
-        outline-offset: 2px;
-      }
-
-      .editor-preview-back .nav-back-arrow {
-        transition: scale 0.15s ease;
-      }
-
-      .editor-preview-back:active .nav-back-arrow {
-        scale: 0.88;
-      }
-
-      /* Over a step photo open full screen, which it closes. */
-      .editor-preview-back.is-over-photo {
-        z-index: 201;
-      }
-
-      @keyframes editor-back-in {
-        from {
-          opacity: 0;
-          translate: 0 calc(100% + 1rem);
-        }
-        40% { opacity: 1; }
-      }
-
       @media (prefers-reduced-motion: reduce) {
-        .editor-layer,
-        .editor-preview {
+        .editor-layer {
           animation: fk-fade-in 0.15s ease both;
         }
-        .editor-layer.is-closing[data-exit],
-        .editor-preview.is-closing {
+        .editor-layer.is-closing[data-exit] {
           animation: fk-exit-fade 0.15s ease both;
         }
         .editor-sheet,
@@ -10744,7 +10952,6 @@
         .save-option,
         .editor-bar-status,
         .editor-bar-status-text,
-        .editor-preview-back,
         .editor-layer.is-closing .editor-save,
         .editor-layer.is-closing .editor-save-icon,
         .category-option,

@@ -199,7 +199,7 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
                   key={row.id}
                   data-motion-id={row.id}
                   data-item-id={row.id}
-                  className={`ingredient-row ingredient-heading-row${active ? ' is-active' : ''}${size ? ' has-rows' : ''}`}
+                  className={`ingredient-row ingredient-heading-row${active ? ' is-active' : ''}${size ? ' has-rows' : ''}${row.name.trim() ? '' : ' is-blank'}`}
                 >
                   <input
                     className="form-control ingredient-heading-input"
@@ -256,7 +256,7 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
                 key={row.id}
                 data-motion-id={row.id}
                 data-item-id={row.id}
-                className={`ingredient-row${active ? ' is-active' : ''}${restored ? ' is-restored' : ''}${spine}`}
+                className={`ingredient-row${active ? ' is-active' : ''}${restored ? ' is-restored' : ''}${spine}${row.name.trim() || row.amount.trim() ? '' : ' is-blank'}`}
               >
                 {restored && <span className="sr-only">{t.restoredChip}</span>}
                 {/* Long names and amounts wrap onto more lines rather than being cut off. */}
@@ -295,7 +295,9 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
                 </div>
 
                 {row.showNote && (
-                  <div className="ingredient-extra field-with-icon">
+                  <div
+                    className={`ingredient-extra field-with-icon${row.note.trim() ? '' : ' is-blank'}`}
+                  >
                     <NotebookPen className="field-icon" size="1.1em" aria-hidden="true" />
                     <input
                       className="form-control ingredient-note"
@@ -310,7 +312,9 @@ export const IngredientEditor: React.FC<IngredientEditorProps> = ({
                 )}
 
                 {row.showSubstitute && (
-                  <div className="ingredient-extra ingredient-row-main">
+                  <div
+                    className={`ingredient-extra ingredient-row-main${row.substitute.trim() || row.substituteAmount.trim() ? '' : ' is-blank'}`}
+                  >
                     <div className="field-with-icon">
                       <ArrowLeftRight
                         className="field-icon is-gold"

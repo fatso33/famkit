@@ -69,3 +69,9 @@ export function typeTime(t: UiTranslations, kind: TimeKind, text: string) {
   openBylinePart(t, 'times');
   fireEvent.change(screen.getByLabelText(t.timeLabels[kind]), { target: { value: text } });
 }
+
+/** Picks "Type it" on the sheet Add Recipe opens: the editor opens, empty. */
+export function startTyping(t: UiTranslations) {
+  const sheet = screen.getByRole('dialog', { name: t.startTitle });
+  fireEvent.click(within(sheet).getByRole('button', { name: startsWith(t.startType) }));
+}

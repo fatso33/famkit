@@ -4,6 +4,7 @@ import App from '../App';
 import { WANDAS_CHEESE_BREAD } from './fixtures/wandasCheeseBread';
 import { UI_TEXT } from '../i18n/translations';
 import { finishMenuClosing } from './menu';
+import { startTyping } from './editorHelpers';
 
 vi.mock('../services/gemini', () => ({
   isTranslationAvailable: false,
@@ -105,6 +106,7 @@ describe('the navigation island', () => {
     expect(within(panel).queryByRole('button', { name: t.addMake })).toBeNull();
     fireEvent.click(within(panel).getByRole('button', { name: t.addRecipe }));
     finishClosing();
+    startTyping(t);
     expect(screen.getByRole('dialog', { name: t.editorTitleNew })).toBeInTheDocument();
     fireEvent.keyDown(window, { key: 'Escape' });
 

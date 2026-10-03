@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
+  emptyForm,
+  withPasted,
   FormState,
   addPath,
   editorNumbers,
@@ -698,5 +700,20 @@ describe('substeps', () => {
     const form = formFromRecipe(recipe, labels);
     expect(form.sections[0].steps[0].substeps).toHaveLength(26);
     expect(formToRecipe(form).steps[0].substeps).toEqual(parts.slice(0, 26));
+  });
+});
+
+describe('withPasted', () => {
+  it('fills an empty list, adds after what is written, and counts what came in', () => {
+    const empty = emptyForm();
+    const first = withPasted(empty, { ingredients: '2 cups flour\n3 eggs', steps: 'Mix.\nBake.' });
+    expect(first.form.ingredientRows.map((r) => r.name)).toEqual(['flour', 'eggs']);
+    expect(first.ingredients).toBe(2);
+    expect(first.steps).toBe(2);
+
+    const more = withPasted(first.form, { ingredients: '1 tsp salt', steps: '' });
+    expect(more.form.ingredientRows.map((r) => r.name)).toEqual(['flour', 'eggs', 'salt']);
+    expect(more.form.sections).toBe(first.form.sections);
+    expect(more.steps).toBe(0);
   });
 });

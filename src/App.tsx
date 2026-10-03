@@ -40,10 +40,12 @@ import {
   getStoredMakesSort,
   getStoredVaultSort,
   getStoredVaultView,
+  hasKeptNewRecipe,
   setStoredMakesSort,
   setStoredVaultSort,
   setStoredVaultView,
 } from './services/storage';
+import { isRecipeImportAvailable } from './services/recipeImport';
 import {
   isOnScreen,
   nameGlide,
@@ -80,7 +82,12 @@ import {
   RecipeDetailView,
   type RecipePageHandle,
 } from './components/recipe-detail/RecipeDetailView';
-import { AddRecipeModal, type DraftContent } from './components/recipe-form/AddRecipeModal';
+import {
+  AddRecipeModal,
+  type DraftContent,
+  type EditorStart,
+} from './components/recipe-form/AddRecipeModal';
+import { StartSheet } from './components/recipe-form/StartSheet';
 import { IOSInstallModal } from './components/layout/IOSInstallModal';
 import { DownloadSheet } from './components/recipe-detail/DownloadSheet';
 import { MakesView, type MakesPageHandle } from './components/makes/MakesView';
@@ -278,6 +285,10 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
   // onto, it folds down towards the Recipe Box tab the deck rose from.
   const [recipeFromDeck, setRecipeFromDeck] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  // The sheet a new recipe starts from (and whether one is already being written, which a
+  // website's recipe would replace), and what it filled the editor with.
+  const [startSheet, setStartSheet] = useState<{ replaces: boolean } | null>(null);
+  const [editorStart, setEditorStart] = useState<EditorStart | undefined>();
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   // The draft the editor carried on with, if any: saving it again replaces it.
   const [editingDraft, setEditingDraft] = useState<RecipeDraft | null>(null);
@@ -763,6 +774,7 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
     draft: RecipeDraft | null,
     from?: Element | null,
     remix: typeof remixing = null,
+    start?: EditorStart,
   ) => {
     // A remix's draft carries on as a remix.
     const draftOf = draft && !draft.recipeId ? remixOriginalId(draft.recipe) : null;
@@ -771,12 +783,14 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
     );
     setEditingRecipe(recipe);
     setEditingDraft(draft);
+    setEditorStart(start);
     setDraftsKnownAtOpen(draftsLoaded);
     setEditorOrigin(centreOf(from ?? document.getElementById('navActionsBtn')));
     setIsAddModalOpen(true);
   };
 
-  const openAddRecipe = () => openEditor(null, null);
+  // A new recipe starts from a sheet: typed, pasted, or from a website.
+  const openAddRecipe = () => setStartSheet({ replaces: hasKeptNewRecipe() });
 
   // Editing a recipe carries on with its draft, if its owner left one.
   const editRecipe = (recipe: Recipe, from?: Element | null) => {
@@ -1195,7 +1209,7 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
             fontPercent={fontPercent}
             onIncreaseFont={increaseScale}
             onDecreaseFont={decreaseScale}
-            onAddRecipe={(from) => openEditor(null, null, from)}
+            onAddRecipe={openAddRecipe}
             onAddMake={(from) => openMakeEditor(null, undefined, from)}
             onOpenRecipe={(id, card) => handleSelectRecipe(id, card, false, 'counter')}
             // While a deck is up, its card is the one that flips open (names must be unique).
@@ -1381,6 +1395,18 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
         t={t}
       />
 
+      {startSheet && (
+        <StartSheet
+          canImport={isRecipeImportAvailable}
+          replaces={startSheet.replaces}
+          onType={(from) => openEditor(null, null, from)}
+          onPasted={(text, from) => openEditor(null, null, from, null, { text })}
+          onImported={(recipe, from) => openEditor(null, null, from, null, { page: recipe })}
+          onClose={() => setStartSheet(null)}
+          t={t}
+        />
+      )}
+
       {/* Add / Edit Recipe Modal */}
       {isAddModalOpen && (
         <AddRecipeModal
@@ -1390,6 +1416,7 @@ export default function App({ initialPage = 'counter' }: AppProps = {}) {
           remixFrom={remixing ? (remixFromName ?? '') : undefined}
           // An earlier version picked from the list replaces the draft's content in the form.
           draft={restoredVersion ? null : editingDraft}
+          start={editorStart}
           onSaveDraft={
             canDraft && (!editingRecipe || editingDraft || draftsKnownAtOpen)
               ? keepDraft

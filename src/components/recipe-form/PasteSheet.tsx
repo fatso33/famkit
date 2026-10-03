@@ -1,15 +1,16 @@
-import React, { useEffect, useId, useRef, useState } from 'react';
-import { CaseSensitive, ClipboardPaste, Globe, LoaderCircle } from 'lucide-react';
+import React, { useId, useState } from 'react';
+import { CaseSensitive, ClipboardPaste, Globe } from 'lucide-react';
 import { UiTranslations } from '../../i18n/translations';
 import { useBackStep } from '../../hooks/useBackStep';
 import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { useExitAnimation } from '../../hooks/useExitAnimation';
 import { useKeyboardInset } from '../../hooks/useKeyboardInset';
-import { importAddress } from '../../utils/recipeImport';
+import { ImportProblem } from '../../services/importRecipe';
+import { PasteTarget, PasteTextPanel } from './PasteTextPanel';
+import { PasteWebsitePanel } from './PasteWebsitePanel';
 
-export type PasteTarget = 'ingredients' | 'steps';
+export type { PasteTarget } from './PasteTextPanel';
 type PasteSource = 'website' | 'text';
-export type ImportProblem = keyof UiTranslations['importErrors'];
 
 interface PasteSheetProps {
   /** Adds the pasted lists (either may be empty). */
@@ -42,63 +43,8 @@ export const PasteSheet: React.FC<PasteSheetProps> = ({
   // Lifts the sheet above the phone's keyboard, which would otherwise cover it.
   useKeyboardInset(ref);
   const titleId = useId();
-  const fieldId = useId();
-  const helpId = useId();
-  const errorId = useId();
-  const textField = useRef<HTMLTextAreaElement>(null);
-  const urlField = useRef<HTMLInputElement>(null);
-
   const [source, setSource] = useState<PasteSource>(onImport ? 'website' : 'text');
-  const [target, setTarget] = useState<PasteTarget>('ingredients');
-  // Each list keeps its own text, so both can be pasted before adding.
-  const [text, setText] = useState<Record<PasteTarget, string>>({ ingredients: '', steps: '' });
-  const [url, setUrl] = useState('');
-  const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const open = useRef(true);
-  useEffect(() => {
-    open.current = true;
-    return () => {
-      open.current = false;
-    };
-  }, []);
-
-  // Text is typed or pasted straight away; an address is usually pasted with the button, so the
-  // keyboard stays down until its field is tapped.
-  useEffect(() => {
-    if (source === 'text') textField.current?.focus({ preventScroll: true });
-  }, [source, target]);
-
-  const pasteAddress = async () => {
-    try {
-      const copied = (await navigator.clipboard.readText()).trim();
-      if (!copied) throw new Error('Nothing copied');
-      setUrl(copied);
-      setProblem(null);
-    } catch {
-      // No permission, or a browser without clipboard reading: the field's own paste still works.
-      setProblem(t.clipboardUnavailable);
-      urlField.current?.focus({ preventScroll: true });
-    }
-  };
-
-  const importFromWebsite = async () => {
-    if (!onImport || busy) return;
-    const address = importAddress(url);
-    if (!address) {
-      setProblem(t.importErrors.badAddress);
-      urlField.current?.focus({ preventScroll: true });
-      return;
-    }
-    setProblem(null);
-    setBusy(true);
-    const failure = await onImport(address);
-    // Closed meanwhile: there's no sheet left to update or close.
-    if (!open.current) return;
-    setBusy(false);
-    if (failure) setProblem(t.importErrors[failure]);
-    else requestClose();
-  };
 
   const sourceChoice = onImport && (
     <fieldset className="editor-sheet-choice" disabled={busy}>
@@ -111,10 +57,7 @@ export const PasteSheet: React.FC<PasteSheetProps> = ({
               type="radio"
               name={`${titleId}-source`}
               checked={source === option}
-              onChange={() => {
-                setSource(option);
-                setProblem(null);
-              }}
+              onChange={() => setSource(option)}
             />
             <span className="choice-pill-icon">
               {option === 'website' ? (
@@ -151,139 +94,27 @@ export const PasteSheet: React.FC<PasteSheetProps> = ({
 
         {sourceChoice}
 
-        {source === 'website' ? (
-          // Keyed by the source, so each side fades in as it's chosen.
-          <form
+        {/* Keyed by the source, so each side fades in as it's chosen. */}
+        {source === 'website' && onImport ? (
+          <PasteWebsitePanel
             key="website"
-            className="paste-panel"
-            noValidate
-            onSubmit={(e) => {
-              e.preventDefault();
-              void importFromWebsite();
-            }}
-          >
-            <label className="form-label is-small" htmlFor={fieldId}>
-              {t.pasteUrlLabel}
-            </label>
-            <div className="paste-url-row">
-              <input
-                ref={urlField}
-                id={fieldId}
-                className="form-control"
-                type="url"
-                inputMode="url"
-                enterKeyHint="go"
-                autoCapitalize="none"
-                autoCorrect="off"
-                autoComplete="off"
-                spellCheck={false}
-                placeholder="https://"
-                disabled={busy}
-                aria-invalid={Boolean(problem) || undefined}
-                aria-describedby={problem ? `${errorId} ${helpId}` : helpId}
-                value={url}
-                onChange={(e) => {
-                  setUrl(e.target.value);
-                  setProblem(null);
-                }}
-              />
-              <button
-                type="button"
-                className="editor-chip"
-                disabled={busy}
-                aria-label={t.pasteUrlFromClipboard}
-                onClick={() => void pasteAddress()}
-              >
-                <ClipboardPaste size="1.15em" aria-hidden="true" />
-                {t.paste}
-              </button>
-            </div>
-            {problem && (
-              <p className="field-error" id={errorId} role="alert">
-                {problem}
-              </p>
-            )}
-            <p className="editor-sheet-help" id={helpId}>
-              {t.pasteHelpWebsite}
-              {replaces && <strong> {t.pasteWebsiteReplaces}</strong>}
-            </p>
-
-            <div className="editor-sheet-actions">
-              <button type="button" className="btn" onClick={requestClose}>
-                {t.cancel}
-              </button>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={!url.trim()}
-                // Still focusable while it works, so the screen reader hears what it's doing.
-                aria-disabled={busy || undefined}
-                aria-busy={busy || undefined}
-              >
-                {busy && (
-                  <LoaderCircle className="paste-spinner" size="1.15em" aria-hidden="true" />
-                )}
-                {busy ? t.importing : t.pasteAdd}
-              </button>
-            </div>
-          </form>
+            onImport={onImport}
+            onDone={requestClose}
+            onCancel={requestClose}
+            replaces={replaces}
+            onBusyChange={setBusy}
+            t={t}
+          />
         ) : (
-          <div key="text" className="paste-panel">
-            <fieldset className="editor-sheet-choice">
-              <legend className="form-label is-small">{t.pasteInto}</legend>
-              <div className="choice-pill" data-value={target}>
-                <span className="choice-pill-thumb" aria-hidden="true" />
-                {(['ingredients', 'steps'] as const).map((option) => (
-                  <label key={option} className={target === option ? 'is-active' : ''}>
-                    <input
-                      type="radio"
-                      name={`${titleId}-target`}
-                      checked={target === option}
-                      onChange={() => setTarget(option)}
-                    />
-                    <span className="choice-pill-icon">
-                      {option === 'ingredients' ? t.ingredients : t.stepsHeading}
-                      {/* What's waiting in the other box isn't forgotten. */}
-                      {text[option].trim() && <span className="paste-filled" aria-hidden="true" />}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-
-            <label className="form-label is-small" htmlFor={fieldId}>
-              {t.pasteTextLabel}
-            </label>
-            <textarea
-              ref={textField}
-              id={fieldId}
-              className="form-control editor-sheet-text"
-              rows={5}
-              aria-describedby={helpId}
-              value={text[target]}
-              onChange={(e) => setText({ ...text, [target]: e.target.value })}
-            />
-            <p className="editor-sheet-help" id={helpId}>
-              {target === 'ingredients' ? t.pasteHelpIngredients : t.pasteHelpSteps}
-            </p>
-
-            <div className="editor-sheet-actions">
-              <button type="button" className="btn" onClick={requestClose}>
-                {t.cancel}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={!text.ingredients.trim() && !text.steps.trim()}
-                onClick={() => {
-                  onAdd(text);
-                  requestClose();
-                }}
-              >
-                {t.pasteAdd}
-              </button>
-            </div>
-          </div>
+          <PasteTextPanel
+            key="text"
+            onAdd={(text) => {
+              onAdd(text);
+              requestClose();
+            }}
+            onCancel={requestClose}
+            t={t}
+          />
         )}
       </div>
     </div>

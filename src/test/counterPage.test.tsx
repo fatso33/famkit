@@ -6,6 +6,7 @@ import { UI_TEXT } from '../i18n/translations';
 import { GREETING_IDS } from '../utils/greeting';
 import { Recipe, RecipeDraft } from '../types/recipe';
 import { Make } from '../types/make';
+import { startTyping } from './editorHelpers';
 
 vi.mock('../services/gemini', () => ({
   isTranslationAvailable: false,
@@ -213,7 +214,11 @@ describe('My Counter', () => {
   it('has Add Recipe and Add Make keys of its own', () => {
     renderCounter();
     fireEvent.click(screen.getByRole('button', { name: t.addRecipe }));
-    expect(editor()).toBeInTheDocument();
+    // A new recipe starts from a sheet of ways to begin.
+    expect(screen.getByRole('dialog', { name: t.startTitle })).toBeInTheDocument();
+    startTyping(t);
+    expect(screen.queryByRole('dialog', { name: t.startTitle })).toBeNull();
+    expect(screen.getByRole('dialog', { name: t.editorTitleNew })).toBeInTheDocument();
   });
 
   it('opens the preferences in a bar, which its key folds away again', () => {

@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BookOpen, ChevronDown, Lightbulb, RotateCcw, Trash2, TriangleAlert } from 'lucide-react';
 import { AuthorMode, Recipe, RecipeDraft, Language, VersionSummary } from '../../types/recipe';
-import { UI_TEXT, UiTranslations } from '../../i18n/translations';
+import { UiTranslations } from '../../i18n/translations';
 import { useBackStep } from '../../hooks/useBackStep';
 import { useInertBehind } from '../../hooks/useInertBehind';
 import { useExitAnimation } from '../../hooks/useExitAnimation';
@@ -9,10 +9,10 @@ import { useDialogDismiss } from '../../hooks/useDialogDismiss';
 import { keepStillBelow } from '../../hooks/useListMotion';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import type { ToastAction, ToastTone } from '../../hooks/useToast';
-import { ownerCredit, resolveAuthor } from '../../utils/ownership';
+import { resolveAuthor } from '../../utils/ownership';
 import { formatVersionDate, RecipeChanges, RestorableField } from '../../utils/recipeVersions';
 import { draftVersion, parseDraft } from '../../utils/recipeDrafts';
-import { forgetKeptEdit, getKeptEdit, keepEdit } from '../../services/storage';
+import { NEW_RECIPE_KEY, forgetKeptEdit, getKeptEdit, keepEdit } from '../../services/storage';
 import {
   FormState,
   LegacyLabels,
@@ -24,20 +24,13 @@ import {
   hasContent,
   ingredientRowsOnly,
   missingName,
-  addPastedMethod,
   methodToSteps,
-  pastedIngredients,
-  pastedMethod,
-  pastedStepCount,
+  withPasted,
 } from '../../utils/recipeForm';
-import { ImportedPage, readImportedPage, recipeFromPage } from '../../utils/recipeImport';
+import { ImportedRecipe } from '../../utils/recipeImport';
 import { fnv1a } from '../../utils/translationPieces';
-import {
-  ImportError,
-  fetchRecipePage,
-  fetchRecipePhoto,
-  isRecipeImportAvailable,
-} from '../../services/recipeImport';
+import { fetchRecipePhoto, isRecipeImportAvailable } from '../../services/recipeImport';
+import { ImportProblem, importRecipe } from '../../services/importRecipe';
 import { estimateRecipeMinutes } from '../../utils/timeEstimator';
 import { fitsInCloud } from '../../utils/cloudSize';
 import { prefersReducedMotion } from '../../utils/viewTransition';
@@ -46,15 +39,15 @@ import { RecipeSourceField } from './RecipeSourceField';
 import { ConfirmSheet } from '../common/ConfirmSheet';
 import { EditorBar } from './EditorBar';
 import { BylinePart, EditorByline } from './EditorByline';
-import { EditorPreview } from './EditorPreview';
+import { EditorJumpPills, JumpPlace } from './EditorJumpPills';
 import { HeroPhotoField } from './HeroPhotoField';
 import { IngredientEditor } from './IngredientEditor';
 import { MethodEditor } from './MethodEditor';
-import { ImportProblem, PasteSheet, PasteTarget } from './PasteSheet';
+import { PasteSheet, PasteTarget } from './PasteSheet';
 import { ChangeNoteSheet } from './ChangeNoteSheet';
 import { VersionMenu } from './VersionMenu';
 
-const DRAFT_STORAGE_KEY = 'family_kitchen_recipe_draft';
+const DRAFT_STORAGE_KEY = NEW_RECIPE_KEY;
 
 function writeDraft(json: string) {
   try {
@@ -152,6 +145,12 @@ type Sheet =
 type Extra = 'notes' | 'tips' | 'source';
 const EXTRAS: Extra[] = ['notes', 'tips', 'source'];
 
+/**
+ * How a new recipe starts when the start sheet filled it in: pasted text, or a recipe read off a
+ * website.
+ */
+export type EditorStart = { text: Record<PasteTarget, string> } | { page: ImportedRecipe };
+
 /** A recipe as written so far, which a draft keeps: unchecked, so it may lack a title. */
 export type DraftContent = Omit<Recipe, 'id' | 'createdAt'>;
 
@@ -179,6 +178,8 @@ interface AddRecipeModalProps {
   remixFrom?: string;
   /** A saved draft to carry on with, in place of the recipe as it is (or an empty form). */
   draft?: RecipeDraft | null;
+  /** A new recipe filled in from the start sheet (pasted, or from a website). */
+  start?: EditorStart;
   /** Keeps what's written as a draft. Missing when there's nobody signed in to keep it for. */
   onSaveDraft?: (content: DraftContent, changeNote: string) => void;
   /** Deletes the open draft (asked to confirm first). */
@@ -212,6 +213,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   initialRecipe,
   remixFrom,
   draft,
+  start,
   onSaveDraft,
   onDiscardDraft,
   versions = [],
@@ -235,7 +237,13 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
   // A version restored from the history fills the form itself: nothing kept goes over it.
   const [scope] = useState(() => (restore ? null : keptScope(initialRecipe, draft, isRemix)));
-  const [initial] = useState(() => loadInitialForm(initialRecipe, draft, scope, t));
+  const [initial] = useState(() => {
+    const loaded = loadInitialForm(initialRecipe, draft, scope, t);
+    if (!start) return loaded;
+    // A website's recipe replaces anything kept here; pasted text joins it.
+    if ('page' in start) return { ...loaded, form: start.page.form, fromDraft: false };
+    return { ...loaded, form: withPasted(loaded.form, start.text).form };
+  });
   // What a save to the vault is compared against to tell a text edit: the recipe as the family
   // sees it, even when the form opened on a draft of it.
   const [publishedText] = useState(() =>
@@ -257,7 +265,6 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showErrors, setShowErrors] = useState(false);
   const [sheet, setSheet] = useState<Sheet>(null);
-  const [previewing, setPreviewing] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [bylineOpen, setBylineOpen] = useState<BylinePart | null>(null);
   // The note, tip and source opened from their keys (kept open while written in).
@@ -371,7 +378,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   };
   const errors = showErrors ? errorsOf() : {};
 
-  // The recipe as it would be saved now: for saving, and for the preview.
+  // The recipe as it would be saved now.
   const recipeFromForm = (): Omit<Recipe, 'id' | 'createdAt'> => {
     const content = formToRecipe(form);
     return {
@@ -506,89 +513,86 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
   // --- Pasting ----------------------------------------------------------------------------
 
+  // What came in, said once it's on the page.
+  const pastedMessage = (ingredients: number, steps: number) =>
+    ingredients > 0 && steps > 0
+      ? t.pastedBoth(ingredients, steps)
+      : steps > 0
+        ? t.pastedSteps(steps)
+        : t.pastedIngredients(ingredients);
+  const importedMessage = (imported: ImportedRecipe) =>
+    imported.amountsMissing
+      ? t.importDoneNoAmounts
+      : imported.guessed
+        ? t.importDoneGuessed
+        : t.importDone;
+
   // Pasted text: the ingredient list, the steps, or both at once.
   const addPasted = (text: Record<PasteTarget, string>) => {
-    const rows = pastedIngredients(text.ingredients);
-    const method = pastedMethod(text.steps);
-    const ingredientCount = ingredientRowsOnly(rows).length;
-    const stepCount = pastedStepCount(method);
-    if (rows.length === 0 && stepCount === 0) return;
-    setForm((f) => {
-      const blank = f.ingredientRows.every((r) => !r.name.trim() && !r.amount.trim());
-      return {
-        ...f,
-        ingredientRows:
-          rows.length === 0 ? f.ingredientRows : blank ? rows : [...f.ingredientRows, ...rows],
-        sections: stepCount > 0 ? addPastedMethod(f.sections, method) : f.sections,
-      };
-    });
-    onToast(
-      ingredientCount > 0 && stepCount > 0
-        ? t.pastedBoth(ingredientCount, stepCount)
-        : stepCount > 0
-          ? t.pastedSteps(stepCount)
-          : t.pastedIngredients(ingredientCount),
-    );
+    const pasted = withPasted(form, text);
+    if (pasted.ingredients === 0 && pasted.steps === 0) return;
+    setForm((f) => withPasted(f, text).form);
+    onToast(pastedMessage(pasted.ingredients, pasted.steps));
   };
 
   // A recipe page's address: the form is filled in from the page, and its picture follows. Each
   // import is numbered, so one that's closed or overtaken fills in nothing when it lands.
   const importRun = useRef(0);
-  const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoLoading, setPhotoLoading] = useState(() =>
+    Boolean(start && 'page' in start && start.page.imageUrl),
+  );
   const pagePending = useRef(false);
   const latestPhoto = useRef(0);
-  const importFromWebsite = async (url: string): Promise<ImportProblem | null> => {
-    const run = ++importRun.current;
-    let page: ImportedPage | null;
-    pagePending.current = true;
-    try {
-      page = readImportedPage(await fetchRecipePage(url));
-    } catch (error) {
-      return error instanceof ImportError ? error.reason : 'failed';
-    } finally {
-      if (run === importRun.current) pagePending.current = false;
-    }
-    if (run !== importRun.current) return null;
-    // A number of servings is worded in the page's language when it's one of the family's.
-    const pageLanguage = page?.lang.slice(0, 2).toLowerCase();
-    const words = pageLanguage === 'en' || pageLanguage === 'pl' ? UI_TEXT[pageLanguage] : t;
-    const imported =
-      page &&
-      recipeFromPage(page, {
-        servings: words.importServings,
-        time: words.totalTime,
-      });
-    if (!imported) return 'noRecipe';
 
-    setForm(imported.form);
-    setShowErrors(false);
-    bodyRef.current?.scrollTo?.({ top: 0 });
-    onToast(
-      imported.amountsMissing
-        ? t.importDoneNoAmounts
-        : imported.guessed
-          ? t.importDoneGuessed
-          : t.importDone,
-    );
-    setPhotoLoading(Boolean(imported.imageUrl));
+  // The page's picture, fetched once its words are in the form.
+  const fetchPagePhoto = (imported: ImportedRecipe) => {
     // The photo answers to the recipe now in the form, not to later attempts that fill nothing.
     const photoRun = ++latestPhoto.current;
-    if (imported.imageUrl) {
-      void fetchRecipePhoto(imported.imageUrl).then((photo) => {
-        if (photoRun !== latestPhoto.current) return;
-        setPhotoLoading(false);
-        if (!photo) {
-          onToast(t.importPhotoFailed);
-          return;
-        }
-        // Only into the recipe it belongs to, and never over a photo picked meanwhile.
-        setForm((f) =>
-          f.source === imported.form.source ? { ...f, heroImage: f.heroImage || photo } : f,
-        );
-      });
-    }
+    if (!imported.imageUrl) return;
+    void fetchRecipePhoto(imported.imageUrl).then((photo) => {
+      if (photoRun !== latestPhoto.current) return;
+      setPhotoLoading(false);
+      if (!photo) {
+        onToast(t.importPhotoFailed);
+        return;
+      }
+      // Only into the recipe it belongs to, and never over a photo picked meanwhile.
+      setForm((f) =>
+        f.source === imported.form.source ? { ...f, heroImage: f.heroImage || photo } : f,
+      );
+    });
+  };
+
+  const importFromWebsite = async (url: string): Promise<ImportProblem | null> => {
+    const run = ++importRun.current;
+    pagePending.current = true;
+    const result = await importRecipe(url, t);
+    if (run !== importRun.current) return null;
+    pagePending.current = false;
+    if ('problem' in result) return result.problem;
+    setForm(result.recipe.form);
+    setShowErrors(false);
+    bodyRef.current?.scrollTo?.({ top: 0 });
+    onToast(importedMessage(result.recipe));
+    setPhotoLoading(Boolean(result.recipe.imageUrl));
+    fetchPagePhoto(result.recipe);
     return null;
   };
+
+  // Opened from the start sheet already filled in (the form's initial state): once it's up, it
+  // says what came in, and a website's picture follows. Kept from the first render, as it opened.
+  const [announceStart] = useState(() => () => {
+    if (!start) return;
+    if ('page' in start) {
+      onToast(importedMessage(start.page));
+      fetchPagePhoto(start.page);
+    } else {
+      const pasted = withPasted(emptyForm(), start.text);
+      onToast(pastedMessage(pasted.ingredients, pasted.steps));
+    }
+  });
+  useEffect(() => announceStart(), [announceStart]);
+
   // Closing the editor lets go of an import still on its way.
   useEffect(
     () => () => {
@@ -631,18 +635,194 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
     setActiveId(id);
   };
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const top = e.currentTarget.scrollTop;
-    const delta = top - lastScrollTop.current;
-    lastScrollTop.current = top;
-    // Down past the bar tucks the tools away; any scroll up brings them back.
-    const tucked = delta > 4 && top > barHeight ? true : delta < -4 ? false : scroll.tucked;
-    const scrolled = top > 2;
-    if (tucked !== scroll.tucked || scrolled !== scroll.scrolled) setScroll({ tucked, scrolled });
+  // --- The jump pills ----------------------------------------------------------------------
+
+  // Under the bar once the ingredients have scrolled up to it, and kept there through a glide
+  // from a pill and through scrolling about: only a long run down the page (a screen and a half) puts
+  // them away, and any scroll up brings them back. The lit one is the place being read.
+  const [jump, setJump] = useState<{ shown: boolean; current: JumpPlace }>({
+    shown: false,
+    current: 'ingredients',
+  });
+  // How far the page has run down since it last went up (or glided).
+  const runDown = useRef(0);
+  // Gliding to a pill's place: the scrolling it does moves neither the bar nor the pills.
+  const glide = useRef<{ to: JumpPlace; idle: number; cap: number } | null>(null);
+  const jumpRef = useRef<HTMLElement | null>(null);
+
+  const placeEl = (place: JumpPlace) =>
+    bodyRef.current?.querySelector<HTMLElement>(`[data-jump="${place}"]`) ?? null;
+
+  // The place being read: the last whose top is above a line a third of the way down what the
+  // bar leaves in view, or the last of all once the page can't scroll further.
+  const placeAt = (scroller: HTMLElement, top: number, visibleTop: number): JumpPlace => {
+    if (top + scroller.clientHeight >= scroller.scrollHeight - 2) {
+      const last = jumpPlaces[jumpPlaces.length - 1];
+      return last ?? 'ingredients';
+    }
+    const line = visibleTop + (scroller.clientHeight - visibleTop) / 3;
+    const box = scroller.getBoundingClientRect().top;
+    let current: JumpPlace = 'ingredients';
+    for (const place of jumpPlaces) {
+      const el = placeEl(place);
+      if (el && el.getBoundingClientRect().top - box <= line) current = place;
+    }
+    return current;
   };
 
-  // A preview or a sheet over the page: the page under it is out of reach (Tab included).
-  const covered = previewing || sheet !== null;
+  const endGlide = () => {
+    const g = glide.current;
+    if (!g) return;
+    window.clearTimeout(g.idle);
+    window.clearTimeout(g.cap);
+    glide.current = null;
+    runDown.current = 0;
+  };
+  useEffect(() => endGlide, []);
+
+  const jumpTo = (place: JumpPlace) => {
+    const scroller = bodyRef.current;
+    const el = placeEl(place);
+    if (!scroller || !el) return;
+    // Clear of the bar and the pills under it, with a little air.
+    const under = jumpRef.current?.getBoundingClientRect().bottom ?? barHeight;
+    const target = Math.max(
+      0,
+      Math.min(
+        scroller.scrollHeight - scroller.clientHeight,
+        scroller.scrollTop + el.getBoundingClientRect().top - under - 12,
+      ),
+    );
+    endGlide();
+    setJump({ shown: true, current: place });
+    if (Math.abs(target - scroller.scrollTop) < 1) return;
+    // Over when the scrolling stops (a quiet moment), or after a second whatever happens.
+    glide.current = {
+      to: place,
+      idle: window.setTimeout(endGlide, 400),
+      cap: window.setTimeout(endGlide, 1200),
+    };
+    scroller.scrollTo({ top: target, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  };
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const scroller = e.currentTarget;
+    const top = scroller.scrollTop;
+    const delta = top - lastScrollTop.current;
+    lastScrollTop.current = top;
+    const scrolled = top > 2;
+    const g = glide.current;
+    if (g) {
+      window.clearTimeout(g.idle);
+      g.idle = window.setTimeout(endGlide, 140);
+      if (scrolled !== scroll.scrolled) setScroll({ ...scroll, scrolled });
+      return;
+    }
+    // Down past the bar tucks the tools away; any scroll up brings them back.
+    const tucked = delta > 4 && top > barHeight ? true : delta < -4 ? false : scroll.tucked;
+    if (tucked !== scroll.tucked || scrolled !== scroll.scrolled) setScroll({ tucked, scrolled });
+
+    const visibleTop = barHeight - (tucked ? barTuck : 0);
+    const ingredients = placeEl('ingredients');
+    const box = scroller.getBoundingClientRect().top;
+    const into = ingredients ? ingredients.getBoundingClientRect().top - box <= visibleTop : false;
+    if (delta < -4) runDown.current = 0;
+    else if (delta > 0 && jump.shown) runDown.current += delta;
+    const shown = into && runDown.current < scroller.clientHeight * 1.5;
+    if (!into) runDown.current = 0;
+    const current = placeAt(scroller, top, visibleTop);
+    if (shown !== jump.shown || current !== jump.current) setJump({ shown, current });
+  };
+
+  // --- Reading -------------------------------------------------------------------------------
+
+  // Read shows the page as the family will see it: prompts, add keys, tools and empty parts put
+  // away, and the fields' edges gone. They fade out first, and fade back in after they return.
+  // Whatever is being read at the top stays where it is as the page closes up or opens out.
+  // Tapping any part while reading goes back to writing, there.
+  const [read, setRead] = useState<'write' | 'to-read' | 'read' | 'to-write'>('write');
+  const reading = read === 'read';
+  const readTimer = useRef(0);
+  const readHold = useRef<{ el: Element; top: number } | null>(null);
+  useEffect(() => () => window.clearTimeout(readTimer.current), []);
+
+  const holdPlace = (prefer?: Element | null) => {
+    const scroller = bodyRef.current;
+    if (!scroller) return;
+    const line = scroller.getBoundingClientRect().top + barHeight - (scroll.tucked ? barTuck : 0);
+    const el =
+      prefer ??
+      [
+        ...scroller.querySelectorAll(
+          // Parts small enough to hold still: rows and steps, not whole sections.
+          '.editor-page-name, .editor-page-byline, .ingredient-table-head, .method-section-head, [data-item-id]:not(.is-blank), .editor-extra:has(.form-group)',
+        ),
+      ].find((part) => part.getBoundingClientRect().bottom > line);
+    readHold.current = el ? { el, top: el.getBoundingClientRect().top } : null;
+  };
+
+  useLayoutEffect(() => {
+    const hold = readHold.current;
+    const scroller = bodyRef.current;
+    readHold.current = null;
+    if (!hold || !scroller || !hold.el.isConnected) return;
+    const moved = hold.el.getBoundingClientRect().top - hold.top;
+    if (Math.abs(moved) < 1) return;
+    scroller.scrollTop += moved;
+    // Not a scroll by the reader: the bar and the pills stay as they are.
+    lastScrollTop.current = scroller.scrollTop;
+  }, [reading]);
+
+  const startReading = () => {
+    window.clearTimeout(readTimer.current);
+    setActiveId(null);
+    setBylineOpen(null);
+    // The keyboard goes down: nothing is being written in.
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && layerRef.current?.contains(focused)) {
+      if (focused.matches('input, textarea')) focused.blur();
+    }
+    if (prefersReducedMotion()) {
+      holdPlace();
+      setRead('read');
+      return;
+    }
+    setRead('to-read');
+    readTimer.current = window.setTimeout(() => {
+      holdPlace();
+      setRead('read');
+    }, 170);
+  };
+
+  const stopReading = (at?: Element | null) => {
+    window.clearTimeout(readTimer.current);
+    if (!reading) {
+      // Still fading out: it comes straight back.
+      setRead('write');
+      return;
+    }
+    holdPlace(at);
+    if (prefersReducedMotion()) {
+      setRead('write');
+      return;
+    }
+    // Back in place, fading in.
+    setRead('to-write');
+    readTimer.current = window.setTimeout(() => setRead('write'), 260);
+  };
+
+  // Pressed from the tap that starts it until the one that ends it.
+  const readPressed = read === 'to-read' || read === 'read';
+  const toggleRead = () => (readPressed ? stopReading() : startReading());
+
+  // The places the pills jump to: in Read, the tip and source only once one is written.
+  const jumpPlaces: JumpPlace[] =
+    reading && !form.tips.trim() && !form.source.trim()
+      ? ['ingredients', 'steps']
+      : ['ingredients', 'steps', 'extras'];
+
+  // A sheet over the page: the page under it is out of reach (Tab included).
+  const covered = sheet !== null;
 
   const estimate = estimateRecipeMinutes({ steps: methodToSteps(form.sections, form.numberFrom) });
   // How far the opening circle must grow to cover the screen: to the corner farthest from it.
@@ -660,7 +840,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
   return (
     <div
       ref={layerRef}
-      className={`editor-layer${animateIn ? '' : ' is-instant'}${isClosing ? ' is-closing' : ''}${scroll.tucked ? ' is-tucked' : ''}`}
+      className={`editor-layer${animateIn ? '' : ' is-instant'}${isClosing ? ' is-closing' : ''}${scroll.tucked ? ' is-tucked' : ''}${reading ? ' is-reading' : ''}${read === 'to-read' ? ' is-reading-soon' : read === 'to-write' ? ' is-read-ending' : ''}`}
       data-exit={exit}
       id="addRecipeModal"
       role="dialog"
@@ -708,7 +888,18 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
         draftName={t.saveDraft(nextVersion)}
         // Pasting is for starting a recipe; an edit changes what's there.
         onPaste={isEditMode ? undefined : () => setSheet('paste')}
-        onPreview={() => setPreviewing(true)}
+        reading={readPressed}
+        onToggleRead={toggleRead}
+        jump={
+          <EditorJumpPills
+            ref={jumpRef}
+            shown={jump.shown}
+            current={jump.current}
+            places={jumpPlaces}
+            onJump={jumpTo}
+            t={t}
+          />
+        }
         onStartOver={hasRestoredDraft ? () => setSheet('startOver') : undefined}
         onDiscardDraft={draft && onDiscardDraft ? () => setSheet('discardDraft') : undefined}
         onHeight={(height, tuck) => {
@@ -740,7 +931,10 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
         ref={bodyRef}
         inert={covered}
         onScroll={handleScroll}
-        onFocus={(e) => activate(e.target)}
+        onFocus={(e) => {
+          if (readPressed) stopReading((e.target as Element).closest('[data-item-id]') ?? e.target);
+          activate(e.target);
+        }}
         // A touch that turns into a scroll ends in pointercancel, never pointerup.
         onPointerUp={(e) => activate(e.target)}
       >
@@ -775,7 +969,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
           {/* The photo, as the recipe page opens with it */}
           <div
-            className={`editor-page-hero editor-rise${restoredClass('heroImage')}`}
+            className={`editor-page-hero editor-rise${restoredClass('heroImage')}${!form.heroImage && !photoLoading ? ' is-blank' : ''}`}
             style={riseStyle()}
           >
             {restoredChip('heroImage')}
@@ -864,7 +1058,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
 
           {/* The card's line, quiet under the byline */}
           <div
-            className={`editor-page-desc editor-rise${restoredClass('cardDescription')}`}
+            className={`editor-page-desc editor-rise${restoredClass('cardDescription')}${form.cardDescription.trim() ? '' : ' is-blank'}`}
             style={riseStyle()}
           >
             {restoredChip('cardDescription')}
@@ -917,6 +1111,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
           <div
             className={`editor-rise${needed.ingredients === t.ingredientsRequired ? ' is-needed' : ''}${errors.ingredients ? ' has-error' : ''}`}
             data-field="ingredients"
+            data-jump="ingredients"
             style={riseStyle()}
           >
             <IngredientEditor
@@ -943,6 +1138,7 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
           <div
             className={`editor-rise${needed.steps ? ' is-needed' : ''}${errors.steps ? ' has-error' : ''}`}
             data-field="steps"
+            data-jump="steps"
             style={riseStyle()}
           >
             <MethodEditor
@@ -958,7 +1154,11 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
           </div>
 
           {/* Kitchen tip, after the method as the recipe page shows it */}
-          <div className={`editor-extra editor-rise${restoredClass('tips')}`} style={riseStyle()}>
+          <div
+            className={`editor-extra editor-rise${restoredClass('tips')}`}
+            data-jump="extras"
+            style={riseStyle()}
+          >
             {isShown('tips') ? (
               <div className="form-group editor-callout is-tip">
                 {restoredChip('tips')}
@@ -1023,21 +1223,6 @@ export const AddRecipeModal: React.FC<AddRecipeModalProps> = ({
           )}
         </div>
       </div>
-
-      {previewing && (
-        <EditorPreview
-          recipe={{
-            ...recipeFromForm(),
-            id: initialRecipe?.id || 'preview',
-            ownerEmail: initialRecipe?.ownerEmail ?? currentUser?.email,
-            ...ownerCredit(isEditMode ? initialRecipe : undefined, currentUser),
-            createdAt: initialRecipe?.createdAt,
-          }}
-          language={language}
-          onClose={() => setPreviewing(false)}
-          t={t}
-        />
-      )}
 
       {sheet === 'paste' && (
         <PasteSheet
