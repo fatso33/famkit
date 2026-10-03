@@ -6,7 +6,17 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'coverage', 'node_modules', 'public/sw.js', '**/.wrangler'] },
+  {
+    // .claude/worktrees: other sessions' checkouts of this repo, linted in their own right.
+    ignores: [
+      'dist',
+      'coverage',
+      'node_modules',
+      'public/sw.js',
+      '**/.wrangler',
+      '.claude/worktrees',
+    ],
+  },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

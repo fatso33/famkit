@@ -4,5 +4,7 @@ node_modules
 package-lock.json
 public
 .wrangler
+# Other sessions' checkouts of this repo.
+.claude/worktrees
 # Hand-written design tokens; a full reformat would be ~3.6k lines of churn.
 src/index.css
